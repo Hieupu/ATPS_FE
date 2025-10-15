@@ -15,8 +15,8 @@ export const ADMIN_ROUTES = {
 // Public Routes
 export const PUBLIC_ROUTES = {
   HOME: "/",
-  LOGIN: "/login",
-  REGISTER: "/register",
+  LOGIN: "/auth/login",
+  REGISTER: "/auth/register",
   ABOUT: "/about",
   CONTACT: "/contact",
 };

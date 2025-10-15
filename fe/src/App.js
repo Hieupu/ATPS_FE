@@ -8,18 +8,18 @@ import {
 import AdminLayout from "./layouts/AdminLayout";
 import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
-import { ADMIN_ROUTES } from "./routingLayer/routes";
+import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
+import LoginPage from "./pages/common/Login/LoginPage";
+import HomePage from "./pages/common/HomePage/HomePage";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Redirect root to admin dashboard */}
-        <Route
-          path="/"
-          element={<Navigate to={ADMIN_ROUTES.DASHBOARD} replace />}
-        />
+        {/* Public Routes */}
+        <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
+        <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
@@ -29,7 +29,6 @@ function App() {
             path="classes/:courseId/schedule"
             element={<ScheduleManagementPage />}
           />
-          {/* Thêm các route admin khác ở đây */}
         </Route>
 
         {/* 404 Page */}
