@@ -34,9 +34,7 @@ const AppHeader = () => {
   const [anchorEl, setAnchorEl] = useState(null);
 
   const navItems = ["Home", "Courses", "About", "Contact"];
-  const [mobileOpen, setMobileOpen] = useState(false);
 
-  // ✅ Load thông tin đăng nhập (nếu có)
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userData = localStorage.getItem("user");
