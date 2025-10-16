@@ -12,6 +12,8 @@ import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
+import RegisterPage from "./pages/common/Register/RegisterPage";
+import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
 
 function App() {
   return (
@@ -20,15 +22,15 @@ function App() {
         {/* Public Routes */}
         <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
         <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+        <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="classes" element={<ClassManagementPage />} />
-          <Route
-            path="classes/:courseId/schedule"
-            element={<ScheduleManagementPage />}
-          />
+          <Route path="classes/:courseId/schedule" element={<ScheduleManagementPage />} />
         </Route>
 
         {/* 404 Page */}
