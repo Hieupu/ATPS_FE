@@ -12,14 +12,22 @@ import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
+import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
+import UserListPage from './pages/UpdateProfile/UserListPage';
+import UpdateProfile from './pages/UpdateProfile/UpdateProfile';
+
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Routes */} 
         <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
         <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+            <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
+
+            <Route path="/userlist" element={<UserListPage />} />
+         <Route path="/update-profile/:id" element={<UpdateProfile />} />    
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
