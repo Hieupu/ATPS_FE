@@ -74,6 +74,7 @@ const AppHeader = () => {
                 transform: "scale(1.05)",
               },
             }}
+            onClick={() => navigate("/")}
           >
             <Box
               sx={{
