@@ -12,19 +12,31 @@ import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
+
+import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
+
+
 import RegisterPage from "./pages/common/Register/RegisterPage";
 import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
+
+import MyProfile from "./pages/MyProfile/MyProfile";
 
 function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
+        {/* Public Routes */} 
         <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
         <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+
+            <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
+
+            <Route path="/profile" element={<MyProfile />} />
+
         <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
+
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>

@@ -19,6 +19,7 @@ export const PUBLIC_ROUTES = {
   REGISTER: "/auth/register",
   ABOUT: "/about",
   CONTACT: "/contact",
+  FORGOTPASSWORD:"/forgot-password"
 };
 
 // Instructor Routes

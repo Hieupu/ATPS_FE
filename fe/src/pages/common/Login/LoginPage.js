@@ -227,7 +227,7 @@ const LoginPage = () => {
               }}
             >
               <Link
-                href="#"
+                href="/forgot-password"
                 underline="hover"
                 sx={{
                   color: "primary.main",
