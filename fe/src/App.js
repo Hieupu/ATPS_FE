@@ -12,10 +12,14 @@ import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
-import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
-import UserListPage from './pages/UpdateProfile/UserListPage';
-import UpdateProfile from './pages/UpdateProfile/UpdateProfile';
 
+import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
+
+
+import RegisterPage from "./pages/common/Register/RegisterPage";
+import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
+
+import MyProfile from "./pages/MyProfile/MyProfile";
 
 function App() {
   return (
@@ -24,19 +28,21 @@ function App() {
         {/* Public Routes */} 
         <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
         <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+
             <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
 
-            <Route path="/userlist" element={<UserListPage />} />
-         <Route path="/update-profile/:id" element={<UpdateProfile />} />    
+            <Route path="/profile" element={<MyProfile />} />
+
+        <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
+        <Route path="/oauth/callback" element={<OAuthCallback />} />
+        <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
+
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="classes" element={<ClassManagementPage />} />
-          <Route
-            path="classes/:courseId/schedule"
-            element={<ScheduleManagementPage />}
-          />
+          <Route path="classes/:courseId/schedule" element={<ScheduleManagementPage />} />
         </Route>
 
         {/* 404 Page */}

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   Box,
   Container,
@@ -29,6 +29,14 @@ const ForgotPassword = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate();
+
+  // Refs cho các ô nhập mã xác thực
+  const inputRefs = [
+    useRef(null),
+    useRef(null),
+    useRef(null),
+    useRef(null)
+  ];
 
   const steps = ["Nhập Email", "Xác thực", "Đổi mật khẩu"];
 
@@ -76,7 +84,7 @@ const ForgotPassword = () => {
       setError("");
       await resetPassword(resetToken, newPassword);
       setSuccess("🎉 Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
-      setTimeout(() => navigate("/login"), 2000);
+      setTimeout(() => navigate("/auth/login"), 2000);
     } catch (err) {
       setError(err.message || "❌ Không thể đặt lại mật khẩu.");
     } finally {
@@ -84,14 +92,33 @@ const ForgotPassword = () => {
     }
   };
 
-  // Xử lý thay đổi mã 4 số
+  // Xử lý thay đổi mã 4 số với tự động focus
   const handleCodeChange = (value, index) => {
     if (/^[0-9]?$/.test(value)) {
       const newCodes = [...verificationCode];
       newCodes[index] = value;
       setVerificationCode(newCodes);
+
+      // Tự động chuyển sang ô tiếp theo khi người dùng nhập số
+      if (value !== "" && index < 3) {
+        inputRefs[index + 1].current.focus();
+      }
     }
   };
+
+  // Xử lý phím Backspace để quay lại ô trước đó
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace" && verificationCode[index] === "" && index > 0) {
+      inputRefs[index - 1].current.focus();
+    }
+  };
+
+  // Tự động focus vào ô đầu tiên khi chuyển đến bước xác thực
+  useEffect(() => {
+    if (activeStep === 1) {
+      inputRefs[0].current.focus();
+    }
+  }, [activeStep]);
 
   // === Giao diện từng bước ===
   const renderStepContent = (step) => {
@@ -135,8 +162,10 @@ const ForgotPassword = () => {
               {[0, 1, 2, 3].map((index) => (
                 <TextField
                   key={index}
+                  inputRef={inputRefs[index]}
                   value={verificationCode[index]}
                   onChange={(e) => handleCodeChange(e.target.value, index)}
+                  onKeyDown={(e) => handleKeyDown(e, index)}
                   inputProps={{
                     maxLength: 1,
                     style: { textAlign: "center", fontSize: "1.5rem" },
@@ -251,7 +280,7 @@ const ForgotPassword = () => {
           {renderStepContent(activeStep)}
 
           <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Button onClick={() => navigate("/login")}>Quay lại đăng nhập</Button>
+            <Button onClick={() => navigate("/auth/login")}>Quay lại đăng nhập</Button>
           </Box>
         </Paper>
       </Container>

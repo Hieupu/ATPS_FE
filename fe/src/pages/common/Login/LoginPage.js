@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Container,
@@ -20,7 +21,7 @@ import {
   School,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { loginApi } from "../../../apiServices/authService";
+import { loginApi, startGoogleAuth, startFacebookAuth } from "../../../apiServices/authService";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -53,15 +54,8 @@ const LoginPage = () => {
     }
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Login with Google");
-    // Add Google login logic here
-  };
-
-  const handleFacebookLogin = () => {
-    console.log("Login with Facebook");
-    // Add Facebook login logic here
-  };
+   const handleGoogleLogin = () => startGoogleAuth();
+  const handleFacebookLogin = () => startFacebookAuth();
 
   return (
     <Box
@@ -241,14 +235,7 @@ const LoginPage = () => {
               </Link>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{" "}
-                <Link
-                  href="#"
-                  underline="hover"
-                  sx={{
-                    color: "primary.main",
-                    fontWeight: 600,
-                  }}
-                >
+                <Link component={RouterLink} to="/register" underline="hover" sx={{ color: "primary.main", fontWeight: 600 }}>
                   Register
                 </Link>
               </Typography>
