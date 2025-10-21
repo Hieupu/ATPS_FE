@@ -21,7 +21,11 @@ import {
   School,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { loginApi, startGoogleAuth, startFacebookAuth } from "../../../apiServices/authService";
+import {
+  loginApi,
+  startGoogleAuth,
+  startFacebookAuth,
+} from "../../../apiServices/authService";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -54,7 +58,7 @@ const LoginPage = () => {
     }
   };
 
-   const handleGoogleLogin = () => startGoogleAuth();
+  const handleGoogleLogin = () => startGoogleAuth();
   const handleFacebookLogin = () => startFacebookAuth();
 
   return (
@@ -235,7 +239,12 @@ const LoginPage = () => {
               </Link>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{" "}
-                <Link component={RouterLink} to="/register" underline="hover" sx={{ color: "primary.main", fontWeight: 600 }}>
+                <Link
+                  component={RouterLink}
+                  to="/register"
+                  underline="hover"
+                  sx={{ color: "primary.main", fontWeight: 600 }}
+                >
                   Register
                 </Link>
               </Typography>

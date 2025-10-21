@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Box, Container, Paper, Typography, CircularProgress, Avatar } from "@mui/material";
+import {
+  Box,
+  Container,
+  Paper,
+  Typography,
+  CircularProgress,
+  Avatar,
+} from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -36,14 +43,35 @@ export default function OAuthCallback() {
   const ok = Boolean(token);
 
   return (
-    <Box sx={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center",
-      background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", p: 3 }}>
+    <Box
+      sx={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        p: 3,
+      }}
+    >
       <Container maxWidth="sm">
-        <Paper elevation={8} sx={{ p: 4, borderRadius: 3, textAlign: "center" }}>
+        <Paper
+          elevation={8}
+          sx={{ p: 4, borderRadius: 3, textAlign: "center" }}
+        >
           {ok ? (
             <>
-              <Avatar sx={{ bgcolor: "success.light", width: 72, height: 72, mx: "auto", mb: 2 }}>
-                <CheckCircleOutlineIcon sx={{ fontSize: 44, color: "success.main" }} />
+              <Avatar
+                sx={{
+                  bgcolor: "success.light",
+                  width: 72,
+                  height: 72,
+                  mx: "auto",
+                  mb: 2,
+                }}
+              >
+                <CheckCircleOutlineIcon
+                  sx={{ fontSize: 44, color: "success.main" }}
+                />
               </Avatar>
               <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
                 {provider === "google" || provider === "facebook"
@@ -57,7 +85,10 @@ export default function OAuthCallback() {
             </>
           ) : (
             <>
-              <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: "error.main" }}>
+              <Typography
+                variant="h4"
+                sx={{ fontWeight: 700, mb: 1, color: "error.main" }}
+              >
                 There was an error while authenticating.
               </Typography>
               <Typography color="text.secondary">
