@@ -1,0 +1,108 @@
+/* Instructor-specific styles for Class Form */
+.instructor-info {
+  padding: 16px;
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.instructor-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.instructor-avatar {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.instructor-details {
+  flex: 1;
+}
+
+.instructor-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.instructor-major {
+  font-size: 14px;
+  color: #6c757d;
+  font-style: italic;
+}
+
+/* Enhanced form hints for instructor */
+.form-hint {
+  font-size: 12px;
+  color: #6c757d;
+  margin-top: 4px;
+  display: block;
+  font-style: italic;
+}
+
+/* Instructor-specific info notes */
+.info-note {
+  background: #e3f2fd;
+  border-left: 4px solid #2196f3;
+  padding: 12px 16px;
+  margin: 16px 0;
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.info-note ul {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+}
+
+.info-note li {
+  margin-bottom: 4px;
+}
+
+/* Success note for instructor */
+.info-note li:last-child {
+  color: #2e7d32;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .instructor-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .instructor-avatar {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+
+  .instructor-name {
+    font-size: 15px;
+  }
+
+  .instructor-major {
+    font-size: 13px;
+  }
+}
+
+
+
+
+
+

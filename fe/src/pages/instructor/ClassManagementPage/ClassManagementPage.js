@@ -1,9 +1,7 @@
 import React, { useState, useEffect } from "react";
 import classService from "../../../apiServices/classService";
-import {
-  ClassList,
-  ClassForm,
-} from "../../../components/features/class-management";
+import { ClassList } from "../../../components/features/class-management";
+import { InstructorClassForm } from "../../../components/instructor/ClassManagement";
 import "./style.css";
 
 const ClassManagementPage = () => {
@@ -20,6 +18,14 @@ const ClassManagementPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Current instructor (mock data for now)
+  const currentInstructor = {
+    InstructorID: 1,
+    FullName: "Nguyễn Văn A",
+    Major: "Công nghệ thông tin",
+    Email: "nguyenvana@example.com",
+  };
+
   // Load data
   useEffect(() => {
     loadData();
@@ -28,11 +34,10 @@ const ClassManagementPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log("📊 Instructor loading data...");
 
-      // Tự động cập nhật trạng thái lớp học theo ngày trước khi load (bỏ qua lỗi nếu có)
-      try {
-        await classService.autoUpdateClassStatus();
-      } catch (updateError) {}
+      // Tự động cập nhật trạng thái lớp học theo ngày trước khi load
+      await classService.autoUpdateClassStatus();
 
       const [classesResult, instructorsData, coursesData] = await Promise.all([
         classService.getAllClassesWithDetails(),
@@ -40,20 +45,24 @@ const ClassManagementPage = () => {
         classService.getAllCourses(),
       ]);
 
+      console.log("📊 Classes result:", classesResult);
+      console.log("📊 Instructors data:", instructorsData);
+      console.log("📊 Courses data:", coursesData);
+
       // Handle new response format: { data, pagination }
       const classesData = classesResult.data || classesResult;
       setClasses(classesData);
       setInstructors(instructorsData);
       setCourses(coursesData);
     } catch (error) {
+      console.error("❌ Lỗi khi tải dữ liệu:", error);
       alert("Không thể tải dữ liệu. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
   };
 
-  // Handlers
-  const handleAddClass = () => {
+  const handleCreateClass = () => {
     setSelectedClass(null);
     setShowClassForm(true);
   };
@@ -63,59 +72,59 @@ const ClassManagementPage = () => {
     setShowClassForm(true);
   };
 
-  const handleDeleteClass = async (classId) => {
-    const confirmed = window.confirm(
-      "Bạn có chắc chắn muốn xóa lớp học này?\nHành động này không thể hoàn tác!"
-    );
-
-    if (confirmed) {
-      try {
-        await classService.deleteClass(classId);
-        await loadData();
-        alert("Xóa lớp học thành công!");
-      } catch (error) {
-        alert("Không thể xóa lớp học. Vui lòng thử lại!");
-      }
-    }
-  };
-
   const handleSubmitClassForm = async (formData) => {
     try {
+      console.log("📝 Submitting class form data:", formData);
+      console.log("📝 Selected class:", selectedClass);
+
       if (selectedClass) {
         // Update existing class
-        const result = await classService.updateClass(
+        const updatedClass = await classService.updateClass(
           selectedClass.ClassID,
           formData
         );
-
-        // Handle new response format
-        if (result.success !== false) {
-          alert("Cập nhật lớp học thành công!");
-        } else {
-          alert(`${result.message || "Cập nhật lớp học thất bại!"}`);
-          return;
-        }
+        console.log("✅ Class updated successfully:", updatedClass);
       } else {
         // Create new class
-        const result = await classService.createClass(formData);
-
-        // Handle new response format
-        if (result.success !== false) {
-          alert("Thêm lớp học mới thành công!");
-        } else {
-          alert(`${result.message || "Thêm lớp học thất bại!"}`);
-          return;
-        }
+        const newClass = await classService.createClass(formData);
+        console.log("✅ Class created successfully:", newClass);
       }
-      setShowClassForm(false);
+
+      // Reload data
       await loadData();
+      setShowClassForm(false);
+      setSelectedClass(null);
+      alert("✅ Lớp học đã được lưu thành công!");
     } catch (error) {
+      console.error("❌ Lỗi khi lưu lớp học:", error);
+      console.error("❌ Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        config: error.config,
+        formData: formData, // Added for debugging
+        selectedClass: selectedClass, // Added for debugging
+      });
+
       // Hiển thị error message chi tiết hơn
       const errorMessage =
         error.response?.data?.message ||
         error.message ||
         "Không thể lưu lớp học";
-      alert(`${errorMessage}. Vui lòng thử lại!`);
+      alert(`❌ ${errorMessage}. Vui lòng thử lại!`);
+    }
+  };
+
+  const handleDeleteClass = async (classId) => {
+    if (window.confirm("Bạn có chắc chắn muốn xóa lớp học này?")) {
+      try {
+        await classService.deleteClass(classId);
+        await loadData();
+        alert("✅ Lớp học đã được xóa thành công!");
+      } catch (error) {
+        console.error("❌ Lỗi khi xóa lớp học:", error);
+        alert("❌ Không thể xóa lớp học. Vui lòng thử lại!");
+      }
     }
   };
 
@@ -140,7 +149,7 @@ const ClassManagementPage = () => {
       })
     : [];
 
-  // Statistics
+  // Calculate statistics
   const stats = {
     total: Array.isArray(classes) ? classes.length : 0,
     active: Array.isArray(classes)
@@ -158,30 +167,33 @@ const ClassManagementPage = () => {
   };
 
   return (
-    <div className="class-management-page">
+    <div className="class-management-page instructor-page">
       <div className="page-header">
         <div className="header-content">
-          <h1 className="page-title">📚 Quản Lý Lớp Học</h1>
+          <h1 className="page-title">🏫 Quản lý Lớp Học</h1>
           <p className="page-subtitle">
-            Quản lý thông tin lớp học, lịch học và học viên
+            Tạo và quản lý các lớp học của bạn với khóa học
           </p>
         </div>
-        <button className="btn btn-add" onClick={handleAddClass}>
-          ➕ Thêm lớp học mới
-        </button>
+        <div className="header-actions">
+          <button onClick={handleCreateClass} className="btn-add">
+            <span className="btn-icon">➕</span>
+            Tạo Lớp Học Mới
+          </button>
+        </div>
       </div>
 
-      {/* Statistics Cards */}
+      {/* Statistics */}
       <div className="stats-container">
         <div className="stat-card stat-total">
-          <div className="stat-icon">Tổng</div>
+          <div className="stat-icon">📚</div>
           <div className="stat-info">
             <div className="stat-value">{stats.total}</div>
-            <div className="stat-label">Tổng số lớp</div>
+            <div className="stat-label">Tổng lớp học</div>
           </div>
         </div>
         <div className="stat-card stat-active">
-          <div className="stat-icon">Hoạt động</div>
+          <div className="stat-icon">✅</div>
           <div className="stat-info">
             <div className="stat-value">{stats.active}</div>
             <div className="stat-label">Đang hoạt động</div>
@@ -202,7 +214,7 @@ const ClassManagementPage = () => {
           </div>
         </div>
         <div className="stat-card stat-paused">
-          <div className="stat-icon">Tạm dừng</div>
+          <div className="stat-icon">⏸️</div>
           <div className="stat-info">
             <div className="stat-value">{stats.paused}</div>
             <div className="stat-label">Tạm dừng</div>
@@ -216,7 +228,7 @@ const ClassManagementPage = () => {
           <input
             type="text"
             className="search-input"
-            placeholder="Tìm kiếm lớp học (tên lớp, khóa học, giảng viên)..."
+            placeholder="🔍 Tìm kiếm lớp học (tên lớp, khóa học, giảng viên)..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -259,13 +271,13 @@ const ClassManagementPage = () => {
 
       {/* Modals */}
       {showClassForm && (
-        <ClassForm
+        <InstructorClassForm
           classData={selectedClass}
           instructors={instructors}
           courses={courses}
           onSubmit={handleSubmitClassForm}
           onCancel={() => setShowClassForm(false)}
-          userRole="admin"
+          currentInstructor={currentInstructor}
         />
       )}
     </div>

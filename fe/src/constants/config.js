@@ -8,7 +8,7 @@ export const APP_CONFIG = {
 
 // API Configuration
 export const API_CONFIG = {
-  BASE_URL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
+  BASE_URL: process.env.REACT_APP_API_URL || "http://localhost:9999/api",
   TIMEOUT: 10000,
 };
 
@@ -57,4 +57,3 @@ export default {
   CLASS_STATUS,
   USER_ROLES,
 };
-

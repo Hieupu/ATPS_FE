@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
-import { ADMIN_ROUTES } from "../routingLayer/routes";
+import { ADMIN_ROUTES } from "../router/router";
 import "./AdminLayout.css";
 
 const AdminLayout = () => {
@@ -132,4 +132,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

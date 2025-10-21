@@ -60,6 +60,13 @@
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
+  position: relative;
+}
+
+.status-fixed-indicator {
+  font-size: 10px;
+  margin-left: 4px;
+  opacity: 0.7;
 }
 
 .status-active {
@@ -82,7 +89,7 @@
   color: white;
 }
 
-.status-no-instructor {
+.status-paused {
   background: #fd7e14;
   color: white;
 }

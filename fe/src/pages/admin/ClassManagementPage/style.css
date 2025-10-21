@@ -91,7 +91,7 @@
   border-left-color: #6c757d;
 }
 
-.stat-card.stat-no-instructor {
+.stat-card.stat-paused {
   border-left-color: #fd7e14;
 }
 
@@ -119,7 +119,7 @@
   background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
 }
 
-.stat-no-instructor .stat-icon {
+.stat-paused .stat-icon {
   background: linear-gradient(135deg, #fd7e14 0%, #e65100 100%);
 }
 

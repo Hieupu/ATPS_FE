@@ -2,47 +2,68 @@ import React, { useState, useEffect } from "react";
 import { Autocomplete, TextField } from "@mui/material";
 import "./ClassForm.css";
 
-const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
+const ClassForm = ({
+  classData,
+  instructors,
+  courses,
+  onSubmit,
+  onCancel,
+  userRole = "admin",
+}) => {
   const [formData, setFormData] = useState({
-    courseId: "",
-    title: "",
-    description: "",
-    duration: "",
-    tuitionFee: "",
-    status: "Chưa phân giảng viên",
-    instructorId: "",
-    instructorName: "",
-    maxStudents: "",
-    startDate: "",
-    endDate: "",
+    // Class Information (phù hợp với database schema)
+    ClassID: "",
+    ClassName: "", // BẮT BUỘC: Tên lớp học
+    ZoomURL: "",
+    Status: "Sắp khai giảng", // Mặc định là "Sắp khai giảng" vì phải gán instructor
+    CourseID: "", // CHỈ INSTRUCTOR có thể thêm course
+    InstructorID: "", // Admin gán instructor - BẮT BUỘC
+    // StartDate/EndDate sẽ được tính từ session timeslots
   });
 
   const [selectedInstructor, setSelectedInstructor] = useState(null);
-
+  const [selectedCourse, setSelectedCourse] = useState(null);
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
     if (classData) {
-      setFormData(classData);
+      setFormData({
+        ClassID: classData.ClassID || "",
+        ClassName: classData.ClassName || "",
+        ZoomURL: classData.ZoomURL || "",
+        Status: classData.Status || "Sắp khai giảng",
+        CourseID: classData.CourseID || "",
+        InstructorID: classData.InstructorID || "",
+        // StartDate/EndDate sẽ được tính từ session timeslots
+      });
+
       // Set selected instructor for Autocomplete
-      if (classData.instructorId) {
+      if (classData.InstructorID) {
         const instructor = instructors.find(
-          (i) => i.id === classData.instructorId
+          (i) => i.InstructorID === classData.InstructorID
         );
         if (instructor) {
           setSelectedInstructor(instructor);
         }
       }
+
+      // Set selected course for Autocomplete
+      if (classData.CourseID) {
+        const course = courses.find((c) => c.CourseID === classData.CourseID);
+        if (course) {
+          setSelectedCourse(course);
+        }
+      }
     }
-  }, [classData, instructors]);
+  }, [classData, instructors, courses]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
 
     // Xử lý logic đặc biệt khi thay đổi trạng thái
-    if (name === "status") {
+    if (name === "Status") {
       // Nếu chọn "Đang hoạt động" mà chưa có giảng viên, tự động chuyển về "Sắp khai giảng"
-      if (value === "Đang hoạt động" && !formData.instructorId) {
+      if (value === "Đang hoạt động" && !formData.InstructorID) {
         setFormData((prev) => ({
           ...prev,
           [name]: "Sắp khai giảng", // Chuyển về trạng thái có thể chấp nhận
@@ -50,7 +71,7 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
         // Hiển thị thông báo cho người dùng
         setTimeout(() => {
           alert(
-            "⚠️ Lớp học cần có giảng viên để có thể đang hoạt động. Trạng thái đã được chuyển về 'Sắp khai giảng'."
+            "Lớp học cần có giảng viên để có thể đang hoạt động. Trạng thái đã được chuyển về 'Sắp khai giảng'."
           );
         }, 100);
       } else {
@@ -77,18 +98,33 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
 
   const handleInstructorChange = (event, newValue) => {
     setSelectedInstructor(newValue);
-    const newStatus = newValue ? "Sắp khai giảng" : "Chưa phân giảng viên";
+    // Luôn đặt status là "Sắp khai giảng" khi có instructor
+    const newStatus = newValue ? "Sắp khai giảng" : "Sắp khai giảng";
     setFormData((prev) => ({
       ...prev,
-      instructorId: newValue ? newValue.id : "",
-      instructorName: newValue ? newValue.fullName : "",
-      status: newStatus,
+      InstructorID: newValue ? newValue.InstructorID : "",
+      Status: newStatus,
     }));
     // Clear error when user selects
-    if (newValue && errors.instructorId) {
+    if (newValue && errors.InstructorID) {
       setErrors((prev) => ({
         ...prev,
-        instructorId: "",
+        InstructorID: "",
+      }));
+    }
+  };
+
+  const handleCourseChange = (event, newValue) => {
+    setSelectedCourse(newValue);
+    setFormData((prev) => ({
+      ...prev,
+      CourseID: newValue ? newValue.CourseID : "",
+    }));
+    // Clear error when user selects
+    if (newValue && errors.CourseID) {
+      setErrors((prev) => ({
+        ...prev,
+        CourseID: "",
       }));
     }
   };
@@ -96,60 +132,28 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
   const validate = () => {
     const newErrors = {};
 
-    if (!formData.title.trim()) {
-      newErrors.title = "Vui lòng nhập tên lớp học";
+    // Class validation (chỉ validate các trường có trong database)
+    if (!formData.ClassName.trim()) {
+      newErrors.ClassName = "Tên lớp học là bắt buộc";
     }
 
-    if (!formData.description.trim()) {
-      newErrors.description = "Vui lòng nhập mô tả";
+    // CHỈ INSTRUCTOR mới validate CourseID
+    if (userRole === "instructor" && !formData.CourseID) {
+      newErrors.CourseID = "Vui lòng chọn khóa học (bắt buộc)";
     }
 
-    if (!formData.duration || formData.duration <= 0) {
-      newErrors.duration = "Thời lượng phải lớn hơn 0";
+    // Admin BẮT BUỘC phải gán instructor
+    if (!formData.InstructorID) {
+      newErrors.InstructorID = "Vui lòng gán giảng viên cho lớp học";
     }
 
-    if (!formData.tuitionFee || formData.tuitionFee < 0) {
-      newErrors.tuitionFee = "Học phí không hợp lệ";
-    }
-
-    // Không bắt buộc chọn giảng viên khi tạo lớp
-    // Instructor sẽ được validate trong logic xử lý trạng thái
-
-    if (!formData.maxStudents || formData.maxStudents <= 0) {
-      newErrors.maxStudents = "Số lượng học viên phải lớn hơn 0";
-    }
-
-    if (!formData.startDate) {
-      newErrors.startDate = "Vui lòng chọn ngày bắt đầu";
-    } else {
-      // Kiểm tra ngày bắt đầu không được là ngày đã qua (trừ khi đang chỉnh sửa lớp cũ)
-      const today = new Date();
-      const startDate = new Date(formData.startDate);
-      today.setHours(0, 0, 0, 0); // Reset time để chỉ so sánh ngày
-      startDate.setHours(0, 0, 0, 0);
-
-      if (startDate < today && !classData) {
-        newErrors.startDate = "Không thể tạo lớp học với ngày bắt đầu đã qua";
-      }
-    }
-
-    if (!formData.endDate) {
-      newErrors.endDate = "Vui lòng chọn ngày kết thúc";
-    }
-
-    if (
-      formData.startDate &&
-      formData.endDate &&
-      formData.startDate >= formData.endDate
-    ) {
-      newErrors.endDate = "Ngày kết thúc phải sau ngày bắt đầu";
-    }
-
-    // Validation cho trạng thái
-    if (formData.status === "Đang hoạt động" && !formData.instructorId) {
-      newErrors.status =
+    // Status validation
+    if (formData.Status === "Đang hoạt động" && !formData.InstructorID) {
+      newErrors.Status =
         "Lớp học không thể đang hoạt động khi chưa có giảng viên";
     }
+
+    // StartDate/EndDate sẽ được tính từ session timeslots nên không cần validate ở đây
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -158,7 +162,24 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      // Loại bỏ ClassID khỏi request body khi update
+      const submitData = {
+        ClassName: formData.ClassName,
+        Status: formData.Status,
+        InstructorID: parseInt(formData.InstructorID),
+      };
+
+      // CHỈ INSTRUCTOR mới gửi CourseID
+      if (userRole === "instructor" && formData.CourseID) {
+        submitData.CourseID = parseInt(formData.CourseID);
+      }
+
+      // Chỉ gửi ZoomURL nếu có giá trị hợp lệ
+      if (formData.ZoomURL && formData.ZoomURL.trim() !== "") {
+        submitData.ZoomURL = formData.ZoomURL;
+      }
+
+      onSubmit(submitData);
     }
   };
 
@@ -166,66 +187,77 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
     <div className="class-form-overlay">
       <div className="class-form-container">
         <div className="form-header">
-          <h2>{classData ? "✏️ Chỉnh sửa lớp học" : "➕ Thêm lớp học mới"}</h2>
+          <h2>{classData ? "Chỉnh sửa lớp học" : "Thêm lớp học mới"}</h2>
           <button className="close-btn" onClick={onCancel} title="Đóng">
-            ✕
+            ×
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="class-form">
           <div className="form-section">
-            <h3>📚 Thông tin cơ bản</h3>
+            <h3>Thông tin lớp học</h3>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="title">
-                  Tên lớp học <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="Nhập tên lớp học"
-                  className={errors.title ? "error" : ""}
-                />
-                {errors.title && (
-                  <span className="error-message">{errors.title}</span>
-                )}
-              </div>
+            {/* Tên lớp học */}
+            <div className="form-group">
+              <label htmlFor="ClassName">
+                Tên lớp học <span className="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="ClassName"
+                name="ClassName"
+                value={formData.ClassName}
+                onChange={handleChange}
+                className={errors.ClassName ? "error" : ""}
+                placeholder="Nhập tên lớp học (ví dụ: Lớp Lập trình Web 01)"
+                required
+              />
+              {errors.ClassName && (
+                <span className="error-message">{errors.ClassName}</span>
+              )}
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="description">
-                  Mô tả <span className="required">*</span>
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Nhập mô tả về lớp học"
-                  rows="3"
-                  className={errors.description ? "error" : ""}
-                />
-                {errors.description && (
-                  <span className="error-message">{errors.description}</span>
-                )}
+            {/* CHỈ INSTRUCTOR mới hiển thị Course selection */}
+            {userRole === "instructor" && (
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="CourseID">
+                    Khóa học <span className="required">*</span>
+                  </label>
+                  <Autocomplete
+                    id="CourseID"
+                    options={courses}
+                    getOptionLabel={(option) => option.Title}
+                    value={selectedCourse}
+                    onChange={handleCourseChange}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Tìm và chọn khóa học..."
+                        error={!!errors.CourseID}
+                        helperText={errors.CourseID}
+                        size="small"
+                      />
+                    )}
+                    isOptionEqualToValue={(option, value) =>
+                      option.CourseID === value.CourseID
+                    }
+                    noOptionsText="Không tìm thấy khóa học"
+                  />
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="instructorId">
-                  Giảng viên <span className="optional">(Tùy chọn)</span>
+                <label htmlFor="InstructorID">
+                  Giảng viên <span className="required">*</span>
                 </label>
                 <Autocomplete
-                  id="instructorId"
+                  id="InstructorID"
                   options={instructors}
                   getOptionLabel={(option) =>
-                    `${option.fullName} - ${option.major}`
+                    `${option.FullName} - ${option.Major}`
                   }
                   value={selectedInstructor}
                   onChange={handleInstructorChange}
@@ -233,155 +265,125 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
                     <TextField
                       {...params}
                       placeholder="Tìm và chọn giảng viên..."
-                      error={!!errors.instructorId}
-                      helperText={errors.instructorId}
+                      error={!!errors.InstructorID}
+                      helperText={errors.InstructorID}
                       size="small"
                     />
                   )}
                   isOptionEqualToValue={(option, value) =>
-                    option.id === value.id
+                    option.InstructorID === value.InstructorID
                   }
                   noOptionsText="Không tìm thấy giảng viên"
                 />
               </div>
+            </div>
 
+            <div className="form-row">
               <div className="form-group">
-                <label htmlFor="status">
+                <label htmlFor="Status">
                   Trạng thái <span className="required">*</span>
                 </label>
                 <select
-                  id="status"
-                  name="status"
-                  value={formData.status}
+                  id="Status"
+                  name="Status"
+                  value={formData.Status}
                   onChange={handleChange}
-                  className={errors.status ? "error" : ""}
+                  className={errors.Status ? "error" : ""}
                 >
-                  <option value="Chưa phân giảng viên">
-                    Chưa phân giảng viên
-                  </option>
                   <option value="Sắp khai giảng">Sắp khai giảng</option>
                   <option value="Đang hoạt động">Đang hoạt động</option>
                   <option value="Đã kết thúc">Đã kết thúc</option>
                   <option value="Tạm dừng">Tạm dừng</option>
                 </select>
-                {errors.status && (
-                  <span className="error-message">{errors.status}</span>
+                {errors.Status && (
+                  <span className="error-message">{errors.Status}</span>
                 )}
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="ZoomURL">
+                  Zoom URL <span className="optional">(Tùy chọn)</span>
+                </label>
+                <input
+                  type="url"
+                  id="ZoomURL"
+                  name="ZoomURL"
+                  value={formData.ZoomURL}
+                  onChange={handleChange}
+                  placeholder="https://zoom.us/j/..."
+                />
+                <small className="form-hint">
+                  Link Zoom sẽ được sử dụng cho tất cả buổi học của lớp
+                </small>
               </div>
             </div>
 
             <div className="form-row">
               <div className="form-group">
-                <label htmlFor="duration">
-                  Thời lượng (giờ) <span className="required">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="duration"
-                  name="duration"
-                  value={formData.duration}
-                  onChange={handleChange}
-                  placeholder="Nhập thời lượng"
-                  min="1"
-                  className={errors.duration ? "error" : ""}
-                />
-                {errors.duration && (
-                  <span className="error-message">{errors.duration}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="tuitionFee">
-                  Học phí (VNĐ) <span className="required">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="tuitionFee"
-                  name="tuitionFee"
-                  value={formData.tuitionFee}
-                  onChange={handleChange}
-                  placeholder="Nhập học phí"
-                  min="0"
-                  className={errors.tuitionFee ? "error" : ""}
-                />
-                {errors.tuitionFee && (
-                  <span className="error-message">{errors.tuitionFee}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="maxStudents">
-                  Sĩ số tối đa <span className="required">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="maxStudents"
-                  name="maxStudents"
-                  value={formData.maxStudents}
-                  onChange={handleChange}
-                  placeholder="Số học viên"
-                  min="1"
-                  className={errors.maxStudents ? "error" : ""}
-                />
-                {errors.maxStudents && (
-                  <span className="error-message">{errors.maxStudents}</span>
-                )}
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="startDate">
-                  Ngày bắt đầu <span className="required">*</span>
-                </label>
-                <input
-                  type="date"
-                  id="startDate"
-                  name="startDate"
-                  value={formData.startDate}
-                  onChange={handleChange}
-                  className={errors.startDate ? "error" : ""}
-                />
-                {errors.startDate && (
-                  <span className="error-message">{errors.startDate}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="endDate">
-                  Ngày kết thúc <span className="required">*</span>
-                </label>
-                <input
-                  type="date"
-                  id="endDate"
-                  name="endDate"
-                  value={formData.endDate}
-                  onChange={handleChange}
-                  className={errors.endDate ? "error" : ""}
-                />
-                {errors.endDate && (
-                  <span className="error-message">{errors.endDate}</span>
-                )}
+                <div className="info-note">
+                  <strong>Ngày bắt đầu/kết thúc:</strong> Sẽ được tự động tính
+                  từ ngày bắt đầu và kết thúc của các session mà giảng viên tạo
+                  cho lớp học này.
+                </div>
               </div>
             </div>
 
             <div className="info-note">
-              <strong>📅 Lưu ý:</strong> Sau khi tạo/cập nhật lớp học, bạn có
-              thể quản lý lịch học chi tiết từ danh sách lớp học.
+              <strong>
+                Vai trò {userRole === "admin" ? "Admin" : "Instructor"}:
+              </strong>
+              {userRole === "admin" ? (
+                <>
+                  Bạn đang tạo lớp học và gán cho giảng viên. Giảng viên sẽ tự
+                  thêm khóa học và quản lý nội dung, tài liệu.
+                </>
+              ) : (
+                <>
+                  Bạn đang tạo lớp học và gán khóa học. Sau khi tạo lớp, bạn có
+                  thể thêm sessions và materials.
+                </>
+              )}
             </div>
 
             <div className="info-note auto-status-note">
-              <strong>🔄 Trạng thái tự động:</strong>
+              <strong>Trạng thái tự động:</strong>
               <ul>
                 <li>
                   Lớp "Sắp khai giảng" sẽ tự động chuyển thành "Đang hoạt động"
-                  khi đến ngày bắt đầu (nếu có giảng viên)
+                  khi đến ngày bắt đầu session đầu tiên (nếu có giảng viên)
                 </li>
                 <li>
                   Lớp "Đang hoạt động" sẽ tự động chuyển thành "Đã kết thúc" khi
-                  qua ngày kết thúc
+                  qua ngày kết thúc session cuối cùng
                 </li>
-                <li>Không thể tạo lớp học với ngày bắt đầu đã qua</li>
+              </ul>
+            </div>
+
+            <div className="info-note">
+              <strong>Quản lý Session:</strong>
+              <ul>
+                <li>Giảng viên sẽ tạo các session cho lớp học này</li>
+                <li>Mỗi session có thể có nhiều timeslot (lịch học)</li>
+                <li>
+                  Ngày bắt đầu/kết thúc của lớp sẽ được tính từ session
+                  timeslots
+                </li>
+              </ul>
+            </div>
+
+            <div className="info-note">
+              <strong>Thông tin học phí & Enrollment:</strong>
+              <ul>
+                <li>Học phí được lấy từ khóa học (Course) được chọn</li>
+                <li>Học viên sẽ enroll trực tiếp vào lớp học</li>
+                <li>Thanh toán được thực hiện theo enrollment</li>
+                <li>Không có giới hạn sĩ số trong database</li>
+                {userRole === "admin" && (
+                  <li>
+                    Admin chỉ tạo lớp và gán instructor. Instructor sẽ thêm khóa
+                    học sau.
+                  </li>
+                )}
               </ul>
             </div>
           </div>
@@ -392,10 +394,10 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
               className="btn btn-secondary"
               onClick={onCancel}
             >
-              ❌ Hủy
+              Hủy
             </button>
             <button type="submit" className="btn btn-primary">
-              ✅ {classData ? "Cập nhật" : "Tạo mới"}
+              {classData ? "Cập nhật" : "Tạo mới"}
             </button>
           </div>
         </form>

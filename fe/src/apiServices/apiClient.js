@@ -27,14 +27,45 @@ apiClient.interceptors.request.use(
   }
 );
 
-// Response interceptor - Xử lý lỗi chung
+// Response interceptor - Xử lý lỗi chung và response format mới
 apiClient.interceptors.response.use(
   (response) => {
+    // Backend mới trả về format: { success, message, data, pagination }
+    const backendResponse = response.data;
+
+    if (backendResponse && typeof backendResponse === "object") {
+      if (backendResponse.success === false) {
+        // Backend trả về lỗi validation hoặc business logic
+        const error = new Error(backendResponse.message || "API Error");
+        error.response = {
+          data: backendResponse,
+          status: 400,
+        };
+        return Promise.reject(error);
+      }
+
+      // Trả về data trực tiếp từ backend response
+      return {
+        ...response,
+        data: backendResponse.data || backendResponse,
+        pagination: backendResponse.pagination,
+        message: backendResponse.message,
+      };
+    }
+
     return response;
   },
   (error) => {
     if (error.response) {
       // Server trả về lỗi
+      const backendError = error.response.data;
+
+      // Xử lý lỗi từ backend mới
+      if (backendError && backendError.success === false) {
+        if (backendError.errors && backendError.errors.length > 0) {
+        }
+      }
+
       switch (error.response.status) {
         case 401:
           // Unauthorized - xóa token và redirect về login
@@ -42,23 +73,17 @@ apiClient.interceptors.response.use(
           window.location.href = "/login";
           break;
         case 403:
-          console.error("Forbidden - Bạn không có quyền truy cập");
           break;
         case 404:
-          console.error("Not Found - Không tìm thấy tài nguyên");
           break;
         case 500:
-          console.error("Server Error - Lỗi máy chủ");
           break;
         default:
-          console.error("API Error:", error.response.data);
       }
     } else if (error.request) {
       // Request được gửi nhưng không nhận được response
-      console.error("Network Error - Không thể kết nối đến server");
     } else {
       // Lỗi khác
-      console.error("Error:", error.message);
     }
     return Promise.reject(error);
   }

@@ -4,9 +4,9 @@
 export const ADMIN_ROUTES = {
   DASHBOARD: "/admin",
   CLASS_MANAGEMENT: "/admin/classes",
-  SCHEDULE_MANAGEMENT: "/admin/classes/:courseId/schedule",
+  SESSION_TIMESLOT_ASSIGNMENT: "/admin/sessions/:sessionId/timeslots",
+  CLASS_SCHEDULE: "/admin/classes/:classId/schedule",
   USERS: "/admin/users",
-  COURSES: "/admin/courses",
   INSTRUCTORS: "/admin/instructors",
   LEARNERS: "/admin/learners",
   REPORTS: "/admin/reports",
@@ -24,15 +24,18 @@ export const PUBLIC_ROUTES = {
 // Instructor Routes
 export const INSTRUCTOR_ROUTES = {
   DASHBOARD: "/instructor",
-  CLASSES: "/instructor/classes",
-  STUDENTS: "/instructor/students",
-  ASSIGNMENTS: "/instructor/assignments",
+  COURSE_MANAGEMENT: "/instructor/courses",
+  CLASS_ASSIGNMENT: "/instructor/classes",
+  SESSION_MANAGEMENT: "/instructor/classes/:classId/sessions",
+  MATERIAL_MANAGEMENT: "/instructor/courses/:courseId/materials",
+  LESSON_MANAGEMENT: "/instructor/sessions/:sessionId/lessons",
 };
 
 // Learner Routes
 export const LEARNER_ROUTES = {
   DASHBOARD: "/learner",
   MY_CLASSES: "/learner/classes",
-  ASSIGNMENTS: "/learner/assignments",
-  GRADES: "/learner/grades",
+  SCHEDULE: "/learner/schedule",
+  COURSE_MATERIALS: "/learner/courses/:courseId/materials",
+  SESSION_LESSONS: "/learner/sessions/:sessionId/lessons",
 };

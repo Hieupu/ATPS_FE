@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   format,
@@ -15,10 +15,11 @@ import {
 } from "date-fns";
 import { vi } from "date-fns/locale";
 import classService from "../../../apiServices/classService";
+import { formatDateForAPI, parseDateSafely } from "../../../utils/dateUtils";
 import "./style.css";
 
 const ScheduleManagementPage = () => {
-  const { courseId } = useParams();
+  const { classId } = useParams();
   const navigate = useNavigate();
 
   const [course, setCourse] = useState(null);
@@ -47,14 +48,10 @@ const ScheduleManagementPage = () => {
   // Bulk sessions (các ca học cho bulk add)
   const [bulkSessions, setBulkSessions] = useState([]);
 
-  useEffect(() => {
-    loadData();
-  }, [courseId]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const classData = await classService.getClassById(courseId);
+      const classData = await classService.getClassById(classId);
       setCourse(classData);
 
       // Auto-fill bulk config với thời gian từ lớp học
@@ -66,18 +63,72 @@ const ScheduleManagementPage = () => {
         }));
       }
 
-      // Load schedules from localStorage or API
-      const savedSchedules = JSON.parse(
-        localStorage.getItem(`schedules_${courseId}`) || "[]"
-      );
-      setSchedules(savedSchedules);
+      // ✅ Load schedules from database instead of localStorage
+      try {
+        const sessionsResult = await classService.getClassSessions(classId);
+        const databaseSchedules = sessionsResult.data || [];
+
+        // Transform database format to frontend format
+        const transformedSchedules = [];
+        databaseSchedules.forEach((session) => {
+          // Backend trả về session với Timeslots array
+          if (session.Timeslots && session.Timeslots.length > 0) {
+            session.Timeslots.forEach((timeslot) => {
+              transformedSchedules.push({
+                id: session.SessionID || session.id,
+                date: timeslot.Date
+                  ? timeslot.Date.split("T")[0]
+                  : timeslot.date,
+                startTime: timeslot.StartTime || timeslot.startTime,
+                endTime: timeslot.EndTime || timeslot.endTime,
+                courseId: classId,
+                lessonId: null,
+                sessionTitle: session.Title || session.sessionTitle,
+                sessionDescription:
+                  session.Description || session.sessionDescription,
+                location: timeslot.Location || timeslot.location,
+              });
+            });
+          } else {
+            // Fallback cho format cũ
+            transformedSchedules.push({
+              id: session.SessionID || session.id,
+              date: session.Date ? session.Date.split("T")[0] : session.date,
+              startTime: session.StartTime || session.startTime,
+              endTime: session.EndTime || session.endTime,
+              courseId: classId,
+              lessonId: null,
+              sessionTitle: session.Title || session.sessionTitle,
+              sessionDescription:
+                session.Description || session.sessionDescription,
+            });
+          }
+        });
+
+        setSchedules(transformedSchedules);
+        console.log("✅ Loaded schedules from database:", transformedSchedules);
+      } catch (sessionError) {
+        console.warn(
+          "⚠️ Could not load sessions from database, using localStorage fallback:",
+          sessionError
+        );
+        // Fallback to localStorage if database fails
+        const savedSchedules = JSON.parse(
+          localStorage.getItem(`schedules_${classId}`) || "[]"
+        );
+        setSchedules(savedSchedules);
+      }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
       alert("❌ Không thể tải thông tin lớp học!");
     } finally {
       setLoading(false);
     }
-  };
+  }, [classId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const getDaysInMonth = () => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 1 });
@@ -91,7 +142,14 @@ const ScheduleManagementPage = () => {
 
   const handleDateClick = (date) => {
     if (!isSameMonth(date, currentMonth)) return;
-    setSelectedDate(date);
+
+    // ✅ Use safe date handling - backend team guidance
+    const safeDate = parseDateSafely(formatDateForAPI(date));
+    console.log("🔍 Original date:", date);
+    console.log("🔍 Safe date:", safeDate);
+    console.log("🔍 Formatted for API:", formatDateForAPI(date));
+
+    setSelectedDate(safeDate);
     // Scroll xuống phần session-selector
     setTimeout(() => {
       document.querySelector(".session-selector")?.scrollIntoView({
@@ -121,7 +179,7 @@ const ScheduleManagementPage = () => {
     return compareDate < today;
   };
 
-  const handleAddSessions = () => {
+  const handleAddSessions = async () => {
     if (!selectedDate) {
       alert("⚠️ Vui lòng chọn ngày!");
       return;
@@ -133,7 +191,10 @@ const ScheduleManagementPage = () => {
       return;
     }
 
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    // ✅ Use safe date handling - backend team guidance
+    const safeDateStr = formatDateForAPI(selectedDate);
+    console.log("🔍 Selected date:", selectedDate);
+    console.log("🔍 Safe date string:", safeDateStr);
     const existingSchedules = getSchedulesForDate(selectedDate);
     const newSchedules = [];
     const errors = [];
@@ -187,10 +248,10 @@ const ScheduleManagementPage = () => {
 
       newSchedules.push({
         id: Date.now() + Math.random(),
-        date: dateStr,
+        date: safeDateStr, // ✅ Sử dụng safe date string
         startTime: startTimeStr,
         endTime: endTimeStr,
-        courseId: parseInt(courseId),
+        courseId: parseInt(classId),
         lessonId: null,
       });
     });
@@ -205,9 +266,34 @@ const ScheduleManagementPage = () => {
       return;
     }
 
-    const updated = [...schedules, ...newSchedules];
-    setSchedules(updated);
-    localStorage.setItem(`schedules_${courseId}`, JSON.stringify(updated));
+    // ✅ Lưu từng schedule vào database
+    for (const schedule of newSchedules) {
+      try {
+        console.log("🔍 Schedule data to send:", schedule);
+        console.log("🔍 Date being sent:", schedule.date);
+
+        // Tạo session với timeslot trong một request (backend mới)
+        await classService.createClassSession(classId, {
+          title: schedule.sessionTitle || `Session ${schedules.length + 1}`,
+          description: schedule.sessionDescription || "",
+          timeslots: [
+            {
+              date: schedule.date,
+              startTime: schedule.startTime,
+              endTime: schedule.endTime,
+              location: null,
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error saving schedule:", error);
+        alert(`❌ Lỗi khi lưu lịch: ${error.message}`);
+        return; // Stop if any schedule fails
+      }
+    }
+
+    // Reload data từ database
+    await loadData();
 
     // Reset sessions
     setSessions([
@@ -238,7 +324,7 @@ const ScheduleManagementPage = () => {
     setSessions(updated);
   };
 
-  const handleRemoveSession = (schedule) => {
+  const handleRemoveSession = async (schedule) => {
     // Check xem buổi học đã qua chưa
     if (isDatePast(schedule.date)) {
       alert("⚠️ Không thể xóa lịch học đã qua hoặc đang diễn ra!");
@@ -247,13 +333,20 @@ const ScheduleManagementPage = () => {
 
     if (!window.confirm("⚠️ Xóa lịch học này?")) return;
 
-    const updated = schedules.filter((s) => s.id !== schedule.id);
-    setSchedules(updated);
-    localStorage.setItem(`schedules_${courseId}`, JSON.stringify(updated));
-    alert("✅ Đã xóa lịch học!");
+    try {
+      // ✅ Xóa session từ database
+      await classService.deleteClassSession(schedule.id);
+
+      // Reload data từ database
+      await loadData();
+      alert("✅ Đã xóa lịch học!");
+    } catch (error) {
+      console.error("Error deleting schedule:", error);
+      alert(`❌ Lỗi khi xóa lịch: ${error.message}`);
+    }
   };
 
-  const handleBulkAdd = () => {
+  const handleBulkAdd = async () => {
     if (!bulkConfig.startDate || !bulkConfig.endDate) {
       alert("⚠️ Vui lòng chọn khoảng thời gian!");
       return;
@@ -318,6 +411,9 @@ const ScheduleManagementPage = () => {
       }
 
       if (shouldAdd) {
+        // Capture current date to avoid unsafe reference
+        const currentDate = new Date(current);
+
         // Thêm tất cả các ca cho ngày này
         bulkSessions.forEach((session) => {
           const hours = parseInt(session.durationHours) || 0;
@@ -326,10 +422,10 @@ const ScheduleManagementPage = () => {
 
           newSchedules.push({
             id: Date.now() + Math.random(),
-            date: format(current, "yyyy-MM-dd"),
+            date: format(currentDate, "yyyy-MM-dd"),
             startTime: session.startTime + ":00",
             endTime: endTime + ":00",
-            courseId: parseInt(courseId),
+            courseId: parseInt(classId),
             lessonId: null,
           });
         });
@@ -343,9 +439,34 @@ const ScheduleManagementPage = () => {
       return;
     }
 
-    const updated = [...schedules, ...newSchedules];
-    setSchedules(updated);
-    localStorage.setItem(`schedules_${courseId}`, JSON.stringify(updated));
+    // ✅ Lưu từng schedule vào database
+    for (const schedule of newSchedules) {
+      try {
+        console.log("🔍 Schedule data to send:", schedule);
+        console.log("🔍 Date being sent:", schedule.date);
+
+        // Tạo session với timeslot trong một request (backend mới)
+        await classService.createClassSession(classId, {
+          title: schedule.sessionTitle || `Session ${schedules.length + 1}`,
+          description: schedule.sessionDescription || "",
+          timeslots: [
+            {
+              date: schedule.date,
+              startTime: schedule.startTime,
+              endTime: schedule.endTime,
+              location: null,
+            },
+          ],
+        });
+      } catch (error) {
+        console.error("Error saving schedule:", error);
+        alert(`❌ Lỗi khi lưu lịch: ${error.message}`);
+        return; // Stop if any schedule fails
+      }
+    }
+
+    // Reload data từ database
+    await loadData();
     setShowBulkModal(false);
     setBulkSessions([]); // Reset bulk sessions
     alert(`✅ Đã thêm ${newSchedules.length} lịch học!`);
@@ -414,7 +535,7 @@ const ScheduleManagementPage = () => {
         <div>
           <h1 className="schedule-title">📅 Quản Lý Lịch Học</h1>
           <p className="schedule-subtitle">
-            Lớp: <strong>{course.title}</strong>
+            Lớp: <strong>{course.ClassName || course.title}</strong>
           </p>
         </div>
         <div className="header-actions">

@@ -6,9 +6,12 @@ import {
   Navigate,
 } from "react-router-dom";
 import AdminLayout from "./layouts/AdminLayout";
+import InstructorLayout from "./layouts/InstructorLayout";
 import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
-import { ADMIN_ROUTES } from "./routingLayer/routes";
+import CourseManagementPage from "./pages/instructor/CourseManagementPage/CourseManagementPage";
+import InstructorClassManagementPage from "./pages/instructor/ClassManagementPage/ClassManagementPage";
+import { ADMIN_ROUTES } from "./router/router";
 import "./App.css";
 
 function App() {
@@ -26,10 +29,21 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="classes" element={<ClassManagementPage />} />
           <Route
-            path="classes/:courseId/schedule"
+            path="classes/:classId/schedule"
             element={<ScheduleManagementPage />}
           />
-          {/* Thêm các route admin khác ở đây */}
+          {/* <Route path="sessions/:sessionId/timeslots" element={<SessionTimeslotAssignmentPage />} /> */}
+        </Route>
+
+        {/* Instructor Routes */}
+        <Route path="/instructor" element={<InstructorLayout />}>
+          <Route index element={<InstructorDashboard />} />
+          {/* Instructor Course Management Routes */}
+          <Route path="courses" element={<CourseManagementPage />} />
+          <Route path="classes" element={<InstructorClassManagementPage />} />
+          {/* <Route path="classes/:classId/sessions" element={<SessionManagementPage />} /> */}
+          {/* <Route path="courses/:courseId/materials" element={<MaterialManagementPage />} /> */}
+          {/* <Route path="sessions/:sessionId/lessons" element={<LessonManagementPage />} /> */}
         </Route>
 
         {/* 404 Page */}
@@ -43,9 +57,16 @@ function App() {
 function AdminDashboard() {
   return (
     <div style={{ padding: "24px" }}>
-      <h1>📊 Dashboard Admin</h1>
+      <h1>Dashboard Admin</h1>
       <p>Chào mừng đến với hệ thống quản lý đào tạo ATPS!</p>
-      <div style={{ marginTop: "20px" }}>
+      <div
+        style={{
+          marginTop: "20px",
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
         <a
           href="/admin/classes"
           style={{
@@ -57,7 +78,52 @@ function AdminDashboard() {
             display: "inline-block",
           }}
         >
-          📚 Quản lý lớp học
+          Quản lý lớp học
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Temporary Instructor Dashboard Component
+function InstructorDashboard() {
+  return (
+    <div style={{ padding: "24px" }}>
+      <h1>Dashboard Instructor</h1>
+      <p>Chào mừng đến với portal giảng viên ATPS!</p>
+      <div
+        style={{
+          marginTop: "20px",
+          display: "flex",
+          gap: "12px",
+          flexWrap: "wrap",
+        }}
+      >
+        <a
+          href="/instructor/courses"
+          style={{
+            padding: "12px 24px",
+            background: "#667eea",
+            color: "white",
+            textDecoration: "none",
+            borderRadius: "8px",
+            display: "inline-block",
+          }}
+        >
+          Quản lý khóa học
+        </a>
+        <a
+          href="/instructor/classes"
+          style={{
+            padding: "12px 24px",
+            background: "#28a745",
+            color: "white",
+            textDecoration: "none",
+            borderRadius: "8px",
+            display: "inline-block",
+          }}
+        >
+          Lớp được gán
         </a>
       </div>
     </div>
@@ -92,7 +158,7 @@ function NotFound() {
           display: "inline-block",
         }}
       >
-        🏠 Về trang chủ
+        Về trang chủ
       </a>
     </div>
   );
