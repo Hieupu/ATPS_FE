@@ -20,6 +20,12 @@ import RegisterPage from "./pages/common/Register/RegisterPage";
 import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
 
 import MyProfile from "./pages/MyProfile/MyProfile";
+import CoursesPage from "./pages/course/CoursesPage";
+import CourseDetailPage from "./pages/course/CourseDetailPage";
+
+import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
+import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
 
 function App() {
   return (
@@ -37,6 +43,10 @@ function App() {
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
 
+             <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:id" element={<CourseDetailPage />} />
+<Route path="/payment-success" element={<PaymentSuccessPage />} />
+<Route path="/payment-failed" element={<PaymentFailedPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
