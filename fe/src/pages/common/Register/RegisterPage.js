@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import {
   Box, Container, Paper, Typography, TextField,
-  Button, Divider, Link, InputAdornment, IconButton, Avatar, Alert, Collapse
+  Button, Divider, Link, InputAdornment, IconButton, Avatar,
+  Alert, Collapse, Dialog, DialogTitle, DialogContent, DialogActions
 } from "@mui/material";
 import {
   Visibility, VisibilityOff,
   Google as GoogleIcon, Facebook as FacebookIcon, School,
 } from "@mui/icons-material";
+import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
 import { registerApi, startGoogleAuth, startFacebookAuth } from "../../../apiServices/authService";
 
@@ -14,17 +16,16 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
-
-  // form state
   const [form, setForm] = useState({
     username: "", email: "", phone: "", password: "", confirmPassword: "",
   });
 
-  // success / error UI
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
   const [seconds, setSeconds] = useState(4);
+  const [successOpen, setSuccessOpen] = useState(false);
   const countdownRef = useRef(null);
+  const timeoutRef = useRef(null);
 
   const navigate = useNavigate();
 
@@ -45,6 +46,10 @@ const RegisterPage = () => {
     return null;
   };
 
+  const goLogin = () => {
+    navigate("/auth/login", { replace: true, state: { email: form.email.trim() } });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMsg("");
@@ -63,18 +68,15 @@ const RegisterPage = () => {
         password: form.password,
       });
 
-      // ✅ Hiển thị thông báo thành công ngay tại trang
       setSuccessMsg(res?.message || "Account created successfully!");
       setSeconds(4);
+      setSuccessOpen(true);
 
-      // Đếm ngược & chuyển sang trang login sau 4s
+ 
       countdownRef.current = setInterval(() => {
         setSeconds((s) => (s > 1 ? s - 1 : 0));
       }, 1000);
-
-      setTimeout(() => {
-        navigate("/auth/login", { replace: true, state: { email: form.email.trim() } });
-      }, 4000);
+      timeoutRef.current = setTimeout(goLogin, 4000);
     } catch (error) {
       console.error("Register error:", error);
       setErrorMsg(error?.message || "Register failed. Please try again!");
@@ -83,12 +85,19 @@ const RegisterPage = () => {
     }
   };
 
-  // clear interval khi unmount
   useEffect(() => {
     return () => {
       if (countdownRef.current) clearInterval(countdownRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
+
+  const handleCloseSuccess = () => {
+    if (countdownRef.current) clearInterval(countdownRef.current);
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setSuccessOpen(false);
+    goLogin();
+  };
 
   return (
     <Box
@@ -103,14 +112,11 @@ const RegisterPage = () => {
     >
       <Container maxWidth="sm">
         <Paper elevation={8} sx={{ p: 4, borderRadius: 3, backgroundColor: "white" }}>
-          {/* Logo */}
           <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
             <Avatar sx={{ width: 80, height: 80, backgroundColor: "primary.light" }}>
               <School sx={{ fontSize: 48, color: "primary.main" }} />
             </Avatar>
           </Box>
-
-          {/* Title */}
           <Box sx={{ textAlign: "center", mb: 3 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
               Create your account
@@ -119,53 +125,37 @@ const RegisterPage = () => {
               Join us and start your journey
             </Typography>
           </Box>
-
-          {/* Alerts */}
-          <Collapse in={!!successMsg} unmountOnExit>
-            <Alert severity="success" sx={{ mb: 2, fontWeight: 500 }}>
-              {successMsg} — Redirecting to login in {seconds}s…
-            </Alert>
-          </Collapse>
           <Collapse in={!!errorMsg} unmountOnExit>
             <Alert severity="error" sx={{ mb: 2 }}>{errorMsg}</Alert>
           </Collapse>
-
-          {/* Form */}
           <Box component="form" onSubmit={handleSubmit}>
-            {/* Username */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Username
               </Typography>
               <TextField
                 fullWidth name="username" placeholder="your_username"
-                value={form.username} onChange={handleChange} required disabled={loading || !!successMsg}
+                value={form.username} onChange={handleChange} required disabled={loading || successOpen}
               />
             </Box>
-
-            {/* Email */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Email
               </Typography>
               <TextField
                 fullWidth name="email" type="email" placeholder="you@example.com"
-                value={form.email} onChange={handleChange} required disabled={loading || !!successMsg}
+                value={form.email} onChange={handleChange} required disabled={loading || successOpen}
               />
             </Box>
-
-            {/* Phone (optional) */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Phone (optional)
               </Typography>
               <TextField
                 fullWidth name="phone" placeholder="0987xxxxxx"
-                value={form.phone} onChange={handleChange} disabled={loading || !!successMsg}
+                value={form.phone} onChange={handleChange} disabled={loading || successOpen}
               />
             </Box>
-
-            {/* Password */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Password
@@ -174,11 +164,11 @@ const RegisterPage = () => {
                 fullWidth name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Enter your password"
-                value={form.password} onChange={handleChange} required disabled={loading || !!successMsg}
+                value={form.password} onChange={handleChange} required disabled={loading || successOpen}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton onClick={() => setShowPassword((s) => !s)} edge="end" disabled={loading || !!successMsg}>
+                      <IconButton onClick={() => setShowPassword((s) => !s)} edge="end" disabled={loading || successOpen}>
                         {showPassword ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
@@ -186,8 +176,6 @@ const RegisterPage = () => {
                 }}
               />
             </Box>
-
-            {/* Confirm Password */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Confirm Password
@@ -196,11 +184,11 @@ const RegisterPage = () => {
                 fullWidth name="confirmPassword"
                 type={showConfirm ? "text" : "password"}
                 placeholder="Re-enter your password"
-                value={form.confirmPassword} onChange={handleChange} required disabled={loading || !!successMsg}
+                value={form.confirmPassword} onChange={handleChange} required disabled={loading || successOpen}
                 InputProps={{
                   endAdornment: (
                     <InputAdornment position="end">
-                      <IconButton onClick={() => setShowConfirm((s) => !s)} edge="end" disabled={loading || !!successMsg}>
+                      <IconButton onClick={() => setShowConfirm((s) => !s)} edge="end" disabled={loading || successOpen}>
                         {showConfirm ? <VisibilityOff /> : <Visibility />}
                       </IconButton>
                     </InputAdornment>
@@ -208,26 +196,20 @@ const RegisterPage = () => {
                 }}
               />
             </Box>
-
-            {/* Register Button */}
             <Button
               type="submit" fullWidth variant="contained" size="large"
-              disabled={loading || !!successMsg}
+              disabled={loading || successOpen}
               sx={{ mb: 3, py: 1.5, fontWeight: 600, fontSize: "1rem" }}
             >
               {loading ? "Processing..." : "Register"}
             </Button>
-
-            {/* Divider */}
             <Divider sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">OR</Typography>
             </Divider>
-
-            {/* Social buttons */}
             <Button
               fullWidth variant="outlined" size="large"
               startIcon={<GoogleIcon />} onClick={startGoogleAuth}
-              disabled={loading || !!successMsg}
+              disabled={loading || successOpen}
               sx={{
                 mb: 2, py: 1.5, fontWeight: 600,
                 borderColor: "grey.300", color: "text.primary",
@@ -240,7 +222,7 @@ const RegisterPage = () => {
             <Button
               fullWidth variant="outlined" size="large"
               startIcon={<FacebookIcon />} onClick={startFacebookAuth}
-              disabled={loading || !!successMsg}
+              disabled={loading || successOpen}
               sx={{
                 mb: 3, py: 1.5, fontWeight: 600,
                 borderColor: "grey.300", color: "text.primary",
@@ -249,8 +231,6 @@ const RegisterPage = () => {
             >
               Continue with Facebook
             </Button>
-
-            {/* Footer Links */}
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Already have an account?{" "}
@@ -262,6 +242,27 @@ const RegisterPage = () => {
           </Box>
         </Paper>
       </Container>
+      <Dialog open={successOpen} onClose={handleCloseSuccess} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
+          <CheckCircleOutlineRoundedIcon sx={{ fontSize: 56 }} color="success" />
+          <Typography variant="h5" sx={{ mt: 1, fontWeight: 700 }}>
+            Registration Successful
+          </Typography>
+        </DialogTitle>
+        <DialogContent sx={{ textAlign: "center" }}>
+          <Typography sx={{ mb: 1 }}>
+            {successMsg || "Your account has been created successfully."}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Redirecting to login in <b>{seconds}s</b>…
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
+          <Button variant="contained" onClick={handleCloseSuccess}>
+            Go to Login now
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
