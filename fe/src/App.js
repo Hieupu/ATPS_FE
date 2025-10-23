@@ -58,7 +58,7 @@ function AdminDashboard() {
   return (
     <div style={{ padding: "24px" }}>
       <h1>Dashboard Admin</h1>
-      <p>Chào mừng đến với hệ thống quản lý đào tạo ATPS!</p>
+      <p>Chào mừng đến với ATPS!</p>
       <div
         style={{
           marginTop: "20px",

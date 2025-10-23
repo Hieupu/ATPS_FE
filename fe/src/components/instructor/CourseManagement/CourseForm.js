@@ -76,7 +76,6 @@ const CourseForm = ({ courseData, onSubmit, onCancel }) => {
     e.preventDefault();
 
     if (validate()) {
-      console.log("📖 CourseForm submitting data:", formData);
       onSubmit(formData);
     }
   };
@@ -221,9 +220,3 @@ const CourseForm = ({ courseData, onSubmit, onCancel }) => {
 };
 
 export default CourseForm;
-
-
-
-
-
-

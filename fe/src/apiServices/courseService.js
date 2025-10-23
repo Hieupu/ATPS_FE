@@ -1,4 +1,3 @@
-// Course Service - Instructor Course Management
 import apiClient from "./apiClient";
 
 const courseService = {
@@ -77,7 +76,6 @@ const courseService = {
     }
   },
 
-  // ========== ADMIN COURSE APIs ==========
 
   // Admin: Lấy tất cả khóa học
   getAllCourses: async (params = {}) => {
@@ -203,9 +201,8 @@ const courseService = {
     }
   },
 
-  // ========== SESSION MANAGEMENT APIs ==========
 
-  // Instructor: Tạo session cho lớp
+  //   Tạo session cho lớp
   createSession: async (classId, sessionData) => {
     try {
       const result = await apiClient.post(
@@ -232,7 +229,7 @@ const courseService = {
     }
   },
 
-  // Instructor: Lấy sessions của lớp
+  // Lấy sessions của lớp
   getClassSessions: async (classId, params = {}) => {
     try {
       const queryString = new URLSearchParams(params).toString();

@@ -1,8 +1,6 @@
-// Session-Timeslot Service - Session-Timeslot Management APIs
 import apiClient from "./apiClient";
 
 const sessionTimeslotService = {
-  // ========== SESSION-TIMESLOT APIs ==========
 
   // Tạo sessiontimeslot mới
   createSessionTimeslot: async (sessionTimeslotData) => {

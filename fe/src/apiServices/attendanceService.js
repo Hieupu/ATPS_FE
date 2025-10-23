@@ -1,8 +1,6 @@
-// Attendance Service - Attendance Management APIs
 import apiClient from "./apiClient";
 
 const attendanceService = {
-  // ========== ATTENDANCE APIs ==========
 
   // Tạo attendance mới
   createAttendance: async (attendanceData) => {

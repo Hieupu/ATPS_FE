@@ -1,10 +1,8 @@
-// Enrollment Service - Enrollment Management APIs
 import apiClient from "./apiClient";
 
 const enrollmentService = {
-  // ========== ENROLLMENT APIs ==========
 
-  // Đăng ký lớp học (Admin)
+  // Đăng ký lớp học
   enrollClass: async (enrollmentData) => {
     try {
       const result = await apiClient.post(
@@ -183,6 +181,23 @@ const enrollmentService = {
       return {
         success: true,
         message: result.message || "Rời khỏi lớp học thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Lấy tất cả học sinh đã enroll với thông tin lớp (API mới)
+  getAllEnrolledLearners: async () => {
+    try {
+      const result = await apiClient.get(
+        "/admin/timeslots/enrolled-learners/all"
+      );
+      return {
+        success: true,
+        data: result.data || [],
+        message:
+          result.message || "Lấy danh sách học sinh đã enroll thành công",
       };
     } catch (error) {
       throw error;

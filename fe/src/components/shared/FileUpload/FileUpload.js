@@ -86,7 +86,6 @@ const FileUpload = ({ onUpload, accept, maxSize, multiple = false }) => {
         setUploading(false);
       }, 500);
     } catch (error) {
-      console.error("Upload failed:", error);
       setUploading(false);
       setProgress(0);
     }
@@ -143,9 +142,3 @@ const FileUpload = ({ onUpload, accept, maxSize, multiple = false }) => {
 };
 
 export default FileUpload;
-
-
-
-
-
-

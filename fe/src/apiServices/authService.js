@@ -1,8 +1,6 @@
-// Auth Service - Authentication APIs
 import apiClient from "./apiClient";
 
 const authService = {
-  // ========== AUTHENTICATION APIs ==========
 
   // Đăng ký tài khoản mới
   register: async (accountData) => {

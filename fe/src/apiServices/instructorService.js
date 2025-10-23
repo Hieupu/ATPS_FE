@@ -1,8 +1,6 @@
-// Instructor Service - Instructor Management APIs
 import apiClient from "./apiClient";
 
 const instructorService = {
-  // ========== INSTRUCTOR APIs ==========
 
   // Lấy tất cả giảng viên
   getAllInstructors: async (params = {}) => {

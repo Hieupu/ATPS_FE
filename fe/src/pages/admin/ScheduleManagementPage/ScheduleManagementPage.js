@@ -16,11 +16,19 @@ import {
 import { vi } from "date-fns/locale";
 import classService from "../../../apiServices/classService";
 import { formatDateForAPI, parseDateSafely } from "../../../utils/dateUtils";
+import {
+  isConflictError,
+  formatConflictError,
+} from "../../../utils/conflictUtils";
+import useErrorNotification from "../../../hooks/useErrorNotification";
+import ErrorNotificationContainer from "../../../components/shared/ErrorNotification/ErrorNotificationContainer";
 import "./style.css";
 
 const ScheduleManagementPage = () => {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const { notifications, removeNotification, showError, showConflictError } =
+    useErrorNotification();
 
   const [course, setCourse] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -63,7 +71,7 @@ const ScheduleManagementPage = () => {
         }));
       }
 
-      // ✅ Load schedules from database instead of localStorage
+      //  Load schedules from database instead of localStorage
       try {
         const sessionsResult = await classService.getClassSessions(classId);
         const databaseSchedules = sessionsResult.data || [];
@@ -106,10 +114,10 @@ const ScheduleManagementPage = () => {
         });
 
         setSchedules(transformedSchedules);
-        console.log("✅ Loaded schedules from database:", transformedSchedules);
+        console.log(" Loaded schedules from database:", transformedSchedules);
       } catch (sessionError) {
         console.warn(
-          "⚠️ Could not load sessions from database, using localStorage fallback:",
+          " Could not load sessions from database, using localStorage fallback:",
           sessionError
         );
         // Fallback to localStorage if database fails
@@ -120,7 +128,7 @@ const ScheduleManagementPage = () => {
       }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
-      alert("❌ Không thể tải thông tin lớp học!");
+      alert(" Không thể tải thông tin lớp học!");
     } finally {
       setLoading(false);
     }
@@ -143,7 +151,7 @@ const ScheduleManagementPage = () => {
   const handleDateClick = (date) => {
     if (!isSameMonth(date, currentMonth)) return;
 
-    // ✅ Use safe date handling - backend team guidance
+    //  Use safe date handling - backend team guidance
     const safeDate = parseDateSafely(formatDateForAPI(date));
     console.log("🔍 Original date:", date);
     console.log("🔍 Safe date:", safeDate);
@@ -181,17 +189,17 @@ const ScheduleManagementPage = () => {
 
   const handleAddSessions = async () => {
     if (!selectedDate) {
-      alert("⚠️ Vui lòng chọn ngày!");
+      alert("Vui lòng chọn ngày!");
       return;
     }
 
     // Check ngày đã qua
     if (isDatePast(selectedDate)) {
-      alert("⚠️ Không thể thêm lịch cho ngày đã qua!");
+      alert("Không thể thêm lịch cho ngày đã qua!");
       return;
     }
 
-    // ✅ Use safe date handling - backend team guidance
+    // Use safe date handling - backend team guidance
     const safeDateStr = formatDateForAPI(selectedDate);
     console.log("🔍 Selected date:", selectedDate);
     console.log("🔍 Safe date string:", safeDateStr);
@@ -248,7 +256,7 @@ const ScheduleManagementPage = () => {
 
       newSchedules.push({
         id: Date.now() + Math.random(),
-        date: safeDateStr, // ✅ Sử dụng safe date string
+        date: safeDateStr, // Sử dụng safe date string
         startTime: startTimeStr,
         endTime: endTimeStr,
         courseId: parseInt(classId),
@@ -257,16 +265,16 @@ const ScheduleManagementPage = () => {
     });
 
     if (errors.length > 0) {
-      alert("❌ Lỗi:\n" + errors.join("\n"));
+      alert("Lỗi:\n" + errors.join("\n"));
       return;
     }
 
     if (newSchedules.length === 0) {
-      alert("⚠️ Không có lịch nào được thêm!");
+      alert("Không có lịch nào được thêm!");
       return;
     }
 
-    // ✅ Lưu từng schedule vào database
+    // Lưu từng schedule vào database
     for (const schedule of newSchedules) {
       try {
         console.log("🔍 Schedule data to send:", schedule);
@@ -287,7 +295,41 @@ const ScheduleManagementPage = () => {
         });
       } catch (error) {
         console.error("Error saving schedule:", error);
-        alert(`❌ Lỗi khi lưu lịch: ${error.message}`);
+        console.log("Error message:", error.message);
+        console.log("Error response:", error.response?.data);
+        console.log("Full error object:", JSON.stringify(error, null, 2));
+        console.log("Error response status:", error.response?.status);
+        console.log(
+          "Error response data message:",
+          error.response?.data?.message
+        );
+
+        // Xử lý conflict error đặc biệt
+        const errorMessage =
+          error.response?.data?.message || error.message || "";
+        if (isConflictError(errorMessage)) {
+          console.log("Detected conflict error, showing conflict dialog");
+          showConflictError(errorMessage, {
+            displayMethod: "modal",
+            onRetry: () => {
+              // Retry logic có thể được thêm ở đây
+              console.log("Retry session creation");
+            },
+            onViewSchedule: () => {
+              // Navigate to view schedule
+              console.log("View schedule for class");
+            },
+          });
+        } else {
+          console.log("Not a conflict error, showing regular error");
+          showError(error, {
+            displayMethod: "modal",
+            onRetry: () => {
+              // Retry logic có thể được thêm ở đây
+              console.log("Retry session creation");
+            },
+          });
+        }
         return; // Stop if any schedule fails
       }
     }
@@ -299,7 +341,7 @@ const ScheduleManagementPage = () => {
     setSessions([
       { startTime: "08:00", durationHours: "4", durationMinutes: "0" },
     ]);
-    alert(`✅ Đã thêm ${newSchedules.length} lịch học!`);
+    alert(`Đã thêm ${newSchedules.length} lịch học!`);
   };
 
   const handleAddSessionRow = () => {
@@ -311,7 +353,7 @@ const ScheduleManagementPage = () => {
 
   const handleRemoveSessionRow = (index) => {
     if (sessions.length === 1) {
-      alert("⚠️ Phải có ít nhất một ca!");
+      alert("Phải có ít nhất một ca!");
       return;
     }
     setSessions(sessions.filter((_, idx) => idx !== index));
@@ -327,33 +369,33 @@ const ScheduleManagementPage = () => {
   const handleRemoveSession = async (schedule) => {
     // Check xem buổi học đã qua chưa
     if (isDatePast(schedule.date)) {
-      alert("⚠️ Không thể xóa lịch học đã qua hoặc đang diễn ra!");
+      alert("Không thể xóa lịch học đã qua hoặc đang diễn ra!");
       return;
     }
 
-    if (!window.confirm("⚠️ Xóa lịch học này?")) return;
+    if (!window.confirm("Xóa lịch học này?")) return;
 
     try {
-      // ✅ Xóa session từ database
+      // Xóa session từ database
       await classService.deleteClassSession(schedule.id);
 
       // Reload data từ database
       await loadData();
-      alert("✅ Đã xóa lịch học!");
+      alert("Đã xóa lịch học!");
     } catch (error) {
       console.error("Error deleting schedule:", error);
-      alert(`❌ Lỗi khi xóa lịch: ${error.message}`);
+      alert(`Lỗi khi xóa lịch: ${error.message}`);
     }
   };
 
   const handleBulkAdd = async () => {
     if (!bulkConfig.startDate || !bulkConfig.endDate) {
-      alert("⚠️ Vui lòng chọn khoảng thời gian!");
+      alert("Vui lòng chọn khoảng thời gian!");
       return;
     }
 
     if (bulkSessions.length === 0) {
-      alert("⚠️ Phải có ít nhất một ca học!");
+      alert("Phải có ít nhất một ca học!");
       return;
     }
 
@@ -371,7 +413,7 @@ const ScheduleManagementPage = () => {
     });
 
     if (errors.length > 0) {
-      alert("❌ Lỗi:\n" + errors.join("\n"));
+      alert("Lỗi:\n" + errors.join("\n"));
       return;
     }
 
@@ -435,11 +477,11 @@ const ScheduleManagementPage = () => {
     }
 
     if (newSchedules.length === 0) {
-      alert("⚠️ Không có lịch nào được tạo!");
+      alert("Không có lịch nào được tạo!");
       return;
     }
 
-    // ✅ Lưu từng schedule vào database
+    // Lưu từng schedule vào database
     for (const schedule of newSchedules) {
       try {
         console.log("🔍 Schedule data to send:", schedule);
@@ -460,7 +502,41 @@ const ScheduleManagementPage = () => {
         });
       } catch (error) {
         console.error("Error saving schedule:", error);
-        alert(`❌ Lỗi khi lưu lịch: ${error.message}`);
+        console.log("Error message:", error.message);
+        console.log("Error response:", error.response?.data);
+        console.log("Full error object:", JSON.stringify(error, null, 2));
+        console.log("Error response status:", error.response?.status);
+        console.log(
+          "Error response data message:",
+          error.response?.data?.message
+        );
+
+        // Xử lý conflict error đặc biệt
+        const errorMessage =
+          error.response?.data?.message || error.message || "";
+        if (isConflictError(errorMessage)) {
+          console.log("Detected conflict error, showing conflict dialog");
+          showConflictError(errorMessage, {
+            displayMethod: "modal",
+            onRetry: () => {
+              // Retry logic có thể được thêm ở đây
+              console.log("Retry session creation");
+            },
+            onViewSchedule: () => {
+              // Navigate to view schedule
+              console.log("View schedule for class");
+            },
+          });
+        } else {
+          console.log("Not a conflict error, showing regular error");
+          showError(error, {
+            displayMethod: "modal",
+            onRetry: () => {
+              // Retry logic có thể được thêm ở đây
+              console.log("Retry session creation");
+            },
+          });
+        }
         return; // Stop if any schedule fails
       }
     }
@@ -469,7 +545,7 @@ const ScheduleManagementPage = () => {
     await loadData();
     setShowBulkModal(false);
     setBulkSessions([]); // Reset bulk sessions
-    alert(`✅ Đã thêm ${newSchedules.length} lịch học!`);
+    alert(`Đã thêm ${newSchedules.length} lịch học!`);
   };
 
   const handleAddBulkSession = () => {
@@ -514,7 +590,9 @@ const ScheduleManagementPage = () => {
     return (
       <div className="schedule-page">
         <div className="error-container">
-          <h2>❌ Không tìm thấy lớp học</h2>
+          <h2>
+            <i className="fas fa-exclamation-circle"></i> Không tìm thấy lớp học
+          </h2>
           <button
             className="btn btn-primary"
             onClick={() => navigate("/admin/classes")}
@@ -533,7 +611,9 @@ const ScheduleManagementPage = () => {
     <div className="schedule-page">
       <div className="schedule-header">
         <div>
-          <h1 className="schedule-title">📅 Quản Lý Lịch Học</h1>
+          <h1 className="schedule-title">
+            <i className="fas fa-calendar-alt"></i> Quản Lý Lịch Học
+          </h1>
           <p className="schedule-subtitle">
             Lớp: <strong>{course.ClassName || course.title}</strong>
           </p>
@@ -643,7 +723,7 @@ const ScheduleManagementPage = () => {
                           className="btn btn-danger btn-sm"
                           onClick={() => handleRemoveSession(sch)}
                         >
-                          🗑️ Xóa
+                          <i className="fas fa-trash"></i> Xóa
                         </button>
                       )}
                     </div>
@@ -742,7 +822,8 @@ const ScheduleManagementPage = () => {
                   ➕ Thêm ca học
                 </button>
                 <button className="btn btn-primary" onClick={handleAddSessions}>
-                  ✅ Lưu tất cả ({sessions.length} ca)
+                  <i className="fas fa-save"></i> Lưu tất cả ({sessions.length}{" "}
+                  ca)
                 </button>
               </div>
             </div>
@@ -751,7 +832,8 @@ const ScheduleManagementPage = () => {
           {isDatePast(selectedDate) && (
             <div className="past-date-notice">
               <p>
-                ⚠️ Ngày này đã qua. Chỉ có thể xem lịch, không thể chỉnh sửa.
+                <i className="fas fa-exclamation-triangle"></i> Ngày này đã qua.
+                Chỉ có thể xem lịch, không thể chỉnh sửa.
               </p>
             </div>
           )}
@@ -1009,15 +1091,21 @@ const ScheduleManagementPage = () => {
                 className="btn btn-secondary"
                 onClick={() => setShowBulkModal(false)}
               >
-                ❌ Hủy
+                <i className="fas fa-times"></i> Hủy
               </button>
               <button className="btn btn-primary" onClick={handleBulkAdd}>
-                ✅ Thêm lịch
+                <i className="fas fa-plus"></i> Thêm lịch
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Error Notifications Container */}
+      <ErrorNotificationContainer
+        notifications={notifications}
+        onRemoveNotification={removeNotification}
+      />
     </div>
   );
 };

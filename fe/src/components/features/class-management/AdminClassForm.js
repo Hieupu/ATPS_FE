@@ -13,9 +13,10 @@ const AdminClassForm = ({
   const [formData, setFormData] = useState({
     // Class Information (Admin tạo)
     ClassID: "",
+    ClassName: "", // BẮT BUỘC: Tên lớp học
     ZoomURL: "",
     Status: "Chưa phân giảng viên",
-    CourseID: "", // BẮT BUỘC: Liên kết với khóa học có sẵn
+    CourseID: "", // Tùy chọn: Liên kết với khóa học có sẵn
     InstructorID: "", // Admin gán instructor
     // StartDate/EndDate sẽ được tính từ session timeslots
   });
@@ -25,21 +26,52 @@ const AdminClassForm = ({
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    if (classData) {
+    if (classData && instructors && courses) {
+      // Tìm instructorId và courseId trước
+      const instructorId =
+        classData.InstructorID || classData.Instructor?.InstructorID;
+      const courseId = classData.CourseID || classData.Course?.CourseID;
+
       setFormData({
         ClassID: classData.ClassID || "",
+        ClassName: classData.ClassName || "",
         ZoomURL: classData.ZoomURL || "",
         Status: classData.Status || "Chưa phân giảng viên",
-        CourseID: classData.CourseID || "",
-        InstructorID: classData.InstructorID || "",
-        // MaxStudents được quản lý trong frontend
+        CourseID: courseId || "",
+        InstructorID: instructorId || "",
         // StartDate/EndDate sẽ được tính từ session timeslots
       });
 
       // Set selected instructor
-      if (classData.InstructorID) {
+      if (instructorId && instructors.length > 0) {
         const instructor = instructors.find(
-          (i) => i.InstructorID === classData.InstructorID
+          (i) => i.InstructorID === instructorId
+        );
+        if (instructor) {
+          setSelectedInstructor(instructor);
+        } else {
+          // Fallback: Tìm instructor theo tên nếu không tìm thấy bằng ID
+          if (classData.Instructor?.FullName) {
+            const instructorByName = instructors.find(
+              (i) => i.FullName === classData.Instructor.FullName
+            );
+            if (instructorByName) {
+              setSelectedInstructor(instructorByName);
+            }
+          }
+        }
+      } else if (classData.Instructor?.FullName && instructors.length > 0) {
+        // Fallback: Tìm instructor theo tên nếu không có ID
+        const instructor = instructors.find(
+          (i) => i.FullName === classData.Instructor.FullName
+        );
+        if (instructor) {
+          setSelectedInstructor(instructor);
+        }
+      } else if (classData.instructorName && instructors.length > 0) {
+        // Fallback: Tìm instructor theo instructorName từ API
+        const instructor = instructors.find(
+          (i) => i.FullName === classData.instructorName
         );
         if (instructor) {
           setSelectedInstructor(instructor);
@@ -47,8 +79,30 @@ const AdminClassForm = ({
       }
 
       // Set selected course
-      if (classData.CourseID) {
-        const course = courses.find((c) => c.CourseID === classData.CourseID);
+      if (courseId && courses.length > 0) {
+        const course = courses.find((c) => c.CourseID === courseId);
+        if (course) {
+          setSelectedCourse(course);
+        } else {
+          // Fallback: Tìm course theo title nếu không tìm thấy bằng ID
+          if (classData.Course?.Title) {
+            const courseByTitle = courses.find(
+              (c) => c.Title === classData.Course.Title
+            );
+            if (courseByTitle) {
+              setSelectedCourse(courseByTitle);
+            }
+          }
+        }
+      } else if (classData.Course?.Title && courses.length > 0) {
+        // Fallback: Tìm course theo title nếu không có ID
+        const course = courses.find((c) => c.Title === classData.Course.Title);
+        if (course) {
+          setSelectedCourse(course);
+        }
+      } else if (classData.courseTitle && courses.length > 0) {
+        // Fallback: Tìm course theo courseTitle từ API
+        const course = courses.find((c) => c.Title === classData.courseTitle);
         if (course) {
           setSelectedCourse(course);
         }
@@ -95,9 +149,12 @@ const AdminClassForm = ({
     const newErrors = {};
 
     // Class validation
-    if (!formData.CourseID) {
-      newErrors.CourseID = "Vui lòng chọn khóa học (bắt buộc)";
+    if (!formData.ClassName.trim()) {
+      newErrors.ClassName = "Tên lớp học là bắt buộc";
     }
+
+    // CourseID tùy chọn cho admin
+    // Admin có thể tạo lớp học mà không cần gán course ngay
 
     if (!formData.InstructorID) {
       newErrors.InstructorID = "Vui lòng gán giảng viên cho lớp học";
@@ -117,7 +174,24 @@ const AdminClassForm = ({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (validate()) {
-      onSubmit(formData);
+      // Chỉ gửi CourseID khi có giá trị
+      const submitData = {
+        ClassName: formData.ClassName,
+        Status: formData.Status,
+        InstructorID: parseInt(formData.InstructorID),
+      };
+
+      // Chỉ thêm CourseID nếu có giá trị
+      if (formData.CourseID) {
+        submitData.CourseID = parseInt(formData.CourseID);
+      }
+
+      // Thêm ZoomURL nếu có
+      if (formData.ZoomURL) {
+        submitData.ZoomURL = formData.ZoomURL;
+      }
+
+      onSubmit(submitData);
     }
   };
 
@@ -129,7 +203,7 @@ const AdminClassForm = ({
     <div className="class-form-overlay">
       <div className="class-form-container admin-form">
         <div className="form-header">
-          <h2>{classData ? "✏️ Chỉnh sửa lớp học" : "➕ Thêm lớp học mới"}</h2>
+          <h2>{classData ? "Chỉnh sửa lớp học" : "Thêm lớp học mới"}</h2>
           <button className="close-btn" onClick={onCancel} title="Đóng">
             ✕
           </button>
@@ -138,20 +212,40 @@ const AdminClassForm = ({
         <form onSubmit={handleSubmit} className="class-form">
           <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
             <Tabs value={activeTab} onChange={handleTabChange}>
-              <Tab label="🏫 Thông tin lớp học" />
-              <Tab label="📅 Cài đặt nâng cao" />
+              <Tab label="Thông tin lớp học" />
+              <Tab label="Cài đặt nâng cao" />
             </Tabs>
           </Box>
 
           {/* Class Information Tab */}
           {activeTab === 0 && (
             <div className="form-section">
-              <h3>🏫 Thông tin lớp học (Admin tạo)</h3>
+              <h3>Thông tin lớp học (Admin tạo)</h3>
+
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="ClassName">
+                    Tên lớp học <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="ClassName"
+                    name="ClassName"
+                    value={formData.ClassName}
+                    onChange={handleChange}
+                    className={errors.ClassName ? "error" : ""}
+                    placeholder="Nhập tên lớp học"
+                  />
+                  {errors.ClassName && (
+                    <span className="error-message">{errors.ClassName}</span>
+                  )}
+                </div>
+              </div>
 
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="CourseID">
-                    Khóa học <span className="required">*</span>
+                    Khóa học <span className="optional">(tùy chọn)</span>
                   </label>
                   <Autocomplete
                     id="CourseID"
@@ -241,29 +335,13 @@ const AdminClassForm = ({
                   )}
                 </div>
               </div>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <div className="info-note">
-                    <strong>📅 Ngày bắt đầu/kết thúc:</strong> Sẽ được tự động
-                    tính từ ngày bắt đầu và kết thúc của các session mà giảng
-                    viên tạo cho lớp học này.
-                  </div>
-                </div>
-              </div>
-
-              <div className="info-note">
-                <strong>👨‍💼 Vai trò Admin:</strong> Bạn đang tạo lớp học và gán
-                cho giảng viên. Giảng viên sẽ tự quản lý nội dung khóa học và
-                tài liệu.
-              </div>
             </div>
           )}
 
           {/* Advanced Settings Tab */}
           {activeTab === 1 && (
             <div className="form-section">
-              <h3>📅 Cài đặt nâng cao</h3>
+              <h3>Cài đặt nâng cao</h3>
 
               <div className="form-row">
                 <div className="form-group">
@@ -279,46 +357,9 @@ const AdminClassForm = ({
                     placeholder="https://zoom.us/j/..."
                   />
                   <small className="form-hint">
-                    💡 Link Zoom sẽ được sử dụng cho tất cả buổi học của lớp
+                    Link Zoom sẽ được sử dụng cho tất cả buổi học của lớp
                   </small>
                 </div>
-              </div>
-
-              <div className="info-note auto-status-note">
-                <strong>🔄 Trạng thái tự động:</strong>
-                <ul>
-                  <li>
-                    Lớp "Sắp khai giảng" sẽ tự động chuyển thành "Đang hoạt
-                    động" khi đến ngày bắt đầu session đầu tiên (nếu có giảng
-                    viên)
-                  </li>
-                  <li>
-                    Lớp "Đang hoạt động" sẽ tự động chuyển thành "Đã kết thúc"
-                    khi qua ngày kết thúc session cuối cùng
-                  </li>
-                </ul>
-              </div>
-
-              <div className="info-note">
-                <strong>📚 Quản lý Session:</strong>
-                <ul>
-                  <li>Giảng viên sẽ tạo các session cho lớp học này</li>
-                  <li>Mỗi session có thể có nhiều timeslot (lịch học)</li>
-                  <li>
-                    Ngày bắt đầu/kết thúc của lớp sẽ được tính từ session
-                    timeslots
-                  </li>
-                </ul>
-              </div>
-
-              <div className="info-note">
-                <strong>💰 Thông tin học phí & Enrollment:</strong>
-                <ul>
-                  <li>Học phí được lấy từ khóa học (Course) được chọn</li>
-                  <li>Học viên sẽ enroll trực tiếp vào lớp học</li>
-                  <li>Thanh toán được thực hiện theo enrollment</li>
-                  <li>Không có giới hạn sĩ số trong database</li>
-                </ul>
               </div>
             </div>
           )}
@@ -329,10 +370,11 @@ const AdminClassForm = ({
               className="btn btn-secondary"
               onClick={onCancel}
             >
-              ❌ Hủy
+              <i className="fas fa-times"></i> Hủy
             </button>
             <button type="submit" className="btn btn-primary">
-              ✅ {classData ? "Cập nhật" : "Tạo lớp học"}
+              <i className="fas fa-check"></i>{" "}
+              {classData ? "Cập nhật" : "Tạo lớp học"}
             </button>
           </div>
         </form>

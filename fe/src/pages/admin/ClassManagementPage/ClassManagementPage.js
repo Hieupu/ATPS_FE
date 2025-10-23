@@ -4,6 +4,7 @@ import {
   ClassList,
   ClassForm,
 } from "../../../components/features/class-management";
+import { fixClassStatus } from "../../../utils/classStatusUtils";
 import "./style.css";
 
 const ClassManagementPage = () => {
@@ -34,18 +35,20 @@ const ClassManagementPage = () => {
         await classService.autoUpdateClassStatus();
       } catch (updateError) {}
 
+      // Sử dụng API mới để lấy danh sách lớp với thông tin thời gian
       const [classesResult, instructorsData, coursesData] = await Promise.all([
-        classService.getAllClassesWithDetails(),
+        classService.getClassTimeStats(), // Sử dụng time-stats thay vì with-time-info
         classService.getAllInstructors(),
         classService.getAllCourses(),
       ]);
 
-      // Handle new response format: { data, pagination }
-      const classesData = classesResult.data || classesResult;
+      // Handle new response format: { success, data, message }
+      const classesData = classesResult.data || [];
       setClasses(classesData);
-      setInstructors(instructorsData);
-      setCourses(coursesData);
+      setInstructors(instructorsData.data || []);
+      setCourses(coursesData.data || []);
     } catch (error) {
+      console.error("Lỗi khi tải dữ liệu:", error);
       alert("Không thể tải dữ liệu. Vui lòng thử lại!");
     } finally {
       setLoading(false);
@@ -119,13 +122,17 @@ const ClassManagementPage = () => {
     }
   };
 
-  // Filter classes
+  // Filter classes - Sử dụng trạng thái đã được fix
   const filteredClasses = Array.isArray(classes)
     ? classes.filter((classItem) => {
-        const className = classItem.ClassName || "";
-        const courseTitle = classItem.Course?.Title || "";
-        const courseDescription = classItem.Course?.Description || "";
-        const instructorName = classItem.Instructor?.FullName || "";
+        const fixedClass = fixClassStatus(classItem);
+
+        const className = fixedClass.ClassName || "";
+        const courseTitle =
+          fixedClass.Course?.Title || fixedClass.courseTitle || "";
+        const courseDescription = fixedClass.Course?.Description || "";
+        const instructorName =
+          fixedClass.Instructor?.FullName || fixedClass.instructorName || "";
 
         const matchesSearch =
           className.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -134,26 +141,38 @@ const ClassManagementPage = () => {
           instructorName.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesStatus =
-          statusFilter === "all" || classItem.Status === statusFilter;
+          statusFilter === "all" || fixedClass.Status === statusFilter;
 
         return matchesSearch && matchesStatus;
       })
     : [];
 
-  // Statistics
+  // Statistics - Sử dụng trạng thái đã được fix
   const stats = {
     total: Array.isArray(classes) ? classes.length : 0,
     active: Array.isArray(classes)
-      ? classes.filter((c) => c.Status === "Đang hoạt động").length
+      ? classes.filter((c) => {
+          const fixedClass = fixClassStatus(c);
+          return fixedClass.Status === "Đang hoạt động";
+        }).length
       : 0,
     upcoming: Array.isArray(classes)
-      ? classes.filter((c) => c.Status === "Sắp khai giảng").length
+      ? classes.filter((c) => {
+          const fixedClass = fixClassStatus(c);
+          return fixedClass.Status === "Sắp khai giảng";
+        }).length
       : 0,
     completed: Array.isArray(classes)
-      ? classes.filter((c) => c.Status === "Đã kết thúc").length
+      ? classes.filter((c) => {
+          const fixedClass = fixClassStatus(c);
+          return fixedClass.Status === "Đã kết thúc";
+        }).length
       : 0,
     paused: Array.isArray(classes)
-      ? classes.filter((c) => c.Status === "Tạm dừng").length
+      ? classes.filter((c) => {
+          const fixedClass = fixClassStatus(c);
+          return fixedClass.Status === "Tạm dừng";
+        }).length
       : 0,
   };
 
@@ -161,7 +180,7 @@ const ClassManagementPage = () => {
     <div className="class-management-page">
       <div className="page-header">
         <div className="header-content">
-          <h1 className="page-title">📚 Quản Lý Lớp Học</h1>
+          <h1 className="page-title">Quản Lý Lớp Học</h1>
           <p className="page-subtitle">
             Quản lý thông tin lớp học, lịch học và học viên
           </p>
@@ -174,35 +193,45 @@ const ClassManagementPage = () => {
       {/* Statistics Cards */}
       <div className="stats-container">
         <div className="stat-card stat-total">
-          <div className="stat-icon">Tổng</div>
+          <div className="stat-icon">
+            <i className="fas fa-chart-bar"></i>
+          </div>
           <div className="stat-info">
             <div className="stat-value">{stats.total}</div>
             <div className="stat-label">Tổng số lớp</div>
           </div>
         </div>
         <div className="stat-card stat-active">
-          <div className="stat-icon">Hoạt động</div>
+          <div className="stat-icon">
+            <i className="fas fa-play-circle"></i>
+          </div>
           <div className="stat-info">
             <div className="stat-value">{stats.active}</div>
             <div className="stat-label">Đang hoạt động</div>
           </div>
         </div>
         <div className="stat-card stat-upcoming">
-          <div className="stat-icon">⏰</div>
+          <div className="stat-icon">
+            <i className="fas fa-clock"></i>
+          </div>
           <div className="stat-info">
             <div className="stat-value">{stats.upcoming}</div>
             <div className="stat-label">Sắp khai giảng</div>
           </div>
         </div>
         <div className="stat-card stat-completed">
-          <div className="stat-icon">🎓</div>
+          <div className="stat-icon">
+            <i className="fas fa-graduation-cap"></i>
+          </div>
           <div className="stat-info">
             <div className="stat-value">{stats.completed}</div>
             <div className="stat-label">Đã kết thúc</div>
           </div>
         </div>
         <div className="stat-card stat-paused">
-          <div className="stat-icon">Tạm dừng</div>
+          <div className="stat-icon">
+            <i className="fas fa-pause-circle"></i>
+          </div>
           <div className="stat-info">
             <div className="stat-value">{stats.paused}</div>
             <div className="stat-label">Tạm dừng</div>

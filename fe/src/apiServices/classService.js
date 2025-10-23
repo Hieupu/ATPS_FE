@@ -1,15 +1,36 @@
-// Service quản lý lớp học theo luồng đúng của dự án
-// Admin tạo lớp và lịch học cho instructor
-// Instructor tự thêm khóa học và tài liệu
-// Học viên enroll khóa học (không phải lớp) và tính giá theo khóa học
-// Lớp không giới hạn số sinh viên
-
 import apiClient from "./apiClient";
 import { formatDateForAPI } from "../utils/dateUtils";
-
-// API Methods theo luồng đúng - Kết nối với Backend
 const classService = {
-  // ========== ADMIN FUNCTIONS ==========
+
+  // Admin: Lấy danh sách lớp với thông tin thời gian 
+  getClassesWithTimeInfo: async () => {
+    try {
+      const result = await apiClient.get(
+        "/admin/timeslots/classes/with-time-info"
+      );
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy danh sách lớp thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Lấy thống kê ca học cho classlist (API mới)
+  getClassTimeStats: async () => {
+    try {
+      const result = await apiClient.get("/admin/timeslots/classes/time-stats");
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy thống kê ca học thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
 
   // Admin: Lấy danh sách lớp học với thông tin đầy đủ
   getAllClassesWithDetails: async (params = {}) => {
@@ -255,9 +276,62 @@ const classService = {
     return await apiClient.delete(`/admin/enrollments/${enrollmentId}`);
   },
 
-  // Admin: Lấy danh sách đăng ký của lớp
+  // Admin: Lấy danh sách đăng ký của lớp (API mới)
   getClassEnrollments: async (classId) => {
-    return await apiClient.get(`/admin/classes/${classId}/enrollments`);
+    try {
+      const result = await apiClient.get(
+        `/admin/classes/${classId}/enrollments`
+      );
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy danh sách enrollments thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Auto update class status (API mới)
+  autoUpdateClassStatus: async () => {
+    try {
+      const result = await apiClient.post("/admin/classes/auto-update-status");
+      return {
+        success: true,
+        data: result.data,
+        message: result.message || "Cập nhật trạng thái lớp thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Lấy tất cả instructors (cho dropdown) (API mới)
+  getAllInstructors: async () => {
+    try {
+      const result = await apiClient.get("/admin/classes/instructors");
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy danh sách instructors thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  // Admin: Lấy tất cả courses (cho dropdown) (API mới)
+  getAllCourses: async () => {
+    try {
+      const result = await apiClient.get("/admin/classes/courses");
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy danh sách courses thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
   },
 
   // ========== INSTRUCTOR FUNCTIONS ==========
@@ -474,32 +548,7 @@ const classService = {
     return await apiClient.get(`/admin/classes/${classId}/statistics`);
   },
 
-  // Tự động cập nhật trạng thái lớp học
-  autoUpdateClassStatus: async () => {
-    return await apiClient.post("/admin/classes/auto-update-status");
-  },
-
-  // Lấy danh sách giảng viên
-  getAllInstructors: async () => {
-    try {
-      const result = await apiClient.get("/common/courses/instructors");
-      return Array.isArray(result.data) ? result.data : [];
-    } catch (error) {
-      // Fallback to mock data if backend not ready
-      return [
-        {
-          InstructorID: 1,
-          FullName: "Nguyễn Văn A",
-          Major: "Công nghệ thông tin",
-        },
-        {
-          InstructorID: 2,
-          FullName: "Trần Thị B",
-          Major: "Khoa học máy tính",
-        },
-      ];
-    }
-  },
+  // Tự động cập nhật trạng thái lớp học (đã được định nghĩa ở trên)
 
   // Lấy danh sách học viên
   getAllLearners: async () => {
@@ -522,31 +571,7 @@ const classService = {
     return await apiClient.get(`/common/learners/${learnerId}`);
   },
 
-  // Lấy danh sách khóa học
-  getAllCourses: async () => {
-    try {
-      const result = await apiClient.get("/common/courses");
-      return Array.isArray(result.data) ? result.data : [];
-    } catch (error) {
-      // Fallback to mock data if backend not ready
-      return [
-        {
-          CourseID: 1,
-          Title: "Lập trình Web",
-          Description: "Khóa học lập trình web cơ bản",
-          Duration: 60,
-          TuitionFee: 2000000,
-          Status: "Active",
-          InstructorID: 1,
-          Instructor: {
-            InstructorID: 1,
-            FullName: "Nguyễn Văn A",
-            Major: "Công nghệ thông tin",
-          },
-        },
-      ];
-    }
-  },
+  // Lấy danh sách khóa học (đã được định nghĩa ở trên)
 
   // Lấy chi tiết khóa học
   getCourseById: async (courseId) => {
@@ -676,7 +701,7 @@ const classService = {
   deleteClassSession: async (sessionId) => {
     try {
       const result = await apiClient.delete(
-        `/admin/sessions/${sessionId}/with-timeslots`
+        `/admin/classes/sessions/${sessionId}`
       );
       return {
         success: true,

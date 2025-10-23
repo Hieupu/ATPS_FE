@@ -1,8 +1,6 @@
-// Learner Service - Learner Management APIs
 import apiClient from "./apiClient";
 
 const learnerService = {
-  // ========== LEARNER APIs ==========
 
   // Lấy tất cả học viên
   getAllLearners: async (params = {}) => {

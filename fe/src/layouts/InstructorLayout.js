@@ -10,19 +10,19 @@ const InstructorLayout = () => {
     {
       path: INSTRUCTOR_ROUTES.DASHBOARD,
       label: "Dashboard",
-      icon: "📊",
+      icon: "fas fa-chart-bar",
       description: "Tổng quan công việc",
     },
     {
       path: INSTRUCTOR_ROUTES.COURSE_MANAGEMENT,
       label: "Quản lý khóa học",
-      icon: "📖",
+      icon: "fas fa-graduation-cap",
       description: "Tạo và quản lý khóa học",
     },
     {
       path: INSTRUCTOR_ROUTES.CLASS_ASSIGNMENT,
       label: "Quản lý lớp học",
-      icon: "🏫",
+      icon: "fas fa-school",
       description: "Tạo và quản lý lớp học với khóa học",
     },
   ];
@@ -41,14 +41,18 @@ const InstructorLayout = () => {
         <div className="header-content">
           <div className="header-left">
             <h1 className="header-title">
-              <span className="header-icon">👨‍🏫</span>
+              <span className="header-icon">
+                <i className="fas fa-chalkboard-teacher"></i>
+              </span>
               Instructor Dashboard
             </h1>
             <p className="header-subtitle">Quản lý khóa học và lớp học</p>
           </div>
           <div className="header-right">
             <div className="user-info">
-              <span className="user-avatar">👨‍🏫</span>
+              <span className="user-avatar">
+                <i className="fas fa-user"></i>
+              </span>
               <span className="user-name">Nguyễn Văn A</span>
             </div>
           </div>
@@ -67,7 +71,9 @@ const InstructorLayout = () => {
                     isActiveRoute(item.path) ? "active" : ""
                   }`}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-icon">
+                    <i className={item.icon}></i>
+                  </span>
                   <div className="nav-text">
                     <span className="nav-label">{item.label}</span>
                     <span className="nav-description">{item.description}</span>

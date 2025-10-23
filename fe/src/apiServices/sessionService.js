@@ -1,8 +1,6 @@
-// Session Service - Session Management APIs
 import apiClient from "./apiClient";
 
 const sessionService = {
-  // ========== SESSION APIs ==========
 
   // Tạo session/lesson
   createSession: async (sessionData) => {

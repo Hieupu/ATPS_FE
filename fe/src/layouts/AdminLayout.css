@@ -95,6 +95,10 @@
   justify-content: center;
 }
 
+.nav-icon i {
+  font-size: 20px;
+}
+
 .nav-content {
   display: flex;
   flex-direction: column;
@@ -307,4 +311,3 @@
     padding: 8px;
   }
 }
-

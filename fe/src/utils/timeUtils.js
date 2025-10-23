@@ -4,6 +4,7 @@
  * Tính toán thời gian bắt đầu và kết thúc từ session timeslots
  * @param {Array} schedule - Array của session timeslots
  * @returns {Object} - { startDate, endDate, hasSchedule }
+ * Updated: 2025-01-23 - Cải thiện xử lý session timeslots
  */
 export const calculateClassTimeFromSchedule = (schedule) => {
   if (!schedule || !Array.isArray(schedule) || schedule.length === 0) {
@@ -14,17 +15,50 @@ export const calculateClassTimeFromSchedule = (schedule) => {
     };
   }
 
-  // Lấy tất cả các ngày từ schedule
-  const dates = schedule
-    .map((session) => {
-      // Có thể có nhiều format khác nhau
-      if (session.Date) return new Date(session.Date);
-      if (session.date) return new Date(session.date);
-      if (session.StartDate) return new Date(session.StartDate);
-      if (session.startDate) return new Date(session.startDate);
-      return null;
-    })
-    .filter((date) => date && !isNaN(date.getTime()));
+  const dates = [];
+
+  // Xử lý từng session trong schedule
+  schedule.forEach((session) => {
+    // Nếu session có Timeslots array
+    if (session.Timeslots && Array.isArray(session.Timeslots)) {
+      session.Timeslots.forEach((timeslot) => {
+        if (timeslot.Date) {
+          const date = new Date(timeslot.Date);
+          if (!isNaN(date.getTime())) {
+            dates.push(date);
+          }
+        }
+      });
+    }
+
+    // Nếu session có Date trực tiếp
+    if (session.Date) {
+      const date = new Date(session.Date);
+      if (!isNaN(date.getTime())) {
+        dates.push(date);
+      }
+    }
+
+    // Các format khác
+    if (session.date) {
+      const date = new Date(session.date);
+      if (!isNaN(date.getTime())) {
+        dates.push(date);
+      }
+    }
+    if (session.StartDate) {
+      const date = new Date(session.StartDate);
+      if (!isNaN(date.getTime())) {
+        dates.push(date);
+      }
+    }
+    if (session.startDate) {
+      const date = new Date(session.startDate);
+      if (!isNaN(date.getTime())) {
+        dates.push(date);
+      }
+    }
+  });
 
   if (dates.length === 0) {
     return {
@@ -34,7 +68,7 @@ export const calculateClassTimeFromSchedule = (schedule) => {
     };
   }
 
-  // Tìm ngày đầu tiên và cuối cùng
+  // Tìm ngày đầu tiên và cuối cùng từ tất cả session timeslots
   const startDate = new Date(Math.min(...dates));
   const endDate = new Date(Math.max(...dates));
 
@@ -72,10 +106,28 @@ export const formatDate = (dateString) => {
  * @param {Object} classItem - Class object
  * @returns {string} - Formatted time string
  * Updated: 2025-01-21 - Fixed schedule data handling
+ * Updated: 2025-01-23 - Sử dụng dữ liệu từ backend API mới
+ * Updated: 2025-01-23 - Ưu tiên hiển thị ngày bắt đầu - ngày kết thúc từ session timeslots
  */
 export const getClassTimeDisplay = (classItem) => {
-  // Nếu có StartDate và EndDate trực tiếp
-  if (classItem.StartDate && classItem.EndDate) {
+  // Ưu tiên cao nhất: Sử dụng ngày bắt đầu và kết thúc từ session timeslots
+  if (classItem.firstSessionDate && classItem.lastSessionDate) {
+    return `${formatDate(classItem.firstSessionDate)} - ${formatDate(
+      classItem.lastSessionDate
+    )}`;
+  }
+
+  // Ưu tiên thứ hai: Sử dụng thông tin từ backend API mới
+  if (classItem.sessionTimesList) {
+    return classItem.sessionTimesList;
+  }
+
+  if (classItem.sessionDatesList) {
+    return classItem.sessionDatesList;
+  }
+
+  // Nếu có StartDate và EndDate trực tiếp (chỉ khi không có schedule)
+  if (classItem.StartDate && classItem.EndDate && !classItem.schedule) {
     return `${formatDate(classItem.StartDate)} - ${formatDate(
       classItem.EndDate
     )}`;
@@ -110,5 +162,5 @@ export const getClassTimeDisplay = (classItem) => {
   }
 
   // Fallback
-  return "Sẽ được tính từ session timeslots";
+  return "Chưa có lịch học";
 };

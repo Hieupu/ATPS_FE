@@ -245,6 +245,22 @@ const timeslotService = {
       };
     }
   },
+
+  // Admin: Lấy ca học đã có sẵn của lớp (API mới)
+  getExistingTimeslots: async (classId) => {
+    try {
+      const result = await apiClient.get(
+        `/admin/timeslots/class/${classId}/existing-timeslots`
+      );
+      return {
+        success: true,
+        data: result.data || [],
+        message: result.message || "Lấy ca học đã có sẵn thành công",
+      };
+    } catch (error) {
+      throw error;
+    }
+  },
 };
 
 export default timeslotService;

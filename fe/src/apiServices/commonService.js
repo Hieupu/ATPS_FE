@@ -1,10 +1,6 @@
-// Service quản lý Common APIs
-// Bao gồm: User Management, Course APIs, Instructor/Learner info
-
 import apiClient from "./apiClient";
 
 const commonService = {
-  // ========== USER MANAGEMENT APIs ==========
 
   // Lấy danh sách giảng viên
   getInstructors: async (params = {}) => {

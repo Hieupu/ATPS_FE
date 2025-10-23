@@ -10,37 +10,37 @@ const AdminLayout = () => {
   const menuItems = [
     {
       path: ADMIN_ROUTES.DASHBOARD,
-      icon: "📊",
+      icon: "fas fa-chart-bar",
       label: "Dashboard",
       description: "Tổng quan hệ thống",
     },
     {
       path: ADMIN_ROUTES.CLASS_MANAGEMENT,
-      icon: "📚",
+      icon: "fas fa-book",
       label: "Quản lý lớp học",
       description: "Quản lý lớp học và lịch trình",
     },
     {
       path: ADMIN_ROUTES.COURSES,
-      icon: "📖",
+      icon: "fas fa-graduation-cap",
       label: "Quản lý khóa học",
       description: "Quản lý nội dung khóa học",
     },
     {
       path: ADMIN_ROUTES.INSTRUCTORS,
-      icon: "🧑‍🏫",
+      icon: "fas fa-chalkboard-teacher",
       label: "Quản lý giảng viên",
       description: "Quản lý đội ngũ giảng viên",
     },
     {
       path: ADMIN_ROUTES.LEARNERS,
-      icon: "👥",
+      icon: "fas fa-users",
       label: "Quản lý học viên",
       description: "Quản lý học viên",
     },
     {
       path: ADMIN_ROUTES.REPORTS,
-      icon: "📈",
+      icon: "fas fa-chart-line",
       label: "Báo cáo",
       description: "Thống kê và báo cáo",
     },
@@ -59,7 +59,9 @@ const AdminLayout = () => {
       <aside className={`sidebar ${sidebarOpen ? "open" : "closed"}`}>
         <div className="sidebar-header">
           <div className="logo">
-            <span className="logo-icon">🎓</span>
+            <span className="logo-icon">
+              <i className="fas fa-graduation-cap"></i>
+            </span>
             {sidebarOpen && <span className="logo-text">ATPS Admin</span>}
           </div>
         </div>
@@ -72,7 +74,9 @@ const AdminLayout = () => {
               className={`nav-item ${isActive(item.path) ? "active" : ""}`}
               title={item.description}
             >
-              <span className="nav-icon">{item.icon}</span>
+              <span className="nav-icon">
+                <i className={item.icon}></i>
+              </span>
               {sidebarOpen && (
                 <div className="nav-content">
                   <span className="nav-label">{item.label}</span>
@@ -124,7 +128,7 @@ const AdminLayout = () => {
 
         {/* Footer */}
         <footer className="content-footer">
-          <p>© 2025 ATPS - Hệ thống Quản lý Đào tạo An toàn Thông tin</p>
+          <p>© 2025 ATPS - Hệ thống ATPS</p>
         </footer>
       </div>
     </div>

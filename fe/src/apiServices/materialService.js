@@ -1,8 +1,6 @@
-// Material Service - Material Management APIs
 import apiClient from "./apiClient";
 
 const materialService = {
-  // ========== MATERIAL APIs ==========
 
   // Tạo tài liệu cho khóa học
   createMaterial: async (materialData) => {

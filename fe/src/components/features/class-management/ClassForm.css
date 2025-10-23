@@ -244,3 +244,15 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Required and Optional field styling */
+.required {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.optional {
+  color: #6b7280;
+  font-weight: normal;
+  font-size: 12px;
+}

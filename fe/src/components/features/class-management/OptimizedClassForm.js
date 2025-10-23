@@ -157,7 +157,7 @@ const OptimizedClassForm = ({
         <div className="form-header">
           <h2>{classData ? "Chỉnh sửa lớp học" : "Thêm lớp học mới"}</h2>
           <button className="close-btn" onClick={onCancel} title="Đóng">
-            ×
+            <i className="fas fa-times"></i>
           </button>
         </div>
 
@@ -382,9 +382,10 @@ const OptimizedClassForm = ({
               className="btn btn-secondary"
               onClick={onCancel}
             >
-              Hủy
+              <i className="fas fa-times"></i> Hủy
             </button>
             <button type="submit" className="btn btn-primary">
+              <i className="fas fa-check"></i>{" "}
               {classData ? "Cập nhật" : "Tạo mới"}
             </button>
           </div>

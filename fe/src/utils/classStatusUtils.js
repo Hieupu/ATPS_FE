@@ -63,37 +63,93 @@ export const hasPastSessions = (schedule) => {
 };
 
 /**
- * Tính toán trạng thái chính xác cho class dựa trên schedule
+ * Tính toán trạng thái chính xác cho class dựa trên session dates và ngày hiện tại
  * @param {Object} classItem - Class object
  * @returns {string} - Trạng thái chính xác
+ * Updated: 2025-01-23 - Logic tự động cập nhật trạng thái theo yêu cầu
  */
 export const calculateCorrectClassStatus = (classItem) => {
-  // Nếu không có schedule, giữ nguyên trạng thái hiện tại
+  const now = new Date();
+  now.setHours(0, 0, 0, 0); // Reset time to start of day
+
+  // Ưu tiên sử dụng dữ liệu từ API mới
+  let firstSessionDate = null;
+  let lastSessionDate = null;
+
+  // 1. Sử dụng firstSessionDate và lastSessionDate từ API time-stats
+  if (classItem.firstSessionDate && classItem.lastSessionDate) {
+    firstSessionDate = new Date(classItem.firstSessionDate);
+    lastSessionDate = new Date(classItem.lastSessionDate);
+  }
+  // 2. Fallback: Tính từ schedule data
+  else if (
+    classItem.schedule &&
+    Array.isArray(classItem.schedule) &&
+    classItem.schedule.length > 0
+  ) {
+    const allDates = [];
+    classItem.schedule.forEach((session) => {
+      if (session.Timeslots && Array.isArray(session.Timeslots)) {
+        session.Timeslots.forEach((timeslot) => {
+          if (timeslot.Date) {
+            const date = new Date(timeslot.Date);
+            if (!isNaN(date.getTime())) {
+              allDates.push(date);
+            }
+          }
+        });
+      }
+    });
+
+    if (allDates.length > 0) {
+      firstSessionDate = new Date(Math.min(...allDates));
+      lastSessionDate = new Date(Math.max(...allDates));
+    }
+  }
+
+  // Nếu không có dữ liệu ngày, giữ nguyên trạng thái hiện tại
   if (
-    !classItem.schedule ||
-    !Array.isArray(classItem.schedule) ||
-    classItem.schedule.length === 0
+    !firstSessionDate ||
+    !lastSessionDate ||
+    isNaN(firstSessionDate.getTime()) ||
+    isNaN(lastSessionDate.getTime())
   ) {
     return classItem.Status || "Sắp khai giảng";
   }
 
-  const hasFuture = hasFutureSessions(classItem.schedule);
-  const hasPast = hasPastSessions(classItem.schedule);
+  // Set time boundaries
+  firstSessionDate.setHours(0, 0, 0, 0);
+  lastSessionDate.setHours(23, 59, 59, 999);
 
-  // Logic trạng thái:
-  if (hasFuture && hasPast) {
-    // Có cả session trong quá khứ và tương lai = Đang hoạt động
-    return "Đang hoạt động";
-  } else if (hasFuture && !hasPast) {
-    // Chỉ có session trong tương lai = Sắp khai giảng
-    return "Sắp khai giảng";
-  } else if (!hasFuture && hasPast) {
-    // Chỉ có session trong quá khứ = Đã kết thúc
-    return "Đã kết thúc";
-  } else {
-    // Không có session nào (không nên xảy ra)
+  // Logic trạng thái tự động theo yêu cầu:
+
+  // 1. Nếu chưa đến ngày bắt đầu session đầu tiên
+  if (now < firstSessionDate) {
     return "Sắp khai giảng";
   }
+
+  // 2. Nếu đã qua ngày kết thúc session cuối cùng
+  if (now > lastSessionDate) {
+    return "Đã kết thúc";
+  }
+
+  // 3. Nếu đang trong khoảng thời gian từ ngày đầu đến ngày cuối
+  if (now >= firstSessionDate && now <= lastSessionDate) {
+    // Kiểm tra xem có giảng viên không
+    const hasInstructor =
+      classItem.Instructor?.InstructorID ||
+      classItem.InstructorID ||
+      classItem.instructorName;
+
+    if (hasInstructor) {
+      return "Đang hoạt động";
+    } else {
+      return "Sắp khai giảng"; // Chưa có giảng viên
+    }
+  }
+
+  // Fallback
+  return classItem.Status || "Sắp khai giảng";
 };
 
 /**

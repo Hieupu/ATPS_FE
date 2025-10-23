@@ -56,50 +56,63 @@ const ClassList = ({ classes, onEdit, onDelete }) => {
                         title="Trạng thái đã được sửa tự động"
                       >
                         {" "}
-                        🔧
+                        <i className="fas fa-wrench"></i>
                       </span>
                     )}
                   </span>
                 </div>
 
-                <div className="class-course">
-                  <strong>Khóa học:</strong>{" "}
-                  {fixedClassItem.Course?.Title || "Chưa có khóa học"}
-                </div>
-
                 <div className="class-body">
-                  <p className="class-description">
-                    {fixedClassItem.Course?.Description || "Không có mô tả"}
-                  </p>
-
                   <div className="class-info">
                     <div className="info-row">
-                      <span className="info-label">Giảng viên:</span>
+                      <span className="info-label">
+                        <i className="fas fa-chalkboard-teacher"></i> Giảng
+                        viên:
+                      </span>
                       <span className="info-value">
-                        {fixedClassItem.Instructor?.FullName ||
+                        {fixedClassItem.instructorName ||
+                          fixedClassItem.Instructor?.FullName ||
                           "Chưa phân công"}
                       </span>
                     </div>
 
                     <div className="info-row">
-                      <span className="info-label">Khóa học:</span>
+                      <span className="info-label">
+                        <i className="fas fa-book"></i> Khóa học:
+                      </span>
                       <span className="info-value">
-                        {fixedClassItem.Course?.Title || "Chưa chọn khóa học"}
+                        {fixedClassItem.courseTitle ||
+                          fixedClassItem.Course?.Title ||
+                          "Chưa chọn khóa học"}
                       </span>
                     </div>
 
                     <div className="info-row">
-                      <span className="info-label">Học viên:</span>
+                      <span className="info-label">
+                        <i className="fas fa-users"></i> Học viên:
+                      </span>
                       <span className="info-value">
-                        {fixedClassItem.EnrolledStudents?.length ||
+                        {fixedClassItem.totalEnrolled ||
+                          fixedClassItem.EnrolledStudents?.length ||
                           fixedClassItem._original?.enrolledCount ||
                           0}{" "}
-                        học viên (tự đăng ký)
+                        học viên
                       </span>
                     </div>
 
                     <div className="info-row">
-                      <span className="info-label">Thời gian:</span>
+                      <span className="info-label">
+                        <i className="fas fa-calendar-alt"></i> Ca học:
+                      </span>
+                      <span className="info-value">
+                        {fixedClassItem.totalTimeslots || 0} ca học
+                      </span>
+                    </div>
+
+                    <div className="info-row">
+                      <span className="info-label">
+                        <i className="fas fa-clock"></i> Thời gian:
+                      </span>
                       <span className="info-value">
                         {getClassTimeDisplay(fixedClassItem)}
                       </span>
@@ -107,7 +120,9 @@ const ClassList = ({ classes, onEdit, onDelete }) => {
 
                     {fixedClassItem.ZoomURL && (
                       <div className="info-row">
-                        <span className="info-label">Zoom:</span>
+                        <span className="info-label">
+                          <i className="fas fa-video"></i> Zoom:
+                        </span>
                         <span className="info-value">
                           <a
                             href={fixedClassItem.ZoomURL}
@@ -120,35 +135,6 @@ const ClassList = ({ classes, onEdit, onDelete }) => {
                         </span>
                       </div>
                     )}
-
-                    <div className="info-note">
-                      <span className="info-label">Lưu ý:</span>
-                      <span className="info-value">
-                        Học viên tự đăng ký vào lớp. Click "Session" để quản lý
-                        lịch học
-                      </span>
-                    </div>
-
-                    {fixedClassItem.Status === "Sắp khai giảng" &&
-                      fixedClassItem.InstructorID && (
-                        <div className="info-note auto-update-note">
-                          <span className="info-label">Tự động:</span>
-                          <span className="info-value">
-                            Sẽ chuyển thành "Đang hoạt động" khi đến ngày bắt
-                            đầu session đầu tiên
-                          </span>
-                        </div>
-                      )}
-
-                    {fixedClassItem.Status === "Đang hoạt động" && (
-                      <div className="info-note auto-update-note">
-                        <span className="info-label">Tự động:</span>
-                        <span className="info-value">
-                          Sẽ chuyển thành "Đã kết thúc" khi qua ngày kết thúc
-                          session cuối cùng
-                        </span>
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -158,7 +144,7 @@ const ClassList = ({ classes, onEdit, onDelete }) => {
                     onClick={() => onEdit(fixedClassItem)}
                     title="Chỉnh sửa"
                   >
-                    Sửa
+                    <i className="fas fa-edit"></i> Sửa
                   </button>
                   <button
                     className="btn btn-info btn-sm"
@@ -169,14 +155,14 @@ const ClassList = ({ classes, onEdit, onDelete }) => {
                     }
                     title="Quản lý session và lịch học"
                   >
-                    Session
+                    <i className="fas fa-calendar-alt"></i> Lịch học
                   </button>
                   <button
                     className="btn btn-danger btn-sm"
                     onClick={() => onDelete(fixedClassItem.ClassID)}
                     title="Xóa"
                   >
-                    Xóa
+                    <i className="fas fa-trash"></i> Xóa
                   </button>
                 </div>
               </div>
