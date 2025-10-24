@@ -41,3 +41,13 @@ export const getPopularCoursesApi = async () => {
     throw error.response?.data || { message: "Failed to fetch popular courses" };
   }
 };
+
+export const getMyEnrolledCourses = async () => {
+  try {
+    const response = await apiClient.get("/courses/my-courses/enrolled");
+    return response.data;
+  } catch (error) {
+    console.error("Get enrolled courses error:", error);
+    throw error.response?.data || { message: "Failed to fetch enrolled courses" };
+  }
+};

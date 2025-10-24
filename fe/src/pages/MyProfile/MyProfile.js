@@ -56,15 +56,18 @@ const MyProfile = () => {
     fetchProfile();
   }, []);
 
-  const fetchProfile = async () => {
-    try {
-      const profileData = await getProfileApi();
-      setProfile(profileData);
-      setFormData(profileData);
-    } catch (error) {
-      setMessage({ type: "error", text: "Failed to load profile" });
-    }
-  };
+const fetchProfile = async () => {
+  try {
+    const profileData = await getProfileApi();
+    setProfile(profileData);
+    setFormData({
+      ...profileData,
+      Phone: profileData.account?.Phone || ""
+    });
+  } catch (error) {
+    setMessage({ type: "error", text: "Failed to load profile" });
+  }
+};
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
@@ -144,31 +147,43 @@ const MyProfile = () => {
     }
   };
 
-  const handleAvatarUpload = async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
+ const handleAvatarUpload = async (event) => {
+  const file = event.target.files[0];
+  if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      setMessage({ type: "error", text: "Please upload an image file" });
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage({ type: "error", text: "File size must be less than 2MB" });
-      return;
-    }
+  // Validate file
+  if (!file.type.startsWith('image/')) {
+    setMessage({ type: "error", text: "Please upload an image file" });
+    return;
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    setMessage({ type: "error", text: "File size must be less than 2MB" });
+    return;
+  }
 
-    try {
-      setLoading(true);
-      const avatarUrl = URL.createObjectURL(file);
-      const updatedProfile = await updateAvatarApi(avatarUrl);
-      setProfile(updatedProfile.profile);
-      setMessage({ type: "success", text: "Avatar updated successfully" });
-    } catch (error) {
-      setMessage({ type: "error", text: error.message });
-    } finally {
-      setLoading(false);
-    }
-  };
+  try {
+    setLoading(true);
+    
+    // Hiển thị preview tạm thời
+    const tempUrl = URL.createObjectURL(file);
+    setProfile(prev => ({ ...prev, ProfilePicture: tempUrl }));
+
+    // Upload lên server
+    const updatedProfile = await updateAvatarApi(file);
+    setProfile(updatedProfile.profile);
+    
+    // Giải phóng URL tạm thời
+    URL.revokeObjectURL(tempUrl);
+    
+    setMessage({ type: "success", text: "Avatar updated successfully" });
+  } catch (error) {
+    // Khôi phục avatar cũ nếu có lỗi
+    fetchProfile();
+    setMessage({ type: "error", text: error.message });
+  } finally {
+    setLoading(false);
+  }
+};
 
   const getRoleSpecificFields = () => {
     if (!profile) return null;
@@ -204,33 +219,33 @@ const MyProfile = () => {
           />
         </Grid>
         <Grid item xs={12} md={6}>
-          <TextField
-            fullWidth
-            label="Phone Number"
-            name="Phone"
-            value={formData.account?.Phone || ""}
-            onChange={handleInputChange}
-            disabled={!isEditing}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <PhoneIcon sx={{ color: '#6366f1' }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{
-              '& .MuiOutlinedInput-root': {
-                borderRadius: '12px',
-                '&:hover fieldset': {
-                  borderColor: '#6366f1',
-                },
-                '&.Mui-focused fieldset': {
-                  borderColor: '#6366f1',
-                },
-              },
-            }}
-          />
-        </Grid>
+  <TextField
+    fullWidth
+    label="Phone Number"
+    name="Phone"
+    value={formData.Phone || ""}
+    onChange={handleInputChange}
+    disabled={!isEditing}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <PhoneIcon sx={{ color: '#6366f1' }} />
+        </InputAdornment>
+      ),
+    }}
+    sx={{
+      '& .MuiOutlinedInput-root': {
+        borderRadius: '12px',
+        '&:hover fieldset': {
+          borderColor: '#6366f1',
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: '#6366f1',
+        },
+      },
+    }}
+  />
+</Grid>
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth

@@ -23,12 +23,17 @@ import MyProfile from "./pages/MyProfile/MyProfile";
 import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
 
+import MyCourses from "./pages/course/MyCourses";
+
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
+import { AuthProvider } from './contexts/AuthContext';
 
 
 function App() {
   return (
+        <AuthProvider>
     <Router>
       <Routes>
         {/* Public Routes */} 
@@ -45,6 +50,7 @@ function App() {
 
              <Route path="/courses" element={<CoursesPage />} />
               <Route path="/courses/:id" element={<CourseDetailPage />} />
+              <Route path="/my-courses" element={<MyCourses />} />
 <Route path="/payment-success" element={<PaymentSuccessPage />} />
 <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
@@ -59,6 +65,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
+    </AuthProvider>
   );
 }
 
