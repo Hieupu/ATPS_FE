@@ -4,13 +4,21 @@ export const loginApi = async (email, password) => {
   try {
     const response = await apiClient.post("/login", { email, password });
     const data = response.data;
+    
     if (data?.token) {
+      // Lưu cả token và thông tin user (bao gồm role)
+      const userData = {
+        ...data.user,
+        token: data.token
+      };
+      
       localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(userData));
     }
 
     return data;
   } catch (error) {
-    console.error(" Login API error:", error.response?.data || error.message);
+    console.error("Login API error:", error.response?.data || error.message);
     throw error.response?.data || { message: "Đăng nhập thất bại" };
   }
 };

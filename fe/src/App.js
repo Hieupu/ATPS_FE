@@ -20,9 +20,20 @@ import RegisterPage from "./pages/common/Register/RegisterPage";
 import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
 
 import MyProfile from "./pages/MyProfile/MyProfile";
+import CoursesPage from "./pages/course/CoursesPage";
+import CourseDetailPage from "./pages/course/CourseDetailPage";
+
+import MyCourses from "./pages/course/MyCourses";
+
+import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
+import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
+import { AuthProvider } from './contexts/AuthContext';
+
 
 function App() {
   return (
+        <AuthProvider>
     <Router>
       <Routes>
         {/* Public Routes */} 
@@ -37,6 +48,11 @@ function App() {
         <Route path="/oauth/callback" element={<OAuthCallback />} />
         <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
 
+             <Route path="/courses" element={<CoursesPage />} />
+              <Route path="/courses/:id" element={<CourseDetailPage />} />
+              <Route path="/my-courses" element={<MyCourses />} />
+<Route path="/payment-success" element={<PaymentSuccessPage />} />
+<Route path="/payment-failed" element={<PaymentFailedPage />} />
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
@@ -49,6 +65,7 @@ function App() {
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Router>
+    </AuthProvider>
   );
 }
 

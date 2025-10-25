@@ -22,7 +22,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { loginApi, startGoogleAuth, startFacebookAuth } from "../../../apiServices/authService";
-
+import { useAuth } from '../../../contexts/AuthContext';
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,6 +30,7 @@ const LoginPage = () => {
     password: "",
   });
   const navigate = useNavigate();
+    const { login } = useAuth(); 
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -46,8 +47,10 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       const { token, user } = await loginApi(formData.email, formData.password);
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
+      
+      // Sử dụng Auth Context để login
+      login(user, token);
+      
       navigate("/");
     } catch (error) {
       alert(error.message || "Login failed");
