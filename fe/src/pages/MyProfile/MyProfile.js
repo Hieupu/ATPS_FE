@@ -61,18 +61,18 @@ const MyProfile = () => {
     fetchProfile();
   }, []);
 
-const fetchProfile = async () => {
-  try {
-    const profileData = await getProfileApi();
-    setProfile(profileData);
-    setFormData({
-      ...profileData,
-      Phone: profileData.account?.Phone || ""
-    });
-  } catch (error) {
-    setMessage({ type: "error", text: "Failed to load profile" });
-  }
-};
+  const fetchProfile = async () => {
+    try {
+      const profileData = await getProfileApi();
+      setProfile(profileData);
+      setFormData({
+        ...profileData,
+        Phone: profileData.account?.Phone || "",
+      });
+    } catch (error) {
+      setMessage({ type: "error", text: "Failed to load profile" });
+    }
+  };
 
   const handleEditToggle = () => {
     setIsEditing(!isEditing);
@@ -156,11 +156,11 @@ const fetchProfile = async () => {
     }
   };
 
- const handleAvatarUpload = async (event) => {
-  const file = event.target.files[0];
-  if (!file) return;
+  const handleAvatarUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
 
-<<<<<<< HEAD
+    // Validate file
     if (!file.type.startsWith("image/")) {
       setMessage({ type: "error", text: "Please upload an image file" });
       return;
@@ -169,41 +169,30 @@ const fetchProfile = async () => {
       setMessage({ type: "error", text: "File size must be less than 2MB" });
       return;
     }
-=======
-  // Validate file
-  if (!file.type.startsWith('image/')) {
-    setMessage({ type: "error", text: "Please upload an image file" });
-    return;
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    setMessage({ type: "error", text: "File size must be less than 2MB" });
-    return;
-  }
->>>>>>> 4488e3aa9921c943ec0910262fef450eb766f29c
 
-  try {
-    setLoading(true);
-    
-    // Hiển thị preview tạm thời
-    const tempUrl = URL.createObjectURL(file);
-    setProfile(prev => ({ ...prev, ProfilePicture: tempUrl }));
+    try {
+      setLoading(true);
 
-    // Upload lên server
-    const updatedProfile = await updateAvatarApi(file);
-    setProfile(updatedProfile.profile);
-    
-    // Giải phóng URL tạm thời
-    URL.revokeObjectURL(tempUrl);
-    
-    setMessage({ type: "success", text: "Avatar updated successfully" });
-  } catch (error) {
-    // Khôi phục avatar cũ nếu có lỗi
-    fetchProfile();
-    setMessage({ type: "error", text: error.message });
-  } finally {
-    setLoading(false);
-  }
-};
+      // Hiển thị preview tạm thời
+      const tempUrl = URL.createObjectURL(file);
+      setProfile((prev) => ({ ...prev, ProfilePicture: tempUrl }));
+
+      // Upload lên server
+      const updatedProfile = await updateAvatarApi(file);
+      setProfile(updatedProfile.profile);
+
+      // Giải phóng URL tạm thời
+      URL.revokeObjectURL(tempUrl);
+
+      setMessage({ type: "success", text: "Avatar updated successfully" });
+    } catch (error) {
+      // Khôi phục avatar cũ nếu có lỗi
+      fetchProfile();
+      setMessage({ type: "error", text: error.message });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getRoleSpecificFields = () => {
     if (!profile) return null;
@@ -239,12 +228,11 @@ const fetchProfile = async () => {
           />
         </Grid>
         <Grid item xs={12} md={6}>
-<<<<<<< HEAD
           <TextField
             fullWidth
             label="Phone Number"
             name="Phone"
-            value={formData.account?.Phone || ""}
+            value={formData.Phone || ""}
             onChange={handleInputChange}
             disabled={!isEditing}
             InputProps={{
@@ -267,35 +255,7 @@ const fetchProfile = async () => {
             }}
           />
         </Grid>
-=======
-  <TextField
-    fullWidth
-    label="Phone Number"
-    name="Phone"
-    value={formData.Phone || ""}
-    onChange={handleInputChange}
-    disabled={!isEditing}
-    InputProps={{
-      startAdornment: (
-        <InputAdornment position="start">
-          <PhoneIcon sx={{ color: '#6366f1' }} />
-        </InputAdornment>
-      ),
-    }}
-    sx={{
-      '& .MuiOutlinedInput-root': {
-        borderRadius: '12px',
-        '&:hover fieldset': {
-          borderColor: '#6366f1',
-        },
-        '&.Mui-focused fieldset': {
-          borderColor: '#6366f1',
-        },
-      },
-    }}
-  />
-</Grid>
->>>>>>> 4488e3aa9921c943ec0910262fef450eb766f29c
+
         <Grid item xs={12} md={6}>
           <TextField
             fullWidth

@@ -21,8 +21,12 @@ import {
   School,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { loginApi, startGoogleAuth, startFacebookAuth } from "../../../apiServices/authService";
-import { useAuth } from '../../../contexts/AuthContext';
+import {
+  loginApi,
+  startGoogleAuth,
+  startFacebookAuth,
+} from "../../../apiServices/authService";
+import { useAuth } from "../../../contexts/AuthContext";
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -30,7 +34,7 @@ const LoginPage = () => {
     password: "",
   });
   const navigate = useNavigate();
-    const { login } = useAuth(); 
+  const { login } = useAuth();
 
   const handleClickShowPassword = () => {
     setShowPassword(!showPassword);
@@ -47,11 +51,18 @@ const LoginPage = () => {
     e.preventDefault();
     try {
       const { token, user } = await loginApi(formData.email, formData.password);
-      
+
       // Sử dụng Auth Context để login
       login(user, token);
-      
-      navigate("/");
+
+      if (user.role === "learner") {
+        navigate("/");
+      } else if (user.role === "instructor") {
+        navigate("/instructor");
+      } else {
+        
+        navigate("/");
+      }
     } catch (error) {
       alert(error.message || "Login failed");
     }
