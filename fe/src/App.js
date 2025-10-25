@@ -15,7 +15,6 @@ import HomePage from "./pages/common/HomePage/HomePage";
 
 import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
 
-
 import RegisterPage from "./pages/common/Register/RegisterPage";
 import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
 
@@ -28,43 +27,51 @@ import MyCourses from "./pages/course/MyCourses";
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 
-import { AuthProvider } from './contexts/AuthContext';
-
+import { AuthProvider } from "./contexts/AuthContext";
 
 function App() {
   return (
-        <AuthProvider>
-    <Router>
-      <Routes>
-        {/* Public Routes */} 
-        <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
-        <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+    <AuthProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
+          <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
 
-            <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
+          <Route
+            path={PUBLIC_ROUTES.FORGOTPASSWORD}
+            element={<ForgotPassword />}
+          />
 
-            <Route path="/profile" element={<MyProfile />} />
+          <Route path="/profile" element={<MyProfile />} />
 
-        <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
-        <Route path="/oauth/callback" element={<OAuthCallback />} />
-        <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
+          <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
+          <Route path="/oauth/callback" element={<OAuthCallback />} />
+          <Route
+            path="/register"
+            element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />}
+          />
 
-             <Route path="/courses" element={<CoursesPage />} />
-              <Route path="/courses/:id" element={<CourseDetailPage />} />
-              <Route path="/my-courses" element={<MyCourses />} />
-<Route path="/payment-success" element={<PaymentSuccessPage />} />
-<Route path="/payment-failed" element={<PaymentFailedPage />} />
+          <Route path="/courses" element={<CoursesPage />} />
+          <Route path="/courses/:id" element={<CourseDetailPage />} />
+          <Route path="/my-courses" element={<MyCourses />} />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="classes" element={<ClassManagementPage />} />
-          <Route path="classes/:courseId/schedule" element={<ScheduleManagementPage />} />
-        </Route>
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="classes" element={<ClassManagementPage />} />
+            <Route
+              path="classes/:courseId/schedule"
+              element={<ScheduleManagementPage />}
+            />
+          </Route>
 
-        {/* 404 Page */}
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Router>
+          {/* 404 Page */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Router>
     </AuthProvider>
   );
 }
