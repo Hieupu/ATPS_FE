@@ -239,7 +239,12 @@ const LoginPage = () => {
               </Link>
               <Typography variant="body2" color="text.secondary">
                 Don't have an account?{" "}
-                <Link component={RouterLink} to="/auth/register" underline="hover" sx={{ color: "primary.main", fontWeight: 600 }}>
+                <Link
+                  component={RouterLink}
+                  to="/auth/register"
+                  underline="hover"
+                  sx={{ color: "primary.main", fontWeight: 600 }}
+                >
                   Register
                 </Link>
               </Typography>
