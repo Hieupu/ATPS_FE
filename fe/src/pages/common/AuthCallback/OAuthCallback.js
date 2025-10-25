@@ -9,11 +9,13 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from '../../../contexts/AuthContext';
 
 export default function OAuthCallback() {
-  const [search] = useSearchParams();
+ const [search] = useSearchParams();
   const navigate = useNavigate();
   const [seconds, setSeconds] = useState(3);
+  const { login } = useAuth(); // Sử dụng Auth Context
 
   const token = search.get("token");
   const provider = search.get("provider") || "oauth";
@@ -28,17 +30,19 @@ export default function OAuthCallback() {
   }, [userB64]);
 
   useEffect(() => {
-    if (token) {
-      localStorage.setItem("token", token);
-      if (user) localStorage.setItem("user", JSON.stringify(user));
+    if (token && user) {
+      // Sử dụng Auth Context để login
+      login(user, token);
     }
+    
     const iv = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
     const to = setTimeout(() => navigate("/"), 3000);
+    
     return () => {
       clearInterval(iv);
       clearTimeout(to);
     };
-  }, [token, user, navigate]);
+  }, [token, user, navigate, login]);
 
   const ok = Boolean(token);
 

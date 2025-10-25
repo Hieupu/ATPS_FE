@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -39,6 +39,7 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../../../components/Header/AppHeader";
+import { useAuth } from '../../../contexts/AuthContext';
 
 const HomePage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -47,6 +48,7 @@ const HomePage = () => {
   const navigate = useNavigate();
 
   const navItems = ["Home", "Features", "Courses", "About", "Contact"];
+    const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
 
   const features = [
     {
@@ -94,6 +96,29 @@ const HomePage = () => {
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
+
+    useEffect(() => {
+    if (isAuthenticated && user) {
+      console.log('=== USER ROLE INFORMATION ===');
+      console.log('User:', user);
+      console.log('Role:', user.role);
+      console.log('Username:', user.Username);
+      console.log('Email:', user.Email);
+      
+      // Log theo từng role cụ thể
+      if (isInstructor) {
+        console.log('🎯 This user is an INSTRUCTOR');
+      } else if (isLearner) {
+        console.log('📚 This user is a LEARNER');
+      } else if (isParent) {
+        console.log('👨‍👩‍👧‍👦 This user is a PARENT');
+      } else {
+        console.log('❓ Unknown role');
+      }
+      
+      console.log('============================');
+    }
+  }, [isAuthenticated, user, isInstructor, isLearner, isParent]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>

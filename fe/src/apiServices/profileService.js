@@ -15,7 +15,14 @@ export const changePasswordApi = async (passwordData) => {
   return response.data;
 };
 
-export const updateAvatarApi = async (avatarUrl) => {
-  const response = await apiClient.put("/profile/avatar", { avatarUrl });
+export const updateAvatarApi = async (file) => {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  
+  const response = await apiClient.put("/profile/avatar", formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
   return response.data;
 };

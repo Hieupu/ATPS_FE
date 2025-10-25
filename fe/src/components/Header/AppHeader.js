@@ -23,31 +23,133 @@ import {
   ShoppingCart,
   Favorite,
   Logout,
+  Book,
+  Dashboard,
+  Group,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
 
 const AppHeader = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
+  
+  // Sử dụng AuthContext thay vì localStorage trực tiếp
+  const { user, isLearner, isInstructor, isParent, logout } = useAuth();
 
   const navItems = ["Home", "Courses", "About", "Contact"];
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const userData = localStorage.getItem("user");
-    if (token && userData) setUser(JSON.parse(userData));
-  }, []);
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    logout(); // Sử dụng logout từ AuthContext
     navigate("/auth/login");
+  };
+
+  // Menu items dựa trên role
+  const getRoleSpecificMenuItems = () => {
+    const items = [];
+
+    if (isLearner) {
+      items.push(
+        <MenuItem
+          key="my-courses"
+          onClick={() => navigate("/my-courses")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Book sx={{ mr: 1, color: "#6b7280" }} />
+          My Courses
+        </MenuItem>
+      );
+    }
+
+    if (isInstructor) {
+      items.push(
+        <MenuItem
+          key="course-manage"
+          onClick={() => navigate("/instructor/courses")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
+          Course Management
+        </MenuItem>
+      );
+    }
+
+    if (isParent) {
+      items.push(
+        <MenuItem
+          key="tracking-student"
+          onClick={() => navigate("/parent/tracking")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Group sx={{ mr: 1, color: "#6b7280" }} />
+          Tracking Student
+        </MenuItem>
+      );
+    }
+
+    return items;
+  };
+
+  // Menu items cho mobile dựa trên role
+  const getMobileRoleSpecificItems = () => {
+    const items = [];
+
+    if (isLearner) {
+      items.push(
+        <ListItem button key="my-courses-mobile" onClick={() => navigate("/my-courses")}>
+          <Book sx={{ mr: 2 }} />
+          <ListItemText primary="My Courses" />
+        </ListItem>
+      );
+    }
+
+    if (isInstructor) {
+      items.push(
+        <ListItem button key="course-manage-mobile" onClick={() => navigate("/instructor/courses")}>
+          <Dashboard sx={{ mr: 2 }} />
+          <ListItemText primary="Course Management" />
+        </ListItem>
+      );
+    }
+
+    if (isParent) {
+      items.push(
+        <ListItem button key="tracking-student-mobile" onClick={() => navigate("/parent/tracking")}>
+          <Group sx={{ mr: 2 }} />
+          <ListItemText primary="Tracking Student" />
+        </ListItem>
+      );
+    }
+
+    return items;
   };
 
   return (
@@ -187,6 +289,7 @@ const AppHeader = () => {
                 </>
               ) : (
                 <>
+                  
                   <Avatar
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{
@@ -208,7 +311,7 @@ const AppHeader = () => {
                       },
                     }}
                   >
-                    {user?.username?.charAt(0).toUpperCase()}
+                    {user?.username?.charAt(0).toUpperCase() || user?.Username?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Menu
                     anchorEl={anchorEl}
@@ -227,6 +330,7 @@ const AppHeader = () => {
                     transformOrigin={{ horizontal: "right", vertical: "top" }}
                     anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                   >
+                    {/* Menu items chung */}
                     <MenuItem
                       onClick={() => navigate("/profile")}
                       sx={{
@@ -242,6 +346,7 @@ const AppHeader = () => {
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
                       Profile
                     </MenuItem>
+                    
                     <MenuItem
                       onClick={() => navigate("/mylearning")}
                       sx={{
@@ -257,6 +362,10 @@ const AppHeader = () => {
                       <School sx={{ mr: 1, color: "#6b7280" }} />
                       My Learning
                     </MenuItem>
+
+                    {/* Menu items theo role */}
+                    {getRoleSpecificMenuItems()}
+
                     <MenuItem
                       onClick={() => navigate("/cart")}
                       sx={{
@@ -324,6 +433,9 @@ const AppHeader = () => {
                 <ListItemText primary={item} />
               </ListItem>
             ))}
+
+            {/* Menu items theo role cho mobile */}
+            {user && getMobileRoleSpecificItems()}
 
             {!user ? (
               <>
