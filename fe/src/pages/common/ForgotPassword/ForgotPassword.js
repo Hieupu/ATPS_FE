@@ -31,12 +31,7 @@ const ForgotPassword = () => {
   const navigate = useNavigate();
 
   // Refs cho các ô nhập mã xác thực
-  const inputRefs = [
-    useRef(null),
-    useRef(null),
-    useRef(null),
-    useRef(null)
-  ];
+  const inputRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
   const steps = ["Nhập Email", "Xác thực", "Đổi mật khẩu"];
 
@@ -280,7 +275,9 @@ const ForgotPassword = () => {
           {renderStepContent(activeStep)}
 
           <Box sx={{ mt: 3, textAlign: "center" }}>
-            <Button onClick={() => navigate("/auth/login")}>Quay lại đăng nhập</Button>
+            <Button onClick={() => navigate("/auth/login")}>
+              Quay lại đăng nhập
+            </Button>
           </Box>
         </Paper>
       </Container>

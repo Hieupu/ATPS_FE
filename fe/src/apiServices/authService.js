@@ -36,7 +36,10 @@ export const sendResetEmail = async (email) => {
 // Xác thực mã đặt lại mật khẩu
 export const verifyResetCode = async (email, code) => {
   try {
-    const response = await apiClient.post("/verify-reset-code", { email, code });
+    const response = await apiClient.post("/verify-reset-code", {
+      email,
+      code,
+    });
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Xác thực thất bại" };
@@ -53,7 +56,8 @@ export const resetPassword = async (resetToken, newPassword) => {
     return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Đặt lại mật khẩu thất bại" };
-  }};
+  }
+};
 
 export const registerApi = async (payload) => {
   try {
