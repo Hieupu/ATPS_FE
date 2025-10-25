@@ -1,12 +1,17 @@
-// contexts/AuthContext.js
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 
 const AuthContext = createContext();
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -17,44 +22,48 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Khôi phục thông tin user từ localStorage khi app khởi động
-    const token = localStorage.getItem('token');
-    const savedUser = localStorage.getItem('user');
-    
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+
     if (token && savedUser) {
       try {
         const userData = JSON.parse(savedUser);
         setUser(userData);
       } catch (error) {
-        console.error('Error parsing saved user data:', error);
+        console.error("Error parsing saved user data:", error);
         logout();
       }
     }
-    
+
     setLoading(false);
   }, []);
 
-  const login = (userData, token) => {
+  const login = useCallback((userData, token) => {
     const userInfo = {
       ...userData,
-      token
+      token,
     };
-    
+
     setUser(userInfo);
-    localStorage.setItem('token', token);
-    localStorage.setItem('user', JSON.stringify(userInfo));
-  };
+    localStorage.setItem("token", token);
+    localStorage.setItem("user", JSON.stringify(userInfo));
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-  };
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  }, []);
 
-  const updateUser = (userData) => {
-    const updatedUser = { ...user, ...userData };
-    setUser(updatedUser);
-    localStorage.setItem('user', JSON.stringify(updatedUser));
-  };
+  const updateUser = useCallback((userData) => {
+    setUser((prevUser) => {
+      if (!prevUser) return userData;
+
+      const updatedUser = { ...prevUser, ...userData };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  }, []);
 
   const value = {
     user,
@@ -62,15 +71,11 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateUser,
     isAuthenticated: !!user?.token,
-    isInstructor: user?.role === 'instructor',
-    isLearner: user?.role === 'learner',
-    isParent: user?.role === 'parent',
-    loading
+    isInstructor: user?.role === "instructor",
+    isLearner: user?.role === "learner",
+    isParent: user?.role === "parent",
+    loading,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
