@@ -22,7 +22,13 @@ import MyCourses from "./pages/course/MyCourses";
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import InstructorLayout from "./layouts/InstructorLayout";
-
+import InstructorDashboard from "./pages/instructor/InstructorDashboard";
+import InstructorCourses from "./pages/instructor/InstructorCourses";
+import InstructorClasses from "./pages/instructor/InstructorClasses";
+import InstructorAssignments from "./pages/instructor/InstructorAssignments";
+import InstructorExams from "./pages/instructor/InstructorExams";
+import InstructorGrades from "./pages/instructor/InstructorGrades";
+import InstructorSettings from "./pages/instructor/InstructorSettings";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 
 function App() {
@@ -66,6 +72,14 @@ function App() {
           {/* Instructor Routes */}
           <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
             <Route path="/instructor" element={<InstructorLayout />}>
+              <Route index element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={<InstructorDashboard />} />
+              <Route path="courses" element={<InstructorCourses />} />
+              <Route path="classes" element={<InstructorClasses />} />
+              <Route path="assignments" element={<InstructorAssignments />} />
+              <Route path="exams" element={<InstructorExams />} />
+              <Route path="grades" element={<InstructorGrades />} />
+              <Route path="settings" element={<InstructorSettings />} />
             </Route>
           </Route>
           {/* 404 Page */}
