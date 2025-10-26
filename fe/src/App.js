@@ -12,22 +12,18 @@ import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
-
 import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
-
 import RegisterPage from "./pages/common/Register/RegisterPage";
 import OAuthCallback from "./pages/common/AuthCallback/OAuthCallback";
-
 import MyProfile from "./pages/MyProfile/MyProfile";
 import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
-
 import MyCourses from "./pages/course/MyCourses";
-
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+import InstructorLayout from "./layouts/InstructorLayout";
 
-import { AuthProvider } from "./contexts/AuthContext";
+import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 
 function App() {
   return (
@@ -67,7 +63,11 @@ function App() {
               element={<ScheduleManagementPage />}
             />
           </Route>
-
+          {/* Instructor Routes */}
+          <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
+            <Route path="/instructor" element={<InstructorLayout />}>
+            </Route>
+          </Route>
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>
