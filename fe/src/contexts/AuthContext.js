@@ -5,8 +5,21 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
+import { Navigate, Outlet } from "react-router-dom";
+
 
 const AuthContext = createContext();
+
+export function RequireAuth({ allowedRoles }) {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div>Loading...</div>; 
+  if (!user) return <Navigate to="/" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+  return <Outlet />;
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -21,7 +34,6 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Khôi phục thông tin user từ localStorage khi app khởi động
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
 
