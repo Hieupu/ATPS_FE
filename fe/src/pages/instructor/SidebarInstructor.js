@@ -1,12 +1,12 @@
-import React, { useState } from "react"
-import DashboardIcon from "@mui/icons-material/Dashboard"
-import SchoolIcon from "@mui/icons-material/School"
-import AssignmentIcon from "@mui/icons-material/Assignment"
-import QuizIcon from "@mui/icons-material/Quiz"
-import PeopleIcon from "@mui/icons-material/People"
-import AssessmentIcon from "@mui/icons-material/Assessment"
-import SettingsIcon from "@mui/icons-material/Settings"
-import GridViewIcon from "@mui/icons-material/GridView"
+import React, { useState } from "react";
+import DashboardIcon from "@mui/icons-material/Dashboard";
+import SchoolIcon from "@mui/icons-material/School";
+import AssignmentIcon from "@mui/icons-material/Assignment";
+import QuizIcon from "@mui/icons-material/Quiz";
+import PeopleIcon from "@mui/icons-material/People";
+import AssessmentIcon from "@mui/icons-material/Assessment";
+import SettingsIcon from "@mui/icons-material/Settings";
+import GridViewIcon from "@mui/icons-material/GridView";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: <DashboardIcon /> },
@@ -16,7 +16,7 @@ const navItems = [
   { id: "exams", label: "Exams", icon: <QuizIcon /> },
   { id: "grades", label: "Grades", icon: <AssessmentIcon /> },
   { id: "settings", label: "Settings", icon: <SettingsIcon /> },
-]
+];
 
 const linkStyle = {
   color: "#64748b",
@@ -34,24 +34,24 @@ const linkStyle = {
   fontSize: "14px",
   gap: "12px",
   width: "100%",
-}
+};
 
 const activeLinkStyle = {
   backgroundColor: "#5b5bff",
   color: "#fff",
-}
+};
 
 const hoverStyle = {
   backgroundColor: "#e2e8f0",
   color: "#1e293b",
-}
+};
 
 export function InstructorSidebar({ activeNav, onNavChange }) {
-  const [hoveredItem, setHoveredItem] = useState(null)
+  const [hoveredItem, setHoveredItem] = useState(null);
 
   const StyledNavLink = ({ id, icon, children }) => {
-    const isActive = activeNav === id
-    const isHovered = hoveredItem === id
+    const isActive = activeNav === id;
+    const isHovered = hoveredItem === id;
 
     return (
       <button
@@ -64,11 +64,15 @@ export function InstructorSidebar({ activeNav, onNavChange }) {
         onMouseLeave={() => setHoveredItem(null)}
         onClick={() => onNavChange(id)}
       >
-        <span style={{ display: "flex", alignItems: "center", fontSize: "18px" }}>{icon}</span>
+        <span
+          style={{ display: "flex", alignItems: "center", fontSize: "18px" }}
+        >
+          {icon}
+        </span>
         {children}
       </button>
-    )
-  }
+    );
+  };
 
   return (
     <div
@@ -113,7 +117,9 @@ export function InstructorSidebar({ activeNav, onNavChange }) {
         >
           <GridViewIcon sx={{ fontSize: 24 }} />
         </div>
-        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>Academy</h3>
+        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>
+          Academy
+        </h3>
       </div>
 
       {/* NAV ITEMS */}
@@ -125,5 +131,5 @@ export function InstructorSidebar({ activeNav, onNavChange }) {
         ))}
       </div>
     </div>
-  )
+  );
 }
