@@ -51,12 +51,6 @@ export function HeaderInstructor() {
 
         {/* Right side */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-          <Typography variant="body2" sx={{ color: "#64748b", fontWeight: 500 }}>
-            Profile
-          </Typography>
-          <IconButton sx={{ color: "#64748b" }}>
-            <EditIcon sx={{ fontSize: 20 }} />
-          </IconButton>
           <IconButton color="inherit" sx={{ mr: 1 }}>
             <Badge badgeContent={4} color="error">
               <NotificationsIcon />
