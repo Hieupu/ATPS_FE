@@ -29,21 +29,27 @@ export default function OAuthCallback() {
     }
   }, [userB64]);
 
-  useEffect(() => {
-    if (token && user) {
-      // Sử dụng Auth Context để login
-      login(user, token);
-    }
-    
-    const iv = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-    const to = setTimeout(() => navigate("/"), 3000);
-    
-    return () => {
-      clearInterval(iv);
-      clearTimeout(to);
-    };
-  }, [token, user, navigate, login]);
+ useEffect(() => {
+  if (token && user) {
+    login(user, token);
+  }
 
+  const iv = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
+  const to = setTimeout(() => {
+    if (user?.role === "learner") {
+      navigate("/");
+    } else if (user?.role === "instructor") {
+      navigate("/instructor");
+    } else {
+      navigate("/"); 
+    }
+  }, 3000);
+
+  return () => {
+    clearInterval(iv);
+    clearTimeout(to);
+  };
+}, [token, user, navigate, login]);
   const ok = Boolean(token);
 
   return (
