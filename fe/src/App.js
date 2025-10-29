@@ -29,6 +29,7 @@ import InstructorAssignments from "./pages/instructor/InstructorAssignments";
 import InstructorExams from "./pages/instructor/InstructorExams";
 import InstructorGrades from "./pages/instructor/InstructorGrades";
 import InstructorSettings from "./pages/instructor/InstructorSettings";
+import ClassDetail from "./pages/instructor/ClassDetail";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 
 function App() {
@@ -76,6 +77,7 @@ function App() {
               <Route path="dashboard" element={<InstructorDashboard />} />
               <Route path="courses" element={<InstructorCourses />} />
               <Route path="classes" element={<InstructorClasses />} />
+              <Route path="classes/detail" element={<ClassDetail />} />
               <Route path="assignments" element={<InstructorAssignments />} />
               <Route path="exams" element={<InstructorExams />} />
               <Route path="grades" element={<InstructorGrades />} />
