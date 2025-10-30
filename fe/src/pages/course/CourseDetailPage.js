@@ -9,14 +9,9 @@ import {
   CardContent,
   Avatar,
   Chip,
-  Rating,
   Tabs,
   Tab,
   Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
   Alert,
   Dialog,
   DialogTitle,
@@ -24,6 +19,13 @@ import {
   DialogActions,
   CircularProgress,
   Skeleton,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import {
   People,
@@ -34,13 +36,32 @@ import {
   School,
   WorkspacePremium,
   Language,
-  CheckCircle,
   ErrorOutline,
   Payment,
+  VideoCall,
+  RadioButtonChecked,
+  RadioButtonUnchecked,
+  ExpandMore,
+  Description,
+  InsertDriveFile,
+  PictureAsPdf,
+  VideoLibrary,
 } from "@mui/icons-material";
 import { useParams, useNavigate } from "react-router-dom";
-import { getCourseByIdApi } from "../../apiServices/courseService";
+import {
+  getCourseByIdApi,
+  getClassesByCourseApi,
+  getCourseCurriculumApi,
+  getMyEnrolledCourses,
+} from "../../apiServices/courseService";
 import { createPaymentLinkApi } from "../../apiServices/paymentService";
+import {
+  getExamsByCourseApi,
+  getExamQuestionsApi,
+  submitExamApi,
+} from "../../apiServices/examService";
+import AppHeader from "../../components/Header/AppHeader";
+import { getCourseMaterialsApi } from "../../apiServices/materialService";
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
@@ -60,7 +81,12 @@ const CourseDetailSkeleton = () => (
       <Container maxWidth="lg">
         <Grid container spacing={4}>
           <Grid item xs={12} md={8}>
-            <Skeleton variant="rectangular" width={100} height={32} sx={{ mb: 2 }} />
+            <Skeleton
+              variant="rectangular"
+              width={100}
+              height={32}
+              sx={{ mb: 2 }}
+            />
             <Skeleton variant="text" width="80%" height={60} />
             <Skeleton variant="text" width="60%" height={40} />
             <Box sx={{ display: "flex", gap: 3, mt: 3 }}>
@@ -88,6 +114,22 @@ const CourseDetailPage = () => {
   const [enrollDialog, setEnrollDialog] = useState(false);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+
+  // Curriculum Units/Lessons (Unit-only UI)
+  const [curriculum, setCurriculum] = useState([]);
+  const [loadingCurriculum, setLoadingCurriculum] = useState(false);
+  const [loadingCurriculumData, setLoadingCurriculumData] = useState(false);
+  // Materials (only when enrolled)
+  const [courseMaterials, setCourseMaterials] = useState([]);
+  const [loadingMaterials, setLoadingMaterials] = useState(false);
+  const [materialsError, setMaterialsError] = useState(null);
+  const [hasLoadedMaterials, setHasLoadedMaterials] = useState(false);
+
+  // Enrollment check
+  const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
 
   const priceFormatter = useMemo(
     () =>
@@ -99,11 +141,32 @@ const CourseDetailPage = () => {
   );
 
   const formatPrice = useCallback(
-    (price) => priceFormatter.format(price),
+    (price) => {
+      if (price == null || isNaN(price)) {
+        return "0 ₫";
+      }
+      return priceFormatter.format(price);
+    },
     [priceFormatter]
   );
 
   const formatDuration = useCallback((duration) => `${duration} hours`, []);
+  const getFileIcon = useCallback((type) => {
+    switch ((type || "").toLowerCase()) {
+      case "pdf":
+        return <PictureAsPdf color="error" />;
+      case "video":
+      case "mp4":
+        return <VideoLibrary color="primary" />;
+      default:
+        return <InsertDriveFile />;
+    }
+  }, []);
+
+  const handleDownloadMaterial = useCallback((material) => {
+    if (!material?.FileURL) return;
+    window.open(material.FileURL, "_blank", "noopener,noreferrer");
+  }, []);
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -123,23 +186,175 @@ const CourseDetailPage = () => {
     fetchCourse();
   }, [fetchCourse]);
 
+  // Check enrollment to hide enroll button
+  useEffect(() => {
+    const checkEnrollment = async () => {
+      if (!course?.CourseID) return;
+      try {
+        const res = await getMyEnrolledCourses();
+        const list = res?.data || res?.items || res || [];
+        const enrolled = (Array.isArray(list) ? list : []).some(
+          (c) => c.CourseID === course.CourseID
+        );
+        setIsEnrolledInCourse(enrolled);
+      } catch (e) {
+        setIsEnrolledInCourse(false);
+      }
+    };
+    checkEnrollment();
+  }, [course?.CourseID]);
 
-const handleEnroll = async () => {
-  try {
-    setEnrolling(true);
-    setEnrollError(null);
+  // Load curriculum structure (Units only UI in accordion)
+  useEffect(() => {
+    const loadCurriculum = async () => {
+      if (tabValue !== 0 || !course?.CourseID) return;
+      try {
+        setLoadingCurriculum(true);
+        setLoadingCurriculumData(true);
+        const cur = await getCourseCurriculumApi(course.CourseID);
+        setCurriculum(cur.curriculum || []);
+      } catch (e) {
+        setCurriculum([]);
+      } finally {
+        setLoadingCurriculum(false);
+        setLoadingCurriculumData(false);
+      }
+    };
+    loadCurriculum();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabValue, course?.CourseID]);
 
-    const { paymentUrl } = await createPaymentLinkApi(course.CourseID);
+  // Load materials khi mở tab Materials (index 4) nếu đã enroll
+  useEffect(() => {
+    const materialsTabIndex = 4;
+    if (!isEnrolledInCourse || !course?.CourseID) return;
+    // Prefetch một lần khi vừa xác định đã enroll hoặc khi user mở tab Materials
+    if (tabValue !== materialsTabIndex && hasLoadedMaterials) return;
+    const loadMaterials = async () => {
+      try {
+        setLoadingMaterials(true);
+        setMaterialsError(null);
+        console.log("Loading materials for course:", course.CourseID);
+        const data = await getCourseMaterialsApi(course.CourseID);
+        const list = (data.materials || []).map((m) => ({
+          MaterialID: m.MaterialID,
+          Title: m.Title,
+          FileURL: m.FileURL,
+          Status: m.Status,
+          FileType: (m.fileType || "").toLowerCase(),
+        }));
+        setCourseMaterials(list);
+        setHasLoadedMaterials(true);
+      } catch (e) {
+        setMaterialsError(e.message || "Không thể tải tài liệu khóa học");
+        setCourseMaterials([]);
+      } finally {
+        setLoadingMaterials(false);
+      }
+    };
+    loadMaterials();
+  }, [tabValue, isEnrolledInCourse, course?.CourseID, hasLoadedMaterials]);
 
-    // Chuyển hướng người dùng sang trang PayOS
-    window.location.href = paymentUrl;
-  } catch (error) {
-    console.error("Payment error:", error);
-    setEnrollError(error.message || "Failed to start payment.");
-  } finally {
-    setEnrolling(false);
-  }
-};
+  // Exam state
+  const [exams, setExams] = useState([]);
+  const [loadingExams, setLoadingExams] = useState(false);
+  const [examQuestions, setExamQuestions] = useState([]);
+  const [activeExam, setActiveExam] = useState(null);
+  const [answers, setAnswers] = useState({});
+  const [submittingExam, setSubmittingExam] = useState(false);
+  const [examResult, setExamResult] = useState(null);
+
+  // Load exams when switch to Exam tab (index 4 when enrolled)
+  useEffect(() => {
+    if (!isEnrolledInCourse || !course?.CourseID) return;
+    const examTabIndex = 4;
+    if (tabValue !== examTabIndex) return;
+    const load = async () => {
+      try {
+        setLoadingExams(true);
+        const data = await getExamsByCourseApi(course.CourseID);
+        setExams(data.exams || []);
+      } finally {
+        setLoadingExams(false);
+      }
+    };
+    load();
+  }, [tabValue, isEnrolledInCourse, course?.CourseID]);
+
+  const handleStartExam = async (exam) => {
+    setActiveExam(exam);
+    setExamResult(null);
+    setAnswers({});
+    try {
+      const data = await getExamQuestionsApi(exam.ExamID);
+      setExamQuestions(data.questions || []);
+    } catch (_) {
+      setExamQuestions([]);
+    }
+  };
+
+  const handleChangeAnswer = (qid, value) => {
+    setAnswers((prev) => ({ ...prev, [qid]: value }));
+  };
+
+  const handleSubmitExam = async () => {
+    if (!activeExam) return;
+    try {
+      setSubmittingExam(true);
+      const payload = Object.entries(answers).map(([questionId, answer]) => ({
+        questionId: Number(questionId),
+        answer,
+      }));
+      const data = await submitExamApi(activeExam.ExamID, payload);
+      setExamResult(data.result || null);
+    } finally {
+      setSubmittingExam(false);
+    }
+  };
+  console.log(courseMaterials);
+
+  // Enrollment dialog handlers
+  const handleOpenEnrollDialog = async () => {
+    try {
+      if (isEnrolledInCourse) {
+        setEnrollError("Bạn đã đăng ký khóa học này.");
+        return;
+      }
+      setLoadingClasses(true);
+      const data = await getClassesByCourseApi(course.CourseID);
+      setClasses(data.classes || []);
+      setEnrollDialog(true);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      setEnrollError("Không thể tải danh sách lớp học");
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  const handleEnroll = async () => {
+    if (!selectedClass) {
+      setEnrollError("Vui lòng chọn một lớp học");
+      return;
+    }
+    if (isEnrolledInCourse) {
+      setEnrollError("Bạn đã đăng ký khóa học này.");
+      return;
+    }
+
+    try {
+      setEnrolling(true);
+      setEnrollError(null);
+
+      const { paymentUrl } = await createPaymentLinkApi(selectedClass.ClassID);
+      window.location.href = paymentUrl;
+    } catch (error) {
+      console.error("Payment error:", error);
+      setEnrollError(error.message || "Failed to start payment.");
+    } finally {
+      setEnrolling(false);
+    }
+  };
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -174,9 +389,7 @@ const handleEnroll = async () => {
   if (!course) {
     return (
       <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Alert severity="warning">
-          Course not found. Please check the course ID and try again.
-        </Alert>
+        <Alert severity="warning">Course not found. Please try again.</Alert>
         <Button
           variant="contained"
           onClick={() => navigate("/courses")}
@@ -190,6 +403,7 @@ const handleEnroll = async () => {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <AppHeader />
       {/* Course Header */}
       <Box
         sx={{
@@ -203,11 +417,7 @@ const handleEnroll = async () => {
             <Grid item xs={12} md={8}>
               <Chip
                 label={course.Category || "Programming"}
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.2)",
-                  color: "white",
-                  mb: 2,
-                }}
+                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "white", mb: 2 }}
               />
               <Typography
                 variant="h3"
@@ -222,11 +432,7 @@ const handleEnroll = async () => {
               </Typography>
               <Typography
                 variant="h6"
-                sx={{
-                  opacity: 0.9,
-                  mb: 3,
-                  maxWidth: 600,
-                }}
+                sx={{ opacity: 0.9, mb: 3, maxWidth: 600 }}
               >
                 {course.Description}
               </Typography>
@@ -288,16 +494,18 @@ const handleEnroll = async () => {
                     </Typography>
                   </Box>
 
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={() => setEnrollDialog(true)}
-                    startIcon={<Payment />}
-                    sx={{ mb: 2, py: 1.5, fontWeight: 600 }}
-                  >
-                    Enroll Now
-                  </Button>
+                  {!isEnrolledInCourse && (
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      size="large"
+                      onClick={handleOpenEnrollDialog}
+                      startIcon={<Payment />}
+                      sx={{ mb: 2, py: 1.5, fontWeight: 600 }}
+                    >
+                      Enroll Now
+                    </Button>
+                  )}
 
                   <Button
                     fullWidth
@@ -312,34 +520,28 @@ const handleEnroll = async () => {
                     <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
                       This course includes:
                     </Typography>
-                    <List dense>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <PlayCircle color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={`${course.UnitCount || 0} learning units`}
-                        />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <AccessTime color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="Lifetime access" />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <WorkspacePremium color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="Certificate of completion" />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <Language color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="English subtitles" />
-                      </ListItem>
-                    </List>
+                    <Box
+                      sx={{ display: "flex", flexDirection: "column", gap: 1 }}
+                    >
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <PlayCircle color="primary" sx={{ mr: 1 }} />
+                        <Typography>
+                          {course.UnitCount || 0} learning units
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <AccessTime color="primary" sx={{ mr: 1 }} />
+                        <Typography>Lifetime access</Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <WorkspacePremium color="primary" sx={{ mr: 1 }} />
+                        <Typography>Certificate of completion</Typography>
+                      </Box>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Language color="primary" sx={{ mr: 1 }} />
+                        <Typography>English subtitles</Typography>
+                      </Box>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -348,7 +550,7 @@ const handleEnroll = async () => {
         </Container>
       </Box>
 
-      {/* Course Content - Tabs remain the same */}
+      {/* Course Content - Tabs */}
       <Container maxWidth="lg" sx={{ py: 6 }}>
         <Tabs
           value={tabValue}
@@ -358,102 +560,240 @@ const handleEnroll = async () => {
           <Tab label="Curriculum" />
           <Tab label="Instructor" />
           <Tab label="Reviews" />
-          <Tab label="FAQ" />
+          {isEnrolledInCourse && <Tab label="Materials" />}
+          {isEnrolledInCourse && <Tab label="Exam" />}
         </Tabs>
 
         <Divider />
 
-        {/* Curriculum Tab */}
+        {/* Curriculum Tab (Course → Unit only) */}
         <TabPanel value={tabValue} index={0}>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-            Course Curriculum
+          <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+            Lộ trình học
           </Typography>
 
-          {course.Units && course.Units.length > 0 ? (
-            <Card>
-              <CardContent sx={{ p: 0 }}>
-                <List>
-                  {course.Units.map((unit, index) => (
-                    <ListItem
-                      key={unit.UnitID}
-                      sx={{
-                        borderBottom: "1px solid",
-                        borderColor: "divider",
-                        "&:last-child": { borderBottom: "none" },
-                        py: 2,
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Box
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: "50%",
-                            bgcolor: "primary.main",
-                            color: "white",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 600,
-                            fontSize: "0.875rem",
-                          }}
-                        >
-                          {index + 1}
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {unit.Title}
-                          </Typography>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 1 }}>
+          {loadingCurriculum || loadingCurriculumData ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <>
+              {curriculum.length === 0 ? (
+                <Alert severity="info">
+                  Chưa có chương trình học cho khóa này.
+                </Alert>
+              ) : (
+                <Card>
+                  <CardContent>
+                    {curriculum.map((unit) => (
+                      <Accordion key={unit.UnitID} disableGutters>
+                        <AccordionSummary expandIcon={<ExpandMore />}>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              flexDirection: "column",
+                              width: "100%",
+                            }}
+                          >
+                            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                              {unit.Title}
+                            </Typography>
                             <Typography variant="body2" color="text.secondary">
                               {unit.Description}
                             </Typography>
-                            {unit.Duration && (
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  mt: 1,
-                                }}
-                              >
-                                <Schedule sx={{ fontSize: 16, mr: 0.5 }} />
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  {unit.Duration}
-                                </Typography>
-                              </Box>
-                            )}
                           </Box>
-                        }
-                      />
-                      <Chip
-                        icon={<PlayCircle />}
-                        label="Preview"
-                        variant="outlined"
-                        size="small"
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          ) : (
-            <Alert severity="info">
-              No curriculum available for this course yet.
-            </Alert>
+                        </AccordionSummary>
+                        <AccordionDetails>
+                          {!unit.Lessons || unit.Lessons.length === 0 ? (
+                            <Alert severity="info">
+                              Chưa có bài học trong unit này.
+                            </Alert>
+                          ) : (
+                            <List dense>
+                              {unit.Lessons.map((lesson, index) => (
+                                <ListItem
+                                  key={lesson.LessonID}
+                                  sx={{ py: 0.5 }}
+                                >
+                                  <ListItemIcon>
+                                    <Description color="action" />
+                                  </ListItemIcon>
+                                  <ListItemText
+                                    primary={`${index + 1}. ${lesson.Title}`}
+                                    secondary={[
+                                      lesson.Type
+                                        ? `Loại: ${lesson.Type}`
+                                        : null,
+                                      Number.isFinite(lesson.Time)
+                                        ? `Thời lượng: ${lesson.Time} phút`
+                                        : null,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" • ")}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          )}
+                        </AccordionDetails>
+                      </Accordion>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+            </>
           )}
         </TabPanel>
 
-        {/* Other tabs remain the same... */}
+        {/* Materials Tab (chỉ hiển thị khi đã enroll) */}
+        {isEnrolledInCourse && (
+          <TabPanel value={tabValue} index={3}>
+            {materialsError && <Alert severity="error">{materialsError}</Alert>}
+            {loadingMaterials ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : courseMaterials.length === 0 ? (
+              <Alert severity="info">Chưa có tài liệu cho khóa học này.</Alert>
+            ) : (
+              <Card>
+                <CardContent sx={{ p: 0 }}>
+                  <List>
+                    {courseMaterials.map((m) => (
+                      <ListItem
+                        key={m.MaterialID}
+                        sx={{
+                          borderBottom: "1px solid",
+                          borderColor: "divider",
+                          "&:last-child": { borderBottom: "none" },
+                          py: 1.5,
+                        }}
+                        secondaryAction={
+                          <Button
+                            variant="text"
+                            onClick={() => handleDownloadMaterial(m)}
+                          >
+                            Tải xuống
+                          </Button>
+                        }
+                      >
+                        <ListItemIcon>{getFileIcon(m.FileType)}</ListItemIcon>
+                        <ListItemText
+                          primary={m.Title}
+                          secondary={
+                            m.FileType ? m.FileType.toUpperCase() : "File"
+                          }
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+                </CardContent>
+              </Card>
+            )}
+          </TabPanel>
+        )}
+
+        {/* Exam Tab (chỉ hiển thị khi đã enroll) */}
+        {isEnrolledInCourse && (
+          <TabPanel value={tabValue} index={4}>
+            {loadingExams ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : exams.length === 0 ? (
+              <Alert severity="info">
+                Chưa có bài kiểm tra cho khóa học này.
+              </Alert>
+            ) : (
+              <Card>
+                <CardContent>
+                  <List>
+                    {exams.map((ex) => (
+                      <ListItem
+                        key={ex.ExamID}
+                        secondaryAction={
+                          <Button
+                            variant="contained"
+                            size="small"
+                            onClick={() => handleStartExam(ex)}
+                          >
+                            Bắt đầu
+                          </Button>
+                        }
+                      >
+                        <ListItemText
+                          primary={ex.Title}
+                          secondary={`${ex.Description || ""}`}
+                        />
+                      </ListItem>
+                    ))}
+                  </List>
+
+                  {activeExam && (
+                    <Box sx={{ mt: 3 }}>
+                      <Typography variant="h6" sx={{ mb: 2 }}>
+                        {activeExam.Title}
+                      </Typography>
+                      {examQuestions.length === 0 ? (
+                        <Alert severity="info">Chưa có câu hỏi.</Alert>
+                      ) : (
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 2,
+                          }}
+                        >
+                          {examQuestions.map((q, idx) => (
+                            <Box key={q.QuestionID}>
+                              <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                                {idx + 1}. {q.Content}
+                              </Typography>
+                              <textarea
+                                style={{ width: "100%", minHeight: 80 }}
+                                value={answers[q.QuestionID] || ""}
+                                onChange={(e) =>
+                                  handleChangeAnswer(
+                                    q.QuestionID,
+                                    e.target.value
+                                  )
+                                }
+                              />
+                            </Box>
+                          ))}
+                          <Box
+                            sx={{
+                              display: "flex",
+                              gap: 2,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Button
+                              variant="contained"
+                              onClick={handleSubmitExam}
+                              disabled={submittingExam}
+                            >
+                              {submittingExam ? "Đang nộp..." : "Nộp bài"}
+                            </Button>
+                            {examResult && (
+                              <Typography color="success.main">
+                                Điểm: {examResult.Score ?? examResult.score}% •{" "}
+                                {examResult.Feedback ?? examResult.feedback}
+                              </Typography>
+                            )}
+                          </Box>
+                        </Box>
+                      )}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </TabPanel>
+        )}
       </Container>
 
-      {/* Enrollment Dialog - Updated */}
+      {/* Enrollment Dialog */}
       <Dialog
         open={enrollDialog}
         onClose={() => !enrolling && setEnrollDialog(false)}
@@ -462,9 +802,9 @@ const handleEnroll = async () => {
       >
         <DialogTitle>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Payment color="primary" />
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              Proceed to Payment
+            <School color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              Chọn lớp học
             </Typography>
           </Box>
         </DialogTitle>
@@ -474,44 +814,117 @@ const handleEnroll = async () => {
               {enrollError}
             </Alert>
           )}
-          
-          <Alert severity="info" sx={{ mb: 2 }}>
-            You will be redirected to PayOS to complete your payment securely.
-          </Alert>
 
           <Typography variant="body1" sx={{ mb: 2 }}>
-            You are about to enroll in:
+            Chọn lớp học bạn muốn tham gia:
           </Typography>
-          <Typography
-            variant="h6"
-            color="primary.main"
-            sx={{ fontWeight: 600, mb: 2 }}
-          >
-            {course.Title}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Instructor:</strong> {course.InstructorName}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Duration:</strong> {formatDuration(course.Duration)}
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Total: {formatPrice(course.TuitionFee)}
-          </Typography>
+
+          {loadingClasses ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : classes.length === 0 ? (
+            <Alert severity="info">
+              Không có lớp học nào cho khóa học này.
+            </Alert>
+          ) : (
+            <Box sx={{ maxHeight: 400, overflowY: "auto", mb: 2 }}>
+              {classes.map((classItem) => (
+                <Card
+                  key={classItem.ClassID}
+                  sx={{
+                    mb: 2,
+                    cursor: "pointer",
+                    border: 2,
+                    borderColor:
+                      selectedClass?.ClassID === classItem.ClassID
+                        ? "primary.main"
+                        : "grey.300",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      borderColor: "primary.main",
+                      bgcolor: "action.hover",
+                    },
+                  }}
+                  onClick={() => setSelectedClass(classItem)}
+                >
+                  <CardContent>
+                    <Box sx={{ display: "flex", alignItems: "start", gap: 2 }}>
+                      <Box>
+                        {selectedClass?.ClassID === classItem.ClassID ? (
+                          <RadioButtonChecked color="primary" />
+                        ) : (
+                          <RadioButtonUnchecked />
+                        )}
+                      </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography
+                          variant="h6"
+                          sx={{ fontWeight: 600, mb: 1 }}
+                        >
+                          {classItem.ClassName}
+                        </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 1 }}
+                        >
+                          Giảng viên: {classItem.InstructorName}
+                        </Typography>
+
+                        {classItem.ScheduleDates && (
+                          <Box sx={{ mb: 1 }}>
+                            <Chip
+                              icon={<Schedule />}
+                              label={`Lịch: ${classItem.ScheduleDates}`}
+                              size="small"
+                              sx={{ mr: 1, mb: 1 }}
+                            />
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              ({classItem.TotalSessions} buổi học)
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {classItem.ZoomURL && (
+                          <Box sx={{ mt: 1 }}>
+                            <Chip
+                              icon={<VideoCall />}
+                              label="Có Zoom"
+                              size="small"
+                              color="primary"
+                            />
+                          </Box>
+                        )}
+                      </Box>
+                    </Box>
+                  </CardContent>
+                </Card>
+              ))}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setEnrollDialog(false)} disabled={enrolling}>
-            Cancel
+          <Button
+            onClick={() => {
+              setEnrollDialog(false);
+              setSelectedClass(null);
+            }}
+            disabled={enrolling}
+          >
+            Hủy
           </Button>
           <Button
             variant="contained"
             onClick={handleEnroll}
-            disabled={enrolling}
+            disabled={enrolling || !selectedClass || loadingClasses}
             sx={{ minWidth: 140 }}
             startIcon={enrolling ? <CircularProgress size={16} /> : <Payment />}
           >
-            {enrolling ? "Redirecting..." : "Proceed to Payment"}
+            {enrolling ? "Đang chuyển hướng..." : "Tiến hành thanh toán"}
           </Button>
         </DialogActions>
       </Dialog>

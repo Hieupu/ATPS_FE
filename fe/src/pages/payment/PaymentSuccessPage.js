@@ -18,7 +18,7 @@ export default function PaymentSuccessPage() {
       try {
         const orderCode = searchParams.get("orderCode");
         console.log("Updating payment status for order:", orderCode);
-        
+
         if (orderCode) {
           // Gọi API để cập nhật trạng thái thành công
           await updatePaymentStatusApi(orderCode, "success");
@@ -28,6 +28,8 @@ export default function PaymentSuccessPage() {
         console.error("Error updating payment status:", error);
       } finally {
         setLoading(false);
+        // Chuyển tới Lịch học sau khi cập nhật xong
+        setTimeout(() => navigate("/schedule"), 600);
       }
     };
 
@@ -51,8 +53,8 @@ export default function PaymentSuccessPage() {
       <Typography variant="body1" sx={{ mb: 4 }}>
         Bạn đã đăng ký khóa học thành công.
       </Typography>
-      <Button variant="contained" onClick={() => navigate("/learning")}>
-        Đến khóa học của tôi
+      <Button variant="contained" onClick={() => navigate("/schedule")}>
+        Đến Lịch học
       </Button>
     </Box>
   );
