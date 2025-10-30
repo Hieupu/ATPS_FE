@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -15,6 +15,8 @@ import {
   MenuItem,
   useMediaQuery,
   Divider,
+  Badge,
+  MenuList,
 } from "@mui/material";
 import {
   School,
@@ -26,20 +28,66 @@ import {
   Book,
   Dashboard,
   Group,
+  CalendarToday,
+  CheckCircle,
+  Assignment,
+  Folder,
+  Notifications,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
+import {
+  listNotificationsApi,
+  markAllNotificationsReadApi,
+  markNotificationReadApi,
+} from "../../apiServices/notificationService";
 
 const AppHeader = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Sử dụng AuthContext thay vì localStorage trực tiếp
   const { user, isLearner, isInstructor, isParent, logout } = useAuth();
 
-  const navItems = ["Home", "Courses", "About", "Contact"];
+  // Load notifications on mount and when user changes
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (!user) return;
+        const data = await listNotificationsApi(20);
+        const list = data.notifications || [];
+        setNotifications(list);
+        setUnreadCount(
+          list.filter((n) => (n.Status || "").toLowerCase() !== "read").length
+        );
+      } catch (e) {}
+    };
+    load();
+  }, [user]);
+
+  const navItems = [
+    {
+      label: "Home",
+      path: "/",
+    },
+    {
+      label: "Courses",
+      path: "/courses",
+    },
+    {
+      label: "Instructors",
+      path: "/instructors",
+    },
+    {
+      label: "Contact",
+      path: "/contact",
+    },
+  ];
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
@@ -68,7 +116,79 @@ const AppHeader = () => {
           }}
         >
           <Book sx={{ mr: 1, color: "#6b7280" }} />
-          My Courses
+          Khóa học của tôi
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-schedule"
+          onClick={() => navigate("/schedule")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <CalendarToday sx={{ mr: 1, color: "#6b7280" }} />
+          Lịch học
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-attendance"
+          onClick={() => navigate("/attendance")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <CheckCircle sx={{ mr: 1, color: "#6b7280" }} />
+          Điểm danh
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-progress"
+          onClick={() => navigate("/progress")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Assignment sx={{ mr: 1, color: "#6b7280" }} />
+          Tiến độ
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-materials"
+          onClick={() => navigate("/materials")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Folder sx={{ mr: 1, color: "#6b7280" }} />
+          Tài liệu
         </MenuItem>
       );
     }
@@ -124,16 +244,64 @@ const AppHeader = () => {
 
     if (isLearner) {
       items.push(
-        <ListItem button key="my-courses-mobile" onClick={() => navigate("/my-courses")}>
+        <ListItem
+          button
+          key="my-courses-mobile"
+          onClick={() => navigate("/my-courses")}
+        >
           <Book sx={{ mr: 2 }} />
-          <ListItemText primary="My Courses" />
+          <ListItemText primary="Khóa học của tôi" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-schedule-mobile"
+          onClick={() => navigate("/schedule")}
+        >
+          <CalendarToday sx={{ mr: 2 }} />
+          <ListItemText primary="Lịch học" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-attendance-mobile"
+          onClick={() => navigate("/attendance")}
+        >
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Điểm danh" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-progress-mobile"
+          onClick={() => navigate("/progress")}
+        >
+          <Assignment sx={{ mr: 2 }} />
+          <ListItemText primary="Tiến độ" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-materials-mobile"
+          onClick={() => navigate("/materials")}
+        >
+          <Folder sx={{ mr: 2 }} />
+          <ListItemText primary="Tài liệu" />
         </ListItem>
       );
     }
 
     if (isInstructor) {
       items.push(
-        <ListItem button key="course-manage-mobile" onClick={() => navigate("/instructor/courses")}>
+        <ListItem
+          button
+          key="course-manage-mobile"
+          onClick={() => navigate("/instructor/courses")}
+        >
           <Dashboard sx={{ mr: 2 }} />
           <ListItemText primary="Course Management" />
         </ListItem>
@@ -142,7 +310,11 @@ const AppHeader = () => {
 
     if (isParent) {
       items.push(
-        <ListItem button key="tracking-student-mobile" onClick={() => navigate("/parent/tracking")}>
+        <ListItem
+          button
+          key="tracking-student-mobile"
+          onClick={() => navigate("/parent/tracking")}
+        >
           <Group sx={{ mr: 2 }} />
           <ListItemText primary="Tracking Student" />
         </ListItem>
@@ -225,7 +397,7 @@ const AppHeader = () => {
             <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
               {navItems.map((item) => (
                 <Button
-                  key={item}
+                  key={item.label}
                   sx={{
                     color: "white",
                     fontWeight: 600,
@@ -245,8 +417,9 @@ const AppHeader = () => {
                       width: "100%",
                     },
                   }}
+                  onClick={() => navigate(item.path)}
                 >
-                  {item}
+                  {item.label}
                 </Button>
               ))}
 
@@ -289,7 +462,98 @@ const AppHeader = () => {
                 </>
               ) : (
                 <>
-                  
+                  {/* Notifications bell */}
+                  <IconButton
+                    color="inherit"
+                    onClick={(e) => setNotifAnchor(e.currentTarget)}
+                    sx={{ mr: 1 }}
+                  >
+                    <Badge badgeContent={unreadCount} color="error">
+                      <Notifications />
+                    </Badge>
+                  </IconButton>
+                  <Menu
+                    anchorEl={notifAnchor}
+                    open={Boolean(notifAnchor)}
+                    onClose={() => setNotifAnchor(null)}
+                    PaperProps={{ sx: { width: 360, maxHeight: 420 } }}
+                  >
+                    <Box
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        Thông báo
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={async () => {
+                          await markAllNotificationsReadApi();
+                          setUnreadCount(0);
+                          setNotifications((prev) =>
+                            prev.map((n) => ({ ...n, Status: "read" }))
+                          );
+                        }}
+                      >
+                        Đánh dấu đã đọc
+                      </Button>
+                    </Box>
+                    <Divider />
+                    <MenuList dense>
+                      {notifications.length === 0 ? (
+                        <MenuItem disabled>Chưa có thông báo</MenuItem>
+                      ) : (
+                        notifications.map((n) => (
+                          <MenuItem
+                            key={n.NotificationID}
+                            onClick={async () => {
+                              await markNotificationReadApi(n.NotificationID);
+                              setNotifications((prev) =>
+                                prev.map((x) =>
+                                  x.NotificationID === n.NotificationID
+                                    ? { ...x, Status: "read" }
+                                    : x
+                                )
+                              );
+                              setUnreadCount((c) =>
+                                Math.max(
+                                  0,
+                                  c -
+                                    ((n.Status || "").toLowerCase() !== "read"
+                                      ? 1
+                                      : 0)
+                                )
+                              );
+                            }}
+                            sx={{
+                              whiteSpace: "normal",
+                              alignItems: "start",
+                              gap: 1,
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                borderRadius: "50%",
+                                bgcolor:
+                                  (n.Status || "").toLowerCase() === "read"
+                                    ? "transparent"
+                                    : "primary.main",
+                                mt: 1,
+                              }}
+                            />
+                            <Typography variant="body2">{n.Content}</Typography>
+                          </MenuItem>
+                        ))
+                      )}
+                    </MenuList>
+                  </Menu>
                   <Avatar
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{
@@ -311,7 +575,8 @@ const AppHeader = () => {
                       },
                     }}
                   >
-                    {user?.username?.charAt(0).toUpperCase() || user?.Username?.charAt(0).toUpperCase()}
+                    {user?.username?.charAt(0).toUpperCase() ||
+                      user?.Username?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Menu
                     anchorEl={anchorEl}
@@ -346,7 +611,7 @@ const AppHeader = () => {
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
                       Profile
                     </MenuItem>
-                    
+
                     <MenuItem
                       onClick={() => navigate("/mylearning")}
                       sx={{
@@ -429,8 +694,8 @@ const AppHeader = () => {
         <Box sx={{ width: 250, pt: 2 }}>
           <List>
             {navItems.map((item) => (
-              <ListItem button key={item}>
-                <ListItemText primary={item} />
+              <ListItem key={item.label} onClick={() => navigate(item.path)}>
+                <ListItemText primary={item.label} />
               </ListItem>
             ))}
 
