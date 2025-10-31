@@ -8,7 +8,7 @@ import {
 import AdminLayout from "./layouts/AdminLayout";
 import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
-import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
+import { PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
@@ -30,6 +30,14 @@ import InstructorGrades from "./pages/instructor/InstructorGrades";
 import InstructorSettings from "./pages/instructor/InstructorSettings";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import InstructorCoursesList from "./pages/instructor/InstructorCoursesList";
+
+import InstructorsPage from "./pages/instructor/InstructorsPage";
+import InstructorDetailPage from "./pages/instructor/InstructorDetailPage";
+
+import SchedulePage from "./pages/schedule/SchedulePage";
+import AttendancePage from "./pages/attendance/AttendancePage";
+import ProgressPage from "./pages/progress/ProgressPage";
+import MaterialsPage from "./pages/materials/MaterialsPage";
 
 function App() {
   return (
@@ -59,6 +67,15 @@ function App() {
           <Route path="/my-courses" element={<MyCourses />} />
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
+
+          <Route path="/instructors" element={<InstructorsPage />} />
+          <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+
+          {/* Learner-specific Routes */}
+          <Route path="/schedule" element={<SchedulePage />} />
+          <Route path="/attendance" element={<AttendancePage />} />
+          <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/materials" element={<MaterialsPage />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
