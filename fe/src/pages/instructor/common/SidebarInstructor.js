@@ -8,7 +8,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsIcon from "@mui/icons-material/Settings";
 import GridViewIcon from "@mui/icons-material/GridView";
-import "./style.css";  
+import "../pages/style.css";
 
 const navItems = [
   { id: "dashboard", label: "Dashboard", icon: <DashboardIcon />, path: "/instructor/dashboard" },

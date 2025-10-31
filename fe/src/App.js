@@ -22,14 +22,14 @@ import MyCourses from "./pages/course/MyCourses";
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import InstructorLayout from "./layouts/InstructorLayout";
-import InstructorDashboard from "./pages/instructor/InstructorDashboard";
-import InstructorCourses from "./pages/instructor/InstructorCourses";
-import InstructorClasses from "./pages/instructor/InstructorClasses";
-import InstructorAssignments from "./pages/instructor/InstructorAssignments";
-import InstructorExams from "./pages/instructor/InstructorExams";
-import InstructorGrades from "./pages/instructor/InstructorGrades";
-import InstructorSettings from "./pages/instructor/InstructorSettings";
-import ClassDetail from "./pages/instructor/ClassDetail";
+import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
+import InstructorCourses from "./pages/instructor/pages/CoursesPage";
+import InstructorClasses from "./pages/instructor/pages/ClassesPage";
+import ClassDetail from "./pages/instructor/pages/ClassDetail";
+import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
+import InstructorExams from "./pages/instructor/pages/ExamsPage";
+import InstructorGrades from "./pages/instructor/pages/GradesPage";
+import InstructorSettings from "./pages/instructor/pages/SettingsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 
 function App() {

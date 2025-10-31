@@ -7,7 +7,7 @@ import {
 import NotificationsIcon from "@mui/icons-material/Notifications"
 import SearchIcon from "@mui/icons-material/Search"
 import EditIcon from "@mui/icons-material/Edit"
-import { useAuth } from "../../contexts/AuthContext" 
+import { useAuth } from "../../../contexts/AuthContext" 
 
 export function HeaderInstructor() {
   const [anchorEl, setAnchorEl] = useState(null)
