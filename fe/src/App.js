@@ -23,13 +23,13 @@ import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/InstructorDashboard";
-import InstructorCourses from "./pages/instructor/InstructorCourses";
 import InstructorClasses from "./pages/instructor/InstructorClasses";
 import InstructorAssignments from "./pages/instructor/InstructorAssignments";
 import InstructorExams from "./pages/instructor/InstructorExams";
 import InstructorGrades from "./pages/instructor/InstructorGrades";
 import InstructorSettings from "./pages/instructor/InstructorSettings";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
+import InstructorCoursesList from "./pages/instructor/InstructorCoursesList";
 
 function App() {
   return (
@@ -74,7 +74,7 @@ function App() {
             <Route path="/instructor" element={<InstructorLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InstructorDashboard />} />
-              <Route path="courses" element={<InstructorCourses />} />
+              <Route path="courses" element={<InstructorCoursesList />} />
               <Route path="classes" element={<InstructorClasses />} />
               <Route path="assignments" element={<InstructorAssignments />} />
               <Route path="exams" element={<InstructorExams />} />
