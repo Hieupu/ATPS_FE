@@ -27,6 +27,7 @@ import {
   ListItemIcon,
   ListItemText,
 } from "@mui/material";
+import { TextField, Paper } from "@mui/material";
 import {
   People,
   Schedule,
@@ -42,7 +43,6 @@ import {
   RadioButtonChecked,
   RadioButtonUnchecked,
   ExpandMore,
-  Description,
   InsertDriveFile,
   PictureAsPdf,
   VideoLibrary,
@@ -60,8 +60,11 @@ import {
   getExamQuestionsApi,
   submitExamApi,
 } from "../../apiServices/examService";
+import { getMyLatestExamResultApi } from "../../apiServices/examService";
+ 
 import AppHeader from "../../components/Header/AppHeader";
 import { getCourseMaterialsApi } from "../../apiServices/materialService";
+import ReactPlayer from "react-player";
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
@@ -128,6 +131,10 @@ const CourseDetailPage = () => {
   const [materialsError, setMaterialsError] = useState(null);
   const [hasLoadedMaterials, setHasLoadedMaterials] = useState(false);
 
+  // Material preview state
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState(null);
+
   // Enrollment check
   const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
 
@@ -166,6 +173,17 @@ const CourseDetailPage = () => {
   const handleDownloadMaterial = useCallback((material) => {
     if (!material?.FileURL) return;
     window.open(material.FileURL, "_blank", "noopener,noreferrer");
+  }, []);
+
+  const handleViewMaterial = useCallback((material) => {
+    if (!material) return;
+    setPreviewItem(material);
+    setPreviewOpen(true);
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    setPreviewOpen(false);
+    setPreviewItem(null);
   }, []);
 
   const fetchCourse = useCallback(async () => {
@@ -224,9 +242,9 @@ const CourseDetailPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tabValue, course?.CourseID]);
 
-  // Load materials khi mở tab Materials (index 4) nếu đã enroll
+  // Load materials khi mở tab Materials (index 3) nếu đã enroll
   useEffect(() => {
-    const materialsTabIndex = 4;
+    const materialsTabIndex = 3;
     if (!isEnrolledInCourse || !course?.CourseID) return;
     // Prefetch một lần khi vừa xác định đã enroll hoặc khi user mở tab Materials
     if (tabValue !== materialsTabIndex && hasLoadedMaterials) return;
@@ -263,6 +281,8 @@ const CourseDetailPage = () => {
   const [answers, setAnswers] = useState({});
   const [submittingExam, setSubmittingExam] = useState(false);
   const [examResult, setExamResult] = useState(null);
+  const [latestExamResults, setLatestExamResults] = useState({}); // frontend-only cache: examId -> result
+  const [examDialogOpen, setExamDialogOpen] = useState(false);
 
   // Load exams when switch to Exam tab (index 4 when enrolled)
   useEffect(() => {
@@ -273,7 +293,21 @@ const CourseDetailPage = () => {
       try {
         setLoadingExams(true);
         const data = await getExamsByCourseApi(course.CourseID);
-        setExams(data.exams || []);
+        const list = data.exams || [];
+        setExams(list);
+        // Fetch latest scores from DB for each exam
+        const pairs = await Promise.all(
+          list.map(async (ex) => {
+            try {
+              const r = await getMyLatestExamResultApi(ex.ExamID);
+              return [ex.ExamID, r.result || null];
+            } catch (_) {
+              return [ex.ExamID, null];
+            }
+          })
+        );
+        const map = Object.fromEntries(pairs);
+        setLatestExamResults(map);
       } finally {
         setLoadingExams(false);
       }
@@ -288,8 +322,10 @@ const CourseDetailPage = () => {
     try {
       const data = await getExamQuestionsApi(exam.ExamID);
       setExamQuestions(data.questions || []);
+      setExamDialogOpen(true);
     } catch (_) {
       setExamQuestions([]);
+      setExamDialogOpen(true);
     }
   };
 
@@ -307,9 +343,21 @@ const CourseDetailPage = () => {
       }));
       const data = await submitExamApi(activeExam.ExamID, payload);
       setExamResult(data.result || null);
+      // remember latest result for this exam in this session
+      if (data.result) {
+        setLatestExamResults((prev) => ({ ...prev, [activeExam.ExamID]: data.result }));
+      }
     } finally {
       setSubmittingExam(false);
     }
+  };
+
+  const handleCloseExamDialog = () => {
+    setExamDialogOpen(false);
+    setActiveExam(null);
+    setExamQuestions([]);
+    setAnswers({});
+    setExamResult(null);
   };
   console.log(courseMaterials);
 
@@ -614,9 +662,22 @@ const CourseDetailPage = () => {
                                 <ListItem
                                   key={lesson.LessonID}
                                   sx={{ py: 0.5 }}
+                                  secondaryAction={
+                                    isEnrolledInCourse && lesson.FileURL ? (
+                                      <Button
+                                        variant="outlined"
+                                        size="small"
+                                        onClick={() =>
+                                          handleViewMaterial(lesson)
+                                        }
+                                      >
+                                        Xem
+                                      </Button>
+                                    ) : null
+                                  }
                                 >
                                   <ListItemIcon>
-                                    <Description color="action" />
+                                    {getFileIcon(lesson.Type)}
                                   </ListItemIcon>
                                   <ListItemText
                                     primary={`${index + 1}. ${lesson.Title}`}
@@ -671,6 +732,7 @@ const CourseDetailPage = () => {
                         secondaryAction={
                           <Button
                             variant="text"
+                            size="small"
                             onClick={() => handleDownloadMaterial(m)}
                           >
                             Tải xuống
@@ -712,13 +774,22 @@ const CourseDetailPage = () => {
                       <ListItem
                         key={ex.ExamID}
                         secondaryAction={
-                          <Button
-                            variant="contained"
-                            size="small"
-                            onClick={() => handleStartExam(ex)}
-                          >
-                            Bắt đầu
-                          </Button>
+                          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+                            {latestExamResults[ex.ExamID] && (
+                              <Chip
+                                color="success"
+                                size="small"
+                                label={`Điểm: ${latestExamResults[ex.ExamID].Score ?? latestExamResults[ex.ExamID].score}%`}
+                              />
+                            )}
+                            <Button
+                              variant="contained"
+                              size="small"
+                              onClick={() => handleStartExam(ex)}
+                            >
+                              {latestExamResults[ex.ExamID] ? "Làm lại" : "Bắt đầu"}
+                            </Button>
+                          </Box>
                         }
                       >
                         <ListItemText
@@ -729,63 +800,7 @@ const CourseDetailPage = () => {
                     ))}
                   </List>
 
-                  {activeExam && (
-                    <Box sx={{ mt: 3 }}>
-                      <Typography variant="h6" sx={{ mb: 2 }}>
-                        {activeExam.Title}
-                      </Typography>
-                      {examQuestions.length === 0 ? (
-                        <Alert severity="info">Chưa có câu hỏi.</Alert>
-                      ) : (
-                        <Box
-                          sx={{
-                            display: "flex",
-                            flexDirection: "column",
-                            gap: 2,
-                          }}
-                        >
-                          {examQuestions.map((q, idx) => (
-                            <Box key={q.QuestionID}>
-                              <Typography sx={{ fontWeight: 600, mb: 1 }}>
-                                {idx + 1}. {q.Content}
-                              </Typography>
-                              <textarea
-                                style={{ width: "100%", minHeight: 80 }}
-                                value={answers[q.QuestionID] || ""}
-                                onChange={(e) =>
-                                  handleChangeAnswer(
-                                    q.QuestionID,
-                                    e.target.value
-                                  )
-                                }
-                              />
-                            </Box>
-                          ))}
-                          <Box
-                            sx={{
-                              display: "flex",
-                              gap: 2,
-                              alignItems: "center",
-                            }}
-                          >
-                            <Button
-                              variant="contained"
-                              onClick={handleSubmitExam}
-                              disabled={submittingExam}
-                            >
-                              {submittingExam ? "Đang nộp..." : "Nộp bài"}
-                            </Button>
-                            {examResult && (
-                              <Typography color="success.main">
-                                Điểm: {examResult.Score ?? examResult.score}% •{" "}
-                                {examResult.Feedback ?? examResult.feedback}
-                              </Typography>
-                            )}
-                          </Box>
-                        </Box>
-                      )}
-                    </Box>
-                  )}
+                  {/* Exam content moved to modal */}
                 </CardContent>
               </Card>
             )}
@@ -928,6 +943,140 @@ const CourseDetailPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Material Preview Dialog */}
+      <Dialog
+        open={previewOpen}
+        onClose={handleClosePreview}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <InsertDriveFile color="primary" />
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              {previewItem?.Title || "Xem tài liệu"}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent dividers>
+          {!previewItem ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box sx={{ width: "100%" }}>
+              {(() => {
+                const type = (
+                  previewItem.FileType ||
+                  previewItem.Type ||
+                  ""
+                ).toLowerCase();
+                const url = previewItem.FileURL;
+                if (type === "video" || type === "mp4") {
+                  return (
+                    <Box sx={{ position: "relative", paddingTop: "56.25%" }}>
+                      <Box
+                        sx={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                        }}
+                      >
+                        <ReactPlayer
+                          url={url}
+                          width="100%"
+                          height="100%"
+                          controls
+                          playing={false}
+                        />
+                      </Box>
+                    </Box>
+                  );
+                }
+                return (
+                  <Alert severity="info">
+                    Không hỗ trợ xem trực tiếp loại tài liệu này. Vui lòng tải
+                    xuống để xem.
+                  </Alert>
+                );
+              })()}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          {previewItem?.FileURL && (
+            <Button onClick={() => handleDownloadMaterial(previewItem)}>
+              Tải xuống
+            </Button>
+          )}
+          <Button variant="contained" onClick={handleClosePreview}>
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Exam Dialog */}
+      <Dialog
+        open={examDialogOpen}
+        onClose={handleCloseExamDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+            {activeExam ? activeExam.Title : "Bài kiểm tra"}
+          </Typography>
+        </DialogTitle>
+        <DialogContent dividers>
+          {!activeExam ? (
+            <Alert severity="info">Chưa chọn bài kiểm tra.</Alert>
+          ) : examQuestions.length === 0 ? (
+            <Alert severity="info">Chưa có câu hỏi.</Alert>
+          ) : (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {examQuestions.map((q, idx) => {
+                const current = answers[q.QuestionID] || "";
+                return (
+                  <Paper key={q.QuestionID} elevation={0} sx={{ p: 2, border: 1, borderColor: "divider", borderRadius: 2 }}>
+                    <Typography sx={{ fontWeight: 600, mb: 1 }}>
+                      {idx + 1}. {q.Content}
+                    </Typography>
+                    <TextField
+                      fullWidth
+                      multiline
+                      minRows={3}
+                      variant="outlined"
+                      placeholder="Nhập câu trả lời của bạn..."
+                      value={current}
+                      onChange={(e) => handleChangeAnswer(q.QuestionID, e.target.value)}
+                      helperText={`${current.length} ký tự`}
+                    />
+                  </Paper>
+                );
+              })}
+              {examResult && (
+                <Alert severity="success">
+                  Điểm: {examResult.Score ?? examResult.score}% • {examResult.Feedback ?? examResult.feedback}
+                </Alert>
+              )}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseExamDialog}>Hủy</Button>
+          <Button
+            variant="contained"
+            onClick={handleSubmitExam}
+            disabled={submittingExam || !activeExam || examQuestions.length === 0}
+          >
+            {submittingExam ? "Đang nộp..." : "Nộp bài"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 };

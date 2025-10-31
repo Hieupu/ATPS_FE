@@ -14,3 +14,8 @@ export const submitExamApi = async (examId, answers) => {
   const res = await apiClient.post(`/exams/${examId}/submit`, { answers });
   return res.data; // { message, result }
 };
+
+export const getMyLatestExamResultApi = async (examId) => {
+  const res = await apiClient.get(`/exams/${examId}/result/latest`);
+  return res.data; // { result }
+};
