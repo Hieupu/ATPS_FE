@@ -1,7 +1,7 @@
 import React, { useState } from "react"
 import { Outlet } from "react-router-dom"
-import { InstructorSidebar } from  "../pages/instructor/SidebarInstructor"
-import { HeaderInstructor } from "../pages/instructor/HeaderInstructor"
+import { InstructorSidebar } from  "../pages/instructor/common/SidebarInstructor"
+import { HeaderInstructor } from "../pages/instructor/common/HeaderInstructor"
 
 export default function InstructorLayout() {
   const [activeNav, setActiveNav] = useState("dashboard")
