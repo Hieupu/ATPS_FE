@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo } from "react";
 import {
   Container,
   Grid,
@@ -21,21 +21,20 @@ import {
 } from "@mui/material";
 import {
   Search,
-  FilterList,
-  Sort,
   People,
   Schedule,
   Star,
   ArrowForward,
 } from "@mui/icons-material";
-import { getCoursesApi } from "../../apiServices/courseService";
+import { searchCoursesApi } from "../../apiServices/courseService";
 import { useNavigate } from "react-router-dom";
+import AppHeader from "../../components/Header/AppHeader";
 
 // Array ảnh để random
 const courseImages = [
   "https://wp-s3-edilume-test-bucket.s3.ap-southeast-1.amazonaws.com/wp-content/uploads/2022/12/31183122/IELTS_new_thumbnail.png",
   "https://top-courses.org/wp-content/uploads/2022/07/IELTS-TEST_Speaking-and-Writing.jpg",
-  "https://www.focusedu.org/wp-content/uploads/2021/03/Top-Reasons-Why-IELTS-Coaching-Is-Important.jpg"
+  "https://www.focusedu.org/wp-content/uploads/2021/03/Top-Reasons-Why-IELTS-Coaching-Is-Important.jpg",
 ];
 
 const CourseCard = ({ course }) => {
@@ -46,9 +45,13 @@ const CourseCard = ({ course }) => {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    // Handle null/undefined/NaN values
+    if (price == null || isNaN(price)) {
+      return "0 ₫";
+    }
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -73,7 +76,7 @@ const CourseCard = ({ course }) => {
           },
           "& .view-button": {
             transform: "translateX(8px)",
-          }
+          },
         },
       }}
     >
@@ -85,7 +88,7 @@ const CourseCard = ({ course }) => {
           height="200"
           image={imageUrl}
           alt={course.Title}
-          sx={{ 
+          sx={{
             objectFit: "cover",
             transition: "transform 0.4s ease",
           }}
@@ -109,7 +112,9 @@ const CourseCard = ({ course }) => {
         </Box>
       </Box>
 
-      <CardContent sx={{ flexGrow: 1, p: 3, display: "flex", flexDirection: "column" }}>
+      <CardContent
+        sx={{ flexGrow: 1, p: 3, display: "flex", flexDirection: "column" }}
+      >
         {/* Course Title */}
         <Typography
           variant="h6"
@@ -150,9 +155,9 @@ const CourseCard = ({ course }) => {
         <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
           <Avatar
             src={course.InstructorAvatar}
-            sx={{ 
-              width: 36, 
-              height: 36, 
+            sx={{
+              width: 36,
+              height: 36,
               mr: 1.5,
               border: "2px solid",
               borderColor: "primary.light",
@@ -160,15 +165,18 @@ const CourseCard = ({ course }) => {
           >
             {course.InstructorName?.charAt(0)}
           </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, color: "text.primary" }}
+          >
             {course.InstructorName}
           </Typography>
         </Box>
 
         {/* Course Stats */}
-        <Box 
-          sx={{ 
-            display: "flex", 
+        <Box
+          sx={{
+            display: "flex",
             gap: 2,
             mb: 3,
             pb: 3,
@@ -197,10 +205,17 @@ const CourseCard = ({ course }) => {
         </Box>
 
         {/* Price and Action */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: "auto" }}>
-          <Typography 
-            variant="h5" 
-            sx={{ 
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mt: "auto",
+          }}
+        >
+          <Typography
+            variant="h5"
+            sx={{
               fontWeight: 800,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
               WebkitBackgroundClip: "text",
@@ -214,7 +229,7 @@ const CourseCard = ({ course }) => {
             variant="contained"
             endIcon={<ArrowForward />}
             onClick={handleViewDetails}
-            sx={{ 
+            sx={{
               borderRadius: 2,
               px: 3,
               py: 1,
@@ -237,58 +252,46 @@ const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const coursesPerPage = 9;
 
   useEffect(() => {
-    fetchCourses();
-  }, []);
+    const fetch = async () => {
+      try {
+        setLoading(true);
+        const { items, total: t } = await searchCoursesApi({
+          search: debouncedSearch,
+          sort: sortBy,
+          page,
+          pageSize: coursesPerPage,
+        });
+        setCourses(items || []);
+        setTotal(t || 0);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        setCourses([]);
+        setTotal(0);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [debouncedSearch, sortBy, page]);
 
-  const fetchCourses = async () => {
-    try {
-      setLoading(true);
-      const data = await getCoursesApi();
-      setCourses(data);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 500);
 
-  // Filter and sort courses
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.Description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = category === "all" || course.Category === category;
-    return matchesSearch && matchesCategory;
-  });
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.TuitionFee - b.TuitionFee;
-      case "price-high":
-        return b.TuitionFee - a.TuitionFee;
-      case "popular":
-        return (b.EnrollmentCount || 0) - (a.EnrollmentCount || 0);
-      case "rating":
-        return (b.AverageRating || 0) - (a.AverageRating || 0);
-      default: // newest
-        return b.CourseID - a.CourseID;
-    }
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(sortedCourses.length / coursesPerPage);
-  const paginatedCourses = sortedCourses.slice(
-    (page - 1) * coursesPerPage,
-    page * coursesPerPage
-  );
-
-  const categories = ["all", "Programming", "Design", "Business", "Marketing", "Data Science"];
+  const totalPages = Math.max(1, Math.ceil(total / coursesPerPage));
+  const paginatedCourses = courses;
 
   if (loading) {
     return (
@@ -297,8 +300,17 @@ const CoursesPage = () => {
           {[...Array(6)].map((_, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
               <Card sx={{ height: 400, borderRadius: 3 }}>
-                <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                  <Typography variant="h6" color="text.secondary">Loading...</Typography>
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                  }}
+                >
+                  <Typography variant="h6" color="text.secondary">
+                    Loading...
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
@@ -310,6 +322,7 @@ const CoursesPage = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
+      <AppHeader />
       {/* Hero Section */}
       <Box
         sx={{
@@ -326,7 +339,8 @@ const CoursesPage = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+            background:
+              "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
           },
           "&::after": {
             content: '""',
@@ -335,8 +349,9 @@ const CoursesPage = () => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)",
-          }
+            background:
+              "radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+          },
         }}
       >
         <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
@@ -363,17 +378,18 @@ const CoursesPage = () => {
               lineHeight: 1.6,
             }}
           >
-            Discover the perfect course to advance your career and skills with expert instructors
+            Discover the perfect course to advance your career and skills with
+            expert instructors
           </Typography>
         </Container>
       </Box>
 
       <Container maxWidth="xl" sx={{ pb: 8 }}>
         {/* Filters and Search */}
-        <Paper 
+        <Paper
           elevation={0}
-          sx={{ 
-            mb: 5, 
+          sx={{
+            mb: 5,
             p: 4,
             borderRadius: 4,
             background: "white",
@@ -397,26 +413,9 @@ const CoursesPage = () => {
                 sx={{
                   "& .MuiOutlinedInput-root": {
                     borderRadius: 2,
-                  }
+                  },
                 }}
               />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
-                <Select
-                  value={category}
-                  label="Category"
-                  onChange={(e) => setCategory(e.target.value)}
-                  sx={{ borderRadius: 2 }}
-                >
-                  {categories.map((cat) => (
-                    <MenuItem key={cat} value={cat}>
-                      {cat === "all" ? "All Categories" : cat}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth>
@@ -424,7 +423,10 @@ const CoursesPage = () => {
                 <Select
                   value={sortBy}
                   label="Sort By"
-                  onChange={(e) => setSortBy(e.target.value)}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    setPage(1);
+                  }}
                   sx={{ borderRadius: 2 }}
                 >
                   <MenuItem value="newest">Newest</MenuItem>
@@ -437,13 +439,14 @@ const CoursesPage = () => {
             </Grid>
             <Grid item xs={12} md={2}>
               <Chip
-                label={`${filteredCourses.length} Courses`}
-                sx={{ 
+                label={`${total} Courses`}
+                sx={{
                   width: "100%",
                   height: 48,
                   fontSize: "1rem",
                   fontWeight: 600,
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                   color: "white",
                 }}
               />
@@ -463,7 +466,11 @@ const CoursesPage = () => {
         {/* No Results */}
         {paginatedCourses.length === 0 && (
           <Box sx={{ textAlign: "center", py: 10 }}>
-            <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="h5"
+              color="text.secondary"
+              sx={{ fontWeight: 600 }}
+            >
               No courses found matching your criteria
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
@@ -485,7 +492,7 @@ const CoursesPage = () => {
                 "& .MuiPaginationItem-root": {
                   fontWeight: 600,
                   fontSize: "1rem",
-                }
+                },
               }}
             />
           </Box>
@@ -495,4 +502,4 @@ const CoursesPage = () => {
   );
 };
 
-export default CoursesPage;
+export default memo(CoursesPage);

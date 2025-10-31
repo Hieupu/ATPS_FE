@@ -10,12 +10,7 @@ import {
   Rating,
   Avatar,
 } from "@mui/material";
-import {
-  People,
-  Schedule,
-  Star,
-  ArrowForward,
-} from "@mui/icons-material";
+import { People, Schedule, Star, ArrowForward } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 const CourseCard = ({ course }) => {
@@ -26,9 +21,13 @@ const CourseCard = ({ course }) => {
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    // Handle null/undefined/NaN values
+    if (price == null || isNaN(price)) {
+      return "0 ₫";
+    }
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
@@ -133,8 +132,18 @@ const CourseCard = ({ course }) => {
         </Box>
 
         {/* Price and Action */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <Typography variant="h6" color="primary.main" sx={{ fontWeight: 700 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <Typography
+            variant="h6"
+            color="primary.main"
+            sx={{ fontWeight: 700 }}
+          >
             {formatPrice(course.TuitionFee)}
           </Typography>
           <Button
