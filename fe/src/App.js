@@ -22,6 +22,13 @@ import MyCourses from "./pages/course/MyCourses";
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import InstructorLayout from "./layouts/InstructorLayout";
+import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
+import InstructorClasses from "./pages/instructor/pages/ClassesPage";
+import ClassDetail from "./pages/instructor/pages/ClassDetail";
+import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
+import InstructorExams from "./pages/instructor/pages/ExamsPage";
+import InstructorGrades from "./pages/instructor/pages/GradesPage";
+import InstructorSettings from "./pages/instructor/pages/SettingsPage";
 import InstructorDashboard from "./pages/instructor/InstructorDashboard";
 import InstructorClasses from "./pages/instructor/InstructorClasses";
 import InstructorAssignments from "./pages/instructor/InstructorAssignments";
@@ -93,6 +100,7 @@ function App() {
               <Route path="dashboard" element={<InstructorDashboard />} />
               <Route path="courses" element={<InstructorCoursesList />} />
               <Route path="classes" element={<InstructorClasses />} />
+              <Route path="classes/detail" element={<ClassDetail />} />
               <Route path="assignments" element={<InstructorAssignments />} />
               <Route path="exams" element={<InstructorExams />} />
               <Route path="grades" element={<InstructorGrades />} />
