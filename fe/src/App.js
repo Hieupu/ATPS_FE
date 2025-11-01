@@ -29,12 +29,6 @@ import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
 import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
-import InstructorDashboard from "./pages/instructor/InstructorDashboard";
-import InstructorClasses from "./pages/instructor/InstructorClasses";
-import InstructorAssignments from "./pages/instructor/InstructorAssignments";
-import InstructorExams from "./pages/instructor/InstructorExams";
-import InstructorGrades from "./pages/instructor/InstructorGrades";
-import InstructorSettings from "./pages/instructor/InstructorSettings";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import InstructorCoursesList from "./pages/instructor/InstructorCoursesList";
 

@@ -1,438 +1,324 @@
-// src/pages/instructor/components/CourseCard.js
 import React from "react";
 import {
-  Box,
   Card,
   CardContent,
+  CardActions,
+  Box,
   Typography,
-  Button,
   Chip,
+  Button,
+  Divider,
   Stack,
-  IconButton,
-  Menu,
-  MenuItem,
-  ListItemIcon,
-  ListItemText,
-  alpha,
+  Tooltip,
 } from "@mui/material";
 import {
+  AccessTime as TimeIcon,
+  LibraryBooks as UnitIcon,
+  MenuBook as LessonIcon,
+  Group as GroupIcon,
+  Class as ClassIcon,
+  Event as EventIcon,
   Edit as EditIcon,
-  Delete as DeleteIcon,
-  Send as SendIcon,
   Visibility as VisibilityIcon,
-  MoreHoriz as MoreHorizIcon,
-  Schedule as ScheduleIcon,
-  AttachMoney as MoneyIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
-  MenuBook as BookIcon,
-  Description as DescriptionIcon,
+  Send as SendIcon,
+  Delete as DeleteIcon,
+  InfoOutlined as InfoIcon,
 } from "@mui/icons-material";
-import UnitAccordion from "./UnitAccordion";
-import MaterialList from "./MaterialList";
 
 export default function CourseCard({
   course,
-  expandedCourse,
-  units,
-  lessons,
-  materials,
+  stats = {},
   getStatusColor,
-  onExpand,
-  onOpenModal,
-  onDeleteCourse,
-  onSubmitCourse,
-  onDeleteUnit,
-  onDeleteLesson,
-  onDeleteMaterial,
-  selectedCourse,
+  getStatusLabel,
+  onViewDetails,
+  onEdit,
+  onSubmit,
+  onDelete,
   onPreview,
 }) {
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const isExpanded = expandedCourse === course.CourseID;
-  const openMenu = Boolean(anchorEl);
+  const {
+    unitsCount = 0,
+    lessonsCount = 0,
+    classesCount = 0,
+    enrolledCount = 0,
+    nextSessionDate = null,
+  } = stats;
 
-  const handleMenuOpen = (e) => {
-    e.stopPropagation();
-    setAnchorEl(e.currentTarget);
-  };
-
-  const handleMenuClose = () => setAnchorEl(null);
+  const TITLE_LINES = 2;
+  const TITLE_LH = 1.2;
+  const DESC_LINES = 3;
+  const DESC_LH = 1.4;
 
   return (
     <Card
-      elevation={0}
       sx={{
-        border: "1px solid #e5e7eb",
-        borderRadius: "16px",
-        transition: "all 0.25s cubic-bezier(0.4, 0, 0.2, 1)",
-        bgcolor: "#ffffff",
-        overflow: "hidden",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        borderRadius: 2,
+        boxShadow: "0 2px 8px rgba(91, 91, 255, 0.08)",
+        transition: "all .25s",
         "&:hover": {
-          borderColor: "#d1d5db",
-          boxShadow: "0 4px 20px rgba(0, 0, 0, 0.06)",
-          transform: "translateY(-2px)",
+          boxShadow: "0 8px 24px rgba(91, 91, 255, 0.15)",
+          transform: "translateY(-4px)",
         },
       }}
     >
-      <CardContent sx={{ p: 0 }}>
-        {/* Header Section */}
-        <Box sx={{ px: 3, pt: 3.5, pb: 2.5 }}>
-          <Stack
-            direction="row"
-            justifyContent="space-between"
-            alignItems="flex-start"
-            spacing={2}
+      <CardContent
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          display: "grid",
+          gridTemplateRows: "auto auto auto 1fr",
+          rowGap: 1.25,
+          minHeight: 0,
+        }}
+      >
+        {/* status + price */}
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+          }}
+        >
+          <Chip
+            label={getStatusLabel(course.Status)}
+            color={getStatusColor(course.Status)}
+            size="small"
+            sx={{ fontWeight: 600 }}
+          />
+          <Typography variant="h6" sx={{ color: "#5b5bff", fontWeight: 700 }}>
+            {Number(course.Fee || 0).toLocaleString("vi-VN")}₫
+          </Typography>
+        </Box>
+
+        {/* title (clamp 2 dòng, click để mở chi tiết) */}
+        <Tooltip title={course.Title || ""} arrow>
+          <Typography
+            variant="h6"
+            tabIndex={0}
+            role="button"
+            onClick={onViewDetails}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") onViewDetails?.();
+            }}
+            sx={{
+              cursor: "pointer",
+              fontWeight: 700,
+              color: "#1e293b",
+              display: "-webkit-box",
+              WebkitLineClamp: TITLE_LINES,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              lineHeight: TITLE_LH,
+              minHeight: `${TITLE_LINES * TITLE_LH}em`,
+              "&:hover": { textDecoration: "underline" },
+            }}
           >
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              {/* Title */}
-              <Typography
-                variant="h6"
-                sx={{
-                  fontSize: "1.25rem",
-                  fontWeight: 700,
-                  color: "#111827",
-                  mb: 1.5,
-                  lineHeight: 1.4,
-                  letterSpacing: "-0.01em",
-                }}
-              >
-                {course.Title}
-              </Typography>
+            {course.Title}
+          </Typography>
+        </Tooltip>
 
-              {/* Description */}
-              <Typography
-                variant="body2"
-                sx={{
-                  fontSize: "0.875rem",
-                  color: "#6b7280",
-                  lineHeight: 1.6,
-                  mb: 2.5,
-                }}
-              >
-                {course.Description}
-              </Typography>
+        {/* description (clamp 3 dòng) */}
+        <Tooltip title={course.Description || ""} arrow>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "#64748b",
+              display: "-webkit-box",
+              WebkitLineClamp: DESC_LINES,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              lineHeight: DESC_LH,
+              minHeight: `${DESC_LINES * DESC_LH}em`,
+            }}
+          >
+            {course.Description}
+          </Typography>
+        </Tooltip>
 
-              {/* Meta Info Row */}
-              <Stack direction="row" spacing={2} flexWrap="wrap" sx={{ mb: 2 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <ScheduleIcon sx={{ fontSize: "1.1rem", color: "#9ca3af" }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontSize: "0.8125rem",
-                      color: "#6b7280",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {course.Duration} giờ
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
-                  <MoneyIcon sx={{ fontSize: "1.1rem", color: "#9ca3af" }} />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontSize: "0.8125rem",
-                      color: "#6b7280",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {Number(course.Fee).toLocaleString("vi-VN")} VND
-                  </Typography>
-                </Box>
-              </Stack>
-
-              {/* Status Badge */}
-              <Chip
-                label={course.Status}
-                size="small"
-                color={getStatusColor(course.Status)}
-                sx={{
-                  fontWeight: 600,
-                  fontSize: "0.75rem",
-                  height: 26,
-                  borderRadius: "8px",
-                }}
-              />
-            </Box>
-
-            {/* More Menu */}
-            <IconButton
-              onClick={handleMenuOpen}
-              size="small"
-              sx={{
-                width: 36,
-                height: 36,
-                color: "#6b7280",
-                bgcolor: alpha("#000", 0.02),
-                transition: "all 0.2s",
-                "&:hover": {
-                  bgcolor: alpha("#000", 0.06),
-                  color: "#111827",
-                },
-              }}
-            >
-              <MoreHorizIcon fontSize="small" />
-            </IconButton>
-
-            <Menu
-              anchorEl={anchorEl}
-              open={openMenu}
-              onClose={handleMenuClose}
-              transformOrigin={{ horizontal: "right", vertical: "top" }}
-              anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-              PaperProps={{
-                elevation: 0,
-                sx: {
-                  mt: 1,
-                  minWidth: 200,
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "12px",
-                  boxShadow: "0 10px 40px rgba(0, 0, 0, 0.12)",
-                  "& .MuiMenuItem-root": {
-                    px: 2,
-                    py: 1.25,
-                    borderRadius: "8px",
-                    mx: 1,
-                    my: 0.5,
-                    fontSize: "0.875rem",
-                    fontWeight: 500,
-                  },
-                },
-              }}
-            >
-              <MenuItem
-                onClick={() => {
-                  handleMenuClose();
-                  onOpenModal("updateCourse", course);
-                }}
-              >
-                <ListItemIcon>
-                  <EditIcon fontSize="small" sx={{ color: "#6366f1" }} />
-                </ListItemIcon>
-                <ListItemText>Chỉnh sửa khóa học</ListItemText>
-              </MenuItem>
-              <MenuItem
-                onClick={() => {
-                  handleMenuClose();
-                  onDeleteCourse(course.CourseID);
-                }}
-                sx={{ color: "#ef4444" }}
-              >
-                <ListItemIcon>
-                  <DeleteIcon fontSize="small" sx={{ color: "#ef4444" }} />
-                </ListItemIcon>
-                <ListItemText>Xóa khóa học</ListItemText>
-              </MenuItem>
-            </Menu>
-          </Stack>
-        </Box>
-
-        {/* Action Buttons */}
-        <Box sx={{ px: 3, pb: 2.5 }}>
-          <Stack direction="row" spacing={1.5} flexWrap="wrap">
-            <Button
-              variant="contained"
-              size="medium"
-              startIcon={<VisibilityIcon sx={{ fontSize: "1.1rem" }} />}
-              onClick={() => onPreview(course)}
-              sx={{
-                bgcolor: "#6366f1",
-                color: "#fff",
-                px: 2.5,
-                py: 1,
-                borderRadius: "10px",
-                textTransform: "none",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                boxShadow: "0 4px 14px rgba(99, 102, 241, 0.25)",
-                "&:hover": {
-                  bgcolor: "#4f46e5",
-                  boxShadow: "0 6px 20px rgba(99, 102, 241, 0.35)",
-                  transform: "translateY(-1px)",
-                },
-                transition: "all 0.2s",
-              }}
-            >
-              Xem trước
-            </Button>
-
-            {course.Status === "draft" && (
-              <Button
-                variant="contained"
-                size="medium"
-                startIcon={<SendIcon sx={{ fontSize: "1rem" }} />}
-                onClick={() => onSubmitCourse(course.CourseID)}
-                sx={{
-                  bgcolor: "#10b981",
-                  color: "#fff",
-                  px: 2.5,
-                  py: 1,
-                  borderRadius: "10px",
-                  textTransform: "none",
-                  fontSize: "0.875rem",
-                  fontWeight: 600,
-                  boxShadow: "0 4px 14px rgba(16, 185, 129, 0.25)",
-                  "&:hover": {
-                    bgcolor: "#059669",
-                    boxShadow: "0 6px 20px rgba(16, 185, 129, 0.35)",
-                    transform: "translateY(-1px)",
-                  },
-                  transition: "all 0.2s",
-                }}
-              >
-                Gửi phê duyệt
-              </Button>
-            )}
-
-            <Button
-              variant="outlined"
-              size="medium"
-              endIcon={isExpanded ? <ArrowUpIcon /> : <ArrowDownIcon />}
-              onClick={() => onExpand(course.CourseID)}
-              sx={{
-                borderColor: "#d1d5db",
-                color: "#374151",
-                px: 2.5,
-                py: 1,
-                borderRadius: "10px",
-                textTransform: "none",
-                fontSize: "0.875rem",
-                fontWeight: 600,
-                bgcolor: "#fff",
-                "&:hover": {
-                  borderColor: "#6366f1",
-                  bgcolor: alpha("#6366f1", 0.04),
-                  color: "#6366f1",
-                },
-                transition: "all 0.2s",
-              }}
-            >
-              {isExpanded ? "Thu gọn" : "Chi tiết khóa học"}
-            </Button>
-          </Stack>
-        </Box>
-
-        {/* Expanded Content */}
-        {isExpanded && (
+        {/* Meta */}
+        <Stack
+          spacing={1}
+          sx={{ fontSize: 13, color: "#475569", minHeight: 0 }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <TimeIcon sx={{ fontSize: 18, color: "#64748b" }} />
+            <span>{course.Duration} giờ</span>
+          </Box>
           <Box
             sx={{
-              borderTop: "1px solid #e5e7eb",
-              bgcolor: alpha("#f9fafb", 0.5),
-              px: 3,
-              py: 3,
-              animation: "slideDown 0.3s ease-out",
-              "@keyframes slideDown": {
-                from: {
-                  opacity: 0,
-                  transform: "translateY(-10px)",
+              display: "flex",
+              alignItems: "center",
+              gap: 1.2,
+              flexWrap: "wrap",
+            }}
+          >
+            <UnitIcon sx={{ fontSize: 18, color: "#64748b" }} />
+            <span>{unitsCount} Units</span>
+            <LessonIcon sx={{ fontSize: 18, color: "#64748b", ml: 2 }} />
+            <span>{lessonsCount} Lessons</span>
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.2,
+              flexWrap: "wrap",
+            }}
+          >
+            <ClassIcon sx={{ fontSize: 18, color: "#64748b" }} />
+            <span>{classesCount} Classes</span>
+            <GroupIcon sx={{ fontSize: 18, color: "#64748b", ml: 2 }} />
+            <span>{enrolledCount} Enrolled</span>
+          </Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.2 }}>
+            <EventIcon sx={{ fontSize: 18, color: "#64748b" }} />
+            <span>
+              {nextSessionDate
+                ? new Date(nextSessionDate).toLocaleDateString("vi-VN")
+                : "Chưa có lịch"}
+            </span>
+          </Box>
+        </Stack>
+      </CardContent>
+
+      <Divider />
+
+      <CardActions
+        sx={{
+          p: 1,
+          minHeight: 48,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "nowrap",
+        }}
+      >
+        {/* bên trái: Chi tiết, Xem trước, Sửa, (Gửi duyệt) */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            flex: "1 1 auto",
+            minWidth: 0,
+          }}
+        >
+          {/* Chi tiết (CRUD dialog) */}
+          <Tooltip title="Chi tiết">
+            <Button
+              onClick={onViewDetails}
+              size="small"
+              variant="outlined"
+              sx={{
+                minWidth: 40,
+                width: 40,
+                height: 36,
+                borderRadius: 2,
+                borderColor: "#3b82f633",
+                "&:hover": {
+                  borderColor: "#3b82f6",
+                  backgroundColor: "#3b82f60d",
                 },
-                to: {
-                  opacity: 1,
-                  transform: "translateY(0)",
+              }}
+            >
+              <InfoIcon fontSize="small" sx={{ color: "#3b82f6" }} />
+            </Button>
+          </Tooltip>
+
+          {/* Xem trước (CourseReview) */}
+          <Tooltip title="Xem trước">
+            <Button
+              onClick={onPreview}
+              size="small"
+              variant="outlined"
+              sx={{
+                minWidth: 40,
+                width: 40,
+                height: 36,
+                borderRadius: 2,
+                borderColor: "#6366f133",
+                "&:hover": {
+                  borderColor: "#6366f1",
+                  backgroundColor: "#6366f10d",
                 },
+              }}
+            >
+              <VisibilityIcon fontSize="small" sx={{ color: "#6366f1" }} />
+            </Button>
+          </Tooltip>
+
+          {/* Sửa khóa học */}
+          <Tooltip title="Sửa">
+            <Button
+              onClick={onEdit}
+              size="small"
+              variant="outlined"
+              sx={{
+                minWidth: 40,
+                width: 40,
+                height: 36,
+                borderRadius: 2,
+                borderColor: "#64748b33",
+                "&:hover": {
+                  borderColor: "#64748b",
+                  backgroundColor: "#64748b0d",
+                },
+              }}
+            >
+              <EditIcon fontSize="small" sx={{ color: "#64748b" }} />
+            </Button>
+          </Tooltip>
+
+          {/* Gửi duyệt */}
+          {String(course.Status).toLowerCase() === "draft" && (
+            <Tooltip title="Gửi duyệt">
+              <Button
+                onClick={onSubmit}
+                size="small"
+                variant="outlined"
+                sx={{
+                  minWidth: 40,
+                  width: 40,
+                  height: 36,
+                  borderRadius: 2,
+                  borderColor: "#10b98133",
+                  "&:hover": {
+                    borderColor: "#10b981",
+                    backgroundColor: "#10b9810d",
+                  },
+                }}
+              >
+                <SendIcon fontSize="small" sx={{ color: "#10b981" }} />
+              </Button>
+            </Tooltip>
+          )}
+        </Box>
+
+        {/* bên phải: Xóa */}
+        <Tooltip title="Xóa">
+          <Button
+            onClick={onDelete}
+            size="small"
+            variant="outlined"
+            sx={{
+              minWidth: 40,
+              width: 40,
+              height: 36,
+              borderRadius: 2,
+              borderColor: "#ef444433",
+              "&:hover": {
+                borderColor: "#ef4444",
+                backgroundColor: "#ef44440d",
               },
             }}
           >
-            {/* Units Section */}
-            <Box sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  mb: 2.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "10px",
-                    bgcolor: alpha("#6366f1", 0.1),
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <BookIcon sx={{ fontSize: "1.25rem", color: "#6366f1" }} />
-                </Box>
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    fontSize: "0.9375rem",
-                    fontWeight: 700,
-                    color: "#111827",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Cấu trúc bài học
-                </Typography>
-              </Box>
-
-              <UnitAccordion
-                units={units}
-                lessons={lessons}
-                onOpenModal={onOpenModal}
-                onEditUnit={(u) => onOpenModal("updateUnit", u)}
-                onDeleteUnit={onDeleteUnit}
-                onEditLesson={(l, unitId) =>
-                  onOpenModal("updateLesson", { ...l, UnitID: unitId })
-                }
-                onDeleteLesson={onDeleteLesson}
-              />
-            </Box>
-
-            {/* Materials Section */}
-            <Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  mb: 2.5,
-                }}
-              >
-                <Box
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: "10px",
-                    bgcolor: alpha("#10b981", 0.1),
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <DescriptionIcon
-                    sx={{ fontSize: "1.25rem", color: "#10b981" }}
-                  />
-                </Box>
-                <Typography
-                  variant="subtitle1"
-                  sx={{
-                    fontSize: "0.9375rem",
-                    fontWeight: 700,
-                    color: "#111827",
-                    lineHeight: 1.2,
-                  }}
-                >
-                  Tài liệu khóa học
-                </Typography>
-              </Box>
-
-              <MaterialList
-                materials={materials}
-                onOpenModal={(type, data) =>
-                  onOpenModal(type, { ...data, CourseID: course.CourseID })
-                }
-                onDeleteMaterial={onDeleteMaterial}
-              />
-            </Box>
-          </Box>
-        )}
-      </CardContent>
+            <DeleteIcon fontSize="small" sx={{ color: "#ef4444" }} />
+          </Button>
+        </Tooltip>
+      </CardActions>
     </Card>
   );
 }

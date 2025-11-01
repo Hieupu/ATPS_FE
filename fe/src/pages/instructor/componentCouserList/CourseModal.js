@@ -1,3 +1,4 @@
+// src/pages/instructor/componentCouserList/CourseModal.jsx
 import React from "react";
 import {
   Dialog,
@@ -37,13 +38,13 @@ export default function CourseModal({
   onSubmit,
   loading,
 }) {
-  // Xác định loại modal hiện tại
+  // Loại modal hiện tại
   const isCourse = type.includes("Course");
   const isUnit = type.includes("Unit");
   const isLesson = type.includes("Lesson");
   const isMaterial = type.includes("Material");
 
-  // Xác định tiêu đề và màu sắc
+  // Config UI theo loại
   const getModalConfig = () => {
     if (isCourse) {
       return {
@@ -79,12 +80,8 @@ export default function CourseModal({
 
   const config = getModalConfig();
 
-  // Hàm xử lý thay đổi dữ liệu
-  const handleChange = (key, value) => {
-    onChange({ ...data, [key]: value });
-  };
+  const handleChange = (key, value) => onChange({ ...data, [key]: value });
 
-  // Format file size
   const formatFileSize = (bytes) => {
     if (!bytes) return "";
     const kb = bytes / 1024;
@@ -107,7 +104,7 @@ export default function CourseModal({
         },
       }}
     >
-      {/* ===== HEADER VỚI GRADIENT ===== */}
+      {/* Header */}
       <Box
         sx={{
           background: config.gradient,
@@ -133,7 +130,7 @@ export default function CourseModal({
             onClick={onClose}
             sx={{
               color: "#fff",
-              "&:hover": { bgcolor: "rgba(255, 255, 255, 0.1)" },
+              "&:hover": { bgcolor: "rgba(255,255,255,0.1)" },
             }}
           >
             <CloseIcon />
@@ -141,7 +138,7 @@ export default function CourseModal({
         </Box>
       </Box>
 
-      {/* ===== NỘI DUNG FORM ===== */}
+      {/* Body */}
       <DialogContent sx={{ p: 3, bgcolor: "#fafafa" }}>
         <Paper
           elevation={0}
@@ -153,7 +150,7 @@ export default function CourseModal({
           }}
         >
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {/* Trường Tiêu đề - Luôn hiển thị */}
+            {/* Title */}
             <Box>
               <Typography
                 variant="subtitle2"
@@ -205,7 +202,7 @@ export default function CourseModal({
               />
             </Box>
 
-            {/* Trường Mô tả - Chỉ cho Course và Unit */}
+            {/* Description for Course & Unit */}
             {(isCourse || isUnit) && (
               <Box>
                 <Typography
@@ -251,11 +248,17 @@ export default function CourseModal({
               </Box>
             )}
 
-            {/* Các trường đặc biệt cho Course */}
+            {/* Course fields */}
             {isCourse && (
               <>
                 <Divider sx={{ my: 1 }} />
-                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 3,
+                  }}
+                >
                   <Box>
                     <Typography
                       variant="subtitle2"
@@ -273,6 +276,7 @@ export default function CourseModal({
                     </Typography>
                     <TextField
                       type="number"
+                      inputProps={{ step: "0.1", min: 0 }}
                       placeholder="VD: 40"
                       fullWidth
                       variant="outlined"
@@ -281,7 +285,10 @@ export default function CourseModal({
                       InputProps={{
                         endAdornment: (
                           <InputAdornment position="end">
-                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#6b7280" }}
+                            >
                               giờ
                             </Typography>
                           </InputAdornment>
@@ -332,7 +339,10 @@ export default function CourseModal({
                       InputProps={{
                         endAdornment: (
                           <InputAdornment position="end">
-                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#6b7280" }}
+                            >
                               VND
                             </Typography>
                           </InputAdornment>
@@ -361,7 +371,7 @@ export default function CourseModal({
               </>
             )}
 
-            {/* Trường Thời lượng cho Unit */}
+            {/* Unit field (tùy ý – cho phép text tự do) */}
             {isUnit && (
               <Box>
                 <Typography
@@ -379,7 +389,7 @@ export default function CourseModal({
                   Thời lượng
                 </Typography>
                 <TextField
-                  placeholder="VD: 5h, 2 tuần, 10 ngày"
+                  placeholder="VD: 5 giờ / 2 tuần"
                   fullWidth
                   variant="outlined"
                   value={data.Duration || ""}
@@ -405,10 +415,16 @@ export default function CourseModal({
               </Box>
             )}
 
-            {/* Các trường đặc biệt cho Lesson */}
+            {/* Lesson fields — CHUYỂN SANG GIỜ */}
             {isLesson && (
               <>
-                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
+                <Box
+                  sx={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 3,
+                  }}
+                >
                   <Box>
                     <Typography
                       variant="subtitle2"
@@ -422,11 +438,12 @@ export default function CourseModal({
                       }}
                     >
                       <TimeIcon sx={{ fontSize: 18, color: config.color }} />
-                      Thời gian
+                      Thời lượng (giờ)
                     </Typography>
                     <TextField
                       type="number"
-                      placeholder="VD: 45"
+                      inputProps={{ step: "0.1", min: 0 }}
+                      placeholder="VD: 1.5"
                       fullWidth
                       variant="outlined"
                       value={data.Time || ""}
@@ -434,8 +451,11 @@ export default function CourseModal({
                       InputProps={{
                         endAdornment: (
                           <InputAdornment position="end">
-                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
-                              phút
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#6b7280" }}
+                            >
+                              giờ
                             </Typography>
                           </InputAdornment>
                         ),
@@ -500,14 +520,20 @@ export default function CourseModal({
                       }}
                     >
                       <MenuItem value="video">
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
                           <VideoIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
                           Video
                         </Box>
                       </MenuItem>
                       <MenuItem value="document">
-                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                          <ArticleIcon sx={{ fontSize: 18, color: "#3b82f6" }} />
+                        <Box
+                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
+                        >
+                          <ArticleIcon
+                            sx={{ fontSize: 18, color: "#3b82f6" }}
+                          />
                           Document
                         </Box>
                       </MenuItem>
@@ -540,10 +566,7 @@ export default function CourseModal({
                       borderRadius: 2,
                       textAlign: "center",
                       transition: "all 0.3s",
-                      "&:hover": {
-                        borderColor: config.color,
-                        bgcolor: "#fff",
-                      },
+                      "&:hover": { borderColor: config.color, bgcolor: "#fff" },
                     }}
                   >
                     <Button
@@ -564,7 +587,9 @@ export default function CourseModal({
                         },
                       }}
                     >
-                      {data.FileURL || data.file ? "Thay đổi file" : "Chọn file"}
+                      {data.FileURL || data.file
+                        ? "Thay đổi file"
+                        : "Chọn file"}
                       <input
                         type="file"
                         hidden
@@ -576,7 +601,6 @@ export default function CourseModal({
                       />
                     </Button>
 
-                    {/* Hiển thị file hiện tại */}
                     {(data.FileURL || data.file) && (
                       <Box
                         sx={{
@@ -594,7 +618,9 @@ export default function CourseModal({
                             gap: 1.5,
                           }}
                         >
-                          <FileIcon sx={{ color: config.color, fontSize: 24 }} />
+                          <FileIcon
+                            sx={{ color: config.color, fontSize: 24 }}
+                          />
                           <Box sx={{ flex: 1, textAlign: "left" }}>
                             <Typography
                               variant="body2"
@@ -631,7 +657,7 @@ export default function CourseModal({
               </>
             )}
 
-            {/* Trường File URL cho Material */}
+            {/* Material fields */}
             {isMaterial && (
               <Box>
                 <Typography
@@ -678,7 +704,7 @@ export default function CourseModal({
         </Paper>
       </DialogContent>
 
-      {/* ===== CÁC NÚT HÀNH ĐỘNG ===== */}
+      {/* Actions */}
       <DialogActions
         sx={{
           px: 3,
@@ -701,10 +727,7 @@ export default function CourseModal({
             py: 1,
             borderRadius: 2,
             transition: "all 0.2s",
-            "&:hover": {
-              bgcolor: "#f3f4f6",
-              borderColor: "#9ca3af",
-            },
+            "&:hover": { bgcolor: "#f3f4f6", borderColor: "#9ca3af" },
           }}
         >
           Hủy
@@ -729,21 +752,13 @@ export default function CourseModal({
               boxShadow: `0 6px 16px ${config.color}60`,
               transform: "translateY(-1px)",
             },
-            "&.Mui-disabled": {
-              bgcolor: "#d1d5db",
-              color: "#fff",
-            },
+            "&.Mui-disabled": { bgcolor: "#d1d5db", color: "#fff" },
           }}
         >
           {loading ? (
             <CircularProgress size={24} sx={{ color: "#fff" }} />
           ) : (
-            <>
-              <Box component="span" sx={{ mr: 1 }}>
-                💾
-              </Box>
-              Lưu
-            </>
+            <>💾 Lưu</>
           )}
         </Button>
       </DialogActions>

@@ -1,4 +1,4 @@
-import React, { useState, forwardRef } from "react";
+import React, { useState } from "react";
 import {
   Box,
   Typography,
@@ -21,523 +21,423 @@ import {
   Dialog,
   AppBar,
   Toolbar,
-  Slide,
   Container,
+  Grid,
+  Paper,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import DescriptionIcon from "@mui/icons-material/Description";
-import VideoLibraryIcon from "@mui/icons-material/VideoLibrary";
-import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
-import MonetizationOnIcon from "@mui/icons-material/MonetizationOn";
-import CategoryIcon from "@mui/icons-material/Category";
 import CloseIcon from "@mui/icons-material/Close";
+import StarIcon from "@mui/icons-material/Star";
+import PlayCircleOutlineIcon from "@mui/icons-material/PlayCircleOutline";
+import CheckIcon from "@mui/icons-material/Check";
+import SmartDisplayIcon from "@mui/icons-material/SmartDisplay";
+import PictureAsPdfIcon from "@mui/icons-material/PictureAsPdf";
 
-// Transition cho Dialog
-const Transition = forwardRef(function Transition(props, ref) {
-  return <Slide direction="up" ref={ref} {...props} />;
-});
+const fmtCurrency = (n) =>
+  typeof n === "number" ? n.toLocaleString("vi-VN") + " ₫" : "0 ₫";
 
-const CourseReview = ({ course, onClose }) => {
-  // Giữ nguyên toàn bộ logic state
+export default function CourseReview({ course, onClose }) {
   const [expandedUnits, setExpandedUnits] = useState([]);
-  const [selectedLesson, setSelectedLesson] = useState(null);
-
-  if (!course) return null;
+  const safe = course ?? {};
 
   const {
     Title,
     Description,
-    Duration,
     Fee,
     Category,
-    Level,
+    Rating,
+    RatingCount,
+    StudentCount,
     InstructorName,
+    InstructorAvatar,
+    Image,
+    Tags = [],
     units = [],
     materials = [],
-  } = course;
+  } = safe;
+
+  const totalLessons = units.reduce(
+    (sum, u) => sum + (u.lessons?.length || 0),
+    0
+  );
+  const totalHours = units.reduce(
+    (sum, u) =>
+      sum + u.lessons?.reduce((s, l) => s + Number(l.Time || 0), 0) || 0,
+    0
+  );
 
   return (
     <Dialog
       fullScreen
       open={Boolean(course)}
       onClose={onClose}
-      TransitionComponent={Transition}
-      sx={{
-        "& .MuiDialog-paper": {
-          backgroundColor: "#f8fafc",
-        },
-      }}
+      sx={{ "& .MuiDialog-paper": { bgcolor: "#f8f9fa" } }}
     >
-      {/* AppBar cố định trên cùng */}
+      {/* Header */}
       <AppBar
+        elevation={0}
         sx={{
-          position: "fixed",
-          backgroundColor: "#5b5bff",
-          boxShadow: "0 2px 8px rgba(91, 91, 255, 0.15)",
+          position: "sticky",
+          bgcolor: "#1c1d1f",
+          borderBottom: "1px solid #3e4143",
         }}
       >
         <Toolbar>
-          <Typography
-            variant="h6"
-            component="div"
-            sx={{ flexGrow: 1, fontWeight: 600 }}
-          >
-            Xem trước khóa học
+          <Typography variant="body2" sx={{ flexGrow: 1, color: "#ccc" }}>
+            CNTT & Phần mềm › {Category || "Docker"}
           </Typography>
-          <IconButton
-            edge="end"
-            color="inherit"
-            onClick={onClose}
-            aria-label="close"
-            sx={{
-              "&:hover": {
-                backgroundColor: "rgba(255, 255, 255, 0.1)",
-              },
-            }}
-          >
+          <IconButton edge="end" color="inherit" onClick={onClose}>
             <CloseIcon />
           </IconButton>
         </Toolbar>
       </AppBar>
 
-      {/* Nội dung chính - có thể cuộn */}
-      <Container
-        maxWidth="lg"
-        sx={{
-          mt: 10,
-          mb: 4,
-          px: { xs: 2, md: 3 },
-        }}
-      >
-        {/* PHẦN 1: Thông tin tổng quan */}
-        <Card
-          sx={{
-            borderRadius: 4,
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-            overflow: "hidden",
-            mb: 3,
-            transition: "transform 0.2s, box-shadow 0.2s",
-            "&:hover": {
-              boxShadow: "0 6px 28px rgba(0, 0, 0, 0.12)",
-            },
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Stack
-              direction={{ xs: "column", md: "row" }}
-              spacing={3}
-              alignItems={{ xs: "center", md: "flex-start" }}
-            >
-              {/* Ảnh khóa học */}
-              <CardMedia
-                component="img"
-                sx={{
-                  width: { xs: "100%", md: 320 },
-                  height: { xs: 200, md: 200 },
-                  borderRadius: 3,
-                  objectFit: "cover",
-                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
-                }}
-                image={
-                  course.Image ||
-                  "https://service.keyframe.vn/uploads/filecloud/2018/April/25/72-559201524659628-1524659628.jpg"
-                }
-                alt={Title}
-              />
-
-              {/* Thông tin khóa học */}
-              <Box flex={1}>
-                <Typography
-                  variant="h4"
-                  fontWeight={700}
-                  sx={{
-                    color: "#5b5bff",
-                    mb: 2,
-                    fontSize: { xs: "1.75rem", md: "2.125rem" },
-                  }}
-                >
-                  {Title}
-                </Typography>
-                <Typography
-                  variant="body1"
-                  color="text.secondary"
-                  sx={{
-                    mb: 3,
-                    lineHeight: 1.7,
-                  }}
-                >
-                  {Description}
-                </Typography>
-
-                {/* Chips thông tin */}
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  flexWrap="wrap"
-                  sx={{ gap: 1.5 }}
-                >
-                  <Chip
-                    icon={<CategoryIcon />}
-                    label={Category || "Chưa có danh mục"}
-                    sx={{
-                      backgroundColor: "#e8e8ff",
-                      color: "#5b5bff",
-                      fontWeight: 600,
-                      "& .MuiChip-icon": { color: "#5b5bff" },
-                    }}
-                  />
-                  <Chip
-                    icon={<AccessTimeIcon />}
-                    label={`${Duration || 0} phút`}
-                    sx={{
-                      backgroundColor: "#fff4e6",
-                      color: "#ff9800",
-                      fontWeight: 600,
-                      "& .MuiChip-icon": { color: "#ff9800" },
-                    }}
-                  />
-                  <Chip
-                    icon={<MonetizationOnIcon />}
-                    label={`${Fee || 0} VNĐ`}
-                    sx={{
-                      backgroundColor: "#e8f5e9",
-                      color: "#4caf50",
-                      fontWeight: 600,
-                      "& .MuiChip-icon": { color: "#4caf50" },
-                    }}
-                  />
-                  <Chip
-                    icon={<DescriptionIcon />}
-                    label={Level || "Mọi trình độ"}
-                    sx={{
-                      backgroundColor: "#fce4ec",
-                      color: "#e91e63",
-                      fontWeight: 600,
-                      "& .MuiChip-icon": { color: "#e91e63" },
-                    }}
-                  />
-                </Stack>
-              </Box>
-            </Stack>
-          </CardContent>
-        </Card>
-
-        {/* PHẦN 2: Thông tin giảng viên */}
-        {InstructorName && (
-          <Card
-            sx={{
-              borderRadius: 4,
-              boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-              mb: 3,
-              transition: "transform 0.2s",
-              "&:hover": {
-                transform: "translateY(-2px)",
-                boxShadow: "0 6px 28px rgba(0, 0, 0, 0.12)",
-              },
-            }}
-          >
-            <CardContent sx={{ p: 4 }}>
+      <Container maxWidth="xl" sx={{ py: 3 }}>
+        <Grid container spacing={3}>
+          {/* LEFT COLUMN */}
+          <Grid item xs={12} md={8}>
+            {/* Title Section */}
+            <Box sx={{ mb: 3 }}>
               <Typography
-                variant="h6"
-                sx={{
-                  color: "#5b5bff",
-                  fontWeight: 700,
-                  mb: 2,
-                  fontSize: "1.25rem",
-                }}
+                variant="h4"
+                sx={{ fontWeight: 700, mb: 1, color: "#1c1d1f" }}
               >
-                Giảng viên
+                {Title}
               </Typography>
-              <Stack direction="row" spacing={2} alignItems="center">
-                <Avatar
-                  src={course.InstructorAvatar || ""}
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    border: "3px solid #5b5bff",
-                  }}
-                />
-                <Box>
-                  <Typography fontWeight={700} variant="h6" sx={{ mb: 0.5 }}>
-                    {InstructorName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {course.InstructorBio || "Chưa có mô tả"}
-                  </Typography>
-                </Box>
-              </Stack>
-            </CardContent>
-          </Card>
-        )}
+              <Typography variant="body1" sx={{ mb: 2, color: "#2d2f31" }}>
+                {Description}
+              </Typography>
 
-        {/* PHẦN 3: Cấu trúc khóa học */}
-        <Card
-          sx={{
-            borderRadius: 4,
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-            mb: 3,
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Typography
-              variant="h6"
+              <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mb: 1 }}>
+                <Chip
+                  label="Xếp hạng cao nhất"
+                  size="small"
+                  sx={{ bgcolor: "#eceb98", color: "#3d3c0a", fontWeight: 600 }}
+                />
+                <Chip
+                  label="Thịnh hành & mới"
+                  size="small"
+                  sx={{ bgcolor: "#d1fae5", color: "#065f46", fontWeight: 600 }}
+                />
+              </Stack>
+
+              <Stack
+                direction="row"
+                spacing={2}
+                alignItems="center"
+                flexWrap="wrap"
+              >
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  <Typography sx={{ fontWeight: 700, color: "#b4690e" }}>
+                    {Rating?.toFixed(1) || "5.0"}
+                  </Typography>
+                  {[...Array(5)].map((_, i) => (
+                    <StarIcon key={i} sx={{ fontSize: 16, color: "#b4690e" }} />
+                  ))}
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#6a6f73", ml: 0.5 }}
+                  >
+                    ({RatingCount?.toLocaleString() || "120"} đánh giá)
+                  </Typography>
+                </Stack>
+                <Typography variant="body2" sx={{ color: "#6a6f73" }}>
+                  {StudentCount?.toLocaleString() || "1,658"} học viên
+                </Typography>
+              </Stack>
+
+              <Typography variant="body2" sx={{ mt: 1, color: "#6a6f73" }}>
+                Được tạo bởi <strong>{InstructorName || "PhatMVP"}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#6a6f73" }}>
+                Lần cập nhật gần đây nhất 10/2025 • Tiếng Việt
+              </Typography>
+            </Box>
+
+            {/* Course Content Summary */}
+            <Paper
+              elevation={0}
               sx={{
-                color: "#5b5bff",
-                fontWeight: 700,
+                border: "1px solid #d1d7dc",
+                borderRadius: 0,
+                p: 3,
                 mb: 3,
-                fontSize: "1.25rem",
+                bgcolor: "#fff",
               }}
             >
-              Cấu trúc khóa học
-            </Typography>
+              <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+                Nội dung bài học
+              </Typography>
 
-            {units.length > 0 ? (
-              units.map((unit) => (
+              <Grid container spacing={1}>
+                {[
+                  "Hiểu rõ khái niệm Docker và sự khác biệt giữa Container và Virtual Machine",
+                  "Cài đặt Docker trên Windows (WSL, Docker Desktop) và Ubuntu",
+                  "Nắm vững kiến thức Docker: Docker CLI, Docker Host, Docker Registry",
+                  "Thành thạo thao tác với Container: tạo, chạy, dừng, xoá, logs",
+                  "Quản lý Docker Image: pull từ Docker Hub, inspect, xây và build image",
+                  "Hiểu layered architecture và multi-stage build để tối ưu image",
+                  "Quản lý dữ liệu với Docker Storage: volumes, bind mounts",
+                  "Làm chủ Docker Networking: bridge, host và none",
+                ].map((text, i) => (
+                  <Grid item xs={12} sm={6} key={i}>
+                    <Stack direction="row" spacing={1} alignItems="flex-start">
+                      <CheckIcon
+                        sx={{ fontSize: 18, color: "#1c1d1f", mt: 0.2 }}
+                      />
+                      <Typography variant="body2" sx={{ color: "#2d2f31" }}>
+                        {text}
+                      </Typography>
+                    </Stack>
+                  </Grid>
+                ))}
+              </Grid>
+
+              <Button
+                size="small"
+                sx={{ mt: 2, textTransform: "none", fontWeight: 600 }}
+              >
+                Hiển thêm ▼
+              </Button>
+            </Paper>
+
+            {/* Explore Topics */}
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
+                Khám phá các chủ đề liên quan
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {["Docker", "CNTT & Phần mềm khác", "CNTT & Phần mềm"].map(
+                  (tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      variant="outlined"
+                      sx={{ borderColor: "#1c1d1f", color: "#1c1d1f" }}
+                    />
+                  )
+                )}
+              </Stack>
+            </Box>
+
+            {/* Course Sections */}
+            <Paper
+              elevation={0}
+              sx={{ border: "1px solid #d1d7dc", borderRadius: 0 }}
+            >
+              <Box sx={{ p: 2, bgcolor: "#f7f9fa" }}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Nội dung khóa học
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#6a6f73", mt: 0.5 }}>
+                  {units.length} phần • {totalLessons} bài giảng •{" "}
+                  {Math.floor(totalHours)}g {Math.round((totalHours % 1) * 60)}p
+                  phút tổng thời lượng
+                </Typography>
+              </Box>
+
+              {units.slice(0, 3).map((unit, idx) => (
                 <Accordion
-                  key={unit.UnitID}
+                  key={unit.UnitID || idx}
                   expanded={expandedUnits.includes(unit.UnitID)}
-                  onChange={() => {
-                    if (expandedUnits.includes(unit.UnitID)) {
-                      setExpandedUnits(
-                        expandedUnits.filter((id) => id !== unit.UnitID)
-                      );
-                    } else {
-                      setExpandedUnits([...expandedUnits, unit.UnitID]);
-                    }
-                  }}
+                  onChange={() =>
+                    setExpandedUnits((prev) =>
+                      prev.includes(unit.UnitID)
+                        ? prev.filter((id) => id !== unit.UnitID)
+                        : [...prev, unit.UnitID]
+                    )
+                  }
+                  disableGutters
                   sx={{
-                    mb: 2,
-                    borderRadius: "12px !important",
-                    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.06)",
-                    "&:before": {
-                      display: "none",
-                    },
-                    "&.Mui-expanded": {
-                      boxShadow: "0 4px 16px rgba(91, 91, 255, 0.15)",
-                    },
+                    "&:before": { display: "none" },
+                    borderTop: "1px solid #d1d7dc",
                   }}
                 >
-                  <AccordionSummary
-                    expandIcon={<ExpandMoreIcon sx={{ color: "#5b5bff" }} />}
-                    sx={{
-                      backgroundColor: "#fafbff",
-                      borderRadius: "12px",
-                      "&.Mui-expanded": {
-                        borderBottomLeftRadius: 0,
-                        borderBottomRightRadius: 0,
-                      },
-                    }}
-                  >
-                    <Typography fontWeight={700} sx={{ color: "#1a1a1a" }}>
-                      {unit.Title}
-                    </Typography>
+                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      sx={{ width: "100%" }}
+                    >
+                      <Typography sx={{ fontWeight: 600 }}>
+                        {unit.Title || `Section ${idx + 1}`}
+                      </Typography>
+                      <Typography
+                        variant="body2"
+                        sx={{ color: "#6a6f73", mr: 2 }}
+                      >
+                        {unit.lessons?.length || 0} bài giảng •{" "}
+                        {unit.lessons
+                          ?.reduce((s, l) => s + Number(l.Time || 0), 0)
+                          .toFixed(0)}{" "}
+                        phút
+                      </Typography>
+                    </Stack>
                   </AccordionSummary>
                   <AccordionDetails sx={{ p: 0 }}>
-                    {unit.lessons?.length > 0 ? (
-                      <List sx={{ py: 0 }}>
-                        {unit.lessons.map((lesson, index) => (
-                          <React.Fragment key={lesson.LessonID}>
-                            <ListItemButton
-                              onClick={() =>
-                                setSelectedLesson(
-                                  selectedLesson?.LessonID === lesson.LessonID
-                                    ? null
-                                    : lesson
-                                )
-                              }
-                              sx={{
-                                py: 2,
-                                px: 3,
-                                borderTop:
-                                  index === 0 ? "none" : "1px solid #f0f0f0",
-                                "&:hover": {
-                                  backgroundColor: "#f8f9ff",
-                                },
-                                transition: "background-color 0.2s",
-                              }}
+                    <List sx={{ py: 0 }}>
+                      {unit.lessons?.map((lesson, i) => (
+                        <ListItemButton
+                          key={lesson.LessonID || i}
+                          sx={{
+                            py: 1.5,
+                            px: 3,
+                            borderTop: "1px solid #f7f9fa",
+                          }}
+                        >
+                          <SmartDisplayIcon sx={{ mr: 2, color: "#6a6f73" }} />
+                          <ListItemText
+                            primary={lesson.Title}
+                            primaryTypographyProps={{ variant: "body2" }}
+                          />
+                          {lesson.Time && (
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "#6a6f73" }}
                             >
-                              <VideoLibraryIcon
-                                sx={{
-                                  color: "#5b5bff",
-                                  mr: 2,
-                                  fontSize: 22,
-                                }}
-                              />
-                              <ListItemText
-                                primary={
-                                  <Typography fontWeight={600}>
-                                    {lesson.Title}
-                                  </Typography>
-                                }
-                                secondary={
-                                  lesson.Time
-                                    ? `${lesson.Time} phút`
-                                    : "Không có thời lượng"
-                                }
-                              />
-                            </ListItemButton>
-
-                            {/* Chi tiết bài học khi được chọn */}
-                            <Collapse
-                              in={selectedLesson?.LessonID === lesson.LessonID}
-                              timeout="auto"
-                              unmountOnExit
-                            >
-                              <Card
-                                sx={{
-                                  bgcolor: "#f9faff",
-                                  mx: 3,
-                                  mb: 2,
-                                  p: 2.5,
-                                  borderLeft: "4px solid #5b5bff",
-                                  borderRadius: 2,
-                                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.04)",
-                                }}
-                              >
-                                <Typography variant="body2" sx={{ mb: 1 }}>
-                                  Loại:{" "}
-                                  <Box
-                                    component="span"
-                                    sx={{ fontWeight: 700, color: "#5b5bff" }}
-                                  >
-                                    {lesson.Type === "video"
-                                      ? "Video"
-                                      : lesson.Type === "file"
-                                      ? "Tài liệu"
-                                      : "Khác"}
-                                  </Box>
-                                </Typography>
-                                {lesson.FileURL && (
-                                  <Button
-                                    variant="outlined"
-                                    size="small"
-                                    sx={{
-                                      mt: 1,
-                                      color: "#5b5bff",
-                                      borderColor: "#5b5bff",
-                                      textTransform: "none",
-                                      fontWeight: 600,
-                                      "&:hover": {
-                                        borderColor: "#4a4acc",
-                                        backgroundColor: "#f8f9ff",
-                                      },
-                                    }}
-                                    onClick={() =>
-                                      window.open(lesson.FileURL, "_blank")
-                                    }
-                                  >
-                                    👉 Xem nội dung
-                                  </Button>
-                                )}
-                              </Card>
-                            </Collapse>
-                          </React.Fragment>
-                        ))}
-                      </List>
-                    ) : (
-                      <Box sx={{ p: 3 }}>
-                        <Typography variant="body2" color="text.secondary">
-                          Chưa có bài học nào
-                        </Typography>
-                      </Box>
-                    )}
+                              {lesson.Time}:00
+                            </Typography>
+                          )}
+                        </ListItemButton>
+                      ))}
+                    </List>
                   </AccordionDetails>
                 </Accordion>
-              ))
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Chưa có chương học nào
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
+              ))}
+            </Paper>
+          </Grid>
 
-        {/* PHẦN 4: Tài liệu khóa học */}
-        <Card
-          sx={{
-            borderRadius: 4,
-            boxShadow: "0 4px 20px rgba(0, 0, 0, 0.08)",
-            mb: 4,
-          }}
-        >
-          <CardContent sx={{ p: 4 }}>
-            <Typography
-              variant="h6"
+          {/* RIGHT SIDEBAR */}
+          <Grid item xs={12} md={4}>
+            <Card
               sx={{
-                color: "#5b5bff",
-                fontWeight: 700,
-                mb: 2,
-                fontSize: "1.25rem",
+                position: "sticky",
+                top: 80,
+                boxShadow:
+                  "0 2px 4px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.08)",
               }}
             >
-              Tài liệu khóa học
-            </Typography>
-            {materials.length > 0 ? (
-              <List sx={{ py: 0 }}>
-                {materials.map((m, index) => (
-                  <ListItemButton
-                    key={m.MaterialID}
-                    onClick={() => window.open(m.FileURL, "_blank")}
+              <Box sx={{ position: "relative" }}>
+                <CardMedia
+                  component="img"
+                  height="200"
+                  image={
+                    Image ||
+                    "https://service.keyframe.vn/uploads/filecloud/2018/April/25/72-559201524659628-1524659628.jpg"
+                  }
+                  alt="preview"
+                />
+                <IconButton
+                  sx={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    bgcolor: "rgba(0,0,0,0.6)",
+                    "&:hover": { bgcolor: "rgba(0,0,0,0.8)" },
+                  }}
+                >
+                  <PlayCircleOutlineIcon sx={{ fontSize: 56, color: "#fff" }} />
+                </IconButton>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    position: "absolute",
+                    bottom: 8,
+                    right: 8,
+                    bgcolor: "rgba(0,0,0,0.8)",
+                    color: "#fff",
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: 0.5,
+                  }}
+                >
+                  Xem trước khóa học này
+                </Typography>
+              </Box>
+
+              <CardContent sx={{ p: 3 }}>
+                <Typography variant="h4" sx={{ fontWeight: 700, mb: 2 }}>
+                  {fmtCurrency(Number(Fee || 779000))}
+                </Typography>
+
+                <Stack spacing={1.5} sx={{ mb: 2 }}>
+                  <Button
+                    fullWidth
+                    variant="contained"
+                    size="large"
                     sx={{
-                      borderRadius: 2,
-                      mb: 1,
-                      border: "1px solid #f0f0f0",
-                      "&:hover": {
-                        backgroundColor: "#fff4f5",
-                        borderColor: "#ff4b5c",
-                      },
-                      transition: "all 0.2s",
+                      bgcolor: "#a435f0",
+                      "&:hover": { bgcolor: "#8710d8" },
+                      textTransform: "none",
+                      fontWeight: 700,
+                      py: 1.5,
                     }}
                   >
-                    <PictureAsPdfIcon
-                      sx={{ color: "#ff4b5c", mr: 2, fontSize: 24 }}
-                    />
-                    <ListItemText
-                      primary={
-                        <Typography fontWeight={600}>{m.Title}</Typography>
-                      }
-                    />
-                  </ListItemButton>
-                ))}
-              </List>
-            ) : (
-              <Typography variant="body2" color="text.secondary">
-                Chưa có tài liệu nào được thêm
-              </Typography>
-            )}
-          </CardContent>
-        </Card>
+                    Thêm vào giỏ hàng
+                  </Button>
+                  <Button
+                    fullWidth
+                    variant="outlined"
+                    size="large"
+                    sx={{
+                      borderColor: "#1c1d1f",
+                      color: "#1c1d1f",
+                      textTransform: "none",
+                      fontWeight: 700,
+                      py: 1.5,
+                    }}
+                  >
+                    Mua ngay
+                  </Button>
+                </Stack>
 
-        {/* PHẦN 5: Button đóng ở cuối */}
-        <Box textAlign="center" sx={{ pb: 4 }}>
-          <Button
-            variant="contained"
-            size="large"
-            onClick={onClose}
-            sx={{
-              backgroundColor: "#5b5bff",
-              fontWeight: 700,
-              px: 6,
-              py: 1.5,
-              borderRadius: 3,
-              textTransform: "none",
-              fontSize: "1rem",
-              boxShadow: "0 4px 14px rgba(91, 91, 255, 0.3)",
-              "&:hover": {
-                backgroundColor: "#4a4acc",
-                boxShadow: "0 6px 20px rgba(91, 91, 255, 0.4)",
-                transform: "translateY(-2px)",
-              },
-              transition: "all 0.3s",
-            }}
-          >
-            Đóng xem trước
-          </Button>
-        </Box>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    display: "block",
+                    textAlign: "center",
+                    color: "#6a6f73",
+                    mb: 2,
+                  }}
+                >
+                  Đảm bảo hoàn tiền trong 30 ngày
+                </Typography>
+
+                <Divider sx={{ my: 2 }} />
+
+                <Typography
+                  variant="subtitle2"
+                  sx={{ fontWeight: 700, mb: 1.5 }}
+                >
+                  Khóa học này bao gồm:
+                </Typography>
+
+                <Stack spacing={1.5}>
+                  {[
+                    "9.5 giờ video theo yêu cầu",
+                    "1 bài viết",
+                    "8 tài nguyên có thể tải xuống",
+                    "Truy cập trên thiết bị di động và TV",
+                    "Quyền truy cập đầy đủ suốt đời",
+                    "Giấy chứng nhận hoàn thành",
+                  ].map((text, i) => (
+                    <Stack
+                      key={i}
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                    >
+                      <CheckIcon sx={{ fontSize: 18 }} />
+                      <Typography variant="body2">{text}</Typography>
+                    </Stack>
+                  ))}
+                </Stack>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
       </Container>
     </Dialog>
   );
-};
-
-export default CourseReview;
+}

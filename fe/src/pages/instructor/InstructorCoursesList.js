@@ -13,9 +13,6 @@ import {
   Container,
   Paper,
   Fade,
-  Card,
-  CardContent,
-  CardActions,
   Chip,
   TextField,
   InputAdornment,
@@ -25,31 +22,25 @@ import {
   InputLabel,
   Pagination,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Close as CloseIcon,
   School as SchoolIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Visibility as VisibilityIcon,
   Send as SendIcon,
   Search as SearchIcon,
   FilterList as FilterListIcon,
-  PlayCircleOutline as PlayIcon,
-  Description as DescriptionIcon,
   Timer as TimerIcon,
-  ExpandMore as ExpandMoreIcon,
-  Article as ArticleIcon,
+  Visibility as VisibilityIcon,
+  Edit as EditIcon,
 } from "@mui/icons-material";
+
 import CourseModal from "./componentCouserList/CourseModal";
 import CourseReview from "./componentCouserList/CourseReview";
+import CourseCard from "./componentCouserList/CourseCard";
+import CourseDialog from "./componentCouserList/CourseDialog";
+import UnitAccordion from "./componentCouserList/UnitAccordion";
+import MaterialList from "./componentCouserList/MaterialList";
 
 const API_BASE = "http://localhost:9999/api/instructor/courses";
 const getToken = () => localStorage.getItem("token");
@@ -75,13 +66,16 @@ export default function InstructorCoursesList() {
   const [units, setUnits] = useState([]);
   const [lessons, setLessons] = useState({});
   const [materials, setMaterials] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [modalType, setModalType] = useState("");
   const [formData, setFormData] = useState({});
   const [error, setError] = useState("");
+
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [reviewCourse, setReviewCourse] = useState(null);
+
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [detailCourse, setDetailCourse] = useState(null);
 
@@ -155,12 +149,10 @@ export default function InstructorCoursesList() {
 
       const u = unitsData.units || [];
       const lessonsData = {};
-
       for (const unit of u) {
         const lr = await apiCall(`${API_BASE}/units/${unit.UnitID}/lessons`);
         lessonsData[unit.UnitID] = lr.lessons || [];
       }
-
       const unitsWithLessons = u.map((unit) => ({
         ...unit,
         lessons: lessonsData[unit.UnitID] || [],
@@ -194,7 +186,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourses();
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể tạo khóa học");
     } finally {
       setLoading(false);
@@ -218,7 +210,7 @@ export default function InstructorCoursesList() {
         setDetailCourse({ ...detailCourse, ...formData });
       }
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể cập nhật khóa học");
     } finally {
       setLoading(false);
@@ -230,10 +222,9 @@ export default function InstructorCoursesList() {
     try {
       await apiCall(`${API_BASE}/courses/${courseId}`, { method: "DELETE" });
       await fetchCourses();
-      if (detailDialogOpen && detailCourse?.CourseID === courseId) {
+      if (detailDialogOpen && detailCourse?.CourseID === courseId)
         setDetailDialogOpen(false);
-      }
-    } catch (err) {
+    } catch {
       setError("Không thể xóa khóa học");
     }
   };
@@ -245,7 +236,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourses();
       alert("Khóa học đã được gửi để xét duyệt!");
-    } catch (err) {
+    } catch {
       setError("Không thể gửi khóa học");
     }
   };
@@ -264,7 +255,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể tạo unit");
     } finally {
       setLoading(false);
@@ -284,7 +275,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể cập nhật unit");
     } finally {
       setLoading(false);
@@ -296,7 +287,7 @@ export default function InstructorCoursesList() {
     try {
       await apiCall(`${API_BASE}/units/${unitId}`, { method: "DELETE" });
       await fetchCourseDetails(selectedCourse);
-    } catch (err) {
+    } catch {
       setError("Không thể xóa unit");
     }
   };
@@ -307,21 +298,18 @@ export default function InstructorCoursesList() {
       setLoading(true);
       const formDataObj = new FormData();
       formDataObj.append("Title", formData.Title);
-      formDataObj.append("Time", formData.Time);
+      formDataObj.append("Time", formData.Time); // GIỜ
       formDataObj.append("Type", formData.Type ?? "video");
-
       if (formData.file) formDataObj.append("file", formData.file);
-
       const token = getToken();
       await fetch(`${API_BASE}/units/${formData.UnitID}/lessons`, {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formDataObj,
       });
-
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể tạo bài học");
     } finally {
       setLoading(false);
@@ -333,11 +321,9 @@ export default function InstructorCoursesList() {
       setLoading(true);
       const formDataObj = new FormData();
       formDataObj.append("Title", formData.Title);
-      formDataObj.append("Time", formData.Time);
+      formDataObj.append("Time", formData.Time); // GIỜ
       formDataObj.append("Type", formData.Type);
-
       if (formData.file) formDataObj.append("file", formData.file);
-
       const token = getToken();
       await fetch(
         `${API_BASE}/units/${formData.UnitID}/lessons/${formData.LessonID}`,
@@ -347,10 +333,9 @@ export default function InstructorCoursesList() {
           body: formDataObj,
         }
       );
-
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể cập nhật bài học");
     } finally {
       setLoading(false);
@@ -364,7 +349,7 @@ export default function InstructorCoursesList() {
         method: "DELETE",
       });
       await fetchCourseDetails(selectedCourse);
-    } catch (err) {
+    } catch {
       setError("Không thể xóa bài học");
     }
   };
@@ -383,7 +368,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể tạo tài liệu");
     } finally {
       setLoading(false);
@@ -403,7 +388,7 @@ export default function InstructorCoursesList() {
       });
       await fetchCourseDetails(selectedCourse);
       closeModal();
-    } catch (err) {
+    } catch {
       setError("Không thể cập nhật tài liệu");
     } finally {
       setLoading(false);
@@ -417,7 +402,7 @@ export default function InstructorCoursesList() {
         method: "DELETE",
       });
       await fetchCourseDetails(selectedCourse);
-    } catch (err) {
+    } catch {
       setError("Không thể xóa tài liệu");
     }
   };
@@ -428,7 +413,6 @@ export default function InstructorCoursesList() {
     setFormData(data);
     setModalOpen(true);
   };
-
   const closeModal = () => {
     setModalOpen(false);
     setModalType("");
@@ -462,6 +446,7 @@ export default function InstructorCoursesList() {
     const colors = {
       draft: "default",
       submitted: "info",
+      pending: "warning",
       approved: "success",
       deleted: "error",
     };
@@ -472,13 +457,14 @@ export default function InstructorCoursesList() {
     const labels = {
       draft: "Bản nháp",
       submitted: "Đã gửi",
+      pending: "Chờ duyệt",
       approved: "Đã duyệt",
       deleted: "Đã xóa",
     };
     return labels[status] || status;
   };
 
-  // Filter & Pagination Logic
+  // Filter & Pagination
   const filteredCourses = courses.filter((course) => {
     const matchesSearch =
       course.Title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -488,13 +474,12 @@ export default function InstructorCoursesList() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage) || 1;
   const paginatedCourses = filteredCourses.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
-  const handlePageChange = (event, value) => {
+  const handlePageChange = (_e, value) => {
     setCurrentPage(value);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -502,7 +487,7 @@ export default function InstructorCoursesList() {
   // ---------- Render ----------
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
-      {/* Header Section */}
+      {/* Header */}
       <Box
         sx={{
           bgcolor: "white",
@@ -576,9 +561,9 @@ export default function InstructorCoursesList() {
         </Container>
       </Box>
 
-      {/* Main Content */}
+      {/* Main */}
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        {/* Error Alert */}
+        {/* Error */}
         {error && (
           <Fade in>
             <Alert
@@ -595,7 +580,7 @@ export default function InstructorCoursesList() {
           </Fade>
         )}
 
-        {/* Filter & Search Section */}
+        {/* Filter */}
         <Paper
           sx={{
             p: 3,
@@ -621,11 +606,7 @@ export default function InstructorCoursesList() {
                     </InputAdornment>
                   ),
                 }}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                  },
-                }}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: 2 } }}
               />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -664,7 +645,7 @@ export default function InstructorCoursesList() {
           </Grid>
         </Paper>
 
-        {/* Loading State */}
+        {/* Content */}
         {loading && courses.length === 0 ? (
           <Box
             sx={{
@@ -685,7 +666,6 @@ export default function InstructorCoursesList() {
             </Typography>
           </Box>
         ) : paginatedCourses.length === 0 ? (
-          // Empty State
           <Paper
             sx={{
               p: 8,
@@ -736,9 +716,7 @@ export default function InstructorCoursesList() {
                   textTransform: "none",
                   fontSize: 16,
                   fontWeight: 600,
-                  "&:hover": {
-                    bgcolor: "#4a4acc",
-                  },
+                  "&:hover": { bgcolor: "#4a4acc" },
                 }}
               >
                 Tạo khóa học mới
@@ -747,148 +725,23 @@ export default function InstructorCoursesList() {
           </Paper>
         ) : (
           <>
-            {/* Courses Grid */}
             <Grid container spacing={3}>
               {paginatedCourses.map((course) => (
                 <Grid item xs={12} sm={6} md={4} key={course.CourseID}>
-                  <Fade in timeout={300}>
-                    <Card
-                      sx={{
-                        height: "100%",
-                        display: "flex",
-                        flexDirection: "column",
-                        borderRadius: 2,
-                        boxShadow: "0 2px 8px rgba(91, 91, 255, 0.08)",
-                        transition: "all 0.3s ease",
-                        "&:hover": {
-                          boxShadow: "0 8px 24px rgba(91, 91, 255, 0.15)",
-                          transform: "translateY(-4px)",
-                        },
-                      }}
-                    >
-                      <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "start",
-                            mb: 2,
-                          }}
-                        >
-                          <Chip
-                            label={getStatusLabel(course.Status)}
-                            color={getStatusColor(course.Status)}
-                            size="small"
-                            sx={{ fontWeight: 600 }}
-                          />
-                          <Typography
-                            variant="h6"
-                            sx={{ color: "#5b5bff", fontWeight: 700 }}
-                          >
-                            {course.Fee?.toLocaleString()}₫
-                          </Typography>
-                        </Box>
-
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontWeight: 700,
-                            color: "#1e293b",
-                            mb: 1,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            minHeight: "3.6em",
-                          }}
-                        >
-                          {course.Title}
-                        </Typography>
-
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: "#64748b",
-                            mb: 2,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 3,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                            minHeight: "4.5em",
-                          }}
-                        >
-                          {course.Description}
-                        </Typography>
-
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <TimerIcon sx={{ fontSize: 18, color: "#64748b" }} />
-                          <Typography variant="body2" sx={{ color: "#64748b" }}>
-                            {course.Duration} giờ
-                          </Typography>
-                        </Box>
-                      </CardContent>
-
-                      <Divider />
-
-                      <CardActions sx={{ p: 2, gap: 1, flexWrap: "wrap" }}>
-                        <Button
-                          size="small"
-                          startIcon={<VisibilityIcon />}
-                          onClick={() => handleOpenDetailDialog(course)}
-                          sx={{
-                            textTransform: "none",
-                            color: "#5b5bff",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Chi tiết
-                        </Button>
-                        <Button
-                          size="small"
-                          startIcon={<EditIcon />}
-                          onClick={() => openModal("updateCourse", course)}
-                          sx={{
-                            textTransform: "none",
-                            color: "#64748b",
-                          }}
-                        >
-                          Sửa
-                        </Button>
-                        {course.Status === "draft" && (
-                          <Button
-                            size="small"
-                            startIcon={<SendIcon />}
-                            onClick={() => handleSubmitCourse(course.CourseID)}
-                            sx={{
-                              textTransform: "none",
-                              color: "#10b981",
-                            }}
-                          >
-                            Gửi duyệt
-                          </Button>
-                        )}
-                        <Button
-                          size="small"
-                          startIcon={<DeleteIcon />}
-                          onClick={() => handleDeleteCourse(course.CourseID)}
-                          sx={{
-                            textTransform: "none",
-                            color: "#ef4444",
-                            ml: "auto",
-                          }}
-                        >
-                          Xóa
-                        </Button>
-                      </CardActions>
-                    </Card>
-                  </Fade>
+                  <CourseCard
+                    course={course}
+                    getStatusColor={getStatusColor}
+                    getStatusLabel={getStatusLabel}
+                    onViewDetails={() => handleOpenDetailDialog(course)}
+                    onEdit={() => openModal("updateCourse", course)}
+                    onSubmit={() => handleSubmitCourse(course.CourseID)}
+                    onDelete={() => handleDeleteCourse(course.CourseID)}
+                    onPreview={() => handlePreviewCourse(course)}
+                  />
                 </Grid>
               ))}
             </Grid>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
                 <Pagination
@@ -902,9 +755,7 @@ export default function InstructorCoursesList() {
                       borderRadius: 2,
                       fontWeight: 600,
                     },
-                    "& .Mui-selected": {
-                      bgcolor: "#5b5bff !important",
-                    },
+                    "& .Mui-selected": { bgcolor: "#5b5bff !important" },
                   }}
                 />
               </Box>
@@ -914,479 +765,30 @@ export default function InstructorCoursesList() {
       </Container>
 
       {/* Course Detail Dialog */}
-      <Dialog
+      <CourseDialog
         open={detailDialogOpen}
         onClose={() => setDetailDialogOpen(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            maxHeight: "90vh",
-          },
-        }}
-      >
-        <AppBar
-          sx={{
-            position: "relative",
-            bgcolor: "white",
-            color: "#1e293b",
-            boxShadow: "0 2px 8px rgba(91, 91, 255, 0.08)",
-          }}
-        >
-          <Toolbar>
-            <SchoolIcon sx={{ mr: 2, color: "#5b5bff" }} />
-            <Typography
-              variant="h6"
-              component="div"
-              sx={{ flexGrow: 1, fontWeight: 600 }}
-            >
-              Chi tiết khóa học
-            </Typography>
-            <IconButton
-              edge="end"
-              color="inherit"
-              onClick={() => setDetailDialogOpen(false)}
-              sx={{
-                "&:hover": {
-                  bgcolor: "#f1f5f9",
-                },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
-          </Toolbar>
-        </AppBar>
-
-        {detailCourse && (
-          <Box sx={{ p: 3 }}>
-            {/* Course Info */}
-            <Box sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "start",
-                  mb: 2,
-                }}
-              >
-                <Box>
-                  <Typography
-                    variant="h5"
-                    sx={{ fontWeight: 700, color: "#1e293b", mb: 1 }}
-                  >
-                    {detailCourse.Title}
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(detailCourse.Status)}
-                    color={getStatusColor(detailCourse.Status)}
-                    size="small"
-                  />
-                </Box>
-                <Typography
-                  variant="h5"
-                  sx={{ color: "#5b5bff", fontWeight: 700 }}
-                >
-                  {detailCourse.Fee?.toLocaleString()}₫
-                </Typography>
-              </Box>
-
-              <Typography variant="body1" sx={{ color: "#64748b", mb: 2 }}>
-                {detailCourse.Description}
-              </Typography>
-
-              <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                  <TimerIcon sx={{ fontSize: 20, color: "#64748b" }} />
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>
-                    {detailCourse.Duration} giờ
-                  </Typography>
-                </Box>
-              </Box>
-
-              <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                <Button
-                  variant="outlined"
-                  startIcon={<EditIcon />}
-                  onClick={() => openModal("updateCourse", detailCourse)}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    borderColor: "#5b5bff",
-                    color: "#5b5bff",
-                  }}
-                >
-                  Sửa khóa học
-                </Button>
-                <Button
-                  variant="outlined"
-                  startIcon={<VisibilityIcon />}
-                  onClick={() => handlePreviewCourse(detailCourse)}
-                  sx={{
-                    borderRadius: 2,
-                    textTransform: "none",
-                    borderColor: "#10b981",
-                    color: "#10b981",
-                  }}
-                >
-                  Xem trước
-                </Button>
-                {detailCourse.Status === "draft" && (
-                  <Button
-                    variant="contained"
-                    startIcon={<SendIcon />}
-                    onClick={() => handleSubmitCourse(detailCourse.CourseID)}
-                    sx={{
-                      borderRadius: 2,
-                      textTransform: "none",
-                      bgcolor: "#5b5bff",
-                    }}
-                  >
-                    Gửi duyệt
-                  </Button>
-                )}
-              </Box>
-            </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Units Section */}
-            <Box sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 2,
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 700, color: "#1e293b" }}
-                >
-                  Các Unit
-                </Typography>
-                <Button
-                  size="small"
-                  startIcon={<AddIcon />}
-                  onClick={() => openModal("createUnit")}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    bgcolor: "#5b5bff",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "#4a4acc",
-                    },
-                  }}
-                >
-                  Thêm Unit
-                </Button>
-              </Box>
-
-              {units.length === 0 ? (
-                <Paper
-                  sx={{
-                    p: 3,
-                    textAlign: "center",
-                    bgcolor: "#f8f9ff",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>
-                    Chưa có unit nào
-                  </Typography>
-                </Paper>
-              ) : (
-                <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                  {units.map((unit) => (
-                    <Accordion
-                      key={unit.UnitID}
-                      sx={{
-                        borderRadius: 2,
-                        "&:before": { display: "none" },
-                        boxShadow: "0 2px 8px rgba(91, 91, 255, 0.08)",
-                      }}
-                    >
-                      <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            width: "100%",
-                          }}
-                        >
-                          <Box>
-                            <Typography
-                              sx={{ fontWeight: 600, color: "#1e293b" }}
-                            >
-                              {unit.Title}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "#64748b", mt: 0.5 }}
-                            >
-                              {unit.Description}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: "flex", gap: 1, mr: 2 }}>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openModal("updateUnit", unit);
-                              }}
-                              sx={{ color: "#5b5bff" }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteUnit(unit.UnitID);
-                              }}
-                              sx={{ color: "#ef4444" }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Box>
-                        </Box>
-                      </AccordionSummary>
-                      <AccordionDetails>
-                        <Box sx={{ pl: 2 }}>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                              mb: 2,
-                            }}
-                          >
-                            <Typography
-                              variant="subtitle2"
-                              sx={{ fontWeight: 600, color: "#1e293b" }}
-                            >
-                              Bài học
-                            </Typography>
-                            <Button
-                              size="small"
-                              startIcon={<AddIcon />}
-                              onClick={() =>
-                                openModal("createLesson", {
-                                  UnitID: unit.UnitID,
-                                })
-                              }
-                              sx={{
-                                textTransform: "none",
-                                fontSize: "0.75rem",
-                                color: "#5b5bff",
-                              }}
-                            >
-                              Thêm bài học
-                            </Button>
-                          </Box>
-
-                          {!lessons[unit.UnitID] ||
-                          lessons[unit.UnitID].length === 0 ? (
-                            <Typography
-                              variant="body2"
-                              sx={{ color: "#64748b", fontStyle: "italic" }}
-                            >
-                              Chưa có bài học nào
-                            </Typography>
-                          ) : (
-                            <List
-                              sx={{ bgcolor: "#f8f9ff", borderRadius: 2, p: 1 }}
-                            >
-                              {lessons[unit.UnitID].map((lesson) => (
-                                <ListItem
-                                  key={lesson.LessonID}
-                                  sx={{
-                                    borderRadius: 1,
-                                    mb: 1,
-                                    bgcolor: "white",
-                                  }}
-                                  secondaryAction={
-                                    <Box sx={{ display: "flex", gap: 0.5 }}>
-                                      <IconButton
-                                        edge="end"
-                                        size="small"
-                                        onClick={() =>
-                                          openModal("updateLesson", {
-                                            ...lesson,
-                                            UnitID: unit.UnitID,
-                                          })
-                                        }
-                                        sx={{ color: "#5b5bff" }}
-                                      >
-                                        <EditIcon fontSize="small" />
-                                      </IconButton>
-                                      <IconButton
-                                        edge="end"
-                                        size="small"
-                                        onClick={() =>
-                                          handleDeleteLesson(
-                                            unit.UnitID,
-                                            lesson.LessonID
-                                          )
-                                        }
-                                        sx={{ color: "#ef4444" }}
-                                      >
-                                        <DeleteIcon fontSize="small" />
-                                      </IconButton>
-                                    </Box>
-                                  }
-                                >
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      gap: 1.5,
-                                    }}
-                                  >
-                                    <PlayIcon
-                                      sx={{ color: "#5b5bff", fontSize: 20 }}
-                                    />
-                                    <ListItemText
-                                      primary={lesson.Title}
-                                      secondary={`${lesson.Time} phút - ${lesson.Type}`}
-                                      primaryTypographyProps={{
-                                        fontWeight: 600,
-                                        fontSize: "0.875rem",
-                                      }}
-                                      secondaryTypographyProps={{
-                                        fontSize: "0.75rem",
-                                      }}
-                                    />
-                                  </Box>
-                                </ListItem>
-                              ))}
-                            </List>
-                          )}
-                        </Box>
-                      </AccordionDetails>
-                    </Accordion>
-                  ))}
-                </Box>
-              )}
-            </Box>
-
-            <Divider sx={{ my: 3 }} />
-
-            {/* Materials Section */}
-            <Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  mb: 2,
-                }}
-              >
-                <Typography
-                  variant="h6"
-                  sx={{ fontWeight: 700, color: "#1e293b" }}
-                >
-                  Tài liệu
-                </Typography>
-                <Button
-                  size="small"
-                  startIcon={<AddIcon />}
-                  onClick={() => openModal("createMaterial")}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: 2,
-                    bgcolor: "#5b5bff",
-                    color: "white",
-                    "&:hover": {
-                      bgcolor: "#4a4acc",
-                    },
-                  }}
-                >
-                  Thêm tài liệu
-                </Button>
-              </Box>
-
-              {materials.length === 0 ? (
-                <Paper
-                  sx={{
-                    p: 3,
-                    textAlign: "center",
-                    bgcolor: "#f8f9ff",
-                    borderRadius: 2,
-                  }}
-                >
-                  <Typography variant="body2" sx={{ color: "#64748b" }}>
-                    Chưa có tài liệu nào
-                  </Typography>
-                </Paper>
-              ) : (
-                <List sx={{ bgcolor: "#f8f9ff", borderRadius: 2, p: 1 }}>
-                  {materials.map((material) => (
-                    <ListItem
-                      key={material.MaterialID}
-                      sx={{
-                        borderRadius: 1,
-                        mb: 1,
-                        bgcolor: "white",
-                      }}
-                      secondaryAction={
-                        <Box sx={{ display: "flex", gap: 0.5 }}>
-                          <IconButton
-                            edge="end"
-                            size="small"
-                            onClick={() =>
-                              openModal("updateMaterial", material)
-                            }
-                            sx={{ color: "#5b5bff" }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            edge="end"
-                            size="small"
-                            onClick={() =>
-                              handleDeleteMaterial(material.MaterialID)
-                            }
-                            sx={{ color: "#ef4444" }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      }
-                    >
-                      <Box
-                        sx={{ display: "flex", alignItems: "center", gap: 1.5 }}
-                      >
-                        <ArticleIcon sx={{ color: "#5b5bff", fontSize: 20 }} />
-                        <ListItemText
-                          primary={material.Title}
-                          secondary={material.FileURL}
-                          primaryTypographyProps={{
-                            fontWeight: 600,
-                            fontSize: "0.875rem",
-                          }}
-                          secondaryTypographyProps={{
-                            fontSize: "0.75rem",
-                            sx: {
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              maxWidth: "300px",
-                            },
-                          }}
-                        />
-                      </Box>
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </Box>
-          </Box>
-        )}
-      </Dialog>
+        course={detailCourse}
+        getStatusColor={getStatusColor}
+        getStatusLabel={getStatusLabel}
+        units={units}
+        lessonsByUnit={lessons}
+        materials={materials}
+        onEditCourse={() => openModal("updateCourse", detailCourse)}
+        onSubmitCourse={() => handleSubmitCourse(detailCourse.CourseID)}
+        onPreviewCourse={() => handlePreviewCourse(detailCourse)}
+        onAddUnit={() => openModal("createUnit")}
+        onEditUnit={(unit) => openModal("updateUnit", unit)}
+        onDeleteUnit={(unitId) => handleDeleteUnit(unitId)}
+        onAddLesson={(unitId) => openModal("createLesson", { UnitID: unitId })}
+        onEditLesson={(lesson, unitId) =>
+          openModal("updateLesson", { ...lesson, UnitID: unitId })
+        }
+        onDeleteLesson={handleDeleteLesson}
+        onAddMaterial={() => openModal("createMaterial")}
+        onEditMaterial={(material) => openModal("updateMaterial", material)}
+        onDeleteMaterial={(id) => handleDeleteMaterial(id)}
+      />
 
       {/* Course Modal */}
       <CourseModal
@@ -1435,11 +837,7 @@ export default function InstructorCoursesList() {
               color="inherit"
               onClick={() => setIsReviewOpen(false)}
               aria-label="close"
-              sx={{
-                "&:hover": {
-                  bgcolor: "#f1f5f9",
-                },
-              }}
+              sx={{ "&:hover": { bgcolor: "#f1f5f9" } }}
             >
               <CloseIcon />
             </IconButton>
