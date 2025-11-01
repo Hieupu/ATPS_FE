@@ -1,4 +1,3 @@
-// src/pages/instructor/components/CourseModal.js
 import React from "react";
 import {
   Dialog,
@@ -10,7 +9,24 @@ import {
   CircularProgress,
   MenuItem,
   Box,
+  Typography,
+  IconButton,
+  Chip,
+  InputAdornment,
+  Paper,
+  Divider,
 } from "@mui/material";
+import {
+  Close as CloseIcon,
+  Title as TitleIcon,
+  Description as DescriptionIcon,
+  AccessTime as TimeIcon,
+  AttachMoney as MoneyIcon,
+  CloudUpload as UploadIcon,
+  InsertDriveFile as FileIcon,
+  VideoLibrary as VideoIcon,
+  Article as ArticleIcon,
+} from "@mui/icons-material";
 
 export default function CourseModal({
   open,
@@ -27,332 +43,708 @@ export default function CourseModal({
   const isLesson = type.includes("Lesson");
   const isMaterial = type.includes("Material");
 
+  // Xác định tiêu đề và màu sắc
+  const getModalConfig = () => {
+    if (isCourse) {
+      return {
+        title: "Khóa học",
+        color: "#5b5bff",
+        gradient: "linear-gradient(135deg, #5b5bff 0%, #4a4acc 100%)",
+        icon: "📚",
+      };
+    }
+    if (isUnit) {
+      return {
+        title: "Unit",
+        color: "#10b981",
+        gradient: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+        icon: "📖",
+      };
+    }
+    if (isLesson) {
+      return {
+        title: "Bài học",
+        color: "#f59e0b",
+        gradient: "linear-gradient(135deg, #f59e0b 0%, #d97706 100%)",
+        icon: "🎓",
+      };
+    }
+    return {
+      title: "Tài liệu",
+      color: "#8b5cf6",
+      gradient: "linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)",
+      icon: "📄",
+    };
+  };
+
+  const config = getModalConfig();
+
   // Hàm xử lý thay đổi dữ liệu
   const handleChange = (key, value) => {
     onChange({ ...data, [key]: value });
+  };
+
+  // Format file size
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "";
+    const kb = bytes / 1024;
+    const mb = kb / 1024;
+    if (mb >= 1) return `${mb.toFixed(2)} MB`;
+    return `${kb.toFixed(2)} KB`;
   };
 
   return (
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          borderRadius: 3,
-          boxShadow: "0 8px 32px rgba(91, 91, 255, 0.12)",
+          borderRadius: 4,
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.15)",
+          overflow: "hidden",
         },
       }}
     >
-      {/* ===== TIÊU ĐỀ ===== */}
-      <DialogTitle
+      {/* ===== HEADER VỚI GRADIENT ===== */}
+      <Box
         sx={{
-          color: "#5b5bff",
-          fontWeight: 600,
-          fontSize: "1.25rem",
-          pb: 1,
+          background: config.gradient,
+          color: "#fff",
+          px: 3,
+          py: 2.5,
+          position: "relative",
         }}
       >
-        {type.includes("create") ? "Tạo mới" : "Cập nhật"}{" "}
-        {isCourse
-          ? "Khóa học"
-          : isUnit
-          ? "Unit"
-          : isLesson
-          ? "Bài học"
-          : "Tài liệu"}
-      </DialogTitle>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Typography sx={{ fontSize: "2rem" }}>{config.icon}</Typography>
+          <Box sx={{ flex: 1 }}>
+            <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
+              {type.includes("create") ? "Tạo mới" : "Cập nhật"} {config.title}
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {type.includes("create")
+                ? `Điền thông tin để tạo ${config.title.toLowerCase()} mới`
+                : `Chỉnh sửa thông tin ${config.title.toLowerCase()}`}
+            </Typography>
+          </Box>
+          <IconButton
+            onClick={onClose}
+            sx={{
+              color: "#fff",
+              "&:hover": { bgcolor: "rgba(255, 255, 255, 0.1)" },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Box>
+      </Box>
 
       {/* ===== NỘI DUNG FORM ===== */}
-      <DialogContent>
-        <Box
+      <DialogContent sx={{ p: 3, bgcolor: "#fafafa" }}>
+        <Paper
+          elevation={0}
           sx={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 2.5,
-            pt: 2,
+            p: 3,
+            bgcolor: "#fff",
+            borderRadius: 3,
+            border: "1px solid #e5e7eb",
           }}
         >
-          {/* Trường Tiêu đề - Luôn hiển thị */}
-          <TextField
-            label="Tiêu đề"
-            fullWidth
-            variant="outlined"
-            value={data.Title || ""}
-            onChange={(e) => handleChange("Title", e.target.value)}
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                backgroundColor: "#fafafa",
-                "&:hover fieldset": {
-                  borderColor: "#5b5bff",
-                },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#5b5bff",
-                },
-              },
-              "& .MuiInputLabel-root.Mui-focused": {
-                color: "#5b5bff",
-              },
-            }}
-          />
-
-          {/* Trường Mô tả - Chỉ cho Course và Unit */}
-          {(isCourse || isUnit) && (
-            <TextField
-              label="Mô tả"
-              fullWidth
-              multiline
-              rows={3}
-              variant="outlined"
-              value={data.Description || ""}
-              onChange={(e) => handleChange("Description", e.target.value)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "#fafafa",
-                  "&:hover fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                },
-                "& .MuiInputLabel-root.Mui-focused": {
-                  color: "#5b5bff",
-                },
-              }}
-            />
-          )}
-
-          {/* Các trường đặc biệt cho Course */}
-          {isCourse && (
-            <>
-              <TextField
-                label="Thời lượng (giờ)"
-                type="number"
-                fullWidth
-                variant="outlined"
-                value={data.Duration || ""}
-                onChange={(e) => handleChange("Duration", e.target.value)}
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {/* Trường Tiêu đề - Luôn hiển thị */}
+            <Box>
+              <Typography
+                variant="subtitle2"
                 sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fafafa",
-                    "&:hover fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#5b5bff",
-                  },
-                }}
-              />
-              <TextField
-                label="Học phí (VND)"
-                type="number"
-                fullWidth
-                variant="outlined"
-                value={data.Fee || ""}
-                onChange={(e) => handleChange("Fee", e.target.value)}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fafafa",
-                    "&:hover fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#5b5bff",
-                  },
-                }}
-              />
-            </>
-          )}
-
-          {/* Trường Thời lượng cho Unit */}
-          {isUnit && (
-            <TextField
-              label="Thời lượng (VD: 5h)"
-              fullWidth
-              variant="outlined"
-              value={data.Duration || ""}
-              onChange={(e) => handleChange("Duration", e.target.value)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "#fafafa",
-                  "&:hover fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                },
-                "& .MuiInputLabel-root.Mui-focused": {
-                  color: "#5b5bff",
-                },
-              }}
-            />
-          )}
-
-          {/* Các trường đặc biệt cho Lesson */}
-          {isLesson && (
-            <>
-              <TextField
-                label="Thời gian (phút)"
-                type="number"
-                fullWidth
-                variant="outlined"
-                value={data.Time || ""}
-                onChange={(e) => handleChange("Time", e.target.value)}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fafafa",
-                    "&:hover fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#5b5bff",
-                  },
-                }}
-              />
-              <TextField
-                select
-                label="Loại"
-                fullWidth
-                variant="outlined"
-                value={data.Type || "video"}
-                onChange={(e) => handleChange("Type", e.target.value)}
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fafafa",
-                    "&:hover fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#5b5bff",
-                    },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#5b5bff",
-                  },
+                  mb: 1,
+                  fontWeight: 600,
+                  color: "#374151",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
                 }}
               >
-                <MenuItem value="video">Video</MenuItem>
-                <MenuItem value="document">Document</MenuItem>
-              </TextField>
+                <TitleIcon sx={{ fontSize: 18, color: config.color }} />
+                Tiêu đề
+                <Chip
+                  label="Bắt buộc"
+                  size="small"
+                  sx={{
+                    height: 20,
+                    fontSize: "0.7rem",
+                    bgcolor: "#fee2e2",
+                    color: "#dc2626",
+                  }}
+                />
+              </Typography>
               <TextField
-                label="File URL"
+                placeholder={`Nhập tiêu đề ${config.title.toLowerCase()}...`}
                 fullWidth
                 variant="outlined"
-                value={data.FileURL || ""}
-                onChange={(e) => handleChange("FileURL", e.target.value)}
+                value={data.Title || ""}
+                onChange={(e) => handleChange("Title", e.target.value)}
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    backgroundColor: "#fafafa",
-                    "&:hover fieldset": {
-                      borderColor: "#5b5bff",
+                    bgcolor: "#f9fafb",
+                    transition: "all 0.3s",
+                    "&:hover": {
+                      bgcolor: "#fff",
+                      "& fieldset": { borderColor: config.color },
                     },
-                    "&.Mui-focused fieldset": {
-                      borderColor: "#5b5bff",
+                    "&.Mui-focused": {
+                      bgcolor: "#fff",
+                      "& fieldset": {
+                        borderColor: config.color,
+                        borderWidth: 2,
+                      },
                     },
-                  },
-                  "& .MuiInputLabel-root.Mui-focused": {
-                    color: "#5b5bff",
                   },
                 }}
               />
-            </>
-          )}
+            </Box>
 
-          {/* Trường File URL cho Material */}
-          {isMaterial && (
-            <TextField
-              label="File URL"
-              fullWidth
-              variant="outlined"
-              value={data.FileURL || ""}
-              onChange={(e) => handleChange("FileURL", e.target.value)}
-              sx={{
-                "& .MuiOutlinedInput-root": {
-                  backgroundColor: "#fafafa",
-                  "&:hover fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                  "&.Mui-focused fieldset": {
-                    borderColor: "#5b5bff",
-                  },
-                },
-                "& .MuiInputLabel-root.Mui-focused": {
-                  color: "#5b5bff",
-                },
-              }}
-            />
-          )}
-        </Box>
+            {/* Trường Mô tả - Chỉ cho Course và Unit */}
+            {(isCourse || isUnit) && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    mb: 1,
+                    fontWeight: 600,
+                    color: "#374151",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <DescriptionIcon sx={{ fontSize: 18, color: config.color }} />
+                  Mô tả
+                </Typography>
+                <TextField
+                  placeholder={`Nhập mô tả chi tiết về ${config.title.toLowerCase()}...`}
+                  fullWidth
+                  multiline
+                  rows={4}
+                  variant="outlined"
+                  value={data.Description || ""}
+                  onChange={(e) => handleChange("Description", e.target.value)}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f9fafb",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        bgcolor: "#fff",
+                        "& fieldset": { borderColor: config.color },
+                      },
+                      "&.Mui-focused": {
+                        bgcolor: "#fff",
+                        "& fieldset": {
+                          borderColor: config.color,
+                          borderWidth: 2,
+                        },
+                      },
+                    },
+                  }}
+                />
+              </Box>
+            )}
+
+            {/* Các trường đặc biệt cho Course */}
+            {isCourse && (
+              <>
+                <Divider sx={{ my: 1 }} />
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        mb: 1,
+                        fontWeight: 600,
+                        color: "#374151",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <TimeIcon sx={{ fontSize: 18, color: config.color }} />
+                      Thời lượng
+                    </Typography>
+                    <TextField
+                      type="number"
+                      placeholder="VD: 40"
+                      fullWidth
+                      variant="outlined"
+                      value={data.Duration || ""}
+                      onChange={(e) => handleChange("Duration", e.target.value)}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                              giờ
+                            </Typography>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: "#f9fafb",
+                          transition: "all 0.3s",
+                          "&:hover": {
+                            bgcolor: "#fff",
+                            "& fieldset": { borderColor: config.color },
+                          },
+                          "&.Mui-focused": {
+                            bgcolor: "#fff",
+                            "& fieldset": {
+                              borderColor: config.color,
+                              borderWidth: 2,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        mb: 1,
+                        fontWeight: 600,
+                        color: "#374151",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <MoneyIcon sx={{ fontSize: 18, color: config.color }} />
+                      Học phí
+                    </Typography>
+                    <TextField
+                      type="number"
+                      placeholder="VD: 2000000"
+                      fullWidth
+                      variant="outlined"
+                      value={data.Fee || ""}
+                      onChange={(e) => handleChange("Fee", e.target.value)}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                              VND
+                            </Typography>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: "#f9fafb",
+                          transition: "all 0.3s",
+                          "&:hover": {
+                            bgcolor: "#fff",
+                            "& fieldset": { borderColor: config.color },
+                          },
+                          "&.Mui-focused": {
+                            bgcolor: "#fff",
+                            "& fieldset": {
+                              borderColor: config.color,
+                              borderWidth: 2,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+                </Box>
+              </>
+            )}
+
+            {/* Trường Thời lượng cho Unit */}
+            {isUnit && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    mb: 1,
+                    fontWeight: 600,
+                    color: "#374151",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <TimeIcon sx={{ fontSize: 18, color: config.color }} />
+                  Thời lượng
+                </Typography>
+                <TextField
+                  placeholder="VD: 5h, 2 tuần, 10 ngày"
+                  fullWidth
+                  variant="outlined"
+                  value={data.Duration || ""}
+                  onChange={(e) => handleChange("Duration", e.target.value)}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f9fafb",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        bgcolor: "#fff",
+                        "& fieldset": { borderColor: config.color },
+                      },
+                      "&.Mui-focused": {
+                        bgcolor: "#fff",
+                        "& fieldset": {
+                          borderColor: config.color,
+                          borderWidth: 2,
+                        },
+                      },
+                    },
+                  }}
+                />
+              </Box>
+            )}
+
+            {/* Các trường đặc biệt cho Lesson */}
+            {isLesson && (
+              <>
+                <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 3 }}>
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        mb: 1,
+                        fontWeight: 600,
+                        color: "#374151",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <TimeIcon sx={{ fontSize: 18, color: config.color }} />
+                      Thời gian
+                    </Typography>
+                    <TextField
+                      type="number"
+                      placeholder="VD: 45"
+                      fullWidth
+                      variant="outlined"
+                      value={data.Time || ""}
+                      onChange={(e) => handleChange("Time", e.target.value)}
+                      InputProps={{
+                        endAdornment: (
+                          <InputAdornment position="end">
+                            <Typography variant="body2" sx={{ color: "#6b7280" }}>
+                              phút
+                            </Typography>
+                          </InputAdornment>
+                        ),
+                      }}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: "#f9fafb",
+                          transition: "all 0.3s",
+                          "&:hover": {
+                            bgcolor: "#fff",
+                            "& fieldset": { borderColor: config.color },
+                          },
+                          "&.Mui-focused": {
+                            bgcolor: "#fff",
+                            "& fieldset": {
+                              borderColor: config.color,
+                              borderWidth: 2,
+                            },
+                          },
+                        },
+                      }}
+                    />
+                  </Box>
+
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        mb: 1,
+                        fontWeight: 600,
+                        color: "#374151",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                      }}
+                    >
+                      <FileIcon sx={{ fontSize: 18, color: config.color }} />
+                      Loại bài học
+                    </Typography>
+                    <TextField
+                      select
+                      fullWidth
+                      variant="outlined"
+                      value={data.Type || "video"}
+                      onChange={(e) => handleChange("Type", e.target.value)}
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          bgcolor: "#f9fafb",
+                          transition: "all 0.3s",
+                          "&:hover": {
+                            bgcolor: "#fff",
+                            "& fieldset": { borderColor: config.color },
+                          },
+                          "&.Mui-focused": {
+                            bgcolor: "#fff",
+                            "& fieldset": {
+                              borderColor: config.color,
+                              borderWidth: 2,
+                            },
+                          },
+                        },
+                      }}
+                    >
+                      <MenuItem value="video">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <VideoIcon sx={{ fontSize: 18, color: "#f59e0b" }} />
+                          Video
+                        </Box>
+                      </MenuItem>
+                      <MenuItem value="document">
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          <ArticleIcon sx={{ fontSize: 18, color: "#3b82f6" }} />
+                          Document
+                        </Box>
+                      </MenuItem>
+                    </TextField>
+                  </Box>
+                </Box>
+
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{
+                      mb: 1,
+                      fontWeight: 600,
+                      color: "#374151",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <UploadIcon sx={{ fontSize: 18, color: config.color }} />
+                    Tệp đính kèm
+                  </Typography>
+
+                  <Paper
+                    elevation={0}
+                    sx={{
+                      p: 2,
+                      bgcolor: "#f9fafb",
+                      border: "2px dashed #d1d5db",
+                      borderRadius: 2,
+                      textAlign: "center",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        borderColor: config.color,
+                        bgcolor: "#fff",
+                      },
+                    }}
+                  >
+                    <Button
+                      variant="contained"
+                      component="label"
+                      startIcon={<UploadIcon />}
+                      sx={{
+                        bgcolor: config.color,
+                        color: "#fff",
+                        textTransform: "none",
+                        fontWeight: 600,
+                        px: 3,
+                        py: 1,
+                        borderRadius: 2,
+                        "&:hover": {
+                          bgcolor: config.color,
+                          filter: "brightness(0.9)",
+                        },
+                      }}
+                    >
+                      {data.FileURL || data.file ? "Thay đổi file" : "Chọn file"}
+                      <input
+                        type="file"
+                        hidden
+                        onChange={(e) => {
+                          if (e.target.files.length > 0) {
+                            handleChange("file", e.target.files[0]);
+                          }
+                        }}
+                      />
+                    </Button>
+
+                    {/* Hiển thị file hiện tại */}
+                    {(data.FileURL || data.file) && (
+                      <Box
+                        sx={{
+                          mt: 2,
+                          p: 2,
+                          bgcolor: "#fff",
+                          borderRadius: 2,
+                          border: "1px solid #e5e7eb",
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1.5,
+                          }}
+                        >
+                          <FileIcon sx={{ color: config.color, fontSize: 24 }} />
+                          <Box sx={{ flex: 1, textAlign: "left" }}>
+                            <Typography
+                              variant="body2"
+                              sx={{ fontWeight: 600, color: "#374151" }}
+                            >
+                              {data.file
+                                ? data.file.name
+                                : data.FileURL?.split("/").pop()}
+                            </Typography>
+                            {data.file && (
+                              <Typography
+                                variant="caption"
+                                sx={{ color: "#6b7280" }}
+                              >
+                                {formatFileSize(data.file.size)}
+                              </Typography>
+                            )}
+                          </Box>
+                          {data.FileURL && !data.file && (
+                            <Button
+                              size="small"
+                              href={data.FileURL}
+                              target="_blank"
+                              sx={{ textTransform: "none" }}
+                            >
+                              Xem
+                            </Button>
+                          )}
+                        </Box>
+                      </Box>
+                    )}
+                  </Paper>
+                </Box>
+              </>
+            )}
+
+            {/* Trường File URL cho Material */}
+            {isMaterial && (
+              <Box>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    mb: 1,
+                    fontWeight: 600,
+                    color: "#374151",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <FileIcon sx={{ fontSize: 18, color: config.color }} />
+                  File URL
+                </Typography>
+                <TextField
+                  placeholder="https://example.com/file.pdf"
+                  fullWidth
+                  variant="outlined"
+                  value={data.FileURL || ""}
+                  onChange={(e) => handleChange("FileURL", e.target.value)}
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      bgcolor: "#f9fafb",
+                      transition: "all 0.3s",
+                      "&:hover": {
+                        bgcolor: "#fff",
+                        "& fieldset": { borderColor: config.color },
+                      },
+                      "&.Mui-focused": {
+                        bgcolor: "#fff",
+                        "& fieldset": {
+                          borderColor: config.color,
+                          borderWidth: 2,
+                        },
+                      },
+                    },
+                  }}
+                />
+              </Box>
+            )}
+          </Box>
+        </Paper>
       </DialogContent>
 
       {/* ===== CÁC NÚT HÀNH ĐỘNG ===== */}
       <DialogActions
         sx={{
-          justifyContent: "flex-end",
-          gap: 1.5,
           px: 3,
-          pb: 2.5,
+          py: 2.5,
+          bgcolor: "#fafafa",
+          borderTop: "1px solid #e5e7eb",
+          gap: 1.5,
         }}
       >
-        {/* Nút Hủy */}
         <Button
           onClick={onClose}
           variant="outlined"
+          disabled={loading}
           sx={{
-            color: "#64748b",
-            borderColor: "#e2e8f0",
+            color: "#6b7280",
+            borderColor: "#d1d5db",
             textTransform: "none",
-            fontWeight: 500,
+            fontWeight: 600,
             px: 3,
+            py: 1,
+            borderRadius: 2,
             transition: "all 0.2s",
             "&:hover": {
-              backgroundColor: "#f1f5f9",
-              borderColor: "#cbd5e1",
+              bgcolor: "#f3f4f6",
+              borderColor: "#9ca3af",
             },
           }}
         >
           Hủy
         </Button>
 
-        {/* Nút Lưu */}
         <Button
           onClick={onSubmit}
           variant="contained"
           disabled={loading}
           sx={{
-            bgcolor: "#5b5bff",
+            background: config.gradient,
             color: "#fff",
             textTransform: "none",
             fontWeight: 600,
-            px: 3,
-            minWidth: 100,
+            px: 4,
+            py: 1,
+            minWidth: 120,
+            borderRadius: 2,
+            boxShadow: `0 4px 12px ${config.color}40`,
             transition: "all 0.2s",
             "&:hover": {
-              bgcolor: "#4a4acc",
-              boxShadow: "0 4px 12px rgba(91, 91, 255, 0.3)",
+              boxShadow: `0 6px 16px ${config.color}60`,
+              transform: "translateY(-1px)",
             },
             "&.Mui-disabled": {
-              bgcolor: "#c7d2fe",
+              bgcolor: "#d1d5db",
               color: "#fff",
             },
           }}
         >
-          {loading ? <CircularProgress size={24} color="inherit" /> : "Lưu"}
+          {loading ? (
+            <CircularProgress size={24} sx={{ color: "#fff" }} />
+          ) : (
+            <>
+              <Box component="span" sx={{ mr: 1 }}>
+                💾
+              </Box>
+              Lưu
+            </>
+          )}
         </Button>
       </DialogActions>
     </Dialog>
