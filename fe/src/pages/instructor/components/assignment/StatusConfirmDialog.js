@@ -6,7 +6,7 @@ export default function StatusConfirmDialog({ open, onClose, next, onConfirm, bu
   const isActive = next === "active";
   return (
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Confirm status change</DialogTitle>
+      <DialogTitle>Xác nhận thay đổi</DialogTitle>
       <DialogContent>
         <Typography variant="body2">Bạn có chắc muốn đổi trạng thái sang <b>{next}</b>?</Typography>
       </DialogContent>
