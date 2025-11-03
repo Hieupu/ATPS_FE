@@ -5,7 +5,7 @@ import {
 import { MoreVert, Assignment as AssignmentIcon, Assessment, Visibility, Grade } from "@mui/icons-material";
 import dayjs from "dayjs";
 
-const typeIcon = (type) => (type === "exam" ? <Assessment /> : <AssignmentIcon />);
+const typeIcon = () => <AssignmentIcon />;
 const statusColor = (status) => {
   const s = (status ?? "").toLowerCase();
   if (s === "active") return "success";
@@ -14,7 +14,7 @@ const statusColor = (status) => {
   return "default";
 };
 
-export default function AssignmentCard({ item, onMenu }) {
+export default function AssignmentCard({ item, onMenu,onView  }) {
   const title = item.Title ?? "Untitled";
   const type = (item.Type ?? "assignment").toLowerCase();
   const deadline = item.Deadline ? dayjs(item.Deadline).format("MMM DD, YYYY") : "—";
@@ -50,7 +50,7 @@ export default function AssignmentCard({ item, onMenu }) {
             <Typography variant="body2" sx={{ fontWeight: 600, fontSize: 13 }}>{deadline}</Typography>
           </Box>
           <Stack direction="row" spacing={1}>
-            <IconButton size="small" color="primary"><Visibility /></IconButton>
+            <IconButton size="small" color="primary" onClick={() => onView?.(item)}><Visibility /></IconButton>
             <IconButton size="small" color="secondary"><Grade /></IconButton>
           </Stack>
         </Box>

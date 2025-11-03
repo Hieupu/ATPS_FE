@@ -1,22 +1,17 @@
-// assignmentService.js
 import apiClient from "./apiClient";
-
-/** =========================
- *  Assignments (Instructor)
- *  ========================= */
 
 // Lấy danh sách tất cả bài tập của giảng viên
 export const getAssignmentsApi = async () => {
   try {
     const response = await apiClient.get("/instructor/assignments");
-    return response.data;
+    return response.data.assignments || response.data;
   } catch (error) {
     console.error("Get assignments error:", error);
     throw error.response?.data || { message: "Không thể tải danh sách bài tập" };
   }
 };
 
-// (Tùy BE có route hay chưa) Lấy chi tiết một bài tập
+// Lấy chi tiết một bài tập
 export const getAssignmentByIdApi = async (assignmentId) => {
   try {
     const response = await apiClient.get(`/instructor/assignments/${assignmentId}`);
@@ -27,7 +22,7 @@ export const getAssignmentByIdApi = async (assignmentId) => {
   }
 };
 
-// Tạo bài tập mới
+// Tạo bài tập mới (draft hoặc active)
 export const createAssignmentApi = async (assignmentData) => {
   try {
     const response = await apiClient.post("/instructor/assignments", assignmentData);
@@ -38,7 +33,7 @@ export const createAssignmentApi = async (assignmentData) => {
   }
 };
 
-// Cập nhật bài tập
+// Cập nhật bài tập (update UnitTitle/UnitID, FileURL, Status, v.v.)
 export const updateAssignmentApi = async (assignmentId, assignmentData) => {
   try {
     const response = await apiClient.put(`/instructor/assignments/${assignmentId}`, assignmentData);
@@ -49,86 +44,79 @@ export const updateAssignmentApi = async (assignmentId, assignmentData) => {
   }
 };
 
-/** =========================
- *  Status / Soft Delete
- *  ========================= */
-
-// Đổi trạng thái bài tập (active | inactive | deleted)
-export const patchAssignmentStatusApi = async (assignmentId, status) => {
-  try {
-    const response = await apiClient.patch(`/instructor/assignments/${assignmentId}/status`, { status });
-    return response.data;
-  } catch (error) {
-    console.error("Patch assignment status error:", error);
-    throw error.response?.data || { message: "Không thể cập nhật trạng thái bài tập" };
-  }
-};
-
-// Xóa mềm (giữ tương thích ngược cho code cũ từng gọi DELETE)
+// Xóa mềm bài tập (Status = 'deleted')
 export const deleteAssignmentApi = async (assignmentId) => {
-  // Thực chất gọi PATCH status = "inactive"
-  return patchAssignmentStatusApi(assignmentId, "inactive");
-};
-
-/** =========================
- *  Submissions (Instructor)
- *  ========================= */
-
-// Lấy danh sách submissions của một bài tập (cho giảng viên)
-export const getAssignmentSubmissionsApi = async (assignmentId) => {
   try {
-    const response = await apiClient.get(`/instructor/assignments/${assignmentId}/submissions`);
+    const response = await apiClient.delete(`/instructor/assignments/${assignmentId}`);
     return response.data;
   } catch (error) {
-    console.error("Get submissions error:", error);
-    throw error.response?.data || { message: "Không thể tải danh sách bài nộp" };
+    console.error("Delete assignment error:", error);
+    throw error.response?.data || { message: "Không thể xóa bài tập" };
   }
 };
 
-// Chấm điểm một submission
-export const gradeSubmissionApi = async (submissionId, gradeData) => {
+// Lấy danh sách Course của instructor (dropdown 1)
+export const getCoursesApi = async () => {
   try {
-    const response = await apiClient.post(`/instructor/submissions/${submissionId}/grade`, gradeData);
-    return response.data;
+    const response = await apiClient.get("/instructor/courses");
+    console.log("📡 API /instructor/courses response:", response.data);
+
+    const courses = response.data?.courses || [];
+    const mapped = courses.map(c => ({
+      value: c.CourseID,
+      label: (c.Title || "").trim(),
+    }));
+
+    console.log("✅ mapped courses:", mapped);
+    return mapped;
   } catch (error) {
-    console.error("Grade submission error:", error);
-    throw error.response?.data || { message: "Không thể chấm điểm" };
+    console.error("❌ Get courses error:", error);
+    return [];
   }
 };
 
-/** =========================
- *  Student-side helpers
- *  ========================= */
 
-// Lấy bài tập theo Unit (cho học viên)
-export const getAssignmentsByUnitApi = async (unitId) => {
+
+// Lấy Units theo courseId (dropdown 2 - động theo Course)
+export const getUnitsByCourseApi = async (courseId) => {
+  if (!courseId) return [];
   try {
-    const response = await apiClient.get(`/instructor/units/${unitId}/assignments`);
-    return response.data;
+    const response = await apiClient.get(`/instructor/units`, {
+      params: { courseId },
+    });
+    const units = response.data?.units || [];
+    return Array.isArray(units) ? units : [];
   } catch (error) {
-    console.error("Get unit assignments error:", error);
-    throw error.response?.data || { message: "Không thể tải bài tập của unit" };
+    console.error("Get units by course error:", error);
+    return [];
   }
 };
 
-// Nộp bài tập (cho học viên)
-export const submitAssignmentApi = async (assignmentId, submissionData) => {
+//Lấy tất cả Unit cho instructor 
+export const getUnitsApi = async () => {
   try {
-    const response = await apiClient.post(`/instructor/assignments/${assignmentId}/submit`, submissionData);
-    return response.data;
+    const response = await apiClient.get("/instructor/units");
+    const units = response.data?.units || [];
+    return Array.isArray(units) ? units : [];
   } catch (error) {
-    console.error("Submit assignment error:", error);
-    throw error.response?.data || { message: "Không thể nộp bài tập" };
+    console.error("Get units error:", error);
+    return [];
   }
 };
 
-// Lấy submission của học viên cho một bài tập
-export const getMySubmissionApi = async (assignmentId) => {
+// Upload file lên server (Cloudinary/multer)
+export const uploadAssignmentFileApi = async (file) => {
   try {
-    const response = await apiClient.get(`/instructor/assignments/${assignmentId}/my-submission`);
-    return response.data;
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await apiClient.post("/instructor/uploads", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    return response.data; 
   } catch (error) {
-    console.error("Get my submission error:", error);
-    throw error.response?.data || { message: "Không thể tải bài nộp của bạn" };
+    console.error("Upload file error:", error);
+    throw error.response?.data || { message: "Không thể upload file" };
   }
 };
