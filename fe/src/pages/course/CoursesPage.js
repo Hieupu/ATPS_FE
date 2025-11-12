@@ -11,242 +11,15 @@ import {
   MenuItem,
   Pagination,
   Chip,
-  Card,
-  CardContent,
-  CardMedia,
   Button,
-  Avatar,
   InputAdornment,
   Paper,
+  Skeleton,
 } from "@mui/material";
-import {
-  Search,
-  People,
-  Schedule,
-  Star,
-  ArrowForward,
-} from "@mui/icons-material";
+import { Search } from "@mui/icons-material";
 import { searchCoursesApi } from "../../apiServices/courseService";
-import { useNavigate } from "react-router-dom";
 import AppHeader from "../../components/Header/AppHeader";
-
-// Array ảnh để random
-const courseImages = [
-  "https://wp-s3-edilume-test-bucket.s3.ap-southeast-1.amazonaws.com/wp-content/uploads/2022/12/31183122/IELTS_new_thumbnail.png",
-  "https://top-courses.org/wp-content/uploads/2022/07/IELTS-TEST_Speaking-and-Writing.jpg",
-  "https://www.focusedu.org/wp-content/uploads/2021/03/Top-Reasons-Why-IELTS-Coaching-Is-Important.jpg",
-];
-
-const CourseCard = ({ course }) => {
-  const navigate = useNavigate();
-
-  const handleViewDetails = () => {
-    navigate(`/courses/${course.CourseID}`);
-  };
-
-  const formatPrice = (price) => {
-    // Handle null/undefined/NaN values
-    if (price == null || isNaN(price)) {
-      return "0 ₫";
-    }
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
-  };
-
-  // Random ảnh dựa trên CourseID
-  const imageUrl = courseImages[course.CourseID % courseImages.length];
-
-  return (
-    <Card
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-        borderRadius: 3,
-        overflow: "hidden",
-        position: "relative",
-        "&:hover": {
-          transform: "translateY(-12px)",
-          boxShadow: "0 20px 60px rgba(102, 126, 234, 0.25)",
-          "& .course-image": {
-            transform: "scale(1.1)",
-          },
-          "& .view-button": {
-            transform: "translateX(8px)",
-          },
-        },
-      }}
-    >
-      {/* Course Image */}
-      <Box sx={{ position: "relative", overflow: "hidden", height: 200 }}>
-        <CardMedia
-          component="img"
-          className="course-image"
-          height="200"
-          image={imageUrl}
-          alt={course.Title}
-          sx={{
-            objectFit: "cover",
-            transition: "transform 0.4s ease",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-          }}
-        >
-          <Chip
-            label={course.Category || "Programming"}
-            size="small"
-            sx={{
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              fontWeight: 600,
-              backdropFilter: "blur(10px)",
-            }}
-          />
-        </Box>
-      </Box>
-
-      <CardContent
-        sx={{ flexGrow: 1, p: 3, display: "flex", flexDirection: "column" }}
-      >
-        {/* Course Title */}
-        <Typography
-          variant="h6"
-          component="h3"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-            height: "56px",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            lineHeight: 1.4,
-            color: "text.primary",
-          }}
-        >
-          {course.Title}
-        </Typography>
-
-        {/* Course Description */}
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mb: 3,
-            height: "42px",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            lineHeight: 1.5,
-          }}
-        >
-          {course.Description}
-        </Typography>
-
-        {/* Instructor Info */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-          <Avatar
-            src={course.InstructorAvatar}
-            sx={{
-              width: 36,
-              height: 36,
-              mr: 1.5,
-              border: "2px solid",
-              borderColor: "primary.light",
-            }}
-          >
-            {course.InstructorName?.charAt(0)}
-          </Avatar>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: 600, color: "text.primary" }}
-          >
-            {course.InstructorName}
-          </Typography>
-        </Box>
-
-        {/* Course Stats */}
-        <Box
-          sx={{
-            display: "flex",
-            gap: 2,
-            mb: 3,
-            pb: 3,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <People sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {course.EnrollmentCount || 0}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Schedule sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {course.Duration}h
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Star sx={{ fontSize: 18, color: "warning.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {course.AverageRating ? course.AverageRating.toFixed(1) : "N/A"}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Price and Action */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mt: "auto",
-          }}
-        >
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 800,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {formatPrice(course.TuitionFee)}
-          </Typography>
-          <Button
-            className="view-button"
-            variant="contained"
-            endIcon={<ArrowForward />}
-            onClick={handleViewDetails}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              transition: "transform 0.3s ease",
-              textTransform: "none",
-              fontWeight: 600,
-              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-            }}
-          >
-            View
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
-  );
-};
+import CourseCard from "./CourseCard";
 
 const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
@@ -254,6 +27,7 @@ const CoursesPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const coursesPerPage = 9;
@@ -264,6 +38,7 @@ const CoursesPage = () => {
         setLoading(true);
         const { items, total: t } = await searchCoursesApi({
           search: debouncedSearch,
+          category: category,
           sort: sortBy,
           page,
           pageSize: coursesPerPage,
@@ -279,7 +54,7 @@ const CoursesPage = () => {
       }
     };
     fetch();
-  }, [debouncedSearch, sortBy, page]);
+  }, [debouncedSearch, category, sortBy, page]);
 
   // Debounce search term
   useEffect(() => {
@@ -291,7 +66,13 @@ const CoursesPage = () => {
   }, [searchTerm]);
 
   const totalPages = Math.max(1, Math.ceil(total / coursesPerPage));
-  const paginatedCourses = courses;
+
+  const handleResetFilters = () => {
+    setSearchTerm("");
+    setCategory("");
+    setSortBy("newest");
+    setPage(1);
+  };
 
   if (loading) {
     return (
@@ -299,20 +80,12 @@ const CoursesPage = () => {
         <Grid container spacing={3}>
           {[...Array(6)].map((_, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ height: 400, borderRadius: 3 }}>
-                <CardContent
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                  }}
-                >
-                  <Typography variant="h6" color="text.secondary">
-                    Loading...
-                  </Typography>
-                </CardContent>
-              </Card>
+              <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+              <Box sx={{ pt: 2 }}>
+                <Skeleton variant="text" height={40} />
+                <Skeleton variant="text" height={20} />
+                <Skeleton variant="text" height={20} width="60%" />
+              </Box>
             </Grid>
           ))}
         </Grid>
@@ -323,6 +96,7 @@ const CoursesPage = () => {
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
       <AppHeader />
+      
       {/* Hero Section */}
       <Box
         sx={{
@@ -397,7 +171,7 @@ const CoursesPage = () => {
           }}
         >
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={4}>
+            <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
                 placeholder="Search courses..."
@@ -417,7 +191,28 @@ const CoursesPage = () => {
                 }}
               />
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
+            
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Level</InputLabel>
+                <Select
+                  value={category}
+                  label="Level"
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setPage(1);
+                  }}
+                  sx={{ borderRadius: 2 }}
+                >
+                  <MenuItem value="">All Levels</MenuItem>
+                  <MenuItem value="BEGINNER">Beginner</MenuItem>
+                  <MenuItem value="INTERMEDIATE">Intermediate</MenuItem>
+                  <MenuItem value="ADVANCED">Advanced</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth>
                 <InputLabel>Sort By</InputLabel>
                 <Select
@@ -437,6 +232,7 @@ const CoursesPage = () => {
                 </Select>
               </FormControl>
             </Grid>
+            
             <Grid item xs={12} md={2}>
               <Chip
                 label={`${total} Courses`}
@@ -451,12 +247,23 @@ const CoursesPage = () => {
                 }}
               />
             </Grid>
+            
+            <Grid item xs={12} md={3}>
+              <Button
+                variant="outlined"
+                onClick={handleResetFilters}
+                sx={{ borderRadius: 2, height: 48 }}
+                fullWidth
+              >
+                Reset Filters
+              </Button>
+            </Grid>
           </Grid>
         </Paper>
 
         {/* Courses Grid */}
         <Grid container spacing={4}>
-          {paginatedCourses.map((course) => (
+          {courses.map((course) => (
             <Grid item xs={12} sm={6} md={4} key={course.CourseID}>
               <CourseCard course={course} />
             </Grid>
@@ -464,7 +271,7 @@ const CoursesPage = () => {
         </Grid>
 
         {/* No Results */}
-        {paginatedCourses.length === 0 && (
+        {courses.length === 0 && (
           <Box sx={{ textAlign: "center", py: 10 }}>
             <Typography
               variant="h5"
@@ -476,6 +283,13 @@ const CoursesPage = () => {
             <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
               Try adjusting your filters or search terms
             </Typography>
+            <Button 
+              variant="contained" 
+              sx={{ mt: 2 }}
+              onClick={handleResetFilters}
+            >
+              Reset All Filters
+            </Button>
           </Box>
         )}
 

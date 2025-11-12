@@ -19,6 +19,7 @@ import MyProfile from "./pages/MyProfile/MyProfile";
 import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
 import MyCourses from "./pages/course/MyCourses";
+import MyCourseDetailPage from './pages/course/MyCourseDetailPage'; 
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 import InstructorLayout from "./layouts/InstructorLayout";
@@ -36,6 +37,8 @@ import InstructorsPage from "./pages/instructor/InstructorsPage";
 import InstructorDetailPage from "./pages/instructor/InstructorDetailPage";
 
 import SchedulePage from "./pages/schedule/SchedulePage";
+import RescheduleRequestsPage from "./pages/schedule/RescheduleRequestsPage";
+import LearnerEnrollmentRequestsPage from "./pages/learner/LearnerEnrollmentRequestsPage";
 import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
@@ -66,6 +69,7 @@ function App() {
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/my-courses" element={<MyCourses />} />
+            <Route path="/my-courses/:id"  element={<MyCourseDetailPage />} />
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
@@ -74,9 +78,17 @@ function App() {
 
           {/* Learner-specific Routes */}
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route
+            path="/reschedule-requests"
+            element={<RescheduleRequestsPage />}
+          />
           <Route path="/attendance" element={<AttendancePage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
+          <Route
+            path="/my-requests"
+            element={<LearnerEnrollmentRequestsPage />}
+          />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>

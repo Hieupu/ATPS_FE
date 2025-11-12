@@ -13,11 +13,18 @@ import {
   Tabs,
   Tab,
 } from "@mui/material";
-import { AccessTime, VideoCall, Person, School } from "@mui/icons-material";
+import {
+  AccessTime,
+  VideoCall,
+  Person,
+  School,
+  Notifications,
+} from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext";
 import { getLearnerScheduleApi } from "../../apiServices/scheduleService";
 import { getLearnerIdFromAccount } from "../../utils/learnerUtils";
 import AppHeader from "../../components/Header/AppHeader";
+import { Link } from "react-router-dom";
 
 const TabPanel = ({ children, value, index }) => (
   <div hidden={value !== index}>
@@ -64,6 +71,15 @@ const SchedulePage = () => {
 
       // Lấy lịch học với LearnerID thực
       const data = await getLearnerScheduleApi(actualLearnerId);
+      console.log("Schedule data from API:", data);
+      if (data.schedules && data.schedules.length > 0) {
+        console.log("First schedule item:", {
+          SessionTitle: data.schedules[0].SessionTitle,
+          Description: data.schedules[0].Description,
+          rescheduleInfo: data.schedules[0].rescheduleInfo,
+          DescriptionLength: data.schedules[0].Description?.length || 0,
+        });
+      }
       setSchedules(data.schedules || []);
     } catch (err) {
       console.error("Error fetching schedule:", err);
@@ -260,15 +276,58 @@ const SchedulePage = () => {
                               >
                                 {schedule.SessionTitle}
                               </Typography>
-                              {schedule.Description && (
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                  sx={{ mb: 1 }}
+                              {schedule.rescheduleInfo && (
+                                <Box
+                                  sx={{
+                                    mb: 2,
+                                    p: 2,
+                                    bgcolor: "#fff7ed",
+                                    borderLeft: 3,
+                                    borderColor: "warning.main",
+                                    borderRadius: 1,
+                                  }}
                                 >
-                                  {schedule.Description}
-                                </Typography>
+                                  <Typography
+                                    variant="subtitle2"
+                                    sx={{
+                                      fontWeight: 600,
+                                      mb: 1,
+                                      color: "warning.dark",
+                                    }}
+                                  >
+                                    ⚠️ Đề xuất đổi lịch đang chờ phản hồi
+                                  </Typography>
+                                  {schedule.rescheduleInfo.oldSchedule && (
+                                    <Typography
+                                      variant="body2"
+                                      sx={{ mb: 0.5 }}
+                                    >
+                                      <strong>Lịch cũ:</strong>{" "}
+                                      {schedule.rescheduleInfo.oldSchedule}
+                                    </Typography>
+                                  )}
+                                  {schedule.rescheduleInfo.newSchedule && (
+                                    <Typography
+                                      variant="body2"
+                                      sx={{ color: "primary.main" }}
+                                    >
+                                      <strong>Đề xuất lịch mới:</strong>{" "}
+                                      {schedule.rescheduleInfo.newSchedule}
+                                    </Typography>
+                                  )}
+                                </Box>
                               )}
+                              {/* Chỉ hiển thị Description nếu không có rescheduleInfo để tránh trùng lặp */}
+                              {schedule.Description &&
+                                !schedule.rescheduleInfo && (
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ mb: 1 }}
+                                  >
+                                    {schedule.Description}
+                                  </Typography>
+                                )}
                               <Box
                                 sx={{
                                   display: "flex",
