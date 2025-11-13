@@ -329,35 +329,39 @@ const formatDuration = (hours) => {
                 </Paper>
               </Box>
 
-              {/* Book Session Button */}
-              {isLearner && learnerId && (
                 <Box sx={{ mt: 3 }}>
-                  <Button
-                    variant="contained"
-                    size="large"
-                    startIcon={<CalendarToday />}
-                    onClick={handleOpenBookingDialog}
-                    sx={{
-                      px: 5,
-                      py: 1.5,
-                      fontSize: "1.1rem",
-                      borderRadius: 3,
-                      bgcolor: "white",
-                      color: "primary.main",
-                      fontWeight: 700,
-                      boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-                      "&:hover": {
-                        bgcolor: "rgba(255,255,255,0.95)",
-                        transform: "translateY(-2px)",
-                        boxShadow: "0 6px 25px rgba(0,0,0,0.3)",
-                      },
-                      transition: "all 0.3s ease",
-                    }}
-                  >
-                    Đặt lịch học 1-1
-                  </Button>
+               <Button
+  variant="contained"
+  size="large"
+  startIcon={<CalendarToday />}
+  onClick={() => {
+    if (!user) {
+      window.location.href = "/auth/login";
+      return;
+    }
+    handleOpenBookingDialog();
+  }}
+  sx={{
+    px: 5,
+    py: 1.5,
+    fontSize: "1.1rem",
+    borderRadius: 3,
+    bgcolor: "white",
+    color: "primary.main",
+    fontWeight: 700,
+    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+    "&:hover": {
+      bgcolor: "rgba(255,255,255,0.95)",
+      transform: "translateY(-2px)",
+      boxShadow: "0 6px 25px rgba(0,0,0,0.3)",
+    },
+    transition: "all 0.3s ease",
+  }}
+>
+  Đặt lịch học 1-1
+</Button>
                 </Box>
-              )}
+            
             </Grid>
           </Grid>
         </Container>
