@@ -19,6 +19,8 @@ import {
   Paper,
   useTheme,
   useMediaQuery,
+  Skeleton,
+  CardMedia,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -40,15 +42,68 @@ import {
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../../../components/Header/AppHeader";
 import { useAuth } from '../../../contexts/AuthContext';
+import { getPopularCoursesApi } from '../../../apiServices/courseService';
+import { getPopularClassesApi } from '../../../apiServices/courseService';
+
+// Import các component mới
+import PopularCoursesSection from '../../../components/HomePageSections/PopularCoursesSection';
+import PopularClassesSection from '../../../components/HomePageSections/PopularClassesSection';
 
 const HomePage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [popularCourses, setPopularCourses] = useState([]);
+  const [popularClasses, setPopularClasses] = useState([]);
+  const [loadingCourses, setLoadingCourses] = useState(true);
+  const [loadingClasses, setLoadingClasses] = useState(true);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
 
   const navItems = ["Home", "Features", "Courses", "About", "Contact"];
-    const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
+  const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
+
+  // Fetch popular courses
+  useEffect(() => {
+    const fetchPopularCourses = async () => {
+      try {
+        setLoadingCourses(true);
+        const courses = await getPopularCoursesApi();
+        setPopularCourses(courses || []);
+      } catch (error) {
+        console.error("Error fetching popular courses:", error);
+        setPopularCourses([]);
+      } finally {
+        setLoadingCourses(false);
+      }
+    };
+
+    fetchPopularCourses();
+  }, []);
+
+ useEffect(() => {
+    const fetchPopularClasses = async () => {
+      try {
+        setLoadingClasses(true);
+        const classes = await getPopularClassesApi();
+        setPopularClasses(classes || []);
+      } catch (error) {
+        console.error("Error fetching popular classes:", error);
+        setPopularClasses([]);
+      } finally {
+        setLoadingClasses(false);
+      }
+    };
+
+    fetchPopularClasses();
+  }, []);
+
+  const handleViewAllCourses = () => {
+    navigate('/courses');
+  };
+
+  const handleViewCourseDetails = (courseId) => {
+    navigate(`/courses/${courseId}`);
+  };
 
   const features = [
     {
@@ -97,7 +152,7 @@ const HomePage = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-    useEffect(() => {
+  useEffect(() => {
     if (isAuthenticated && user) {
       console.log('=== USER ROLE INFORMATION ===');
       console.log('User:', user);
@@ -160,6 +215,7 @@ const HomePage = () => {
                     variant="contained"
                     size="large"
                     endIcon={<ArrowForward />}
+                    onClick={() => navigate('/courses')}
                     sx={{
                       backgroundColor: "white",
                       color: "primary.main",
@@ -253,6 +309,20 @@ const HomePage = () => {
             ))}
           </Grid>
         </Container>
+
+        {/* Popular Courses Section */}
+        <PopularCoursesSection
+          popularCourses={popularCourses}
+          loadingCourses={loadingCourses}
+          onViewAllCourses={handleViewAllCourses}
+          onViewCourseDetails={handleViewCourseDetails}
+        />
+
+          <PopularClassesSection 
+        popularClasses={popularClasses}
+        loadingClasses={loadingClasses}
+        onViewCourseDetails={handleViewCourseDetails} 
+      />
 
         {/* Features Section */}
         <Container maxWidth="lg" sx={{ my: 10 }}>
@@ -387,6 +457,7 @@ const HomePage = () => {
               variant="contained"
               size="large"
               endIcon={<ArrowForward />}
+              onClick={() => navigate('/courses')}
               sx={{
                 backgroundColor: "white",
                 color: "primary.main",

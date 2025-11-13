@@ -66,6 +66,16 @@ export const getPopularCoursesApi = async () => {
   }
 };
 
+export const getPopularClassesApi = async () => {
+  try {
+    const response = await apiClient.get("/courses/classes/popular");
+    return response.data;
+  } catch (error) {
+    console.error("Get popular classes error:", error);
+    throw error.response?.data || { message: "Failed to fetch popular classes" };
+  }
+};
+
 export const getMyEnrolledCourses = async () => {
   try {
     const response = await apiClient.get("/courses/my-courses/enrolled");
@@ -145,5 +155,15 @@ export const getSubmissionDetailApi = async (submissionId) => {
   } catch (error) {
     console.error("Get submission detail error:", error);
     throw error.response?.data || { message: "Failed to fetch submission detail" };
+  }
+};
+
+export const checkEnrollmentStatusApi = async (classId) => {
+  try {
+    const response = await apiClient.get(`/courses/classes/${classId}/enrollment-status`);
+    return response.data;
+  } catch (error) {
+    console.error("Check enrollment error:", error);
+    throw error.response?.data || { message: "Failed to check enrollment status" };
   }
 };

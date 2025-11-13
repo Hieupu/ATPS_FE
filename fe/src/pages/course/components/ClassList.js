@@ -27,6 +27,9 @@ import {
   AccessTime,
 } from '@mui/icons-material';
 import { createPaymentLinkApi, checkPromotionCodeApi } from "../../../apiServices/paymentService";
+import { checkEnrollmentStatusApi} from "../../../apiServices/courseService";
+import { useAuth } from "../../../contexts/AuthContext";
+import { useParams, useNavigate } from "react-router-dom";
 
 const ClassCard = ({ classItem, onEnroll }) => {
   const [enrollDialog, setEnrollDialog] = useState(false);
@@ -34,13 +37,64 @@ const ClassCard = ({ classItem, onEnroll }) => {
   const [promoInfo, setPromoInfo] = useState(null);
   const [enrolling, setEnrolling] = useState(false);
   const [enrollError, setEnrollError] = useState(null);
+  const [isEnrolled, setIsEnrolled] = useState(false);
+  const [checkingEnrollment, setCheckingEnrollment] = useState(false);
 
+  const { user, isLearner } = useAuth();
+  const navigate = useNavigate(); // Thêm hook navigate
+
+  // Hàm kiểm tra trạng thái đăng ký
+  const checkEnrollmentStatus = async () => {
+    if (!user || !isLearner) return false;
+    
+    try {
+      setCheckingEnrollment(true);
+      const response = await checkEnrollmentStatusApi(classItem.ClassID);
+      console.log("haha" , response)
+      setIsEnrolled(response.isEnrolled);
+      return response.isEnrolled;
+    } catch (error) {
+      console.error("Error checking enrollment:", error);
+      return false;
+    } finally {
+      setCheckingEnrollment(false);
+    }
+  };
+
+  // Format price function
   const formatPrice = (price) => {
     if (price == null || isNaN(price)) return "Liên hệ";
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
       currency: 'VND'
     }).format(price);
+  };
+
+    console.log("ClassItem data:", classItem);
+
+  // Xử lý khi nhấn nút đăng ký
+  const handleEnrollClick = async () => {
+    if (!user) {
+      window.location.href = "/auth/login";
+      return;
+    }
+    
+    if (!isLearner) {
+      // Có thể thêm thông báo hoặc xử lý khác nếu cần
+      return;
+    }
+
+    // Kiểm tra xem đã đăng ký chưa
+    const enrolled = await checkEnrollmentStatus();
+    
+    if (enrolled) {
+      // Nếu đã đăng ký, chuyển hướng đến trang chi tiết khóa học
+      navigate(`/my-courses/${classItem.CourseID}`);
+      return;
+    }
+
+    // Nếu chưa đăng ký, mở dialog đăng ký
+    setEnrollDialog(true);
   };
 
   const handleApplyPromo = async () => {
@@ -159,16 +213,17 @@ const ClassCard = ({ classItem, onEnroll }) => {
             </Box>
           )}
 
-          {/* Enroll Button */}
+          {/* Nút đăng ký */}
           <Button
             fullWidth
             variant="contained"
             size="large"
-            onClick={() => setEnrollDialog(true)}
-            startIcon={<Payment />}
+            onClick={handleEnrollClick}
+            disabled={checkingEnrollment}
+            startIcon={checkingEnrollment ? <CircularProgress size={16} /> : <Payment />}
             sx={{ fontWeight: 600 }}
           >
-            Đăng ký ngay
+            {checkingEnrollment ? 'Đang kiểm tra...' : (isEnrolled ? 'Vào học' : 'Đăng ký ngay')}
           </Button>
         </CardContent>
       </Card>
