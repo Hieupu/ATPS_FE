@@ -15,7 +15,6 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
-  Divider,
 } from '@mui/material';
 import {
   Schedule,
@@ -27,9 +26,10 @@ import {
   AccessTime,
 } from '@mui/icons-material';
 import { createPaymentLinkApi, checkPromotionCodeApi } from "../../../apiServices/paymentService";
-import { checkEnrollmentStatusApi} from "../../../apiServices/courseService";
+import { checkEnrollmentStatusApi } from "../../../apiServices/courseService";
+import { checkScheduleConflictApi } from "../../../apiServices/scheduleService";
 import { useAuth } from "../../../contexts/AuthContext";
-import { useParams, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 const ClassCard = ({ classItem, onEnroll }) => {
   const [enrollDialog, setEnrollDialog] = useState(false);
@@ -39,9 +39,13 @@ const ClassCard = ({ classItem, onEnroll }) => {
   const [enrollError, setEnrollError] = useState(null);
   const [isEnrolled, setIsEnrolled] = useState(false);
   const [checkingEnrollment, setCheckingEnrollment] = useState(false);
+  const [scheduleConflict, setScheduleConflict] = useState(null);
+  const [checkingConflict, setCheckingConflict] = useState(false);
 
   const { user, isLearner } = useAuth();
-  const navigate = useNavigate(); // Thêm hook navigate
+
+  console.log("classItem" , classItem)
+  const navigate = useNavigate();
 
   // Hàm kiểm tra trạng thái đăng ký
   const checkEnrollmentStatus = async () => {
@@ -50,7 +54,6 @@ const ClassCard = ({ classItem, onEnroll }) => {
     try {
       setCheckingEnrollment(true);
       const response = await checkEnrollmentStatusApi(classItem.ClassID);
-      console.log("haha" , response)
       setIsEnrolled(response.isEnrolled);
       return response.isEnrolled;
     } catch (error) {
@@ -58,6 +61,29 @@ const ClassCard = ({ classItem, onEnroll }) => {
       return false;
     } finally {
       setCheckingEnrollment(false);
+    }
+  };
+
+  // Hàm kiểm tra trùng lịch - ĐÃ SỬA
+  const checkScheduleConflict = async () => {
+    try {
+      setCheckingConflict(true);
+      setEnrollError(null);
+      const conflictCheck = await checkScheduleConflictApi(classItem.ClassID);
+      console.log("conflictCheck", conflictCheck);
+      
+      if (conflictCheck.hasConflict) {
+        setScheduleConflict(conflictCheck.conflictingClasses);
+        return true;
+      }
+      setScheduleConflict(null);
+      return false;
+    } catch (error) {
+      console.error("Error checking schedule conflict:", error);
+      setEnrollError("Không thể kiểm tra lịch học. Vui lòng thử lại.");
+      return false;
+    } finally {
+      setCheckingConflict(false);
     }
   };
 
@@ -70,9 +96,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }).format(price);
   };
 
-    console.log("ClassItem data:", classItem);
-
-  // Xử lý khi nhấn nút đăng ký
+  // Xử lý khi nhấn nút đăng ký - ĐÃ SỬA
   const handleEnrollClick = async () => {
     if (!user) {
       window.location.href = "/auth/login";
@@ -80,7 +104,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
     
     if (!isLearner) {
-      // Có thể thêm thông báo hoặc xử lý khác nếu cần
+      setEnrollError("Chỉ học viên mới có thể đăng ký lớp học");
       return;
     }
 
@@ -88,13 +112,13 @@ const ClassCard = ({ classItem, onEnroll }) => {
     const enrolled = await checkEnrollmentStatus();
     
     if (enrolled) {
-      // Nếu đã đăng ký, chuyển hướng đến trang chi tiết khóa học
       navigate(`/my-courses/${classItem.CourseID}`);
       return;
     }
 
-    // Nếu chưa đăng ký, mở dialog đăng ký
+    // Mở dialog và kiểm tra trùng lịch ngay
     setEnrollDialog(true);
+    await checkScheduleConflict(); // Kiểm tra ngay khi mở dialog
   };
 
   const handleApplyPromo = async () => {
@@ -117,11 +141,20 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
   };
 
+  // Hàm enroll - ĐÃ SỬA
   const handleEnroll = async () => {
     try {
       setEnrolling(true);
       setEnrollError(null);
 
+      // Kiểm tra lại trùng lịch trước khi thanh toán
+      const hasConflict = await checkScheduleConflict();
+      if (hasConflict) {
+        setEnrolling(false);
+        return;
+      }
+
+      // Nếu không trùng, tiếp tục thanh toán
       const { paymentUrl } = await createPaymentLinkApi(
         classItem.ClassID,
         promoInfo?.code || promoCode || undefined
@@ -129,11 +162,34 @@ const ClassCard = ({ classItem, onEnroll }) => {
       window.location.href = paymentUrl;
     } catch (error) {
       console.error("Payment error:", error);
-      setEnrollError(error.message || "Failed to start payment.");
+      setEnrollError(error.message || "Không thể tạo liên kết thanh toán.");
     } finally {
       setEnrolling(false);
     }
   };
+
+  // Reset state khi đóng dialog
+  const handleCloseDialog = () => {
+    if (!enrolling) {
+      setEnrollDialog(false);
+      setScheduleConflict(null);
+      setEnrollError(null);
+      setPromoCode('');
+      setPromoInfo(null);
+    }
+  };
+
+  const formatDateWithDay = (dateString) => {
+  const date = new Date(dateString);
+  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+
+  const dayName = days[date.getDay()];
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${dayName}, ${day}/${month}/${year}`;
+};
 
   return (
     <>
@@ -157,6 +213,11 @@ const ClassCard = ({ classItem, onEnroll }) => {
             Giảng viên: <strong>{classItem.InstructorName}</strong>
           </Typography>
 
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+  Lịch khai giảng: <strong>{formatDateWithDay(classItem.Opendate)}</strong>
+</Typography>
+
+
           {/* Schedule */}
           {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
             <Box sx={{ mb: 2 }}>
@@ -166,12 +227,21 @@ const ClassCard = ({ classItem, onEnroll }) => {
               </Typography>
               {classItem.weeklySchedule.map((session, index) => (
                 <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-                  <Chip 
-                    label={session.Day} 
-                    size="small" 
-                    variant="outlined"
-                    sx={{ mr: 1, minWidth: 60 }}
-                  />
+               <Chip 
+  label={{
+    Monday: "Thứ Hai",
+    Tuesday: "Thứ Ba",
+    Wednesday: "Thứ Tư",
+    Thursday: "Thứ Năm",
+    Friday: "Thứ Sáu",
+    Saturday: "Thứ Bảy",
+    Sunday: "Chủ Nhật"
+  }[session.Day]}
+  size="small"
+  variant="outlined"
+  sx={{ mr: 1, minWidth: 80 }}
+/>
+
                   <Typography variant="body2">
                     {session.StartTime} - {session.EndTime}
                   </Typography>
@@ -231,7 +301,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
       {/* Enrollment Dialog */}
       <Dialog
         open={enrollDialog}
-        onClose={() => !enrolling && setEnrollDialog(false)}
+        onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
       >
@@ -239,86 +309,105 @@ const ClassCard = ({ classItem, onEnroll }) => {
           <Typography variant="h6" sx={{ fontWeight: 600 }}>
             Đăng ký lớp {classItem.ClassName}
           </Typography>
+          {checkingConflict && (
+            <Typography variant="caption" color="text.secondary">
+              Đang kiểm tra lịch học...
+            </Typography>
+          )}
         </DialogTitle>
+        
         <DialogContent>
-          {enrollError && (
+          {/* Hiển thị thông báo trùng lịch */}
+          {scheduleConflict && scheduleConflict.length > 0 && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
+      ⚠️ Lịch học bị trùng!
+    </Typography>
+
+    {(() => {
+      const conflict = scheduleConflict[0]; // Chỉ lấy 1 lớp trùng
+      return (
+        <Typography variant="body2" sx={{ mb: 1 }}>
+          Lớp này trùng với:{" "}
+          <strong>{conflict.ClassName}</strong> – {conflict.Schedule}
+        </Typography>
+      );
+    })()}
+
+    <Typography variant="body2" sx={{ fontWeight: 600, color: "warning.dark" }}>
+      Vui lòng chọn lớp khác.
+    </Typography>
+  </Alert>
+          )}
+
+          {/* Hiển thị lỗi khác */}
+          {enrollError && !scheduleConflict && (
             <Alert severity="error" sx={{ mb: 2 }}>
               {enrollError}
             </Alert>
           )}
 
-          {/* Price Summary */}
-          <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-            <Typography variant="body2" color="text.secondary">
-              Học phí:
-            </Typography>
-            <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
-              {formatPrice(classItem.Fee)}
-            </Typography>
-            {promoInfo && (
-              <Typography variant="body2" color="success.main">
-                Đã áp dụng giảm {promoInfo.discountPercent}%
+          {/* Price Summary - Ẩn khi có trùng lịch */}
+          {(!scheduleConflict || scheduleConflict.length === 0) && (
+            <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+              <Typography variant="body2" color="text.secondary">
+                Học phí:
               </Typography>
-            )}
-          </Box>
-
-          {/* Promotion Code */}
-          <TextField
-            fullWidth
-            label="Mã giảm giá"
-            placeholder="Nhập mã giảm giá (nếu có)"
-            value={promoCode}
-            onChange={(e) => setPromoCode(e.target.value)}
-            sx={{ mb: 2 }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LocalOffer color="primary" />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Button size="small" onClick={handleApplyPromo}>
-                    Áp dụng
-                  </Button>
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          {/* Class Schedule */}
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-              Lịch học:
-            </Typography>
-            {classItem.weeklySchedule?.map((session, index) => (
-              <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                <Chip 
-                  label={session.Day} 
-                  size="small" 
-                  sx={{ mr: 1, minWidth: 60 }}
-                />
-                <AccessTime sx={{ fontSize: 16, mr: 1, color: 'text.secondary' }} />
-                <Typography variant="body2">
-                  {session.StartTime} - {session.EndTime}
+              <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
+                {formatPrice(classItem.Fee)}
+              </Typography>
+              {promoInfo && (
+                <Typography variant="body2" color="success.main">
+                  Đã áp dụng giảm {promoInfo.discountPercent}%
                 </Typography>
-              </Box>
-            ))}
-          </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Promotion Code - Ẩn khi có trùng lịch */}
+          {(!scheduleConflict || scheduleConflict.length === 0) && (
+            <TextField
+              fullWidth
+              label="Mã giảm giá"
+              value={promoCode}
+              onChange={(e) => setPromoCode(e.target.value)}
+              sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <LocalOffer />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Button 
+                      size="small" 
+                      onClick={handleApplyPromo}
+                      disabled={!promoCode.trim()}
+                    >
+                      Áp dụng
+                    </Button>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          )}
+
         </DialogContent>
+
         <DialogActions>
           <Button
-            onClick={() => setEnrollDialog(false)}
+            onClick={handleCloseDialog}
             disabled={enrolling}
           >
-            Hủy
+            {scheduleConflict ? 'Đã hiểu' : 'Hủy'}
           </Button>
+          
           <Button
             variant="contained"
             onClick={handleEnroll}
-            disabled={enrolling}
+            disabled={enrolling || checkingConflict || (scheduleConflict && scheduleConflict.length > 0)}
             startIcon={enrolling ? <CircularProgress size={16} /> : <Payment />}
-            sx={{ minWidth: 140 }}
           >
             {enrolling ? 'Đang xử lý...' : 'Thanh toán'}
           </Button>
@@ -328,6 +417,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
   );
 };
 
+// ClassList component giữ nguyên
 const ClassList = ({ classes, loading, courseId, onEnrollmentChange }) => {
   if (loading) {
     return (

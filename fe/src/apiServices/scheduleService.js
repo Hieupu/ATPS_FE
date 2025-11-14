@@ -195,3 +195,12 @@ export const cancelMyEnrollmentApi = async (enrollmentId) => {
     throw error.response?.data || { message: "Failed to cancel enrollment" };
   }
 };
+
+export const checkScheduleConflictApi = async (classId) => {
+  try {
+    const response = await apiClient.get(`/schedule/check-conflict/${classId}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to check schedule conflict" };
+  }
+};

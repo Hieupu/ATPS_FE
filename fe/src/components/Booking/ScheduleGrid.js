@@ -1,10 +1,13 @@
-import React, { useMemo } from "react";
+import apiClient from "../../apiServices/apiClient";
+import React, { useMemo, useState } from "react";
 import {
   Paper,
   Typography,
   Box,
   Grid,
   CircularProgress,
+  Alert,
+  Snackbar,
 } from "@mui/material";
 
 const ScheduleGrid = ({
@@ -33,6 +36,11 @@ const ScheduleGrid = ({
     Friday: "Thứ 6",
     Saturday: "Thứ 7",
   };
+
+  const [conflictAlert, setConflictAlert] = useState(null);
+  const [checkingConflict, setCheckingConflict] = useState(false);
+
+  console.log("kaka" , weeklySchedule)
 
   // Lấy danh sách các time slots
   const timeSlots = useMemo(() => {
@@ -73,35 +81,32 @@ const ScheduleGrid = ({
     return map;
   }, [weeklySchedule]);
 
-// Helper function để normalize date - FIX TIMEZONE ISSUE
-const normalizeDate = (date) => {
-  if (!date) return "";
-  
-  let normalizedDate;
-  if (typeof date === "string") {
-    // Nếu date string đã có timezone info, parse đúng cách
-    if (date.includes('T')) {
-      const dateObj = new Date(date);
-      const year = dateObj.getUTCFullYear();
-      const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getUTCDate()).padStart(2, '0');
+  // Helper function để normalize date
+  const normalizeDate = (date) => {
+    if (!date) return "";
+    
+    let normalizedDate;
+    if (typeof date === "string") {
+      if (date.includes('T')) {
+        const dateObj = new Date(date);
+        const year = dateObj.getUTCFullYear();
+        const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getUTCDate()).padStart(2, '0');
+        normalizedDate = `${year}-${month}-${day}`;
+      } else {
+        normalizedDate = date;
+      }
+    } else if (date instanceof Date) {
+      const year = date.getUTCFullYear();
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(date.getUTCDate()).padStart(2, '0');
       normalizedDate = `${year}-${month}-${day}`;
     } else {
-      // Nếu chỉ là date string (YYYY-MM-DD), giữ nguyên
-      normalizedDate = date;
+      normalizedDate = String(date);
     }
-  } else if (date instanceof Date) {
-    // Sử dụng UTC để tránh timezone issues
-    const year = date.getUTCFullYear();
-    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-    const day = String(date.getUTCDate()).padStart(2, '0');
-    normalizedDate = `${year}-${month}-${day}`;
-  } else {
-    normalizedDate = String(date);
-  }
-  
-  return normalizedDate;
-};
+    
+    return normalizedDate;
+  };
 
   // Helper function để tính tuần
   const getWeekKey = (dateStr) => {
@@ -111,6 +116,66 @@ const normalizeDate = (date) => {
     const monday = new Date(date);
     monday.setDate(date.getDate() - mondayOffset);
     return monday.toISOString().split("T")[0];
+  };
+
+  // Hàm kiểm tra trùng lịch với lịch học hiện tại - ĐÃ SỬA
+  const checkScheduleConflict = async (slot) => {
+    try {
+      setCheckingConflict(true);
+      
+      // Gọi API kiểm tra trùng lịch với ngày cụ thể
+      const conflictCheck = await checkScheduleConflictApi(slot.TimeslotID, normalizeDate(slot.Date));
+      
+      if (conflictCheck.hasConflict && conflictCheck.conflictingClasses.length > 0) {
+        const conflict = conflictCheck.conflictingClasses[0];
+        setConflictAlert({
+          severity: "warning",
+          message: `⚠️ Lịch học bị trùng với: ${conflict.ClassName} - ${conflict.Schedule}`,
+          slot: slot
+        });
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking schedule conflict:", error);
+      setConflictAlert({
+        severity: "error",
+        message: "Không thể kiểm tra lịch học. Vui lòng thử lại."
+      });
+      return false;
+    } finally {
+      setCheckingConflict(false);
+    }
+  };
+
+  // Xử lý khi click vào slot - ĐÃ THÊM KIỂM TRA TRÙNG LỊCH
+  const handleSlotClickWithConflictCheck = async (slot) => {
+    if (slot.Status !== "available") return;
+
+    // Kiểm tra xem slot đã được chọn chưa
+    const slotDate = normalizeDate(slot.Date);
+    const isSelected = selectedSlots.some(
+      s => s.TimeslotID === slot.TimeslotID && normalizeDate(s.Date) === slotDate
+    );
+
+    // Nếu đang bỏ chọn slot, không cần kiểm tra trùng lịch
+    if (isSelected) {
+      handleSlotClick(slot);
+      return;
+    }
+
+    // Kiểm tra trùng lịch trước khi chọn slot mới
+    const hasConflict = await checkScheduleConflict(slot);
+    
+    if (!hasConflict) {
+      // Nếu không trùng, cho phép chọn slot
+      handleSlotClick(slot);
+    }
+  };
+
+  // Đóng alert
+  const handleCloseAlert = () => {
+    setConflictAlert(null);
   };
 
   if (loading) {
@@ -131,6 +196,22 @@ const normalizeDate = (date) => {
       <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
         Lịch học
       </Typography>
+
+      {/* Alert thông báo trùng lịch */}
+      <Snackbar
+        open={!!conflictAlert}
+        autoHideDuration={6000}
+        onClose={handleCloseAlert}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={conflictAlert?.severity || "warning"} 
+          onClose={handleCloseAlert}
+          sx={{ width: '100%' }}
+        >
+          {conflictAlert?.message}
+        </Alert>
+      </Snackbar>
 
       <Box sx={{ overflowX: "auto" }}>
         <Box sx={{ minWidth: 600 }}>
@@ -211,7 +292,8 @@ const normalizeDate = (date) => {
                     !selectedCourseId ||
                     !courseInfo ||
                     hasReachedMaxSlotsInWeek ||
-                    slot.Status !== "available";
+                    slot.Status !== "available" ||
+                    checkingConflict;
                   
                   const bgColor =
                     slot.Status === "busy"
@@ -224,7 +306,7 @@ const normalizeDate = (date) => {
                   return (
                     <Grid item xs={10 / 6} key={`${day}_${time}`}>
                       <Box
-                        onClick={() => handleSlotClick(slot)}
+                        onClick={() => handleSlotClickWithConflictCheck(slot)}
                         sx={{
                           height: 40,
                           border: isSelected ? "2px solid" : "1px solid",
@@ -249,6 +331,9 @@ const normalizeDate = (date) => {
                           <Typography variant="caption" sx={{ fontWeight: 600 }}>
                             ✓
                           </Typography>
+                        )}
+                        {checkingConflict && !isSelected && (
+                          <CircularProgress size={16} />
                         )}
                       </Box>
                     </Grid>
@@ -301,6 +386,16 @@ const normalizeDate = (date) => {
       </Box>
     </Paper>
   );
+};
+
+// API function để kiểm tra trùng lịch - ĐÃ SỬA
+const checkScheduleConflictApi = async (timeslotId, date) => {
+  try {
+    const response = await apiClient.get(`/schedule/check-conflict/timeslot/${timeslotId}?date=${date}`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to check schedule conflict" };
+  }
 };
 
 export default ScheduleGrid;
