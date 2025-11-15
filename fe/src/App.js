@@ -43,6 +43,8 @@ import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
 
+import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
+
 function App() {
   return (
     <AuthProvider>
@@ -83,6 +85,7 @@ function App() {
             element={<RescheduleRequestsPage />}
           />
           <Route path="/attendance" element={<AttendancePage />} />
+             <Route path="/zoom" element={<ZoomMeetingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
           <Route

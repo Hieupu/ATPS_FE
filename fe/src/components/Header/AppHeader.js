@@ -737,55 +737,10 @@ const AppHeader = () => {
                       Profile
                     </MenuItem>
 
-                    <MenuItem
-                      onClick={() => navigate("/mylearning")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <School sx={{ mr: 1, color: "#6b7280" }} />
-                      My Learning
-                    </MenuItem>
 
                     {/* Menu items theo role */}
                     {getRoleSpecificMenuItems()}
 
-                    <MenuItem
-                      onClick={() => navigate("/cart")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <ShoppingCart sx={{ mr: 1, color: "#6b7280" }} />
-                      My Cart
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => navigate("/wishlist")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <Favorite sx={{ mr: 1, color: "#6b7280" }} />
-                      Wishlist
-                    </MenuItem>
                     <Divider sx={{ my: 0.5 }} />
                     <MenuItem
                       onClick={handleLogout}

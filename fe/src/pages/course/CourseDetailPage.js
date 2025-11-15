@@ -319,7 +319,6 @@ const CourseDetailPage = () => {
           <Tab label="Giảng viên" />
           <Tab label="Đánh giá" />
           {isEnrolledInCourse && <Tab label="Tài liệu" />}
-          {isEnrolledInCourse && <Tab label="Bài kiểm tra" />}
         </Tabs>
 
         <Divider />
