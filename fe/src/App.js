@@ -5,6 +5,9 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import AdminLayout from "./layouts/AdminLayout";
 import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
@@ -30,7 +33,7 @@ import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
-import InstructorCoursesList from "./pages/instructor/InstructorCoursesList";
+import CoursesPagee from "./pages/instructor/pages/CoursesPage";
 
 import InstructorsPage from "./pages/instructor/InstructorsPage";
 import InstructorDetailPage from "./pages/instructor/InstructorDetailPage";
@@ -39,6 +42,7 @@ import SchedulePage from "./pages/schedule/SchedulePage";
 import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
+import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
 
 function App() {
   return (
@@ -92,7 +96,8 @@ function App() {
             <Route path="/instructor" element={<InstructorLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InstructorDashboard />} />
-              <Route path="courses" element={<InstructorCoursesList />} />
+              <Route path="courses" element={<CoursesPagee />} />
+              <Route path="courses/:courseId" element={<CourseBuilderPage />} />
               <Route path="classes" element={<InstructorClasses />} />
               <Route path="classes/detail" element={<ClassDetail />} />
               <Route path="assignments" element={<InstructorAssignments />} />
@@ -104,6 +109,15 @@ function App() {
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ToastContainer
+          position="top-right"
+          autoClose={2500}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnHover
+          theme="colored"
+        />
       </Router>
     </AuthProvider>
   );
