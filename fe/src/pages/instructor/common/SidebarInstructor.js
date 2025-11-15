@@ -8,7 +8,7 @@ import PeopleIcon from "@mui/icons-material/People";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsIcon from "@mui/icons-material/Settings";
 import GridViewIcon from "@mui/icons-material/GridView";
-
+import RequestPageIcon from "@mui/icons-material/RequestPage";  
 import "../pages/style.css";
 
 const navItems = [
@@ -30,6 +30,7 @@ const navItems = [
     icon: <PeopleIcon />,
     path: "/instructor/classes",
   },
+  // booking-requests removed
   {
     id: "assignments",
     label: "Assignments",
