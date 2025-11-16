@@ -8,7 +8,7 @@ const ScheduleCard = ({
   canJoinZoom, 
   showPastStyle = false 
 }) => {
-  const zoomLink = generateZoomLink(schedule);
+ console.log("schedule", schedule)
   const canJoin = canJoinZoom(schedule);
 
   const handleJoinZoom = () => {

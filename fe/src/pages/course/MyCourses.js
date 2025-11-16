@@ -16,6 +16,7 @@ import { AccessTime, Person } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getMyEnrolledCourses } from "../../apiServices/courseService";
 import { useAuth } from "../../contexts/AuthContext";
+import AppHeader from "../../components/Header/AppHeader";
 
 const courseImages = [
   "https://wp-s3-edilume-test-bucket.s3.ap-southeast-1.amazonaws.com/wp-content/uploads/2022/12/31183122/IELTS_new_thumbnail.png",
@@ -84,6 +85,8 @@ const MyCourses = () => {
   }
 
   return (
+        <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
+          <AppHeader />
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography
         variant="h4"
@@ -285,6 +288,7 @@ const MyCourses = () => {
         </Grid>
       )}
     </Container>
+    </Box>
   );
 };
 

@@ -33,6 +33,7 @@ import {
   Assignment,
   Folder,
   Notifications,
+  AssignmentTurnedIn
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
@@ -154,6 +155,24 @@ const AppHeader = () => {
         >
           <CheckCircle sx={{ mr: 1, color: "#6b7280" }} />
           Điểm danh
+        </MenuItem>
+      );
+         items.push(
+        <MenuItem
+          key="my-exam"
+          onClick={() => navigate("/exam")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
+         Exam
         </MenuItem>
       );
       items.push(
@@ -290,6 +309,17 @@ const AppHeader = () => {
         >
           <CheckCircle sx={{ mr: 2 }} />
           <ListItemText primary="Điểm danh" />
+        </ListItem>
+      );
+
+       items.push(
+        <ListItem
+          button
+          key="my-exam-mobile"
+          onClick={() => navigate("/exam")}
+        >
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Exam" />
         </ListItem>
       );
       items.push(

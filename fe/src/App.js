@@ -45,6 +45,9 @@ import MaterialsPage from "./pages/materials/MaterialsPage";
 
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
+
+import ExamsPage from "./pages/exam/ExamsPage";
+
 function App() {
   return (
     <AuthProvider>
@@ -72,11 +75,14 @@ function App() {
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/my-courses" element={<MyCourses />} />
             <Route path="/my-courses/:id"  element={<MyCourseDetailPage />} />
+
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
           <Route path="/instructors" element={<InstructorsPage />} />
           <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+
+          <Route path="/exam" element={<ExamsPage />} />
 
           {/* Learner-specific Routes */}
           <Route path="/schedule" element={<SchedulePage />} />
