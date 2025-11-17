@@ -6,17 +6,21 @@ import {
   Box,
   Card,
   CardContent,
-  LinearProgress,
   Alert,
   CircularProgress,
   Chip,
-  Button,
-  Collapse,
-  Divider,
   Paper,
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Tabs,
+  Tab,
 } from "@mui/material";
 import {
   School,
@@ -30,12 +34,13 @@ import {
   CalendarToday,
   CheckCircle,
   Class as ClassIcon,
-  TrendingUp,
+  EventAvailable,
+  Quiz,
+  Cancel,
 } from "@mui/icons-material";
 import { useAuth } from "../../contexts/AuthContext";
 import { 
   getLearnerProgressApi, 
-  getCourseDetailProgressApi,
   getOverallStatisticsApi 
 } from "../../apiServices/progressService";
 import { getLearnerIdFromAccount } from "../../utils/learnerUtils";
@@ -46,7 +51,7 @@ const ProgressPage = () => {
   const [progress, setProgress] = useState([]);
   const [statistics, setStatistics] = useState(null);
   const [expandedCourse, setExpandedCourse] = useState(null);
-  const [courseDetails, setCourseDetails] = useState({});
+  const [selectedTab, setSelectedTab] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -75,8 +80,8 @@ const ProgressPage = () => {
         getLearnerProgressApi(learnerId),
         getOverallStatisticsApi(learnerId)
       ]);
-      console.log("progressRes", progressRes);
-         console.log("statsRes", statsRes);
+
+      console.log("progressRes", progressRes)
 
       setProgress(progressRes.data || []);
       setStatistics(statsRes.data || null);
@@ -88,29 +93,12 @@ const ProgressPage = () => {
     }
   }, [user]);
 
-  const fetchCourseDetails = async (courseId, learnerId) => {
-    if (courseDetails[courseId]) return;
-
-    try {
-      const response = await getCourseDetailProgressApi(learnerId, courseId);
-      setCourseDetails(prev => ({
-        ...prev,
-        [courseId]: response.data || []
-      }));
-    } catch (err) {
-      console.error("Error fetching course details:", err);
-    }
+  const handleExpandCourse = (courseId) => {
+    setExpandedCourse(expandedCourse === courseId ? null : courseId);
   };
 
-  const handleExpandCourse = async (courseId) => {
-    if (expandedCourse === courseId) {
-      setExpandedCourse(null);
-    } else {
-      setExpandedCourse(courseId);
-      const accId = user.AccID || user.id || user.AccountID;
-      const learnerId = await getLearnerIdFromAccount(accId);
-      await fetchCourseDetails(courseId, learnerId);
-    }
+  const handleTabChange = (courseId, newValue) => {
+    setSelectedTab(prev => ({ ...prev, [courseId]: newValue }));
   };
 
   useEffect(() => {
@@ -149,15 +137,15 @@ const ProgressPage = () => {
     );
   }
 
-  const getProgressColor = (percentage) => {
-    if (percentage >= 80) return "success";
-    if (percentage >= 50) return "warning";
-    return "error";
+  const getScoreColor = (score) => {
+    if (score >= 8) return "success.main";
+    if (score >= 6.5) return "warning.main";
+    return "error.main";
   };
 
-  const getPerformanceColor = (score) => {
-    if (score >= 80) return "success";
-    if (score >= 60) return "warning";
+  const getAttendanceColor = (rate) => {
+    if (rate >= 80) return "success";
+    if (rate >= 60) return "warning";
     return "error";
   };
 
@@ -180,13 +168,13 @@ const ProgressPage = () => {
           >
             <School sx={{ fontSize: 48, mb: 1 }} />
             <br />
-            Tiến độ học tập của bạn
+            Báo Cáo Học Tập
           </Typography>
           <Typography
             variant="body1"
             sx={{ textAlign: "center", opacity: 0.95, fontSize: 18 }}
           >
-            Theo dõi chi tiết quá trình học tập và thành tích của bạn
+            Theo dõi chi tiết điểm số, bài tập và điểm danh
           </Typography>
         </Container>
       </Box>
@@ -197,7 +185,7 @@ const ProgressPage = () => {
           <Paper elevation={3} sx={{ p: 3, mb: 4, borderRadius: 2 }}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 3 }}>
               <Assessment sx={{ mr: 1, verticalAlign: "middle" }} />
-              Tổng quan thành tích
+              Tổng Quan Thành Tích
             </Typography>
             <Grid container spacing={3}>
               <Grid item xs={12} sm={6} md={3}>
@@ -207,7 +195,7 @@ const ProgressPage = () => {
                     {statistics.totalCourses}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Khóa học đã tham gia
+                    Khóa học
                   </Typography>
                 </Box>
               </Grid>
@@ -218,7 +206,7 @@ const ProgressPage = () => {
                     {statistics.totalHoursLearned}h
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
-                    Tổng thời gian học
+                    Giờ học
                   </Typography>
                 </Box>
               </Grid>
@@ -274,14 +262,6 @@ const ProgressPage = () => {
                           color="primary"
                           variant="outlined"
                         />
-                        {item.totalEnrolledClasses > 1 && (
-                          <Chip
-                            label={`${item.totalEnrolledClasses} lớp học`}
-                            size="small"
-                            color="secondary"
-                            variant="outlined"
-                          />
-                        )}
                       </Box>
                       <Box sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1 }}>
                         <Chip
@@ -290,39 +270,75 @@ const ProgressPage = () => {
                           size="small"
                           sx={{ bgcolor: "#e3f2fd" }}
                         />
+                        <Chip
+                          label={`${item.totalEnrolledClasses} lớp học`}
+                          size="small"
+                          color="secondary"
+                          variant="outlined"
+                        />
                       </Box>
-                    </Box>
-                    <Box sx={{ textAlign: "right" }}>
-                      <Chip
-                        label={`${item.progress.overall}%`}
-                        color={getProgressColor(item.progress.overall)}
-                        sx={{ fontSize: 16, fontWeight: 700, mb: 1 }}
-                      />
-                      <Typography variant="caption" display="block" color="text.secondary">
-                        {item.status.progress}
-                      </Typography>
                     </Box>
                   </Box>
 
-                  {/* Main Progress Bar */}
-                  <LinearProgress
-                    variant="determinate"
-                    value={item.progress.overall}
-                    color={getProgressColor(item.progress.overall)}
-                    sx={{ height: 10, borderRadius: 5, mb: 3 }}
-                  />
+                  {/* Thống kê tổng quan */}
+                  <Grid container spacing={2} sx={{ mb: 3 }}>
+                    <Grid item xs={6} md={3}>
+                      <Paper sx={{ p: 2, bgcolor: "#f8f9fe", textAlign: "center" }}>
+                        <Assignment color="primary" sx={{ mb: 1 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {item.stats.completedAssignments}/{item.stats.totalAssignments}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Bài tập
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Paper sx={{ p: 2, bgcolor: "#e8f5e9", textAlign: "center" }}>
+                        <Star color="warning" sx={{ mb: 1 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {item.stats.avgAssignmentScore}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Điểm TB Assignment
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Paper sx={{ p: 2, bgcolor: "#e3f2fd", textAlign: "center" }}>
+                        <EventAvailable color="info" sx={{ mb: 1 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {item.stats.attendedSessions}/{item.stats.totalSessions}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Điểm danh
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                    <Grid item xs={6} md={3}>
+                      <Paper sx={{ p: 2, bgcolor: "#fff4e6", textAlign: "center" }}>
+                        <Timer color="action" sx={{ mb: 1 }} />
+                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                          {item.stats.totalStudyHours}h
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          Giờ học
+                        </Typography>
+                      </Paper>
+                    </Grid>
+                  </Grid>
 
-                  {/* Thống kê từng lớp học */}
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                    <ClassIcon sx={{ mr: 1, verticalAlign: "middle" }} />
-                    Thống kê theo lớp học
-                  </Typography>
-                  
+                  {/* Accordion cho từng lớp */}
                   {item.classesDetail && item.classesDetail.map((classItem, idx) => (
-                    <Accordion key={idx} sx={{ mb: 2, boxShadow: 1 }}>
+                    <Accordion 
+                      key={idx} 
+                      sx={{ mb: 2, boxShadow: 1 }}
+                      expanded={expandedCourse === `${item.courseId}-${idx}`}
+                      onChange={() => handleExpandCourse(`${item.courseId}-${idx}`)}
+                    >
                       <AccordionSummary expandIcon={<ExpandMore />}>
                         <Box sx={{ display: "flex", alignItems: "center", gap: 2, flex: 1 }}>
-                          <School color="primary" />
+                          <ClassIcon color="primary" />
                           <Typography sx={{ fontWeight: 600 }}>
                             {classItem.name}
                           </Typography>
@@ -331,234 +347,251 @@ const ProgressPage = () => {
                             size="small"
                             color={classItem.status === 'Enrolled' ? 'success' : 'default'}
                           />
-                          <Box sx={{ ml: "auto" }}>
+                          <Box sx={{ ml: "auto", display: "flex", gap: 2 }}>
                             <Chip
-                              label={`${classItem.progress}%`}
+                              label={`Điểm trung bình: ${classItem.stats.avgScore}`}
                               size="small"
-                              color={getProgressColor(classItem.progress)}
+                              sx={{ bgcolor: "#e8f5e9" }}
+                            />
+                            <Chip
+                              label={`Điểm danh: ${classItem.stats.attendedSessions}/${classItem.stats.totalSessions}`}
+                              size="small"
+                              color={getAttendanceColor(classItem.attendanceRate)}
                             />
                           </Box>
                         </Box>
                       </AccordionSummary>
                       <AccordionDetails>
-                        <Grid container spacing={2}>
-                          {/* Thống kê chi tiết */}
-                          <Grid item xs={6} md={3}>
-                            <Paper sx={{ p: 2, bgcolor: "#f8f9fe", textAlign: "center" }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Bài tập
-                              </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                {classItem.stats.completedAssignments}/{classItem.stats.totalAssignments}
-                              </Typography>
-                              <LinearProgress
-                                variant="determinate"
-                                value={(classItem.stats.completedAssignments / classItem.stats.totalAssignments) * 100 || 0}
-                                color="primary"
-                                sx={{ mt: 1, height: 4, borderRadius: 2 }}
-                              />
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={6} md={3}>
-                            <Paper sx={{ p: 2, bgcolor: "#e8f5e9", textAlign: "center" }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Điểm TB
-                              </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                {classItem.stats.avgScore}
-                              </Typography>
-                              <Chip
-                                label={classItem.performanceLevel}
-                                size="small"
-                                color={getPerformanceColor(classItem.stats.avgScore)}
-                                sx={{ mt: 1 }}
-                              />
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={6} md={3}>
-                            <Paper sx={{ p: 2, bgcolor: "#e3f2fd", textAlign: "center" }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Điểm danh
-                              </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                {classItem.stats.attendedSessions}/{classItem.stats.totalSessions}
-                              </Typography>
-                              <LinearProgress
-                                variant="determinate"
-                                value={classItem.attendanceRate}
-                                color="info"
-                                sx={{ mt: 1, height: 4, borderRadius: 2 }}
-                              />
-                            </Paper>
-                          </Grid>
-                          <Grid item xs={6} md={3}>
-                            <Paper sx={{ p: 2, bgcolor: "#fff4e6", textAlign: "center" }}>
-                              <Typography variant="caption" color="text.secondary">
-                                Thời gian học
-                              </Typography>
-                              <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                                {classItem.stats.totalStudyHours}h
-                              </Typography>
-                            </Paper>
-                          </Grid>
-                        </Grid>
-                        
-                        {/* Thông tin thêm */}
-                        <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-                          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                            <CalendarToday fontSize="small" color="action" />
-                            <Typography variant="body2">
-                              Bắt đầu: {new Date(classItem.dates.enrollmentDate).toLocaleDateString("vi-VN")}
+                        {/* Tabs cho các loại báo cáo */}
+                        <Tabs
+                          value={selectedTab[`${item.courseId}-${idx}`] || 0}
+                          onChange={(e, v) => handleTabChange(`${item.courseId}-${idx}`, v)}
+                          sx={{ mb: 2, borderBottom: 1, borderColor: "divider" }}
+                        >
+                          <Tab label="Bài Tập (Assignments)" icon={<Assignment />} iconPosition="start" />
+                          <Tab label="Kiểm Tra (Exams)" icon={<Quiz />} iconPosition="start" />
+                          <Tab label="Điểm Danh" icon={<EventAvailable />} iconPosition="start" />
+                        </Tabs>
+
+                        {/* Tab Content: Assignments */}
+                        {(selectedTab[`${item.courseId}-${idx}`] || 0) === 0 && (
+                          <Box>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                              Báo Cáo Bài Tập
                             </Typography>
+                            <TableContainer component={Paper} variant="outlined">
+                              <Table size="small">
+                                <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+                                  <TableRow>
+                                    <TableCell><strong>Trạng thái</strong></TableCell>
+                                    <TableCell align="center"><strong>Số lượng</strong></TableCell>
+                                    <TableCell align="right"><strong>Điểm TB</strong></TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  <TableRow>
+                                    <TableCell>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <CheckCircle color="success" fontSize="small" />
+                                        Đã hoàn thành
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.completedAssignments} 
+                                        size="small" 
+                                        color="success"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography 
+                                        sx={{ 
+                                          fontWeight: 700, 
+                                          color: getScoreColor(classItem.stats.avgScore) 
+                                        }}
+                                      >
+                                        {classItem.stats.avgScore}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                  <TableRow>
+                                    <TableCell>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <Cancel color="warning" fontSize="small" />
+                                        Chưa hoàn thành
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.remainingAssignments} 
+                                        size="small" 
+                                        color="warning"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">-</TableCell>
+                                  </TableRow>
+                                  <TableRow sx={{ bgcolor: "#f9f9f9" }}>
+                                    <TableCell><strong>Tổng cộng</strong></TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.totalAssignments} 
+                                        size="small"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography sx={{ fontWeight: 700 }}>
+                                        {classItem.stats.avgScore}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
                           </Box>
-                          {classItem.dates.classStart && (
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <CalendarToday fontSize="small" color="action" />
-                              <Typography variant="body2">
-                                Lớp: {new Date(classItem.dates.classStart).toLocaleDateString("vi-VN")} - {new Date(classItem.dates.classEnd).toLocaleDateString("vi-VN")}
+                        )}
+
+                        {/* Tab Content: Exams */}
+                        {(selectedTab[`${item.courseId}-${idx}`] || 0) === 1 && (
+                          <Box>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                              Báo Cáo Kiểm Tra
+                            </Typography>
+                            <Alert severity="info" sx={{ mb: 2 }}>
+                              Điểm kiểm tra được tính trong điểm trung bình chung của khóa học
+                            </Alert>
+                            <TableContainer component={Paper} variant="outlined">
+                              <Table size="small">
+                                <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+                                  <TableRow>
+                                    <TableCell><strong>Loại</strong></TableCell>
+                                    <TableCell align="center"><strong>Số lượng</strong></TableCell>
+                                    <TableCell align="right"><strong>Điểm TB</strong></TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  <TableRow>
+                                    <TableCell>Bài kiểm tra đã làm</TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={item.stats.completedExams || 0} 
+                                        size="small" 
+                                        color="primary"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography 
+                                        sx={{ 
+                                          fontWeight: 700, 
+                                          color: getScoreColor(item.stats.avgExamScore || 0) 
+                                        }}
+                                      >
+                                        {item.stats.avgExamScore || 0}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                  <TableRow>
+                                    <TableCell>Chưa làm</TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={item.stats.remainingExams || 0} 
+                                        size="small" 
+                                        color="default"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">-</TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                          </Box>
+                        )}
+
+                        {/* Tab Content: Attendance */}
+                        {(selectedTab[`${item.courseId}-${idx}`] || 0) === 2 && (
+                          <Box>
+                            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+                              Báo Cáo Điểm Danh
+                            </Typography>
+                            <TableContainer component={Paper} variant="outlined">
+                              <Table size="small">
+                                <TableHead sx={{ bgcolor: "#f5f5f5" }}>
+                                  <TableRow>
+                                    <TableCell><strong>Trạng thái</strong></TableCell>
+                                    <TableCell align="center"><strong>Số buổi</strong></TableCell>
+                                    <TableCell align="right"><strong>Thời gian</strong></TableCell>
+                                  </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                  <TableRow>
+                                    <TableCell>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <CheckCircle color="success" fontSize="small" />
+                                        Có mặt
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.attendedSessions} 
+                                        size="small" 
+                                        color="success"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      {classItem.stats.totalStudyHours}h
+                                    </TableCell>
+                                  </TableRow>
+                                  <TableRow>
+                                    <TableCell>
+                                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                        <Cancel color="error" fontSize="small" />
+                                        Vắng mặt
+                                      </Box>
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.absentSessions} 
+                                        size="small" 
+                                        color="error"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">-</TableCell>
+                                  </TableRow>
+                                  <TableRow sx={{ bgcolor: "#f9f9f9" }}>
+                                    <TableCell><strong>Tổng cộng</strong></TableCell>
+                                    <TableCell align="center">
+                                      <Chip 
+                                        label={classItem.stats.totalSessions} 
+                                        size="small"
+                                      />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                      <Typography sx={{ fontWeight: 700 }}>
+                                        Tỷ lệ: {classItem.attendanceRate}
+                                      </Typography>
+                                    </TableCell>
+                                  </TableRow>
+                                </TableBody>
+                              </Table>
+                            </TableContainer>
+                            
+                            {/* Thông tin thời gian */}
+                            <Box sx={{ mt: 2, p: 2, bgcolor: "#f5f5f5", borderRadius: 1 }}>
+                              <Typography variant="body2" sx={{ mb: 1 }}>
+                                <CalendarToday fontSize="small" sx={{ verticalAlign: "middle", mr: 1 }} />
+                                <strong>Ngày đăng ký:</strong> {new Date(classItem.dates.enrollmentDate).toLocaleDateString("vi-VN")}
                               </Typography>
+                              {classItem.dates.classStart && (
+                                <Typography variant="body2">
+                                  <CalendarToday fontSize="small" sx={{ verticalAlign: "middle", mr: 1 }} />
+                                  <strong>Thời gian lớp học:</strong> {new Date(classItem.dates.classStart).toLocaleDateString("vi-VN")} - {new Date(classItem.dates.classEnd).toLocaleDateString("vi-VN")}
+                                </Typography>
+                              )}
                             </Box>
-                          )}
-                          {classItem.stats.remainingAssignments > 0 && (
-                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <Assignment fontSize="small" color="warning" />
-                              <Typography variant="body2" color="warning.main">
-                                Còn {classItem.stats.remainingAssignments} bài tập
-                              </Typography>
-                            </Box>
-                          )}
-                        </Box>
+                          </Box>
+                        )}
                       </AccordionDetails>
                     </Accordion>
                   ))}
-
-                  <Divider sx={{ my: 3 }} />
-
-                  {/* Tổng quan khóa học */}
-                  <Typography variant="h6" sx={{ fontWeight: 600, mb: 2 }}>
-                    <TrendingUp sx={{ mr: 1, verticalAlign: "middle" }} />
-                    Tổng quan khóa học
-                  </Typography>
-                  
-                  <Grid container spacing={2} sx={{ mb: 2 }}>
-                    <Grid item xs={6} md={3}>
-                      <Paper sx={{ p: 2, bgcolor: "#f8f9fe", textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Tổng bài tập
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {item.stats.completedAssignments}/{item.stats.totalAssignments}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Paper sx={{ p: 2, bgcolor: "#e8f5e9", textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Điểm TB chung
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {item.stats.avgAssignmentScore}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Paper sx={{ p: 2, bgcolor: "#e3f2fd", textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Tổng buổi học
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {item.stats.attendedSessions}/{item.stats.totalSessions}
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                    <Grid item xs={6} md={3}>
-                      <Paper sx={{ p: 2, bgcolor: "#fff4e6", textAlign: "center" }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Tổng giờ học
-                        </Typography>
-                        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-                          {item.stats.totalStudyHours}h
-                        </Typography>
-                      </Paper>
-                    </Grid>
-                  </Grid>
-
-                  <Divider sx={{ my: 2 }} />
-
-                  {/* Expand Button cho Unit */}
-                  <Button
-                    fullWidth
-                    onClick={() => handleExpandCourse(item.courseId)}
-                    endIcon={
-                      expandedCourse === item.courseId ? <ExpandMore sx={{ transform: 'rotate(180deg)' }} /> : <ExpandMore />
-                    }
-                    sx={{ textTransform: "none" }}
-                  >
-                    {expandedCourse === item.courseId
-                      ? "Thu gọn chi tiết Unit"
-                      : "Xem chi tiết theo Unit"}
-                  </Button>
-
-                  {/* Detailed Progress by Units */}
-                  <Collapse in={expandedCourse === item.courseId}>
-                    <Box sx={{ mt: 3 }}>
-                      {courseDetails[item.courseId] ? (
-                        <Grid container spacing={2}>
-                          {courseDetails[item.courseId].map((unit) => (
-                            <Grid item xs={12} key={unit.unitId}>
-                              <Paper sx={{ p: 2, bgcolor: "#fafafa" }}>
-                                <Box
-                                  sx={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    mb: 1,
-                                  }}
-                                >
-                                  <Box sx={{ flex: 1 }}>
-                                    <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
-                                      Unit {unit.order}: {unit.title}
-                                    </Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                      {unit.description}
-                                    </Typography>
-                                  </Box>
-                                  <Chip
-                                    icon={unit.isCompleted ? <CheckCircle /> : null}
-                                    label={`${unit.progress}%`}
-                                    size="small"
-                                    color={unit.isCompleted ? "success" : "default"}
-                                  />
-                                </Box>
-                                <LinearProgress
-                                  variant="determinate"
-                                  value={unit.progress}
-                                  sx={{ height: 6, borderRadius: 3, mb: 1 }}
-                                />
-                                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-                                  <Typography variant="caption">
-                                    {unit.stats.totalLessons} bài học
-                                  </Typography>
-                                  <Typography variant="caption">
-                                    {unit.stats.completedAssignments}/{unit.stats.totalAssignments} bài tập
-                                  </Typography>
-                                  {unit.stats.avgScore > 0 && (
-                                    <Typography variant="caption" color="primary">
-                                      Điểm TB: {unit.stats.avgScore}
-                                    </Typography>
-                                  )}
-                                </Box>
-                              </Paper>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      ) : (
-                        <Box sx={{ textAlign: "center", py: 2 }}>
-                          <CircularProgress size={30} />
-                        </Box>
-                      )}
-                    </Box>
-                  </Collapse>
                 </CardContent>
               </Card>
             </Grid>
