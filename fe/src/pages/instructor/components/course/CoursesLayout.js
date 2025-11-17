@@ -6,6 +6,8 @@ import {
   Snackbar,
   Alert,
   Pagination,
+  Paper,
+  Stack,
 } from "@mui/material";
 
 import AddIcon from "@mui/icons-material/Add";
@@ -187,30 +189,49 @@ export default function CoursesLayout({
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box
+      <Paper
+        elevation={0}
         sx={{
+          p: 3,
           mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
+          background: "linear-gradient(135deg, #8b47d6 0%, #5a95ff 100%)",
+          color: "white",
+          borderRadius: 2,
         }}
       >
-        <Box>
-          <Typography variant="h5" fontWeight={600}>
-            Courses
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Quản lý các khóa học mà bạn đang giảng dạy
-          </Typography>
-        </Box>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleOpenCreate}
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
         >
-          New Course
-        </Button>
-      </Box>
+          <Box>
+            <Typography variant="h4" fontWeight={700} gutterBottom>
+              Khóa học
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              Quản lý các khóa học mà bạn đang giảng dạy
+            </Typography>
+          </Box>
+
+          <Button
+            variant="contained"
+            size="large"
+            startIcon={<AddIcon />}
+            onClick={handleOpenCreate}
+            sx={{
+              bgcolor: "white",
+              color: "#667eea",
+              "&:hover": { bgcolor: "rgba(255,255,255,0.9)" },
+              px: 3,
+              py: 1.5,
+              fontWeight: 600,
+              textTransform: "none",
+            }}
+          >
+            Tạo khóa học mới
+          </Button>
+        </Stack>
+      </Paper>
 
       <CourseReview course={previewCourse} onClose={closePreview} />
 

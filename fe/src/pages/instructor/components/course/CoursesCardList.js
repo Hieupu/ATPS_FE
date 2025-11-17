@@ -99,8 +99,8 @@ export default function CoursesCardList({
                 }}
               >
                 {/* IMAGE TRÊN ĐẦU */}
-                {Image && (
-                  <Box sx={{ position: "relative" }}>
+                <Box sx={{ position: "relative" }}>
+                  {Image && (
                     <CardMedia
                       component="img"
                       height="150"
@@ -108,46 +108,44 @@ export default function CoursesCardList({
                       alt={Title}
                       sx={{ objectFit: "cover" }}
                     />
+                  )}
 
-                    {/* Status chip trên ảnh */}
-                    {Status && (
-                      <Chip
-                        size="small"
-                        label={Status}
-                        sx={{
-                          position: "absolute",
-                          top: 8,
-                          left: 8,
-                          backgroundColor:
-                            Status === "PUBLISHED"
-                              ? "success.main"
-                              : Status === "IN_REVIEW"
-                              ? "warning.main"
-                              : Status === "APPROVED"
-                              ? "info.main"
-                              : "grey.700",
-                          color: "#fff",
-                        }}
-                      />
-                    )}
-
-                    {/* Menu 3 chấm */}
-                    <IconButton
+                  {Status && (
+                    <Chip
                       size="small"
+                      label={Status}
                       sx={{
                         position: "absolute",
-                        top: 4,
-                        right: 4,
-                        bgcolor: "rgba(0,0,0,0.35)",
+                        top: 8,
+                        left: 8,
+                        backgroundColor:
+                          Status === "PUBLISHED"
+                            ? "success.main"
+                            : Status === "IN_REVIEW"
+                            ? "warning.main"
+                            : Status === "APPROVED"
+                            ? "info.main"
+                            : "grey.700",
                         color: "#fff",
-                        "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
                       }}
-                      onClick={(e) => handleOpenMenu(e, course)}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                  </Box>
-                )}
+                    />
+                  )}
+
+                  <IconButton
+                    size="small"
+                    sx={{
+                      position: "absolute",
+                      top: 4,
+                      right: 4,
+                      bgcolor: "rgba(0,0,0,0.35)",
+                      color: "#fff",
+                      "&:hover": { bgcolor: "rgba(0,0,0,0.55)" },
+                    }}
+                    onClick={(e) => handleOpenMenu(e, course)}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                </Box>
 
                 <CardContent sx={{ flexGrow: 1 }}>
                   {/* Title + Level + Code */}
@@ -212,7 +210,6 @@ export default function CoursesCardList({
                     </Typography>
                   )}
 
-                  {/* Duration */}
                   {(Duration || Duration === 0) && (
                     <Typography
                       variant="caption"
@@ -223,7 +220,6 @@ export default function CoursesCardList({
                     </Typography>
                   )}
 
-                  {/* THỐNG KÊ UNITS / LESSONS / MATERIALS */}
                   <Stack
                     direction="row"
                     spacing={2}
@@ -248,7 +244,6 @@ export default function CoursesCardList({
                     </Stack>
                   </Stack>
 
-                  {/* Objectives / Requirements (rút gọn, có ... nếu dài) */}
                   {(Ojectives || Requirements) && (
                     <Box sx={{ mt: 1 }}>
                       {Ojectives && (
@@ -285,7 +280,6 @@ export default function CoursesCardList({
                     </Box>
                   )}
 
-                  {/* Cảnh báo nếu thiếu material */}
                   {missingMaterials > 0 && (
                     <Stack
                       direction="row"
@@ -322,7 +316,7 @@ export default function CoursesCardList({
               }}
             >
               <VisibilityIcon fontSize="small" style={{ marginRight: 8 }} />
-              Preview
+              Xem Trước
             </MenuItem>
 
             <MenuItem
@@ -332,7 +326,7 @@ export default function CoursesCardList({
               }}
             >
               <HandymanIcon fontSize="small" style={{ marginRight: 8 }} />
-              Builder
+              Tạo Cấu Trúc
             </MenuItem>
 
             <MenuItem

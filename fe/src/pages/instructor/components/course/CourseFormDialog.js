@@ -33,6 +33,7 @@ export default function CourseFormDialog({
     Level: "BEGINNER",
     Status: "DRAFT",
     ImageFile: null,
+    _localPreview: "",
   });
 
   const isEdit = mode === "edit";
@@ -46,6 +47,7 @@ export default function CourseFormDialog({
         ...prev,
         ...initialValues,
         ImageFile: null,
+        _localPreview: "",
       }));
     } else {
       // CREATE
@@ -59,6 +61,7 @@ export default function CourseFormDialog({
         Level: "BEGINNER",
         Status: "DRAFT",
         ImageFile: null,
+        _localPreview: "",
       });
     }
   }, [initialValues, open]);
@@ -176,16 +179,15 @@ export default function CourseFormDialog({
                   accept="image/*"
                   onChange={(e) => {
                     const file = e.target.files?.[0];
+                    if (!file) return;
 
-                    if (file) {
-                      const previewURL = URL.createObjectURL(file);
+                    const previewURL = URL.createObjectURL(file);
 
-                      setValues((prev) => ({
-                        ...prev,
-                        file,
-                        _localPreview: previewURL,
-                      }));
-                    }
+                    setValues((prev) => ({
+                      ...prev,
+                      ImageFile: file,
+                      _localPreview: previewURL,
+                    }));
                   }}
                 />
               </Button>
