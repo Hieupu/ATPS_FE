@@ -22,8 +22,6 @@ import {
   School,
   Menu as MenuIcon,
   Person,
-  ShoppingCart,
-  Favorite,
   Logout,
   Book,
   Dashboard,
@@ -33,7 +31,8 @@ import {
   Assignment,
   Folder,
   Notifications,
-  AssignmentTurnedIn
+  AssignmentTurnedIn,
+  Payment
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
@@ -195,8 +194,8 @@ const AppHeader = () => {
       );
       items.push(
         <MenuItem
-          key="my-materials"
-          onClick={() => navigate("/materials")}
+          key="paymenthistory"
+          onClick={() => navigate("/paymenthistory")}
           sx={{
             py: 1.5,
             fontSize: "1rem",
@@ -207,26 +206,8 @@ const AppHeader = () => {
             },
           }}
         >
-          <Folder sx={{ mr: 1, color: "#6b7280" }} />
-          Tài liệu
-        </MenuItem>
-      );
-      items.push(
-        <MenuItem
-          key="my-requests"
-          onClick={() => navigate("/my-requests")}
-          sx={{
-            py: 1.5,
-            fontSize: "1rem",
-            color: "#374151",
-            "&:hover": {
-              background: "#f0f9ff",
-              color: "#1e40af",
-            },
-          }}
-        >
-          <Assignment sx={{ mr: 1, color: "#6b7280" }} />
-          Đơn đăng ký của tôi
+          <Payment sx={{ mr: 1, color: "#6b7280" }} />
+         Lịch sử thanh toán
         </MenuItem>
       );
     }
@@ -335,21 +316,11 @@ const AppHeader = () => {
       items.push(
         <ListItem
           button
-          key="my-materials-mobile"
-          onClick={() => navigate("/materials")}
-        >
-          <Folder sx={{ mr: 2 }} />
-          <ListItemText primary="Tài liệu" />
-        </ListItem>
-      );
-      items.push(
-        <ListItem
-          button
-          key="my-requests-mobile"
-          onClick={() => navigate("/my-requests")}
+          key="paymenthistory-mobile"
+          onClick={() => navigate("/paymenthistory")}
         >
           <Assignment sx={{ mr: 2 }} />
-          <ListItemText primary="Đơn đăng ký của tôi" />
+          <ListItemText primary="Payment" />
         </ListItem>
       );
     }

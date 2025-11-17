@@ -22,6 +22,8 @@ import MyCourses from "./pages/course/MyCourses";
 import MyCourseDetailPage from './pages/course/MyCourseDetailPage'; 
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
+import PaymentHistoryPage from "./pages/payment/PaymentHistoryPage";
 import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
 import InstructorCourses from "./pages/instructor/pages/CoursesPage";
@@ -95,8 +97,8 @@ function App() {
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
           <Route
-            path="/my-requests"
-            element={<LearnerEnrollmentRequestsPage />}
+            path="/paymenthistory"
+            element={<PaymentHistoryPage />}
           />
 
           {/* Admin Routes */}
