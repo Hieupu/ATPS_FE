@@ -8,20 +8,21 @@ const ScheduleCard = ({
   canJoinZoom, 
   showPastStyle = false 
 }) => {
- console.log("schedule", schedule)
+  console.log("schedule", schedule)
   const canJoin = canJoinZoom(schedule);
 
   const handleJoinZoom = () => {
-    // Mở ZoomMeeting trong tab mới với các props cần thiết
-    const zoomWindow = window.open('/zoom', '_blank');
-    
-    // Lưu schedule data vào sessionStorage để ZoomMeeting component có thể lấy
-    if (zoomWindow) {
-      sessionStorage.setItem('zoomScheduleData', JSON.stringify({
-        schedule: schedule,
-        timestamp: new Date().getTime()
-      }));
-    }
+    // Lưu schedule data vào sessionStorage TRƯỚC KHI mở tab mới
+    sessionStorage.setItem('zoomScheduleData', JSON.stringify({
+      schedule: schedule,
+      timestamp: new Date().getTime()
+    }));
+
+    // Đợi một chút để đảm bảo sessionStorage được lưu
+    setTimeout(() => {
+      // Mở ZoomMeeting trong tab mới
+      window.open('/zoom', '_blank');
+    }, 100);
   };
 
   return (
