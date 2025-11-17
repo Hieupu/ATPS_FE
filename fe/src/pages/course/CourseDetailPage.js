@@ -30,7 +30,6 @@ import AppHeader from '../../components/Header/AppHeader';
 import ClassList from './components/ClassList';
 import CourseCurriculum from './components/CourseCurriculum';
 import CourseMaterials from './components/CourseMaterials';
-import CourseExams from './components/CourseExams';
 import InstructorInfo from './components/InstructorInfo';
 import CourseReviews from './components/CourseReviews';
 
@@ -319,7 +318,6 @@ const CourseDetailPage = () => {
           <Tab label="Giảng viên" />
           <Tab label="Đánh giá" />
           {isEnrolledInCourse && <Tab label="Tài liệu" />}
-          {isEnrolledInCourse && <Tab label="Bài kiểm tra" />}
         </Tabs>
 
         <Divider />
@@ -359,12 +357,6 @@ const CourseDetailPage = () => {
           </TabPanel>
         )}
 
-        {/* Exams Tab */}
-        {isEnrolledInCourse && (
-          <TabPanel value={tabValue} index={5}>
-            <CourseExams courseId={course.CourseID} />
-          </TabPanel>
-        )}
       </Container>
     </Box>
   );

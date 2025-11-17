@@ -13,14 +13,30 @@ export const getLearnerProgressApi = async (learnerId, courseId = null) => {
   }
 };
 
-export const getUnitProgressApi = async (learnerId, courseId) => {
+export const getCourseDetailProgressApi = async (learnerId, courseId) => {
   try {
     const response = await apiClient.get(
       `/progress/learner/${learnerId}/course/${courseId}`
     );
     return response.data;
   } catch (error) {
-    console.error("Get unit progress error:", error);
-    throw error.response?.data || { message: "Failed to fetch unit progress" };
+    console.error("Get course detail progress error:", error);
+    throw error.response?.data || { 
+      message: "Failed to fetch course detail progress" 
+    };
+  }
+};
+
+export const getOverallStatisticsApi = async (learnerId) => {
+  try {
+    const response = await apiClient.get(
+      `/progress/learner/${learnerId}/statistics`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Get overall statistics error:", error);
+    throw error.response?.data || { 
+      message: "Failed to fetch overall statistics" 
+    };
   }
 };

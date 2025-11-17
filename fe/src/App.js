@@ -25,6 +25,8 @@ import MyCourses from "./pages/course/MyCourses";
 import MyCourseDetailPage from './pages/course/MyCourseDetailPage'; 
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
+import PaymentHistoryPage from "./pages/payment/PaymentHistoryPage";
 import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
 import InstructorClasses from "./pages/instructor/pages/ClassesPage";
@@ -46,6 +48,11 @@ import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
 import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
+
+import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
+
+
+import ExamsPage from "./pages/exam/ExamsPage";
 
 function App() {
   return (
@@ -74,11 +81,14 @@ function App() {
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/my-courses" element={<MyCourses />} />
             <Route path="/my-courses/:id"  element={<MyCourseDetailPage />} />
+
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
           <Route path="/instructors" element={<InstructorsPage />} />
           <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+
+          <Route path="/exam" element={<ExamsPage />} />
 
           {/* Learner-specific Routes */}
           <Route path="/schedule" element={<SchedulePage />} />
@@ -87,11 +97,12 @@ function App() {
             element={<RescheduleRequestsPage />}
           />
           <Route path="/attendance" element={<AttendancePage />} />
+             <Route path="/zoom" element={<ZoomMeetingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
           <Route
-            path="/my-requests"
-            element={<LearnerEnrollmentRequestsPage />}
+            path="/paymenthistory"
+            element={<PaymentHistoryPage />}
           />
 
           {/* Admin Routes */}

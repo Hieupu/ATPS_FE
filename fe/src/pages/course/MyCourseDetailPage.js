@@ -16,7 +16,6 @@ import {
 import { useParams } from 'react-router-dom';
 import AppHeader from '../../components/Header/AppHeader';
 import CourseMaterials from './components/CourseMaterials';
-import CourseExams from './components/CourseExams';
 import CourseCurriculum from './components/CourseCurriculum';
 import MyClassList from './components/MyClassList';
 import AssignmentList from './components/AssignmentList';
@@ -197,24 +196,19 @@ const MyCourseDetailPage = () => {
                     aria-controls="mycourse-tabpanel-0"
                   />
                   <Tab 
-                    label="Bài kiểm tra" 
+                    label="Lớp học của tôi" 
                     id="mycourse-tab-1"
                     aria-controls="mycourse-tabpanel-1"
                   />
                   <Tab 
-                    label="Lớp học của tôi" 
+                    label="Lộ trình học" 
                     id="mycourse-tab-2"
                     aria-controls="mycourse-tabpanel-2"
                   />
                   <Tab 
-                    label="Lộ trình học" 
+                    label="Assignment" 
                     id="mycourse-tab-3"
                     aria-controls="mycourse-tabpanel-3"
-                  />
-                  <Tab 
-                    label="Assignment" 
-                    id="mycourse-tab-4"
-                    aria-controls="mycourse-tabpanel-4"
                   />
                 </Tabs>
               </CardContent>
@@ -236,19 +230,9 @@ const MyCourseDetailPage = () => {
                   />
                 </TabPanel>
 
-                {/* Bài kiểm tra Tab */}
-                <TabPanel value={tabValue} index={1}>
-                  <Typography variant="h5" gutterBottom>
-                    Bài kiểm tra
-                  </Typography>
-                  <CourseExams 
-                    courseId={course.CourseID}
-                    isEnrolled={isEnrolled}
-                  />
-                </TabPanel>
 
                 {/* Lớp học của tôi Tab */}
-                <TabPanel value={tabValue} index={2}>
+                <TabPanel value={tabValue} index={1}>
                   <Typography variant="h5" gutterBottom>
                     Lớp học của tôi
                   </Typography>
@@ -258,7 +242,7 @@ const MyCourseDetailPage = () => {
                 </TabPanel>
 
                 {/* Lộ trình học Tab */}
-                <TabPanel value={tabValue} index={3}>
+                <TabPanel value={tabValue} index={2}>
                   <Typography variant="h5" gutterBottom>
                     Lộ trình học
                   </Typography>
@@ -269,7 +253,7 @@ const MyCourseDetailPage = () => {
                 </TabPanel>
 
                 {/* Assignment Tab */}
-                <TabPanel value={tabValue} index={4}>
+                <TabPanel value={tabValue} index={3}>
                   <Typography variant="h5" gutterBottom>
                     Bài tập
                   </Typography>
