@@ -1,12 +1,11 @@
+// pages/CourseExams.js
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
+  Container,
   Typography,
   Card,
   CardContent,
-  List,
-  ListItem,
-  ListItemText,
   Button,
   Alert,
   CircularProgress,
@@ -17,7 +16,8 @@ import {
   DialogActions,
   TextField,
   Paper,
-  LinearProgress,
+  Breadcrumbs,
+  Link,
 } from '@mui/material';
 import {
   Quiz,
@@ -25,13 +25,21 @@ import {
   EmojiEvents,
   Psychology,
   Schedule,
+  Home,
+  School,
 } from '@mui/icons-material';
+import { useParams, useNavigate } from 'react-router-dom';
+import AppHeader from '../../../components/Header/AppHeader';
 import { 
   getExamsByCourseApi, 
   getExamQuestionsApi, 
   submitExamApi,
-  getMyLatestExamResultApi 
+  getMyLatestExamResultApi,
 } from "../../../apiServices/examService";
+
+import { 
+ getCourseByIdApi
+} from "../../../apiServices/courseService";
 
 const ExamCard = ({ exam, latestResult, onStartExam }) => {
   const formatDateTime = (dateTimeString) => {
@@ -55,11 +63,12 @@ const ExamCard = ({ exam, latestResult, onStartExam }) => {
   const statusInfo = getExamStatus(exam);
 
   return (
-    <Card sx={{ mb: 2 }}>
+    <Card sx={{ mb: 2, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Quiz sx={{ color: 'primary.main' }} />
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
                 {exam.Title}
               </Typography>
@@ -141,6 +150,7 @@ const ExamCard = ({ exam, latestResult, onStartExam }) => {
           onClick={() => onStartExam(exam)}
           disabled={statusInfo.status === 'closed' && !latestResult}
           color={latestResult ? 'secondary' : 'primary'}
+          size="large"
         >
           {latestResult ? 'Làm lại bài thi' : 'Bắt đầu thi'}
         </Button>
@@ -279,8 +289,11 @@ const ExamDialog = ({
   );
 };
 
-const CourseExams = ({ courseId }) => {
+const CourseExams = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
   const [exams, setExams] = useState([]);
+  const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [examDialogOpen, setExamDialogOpen] = useState(false);
@@ -291,14 +304,20 @@ const CourseExams = ({ courseId }) => {
   const [examResult, setExamResult] = useState(null);
   const [latestExamResults, setLatestExamResults] = useState({});
 
-  const fetchExams = useCallback(async () => {
-    if (!courseId) return;
+  const fetchCourseAndExams = useCallback(async () => {
+    if (!id) return;
 
     try {
       setLoading(true);
       setError(null);
-      const data = await getExamsByCourseApi(courseId);
-      const examsList = data.exams || [];
+      
+      // Fetch course info
+      const courseData = await getCourseByIdApi(id);
+      setCourse(courseData);
+
+      // Fetch exams
+      const examsData = await getExamsByCourseApi(id);
+      const examsList = examsData.exams || [];
       setExams(examsList);
 
       // Fetch latest results for each exam
@@ -313,16 +332,16 @@ const CourseExams = ({ courseId }) => {
       }
       setLatestExamResults(results);
     } catch (err) {
-      console.error('Error fetching exams:', err);
-      setError(err.message || 'Không thể tải danh sách bài thi');
+      console.error('Error fetching data:', err);
+      setError(err.message || 'Không thể tải thông tin bài thi');
     } finally {
       setLoading(false);
     }
-  }, [courseId]);
+  }, [id]);
 
   useEffect(() => {
-    fetchExams();
-  }, [fetchExams]);
+    fetchCourseAndExams();
+  }, [fetchCourseAndExams]);
 
   const handleStartExam = async (exam) => {
     setActiveExam(exam);
@@ -383,44 +402,128 @@ const CourseExams = ({ courseId }) => {
     setExamResult(null);
   };
 
+  const handleBackToCourse = () => {
+    navigate(`/my-courses/${id}`);
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
+      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+        <AppHeader />
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress />
+        </Box>
       </Box>
     );
   }
 
-  if (error) {
-    return (
-      <Alert severity="error">
-        {error}
-      </Alert>
-    );
-  }
-
   return (
-    <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-        Bài kiểm tra ({exams.length} bài)
-      </Typography>
+    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <AppHeader />
+      
+      {/* Header */}
+      <Box
+        sx={{
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+          py: 3,
+        }}
+      >
+        <Container maxWidth="lg">
+          <Breadcrumbs aria-label="breadcrumb" sx={{ color: 'white', mb: 2 }}>
+            <Link
+              underline="hover"
+              color="inherit"
+              href="/my-courses"
+              onClick={(e) => {
+                e.preventDefault();
+                navigate('/my-courses');
+              }}
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              <Home sx={{ mr: 0.5 }} fontSize="inherit" />
+              Khóa học của tôi
+            </Link>
+            <Link
+              underline="hover"
+              color="inherit"
+              href={`/my-courses/${id}`}
+              onClick={(e) => {
+                e.preventDefault();
+                navigate(`/my-courses/${id}`);
+              }}
+              sx={{ display: 'flex', alignItems: 'center' }}
+            >
+              <School sx={{ mr: 0.5 }} fontSize="inherit" />
+              {course?.Title || 'Chi tiết khóa học'}
+            </Link>
+            <Typography color="white" sx={{ display: 'flex', alignItems: 'center' }}>
+              <Quiz sx={{ mr: 0.5 }} fontSize="inherit" />
+              Bài kiểm tra
+            </Typography>
+          </Breadcrumbs>
 
-      {exams.length === 0 ? (
-        <Alert severity="info">
-          Chưa có bài kiểm tra nào cho khóa học này.
-        </Alert>
-      ) : (
-        <Box>
-          {exams.map(exam => (
-            <ExamCard
-              key={exam.ExamID}
-              exam={exam}
-              latestResult={latestExamResults[exam.ExamID]}
-              onStartExam={handleStartExam}
-            />
-          ))}
-        </Box>
-      )}
+          <Typography
+            variant="h4"
+            component="h1"
+            sx={{
+              fontWeight: 700,
+              mb: 1,
+            }}
+          >
+            Bài Kiểm Tra
+          </Typography>
+          <Typography
+            variant="h6"
+            sx={{ opacity: 0.9 }}
+          >
+            {course?.Title}
+          </Typography>
+        </Container>
+      </Box>
+
+      {/* Content */}
+      <Container maxWidth="lg" sx={{ py: 4 }}>
+        <Card>
+          <CardContent sx={{ p: 4 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h5" sx={{ fontWeight: 600 }}>
+                Danh sách bài kiểm tra ({exams.length} bài)
+              </Typography>
+              <Button 
+                variant="outlined" 
+                onClick={handleBackToCourse}
+                startIcon={<School />}
+              >
+                Quay lại khóa học
+              </Button>
+            </Box>
+
+            {error ? (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            ) : null}
+
+            {exams.length === 0 ? (
+              <Alert severity="info">
+                Chưa có bài kiểm tra nào cho khóa học này.
+              </Alert>
+            ) : (
+              <Box>
+                {exams.map(exam => (
+                  <ExamCard
+                    key={exam.ExamID}
+                    exam={exam}
+                    latestResult={latestExamResults[exam.ExamID]}
+                    onStartExam={handleStartExam}
+                  />
+                ))}
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Container>
 
       {/* Exam Dialog */}
       <ExamDialog
