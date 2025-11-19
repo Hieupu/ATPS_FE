@@ -54,6 +54,8 @@ import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
 import ExamsPage from "./pages/exam/ExamsPage";
 
+import AssignmentsPage from "./pages/assignment/AssignmentsPage";
+
 function App() {
   return (
     <AuthProvider>
@@ -87,6 +89,8 @@ function App() {
 
           <Route path="/instructors" element={<InstructorsPage />} />
           <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+
+          <Route path="/assignments" element={<AssignmentsPage />} />
 
           <Route path="/exam" element={<ExamsPage />} />
 

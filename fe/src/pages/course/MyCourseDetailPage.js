@@ -18,7 +18,6 @@ import AppHeader from '../../components/Header/AppHeader';
 import CourseMaterials from './components/CourseMaterials';
 import CourseCurriculum from './components/CourseCurriculum';
 import MyClassList from './components/MyClassList';
-import AssignmentList from './components/AssignmentList';
 
 // API imports
 import {
@@ -205,11 +204,6 @@ const MyCourseDetailPage = () => {
                     id="mycourse-tab-2"
                     aria-controls="mycourse-tabpanel-2"
                   />
-                  <Tab 
-                    label="Assignment" 
-                    id="mycourse-tab-3"
-                    aria-controls="mycourse-tabpanel-3"
-                  />
                 </Tabs>
               </CardContent>
             </Card>
@@ -249,16 +243,6 @@ const MyCourseDetailPage = () => {
                   <CourseCurriculum 
                     courseId={course.CourseID}
                     isEnrolled={isEnrolled}
-                  />
-                </TabPanel>
-
-                {/* Assignment Tab */}
-                <TabPanel value={tabValue} index={3}>
-                  <Typography variant="h5" gutterBottom>
-                    Bài tập
-                  </Typography>
-                  <AssignmentList 
-                    courseId={course.CourseID}
                   />
                 </TabPanel>
               </CardContent>
