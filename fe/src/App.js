@@ -5,6 +5,9 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import AdminLayout from "./layouts/AdminLayout";
 import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
 import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
@@ -19,11 +22,13 @@ import MyProfile from "./pages/MyProfile/MyProfile";
 import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
 import MyCourses from "./pages/course/MyCourses";
+import MyCourseDetailPage from './pages/course/MyCourseDetailPage'; 
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
+
+import PaymentHistoryPage from "./pages/payment/PaymentHistoryPage";
 import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
-import InstructorCourses from "./pages/instructor/pages/CoursesPage";
 import InstructorClasses from "./pages/instructor/pages/ClassesPage";
 import ClassDetail from "./pages/instructor/pages/ClassDetail";
 import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
@@ -31,14 +36,25 @@ import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
+import CoursesPagee from "./pages/instructor/pages/CoursesPage";
 
 import InstructorsPage from "./pages/instructor/InstructorsPage";
 import InstructorDetailPage from "./pages/instructor/InstructorDetailPage";
 
 import SchedulePage from "./pages/schedule/SchedulePage";
+import RescheduleRequestsPage from "./pages/schedule/RescheduleRequestsPage";
+import LearnerEnrollmentRequestsPage from "./pages/learner/LearnerEnrollmentRequestsPage";
 import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
+import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
+
+import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
+
+
+import ExamsPage from "./pages/exam/ExamsPage";
+
+import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 
 function App() {
   return (
@@ -66,17 +82,32 @@ function App() {
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/my-courses" element={<MyCourses />} />
+            <Route path="/my-courses/:id"  element={<MyCourseDetailPage />} />
+
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
 
           <Route path="/instructors" element={<InstructorsPage />} />
           <Route path="/instructors/:id" element={<InstructorDetailPage />} />
 
+          <Route path="/assignments" element={<AssignmentsPage />} />
+
+          <Route path="/exam" element={<ExamsPage />} />
+
           {/* Learner-specific Routes */}
           <Route path="/schedule" element={<SchedulePage />} />
+          <Route
+            path="/reschedule-requests"
+            element={<RescheduleRequestsPage />}
+          />
           <Route path="/attendance" element={<AttendancePage />} />
+             <Route path="/zoom" element={<ZoomMeetingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
+          <Route
+            path="/paymenthistory"
+            element={<PaymentHistoryPage />}
+          />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -92,7 +123,8 @@ function App() {
             <Route path="/instructor" element={<InstructorLayout />}>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<InstructorDashboard />} />
-              <Route path="courses" element={<InstructorCourses />} />
+              <Route path="courses" element={<CoursesPagee />} />
+              <Route path="courses/:courseId" element={<CourseBuilderPage />} />
               <Route path="classes" element={<InstructorClasses />} />
               <Route path="classes/detail" element={<ClassDetail />} />
               <Route path="assignments" element={<InstructorAssignments />} />
@@ -104,6 +136,15 @@ function App() {
           {/* 404 Page */}
           <Route path="*" element={<NotFound />} />
         </Routes>
+        <ToastContainer
+          position="top-right"
+          autoClose={2500}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          pauseOnHover
+          theme="colored"
+        />
       </Router>
     </AuthProvider>
   );

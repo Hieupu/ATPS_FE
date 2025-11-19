@@ -22,8 +22,6 @@ import {
   School,
   Menu as MenuIcon,
   Person,
-  ShoppingCart,
-  Favorite,
   Logout,
   Book,
   Dashboard,
@@ -33,6 +31,9 @@ import {
   Assignment,
   Folder,
   Notifications,
+  AssignmentTurnedIn,
+  Payment,
+  Quiz
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
@@ -41,6 +42,7 @@ import {
   markAllNotificationsReadApi,
   markNotificationReadApi,
 } from "../../apiServices/notificationService";
+import apiClient from "../../apiServices/apiClient";
 
 const AppHeader = () => {
   const navigate = useNavigate();
@@ -155,6 +157,42 @@ const AppHeader = () => {
           Điểm danh
         </MenuItem>
       );
+         items.push(
+        <MenuItem
+          key="my-exam"
+          onClick={() => navigate("/exam")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
+         Exam
+        </MenuItem>
+      );
+        items.push(
+        <MenuItem
+          key="my-progress"
+          onClick={() => navigate("/assignments")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Quiz sx={{ mr: 1, color: "#6b7280" }} />
+          Assignment
+        </MenuItem>
+      );
       items.push(
         <MenuItem
           key="my-progress"
@@ -175,8 +213,8 @@ const AppHeader = () => {
       );
       items.push(
         <MenuItem
-          key="my-materials"
-          onClick={() => navigate("/materials")}
+          key="paymenthistory"
+          onClick={() => navigate("/paymenthistory")}
           sx={{
             py: 1.5,
             fontSize: "1rem",
@@ -187,8 +225,8 @@ const AppHeader = () => {
             },
           }}
         >
-          <Folder sx={{ mr: 1, color: "#6b7280" }} />
-          Tài liệu
+          <Payment sx={{ mr: 1, color: "#6b7280" }} />
+         Lịch sử thanh toán
         </MenuItem>
       );
     }
@@ -273,6 +311,27 @@ const AppHeader = () => {
           <ListItemText primary="Điểm danh" />
         </ListItem>
       );
+
+       items.push(
+        <ListItem
+          button
+          key="my-exam-mobile"
+          onClick={() => navigate("/exam")}
+        >
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Exam" />
+        </ListItem>
+      );
+        items.push(
+        <ListItem
+          button
+          key="my-assignment-mobile"
+          onClick={() => navigate("/assignments")}
+        >
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Assignment" />
+        </ListItem>
+      );
       items.push(
         <ListItem
           button
@@ -286,11 +345,11 @@ const AppHeader = () => {
       items.push(
         <ListItem
           button
-          key="my-materials-mobile"
-          onClick={() => navigate("/materials")}
+          key="paymenthistory-mobile"
+          onClick={() => navigate("/paymenthistory")}
         >
-          <Folder sx={{ mr: 2 }} />
-          <ListItemText primary="Tài liệu" />
+          <Assignment sx={{ mr: 2 }} />
+          <ListItemText primary="Payment" />
         </ListItem>
       );
     }
@@ -508,49 +567,145 @@ const AppHeader = () => {
                       {notifications.length === 0 ? (
                         <MenuItem disabled>Chưa có thông báo</MenuItem>
                       ) : (
-                        notifications.map((n) => (
-                          <MenuItem
-                            key={n.NotificationID}
-                            onClick={async () => {
-                              await markNotificationReadApi(n.NotificationID);
-                              setNotifications((prev) =>
-                                prev.map((x) =>
-                                  x.NotificationID === n.NotificationID
-                                    ? { ...x, Status: "read" }
-                                    : x
-                                )
-                              );
-                              setUnreadCount((c) =>
-                                Math.max(
-                                  0,
-                                  c -
-                                    ((n.Status || "").toLowerCase() !== "read"
-                                      ? 1
-                                      : 0)
-                                )
-                              );
-                            }}
-                            sx={{
-                              whiteSpace: "normal",
-                              alignItems: "start",
-                              gap: 1,
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: 8,
-                                height: 8,
-                                borderRadius: "50%",
-                                bgcolor:
-                                  (n.Status || "").toLowerCase() === "read"
-                                    ? "transparent"
-                                    : "primary.main",
-                                mt: 1,
+                        notifications.map((n) => {
+                          // Extract payment URL from notification content
+                          const extractPaymentUrl = (content) => {
+                            if (!content) return null;
+                            // Tìm "Link thanh toán: <url>" hoặc URL pattern
+                            const urlMatch =
+                              content.match(/Link thanh toán:\s*(\S+)/i) ||
+                              content.match(/https?:\/\/[^\s]+/);
+                            return urlMatch ? urlMatch[1] || urlMatch[0] : null;
+                          };
+
+                          // Extract OrderCode from notification content
+                          const extractOrderCode = (content) => {
+                            if (!content) return null;
+                            const match =
+                              content.match(/Mã đơn hàng:\s*(\d+)/i);
+                            return match ? match[1] : null;
+                          };
+
+                          const paymentUrl =
+                            n.Type === "payment"
+                              ? extractPaymentUrl(n.Content)
+                              : null;
+
+                          const orderCode =
+                            n.Type === "payment"
+                              ? extractOrderCode(n.Content)
+                              : null;
+
+                          return (
+                            <MenuItem
+                              key={n.NotificationID}
+                              onClick={async () => {
+                                await markNotificationReadApi(n.NotificationID);
+                                setNotifications((prev) =>
+                                  prev.map((x) =>
+                                    x.NotificationID === n.NotificationID
+                                      ? { ...x, Status: "read" }
+                                      : x
+                                  )
+                                );
+                                setUnreadCount((c) =>
+                                  Math.max(
+                                    0,
+                                    c -
+                                      ((n.Status || "").toLowerCase() !== "read"
+                                        ? 1
+                                        : 0)
+                                  )
+                                );
+                                setNotifAnchor(null); // Đóng menu
+
+                                // Xử lý notification payment: redirect đến trang thanh toán
+                                if (n.Type === "payment") {
+                                  // Nếu có payment URL trực tiếp, dùng ngay
+                                  if (paymentUrl) {
+                                    window.location.href = paymentUrl;
+                                  }
+                                  // Nếu có OrderCode, gọi API để lấy payment link từ PayOS
+                                  else if (orderCode) {
+                                    try {
+                                      // Gọi API để lấy payment link từ OrderCode
+                                      const response = await apiClient.get(
+                                        `/payment/get-link/${orderCode}`
+                                      );
+
+                                      if (response.data?.paymentUrl) {
+                                        window.location.href =
+                                          response.data.paymentUrl;
+                                      } else {
+                                        throw new Error(
+                                          response.data?.message ||
+                                            "Không tìm thấy payment URL"
+                                        );
+                                      }
+                                    } catch (error) {
+                                      console.error(
+                                        "Error getting payment link:",
+                                        error
+                                      );
+                                      alert(
+                                        error.response?.data?.message ||
+                                          `Không thể lấy link thanh toán. Mã đơn hàng: ${orderCode}`
+                                      );
+                                    }
+                                  } else {
+                                    alert(
+                                      "Không tìm thấy thông tin thanh toán trong thông báo."
+                                    );
+                                  }
+                                }
                               }}
-                            />
-                            <Typography variant="body2">{n.Content}</Typography>
-                          </MenuItem>
-                        ))
+                              sx={{
+                                whiteSpace: "normal",
+                                alignItems: "start",
+                                gap: 1,
+                                cursor:
+                                  n.Type === "payment" ? "pointer" : "default",
+                                "&:hover":
+                                  n.Type === "payment"
+                                    ? {
+                                        background: "#f0f9ff",
+                                      }
+                                    : {},
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  bgcolor:
+                                    (n.Status || "").toLowerCase() === "read"
+                                      ? "transparent"
+                                      : "primary.main",
+                                  mt: 1,
+                                }}
+                              />
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2">
+                                  {n.Content}
+                                </Typography>
+                                {n.Type === "payment" && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "primary.main",
+                                      fontWeight: 600,
+                                      mt: 0.5,
+                                      display: "block",
+                                    }}
+                                  >
+                                    → Nhấn để thanh toán
+                                  </Typography>
+                                )}
+                              </Box>
+                            </MenuItem>
+                          );
+                        })
                       )}
                     </MenuList>
                   </Menu>
@@ -612,55 +767,10 @@ const AppHeader = () => {
                       Profile
                     </MenuItem>
 
-                    <MenuItem
-                      onClick={() => navigate("/mylearning")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <School sx={{ mr: 1, color: "#6b7280" }} />
-                      My Learning
-                    </MenuItem>
 
                     {/* Menu items theo role */}
                     {getRoleSpecificMenuItems()}
 
-                    <MenuItem
-                      onClick={() => navigate("/cart")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <ShoppingCart sx={{ mr: 1, color: "#6b7280" }} />
-                      My Cart
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => navigate("/wishlist")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <Favorite sx={{ mr: 1, color: "#6b7280" }} />
-                      Wishlist
-                    </MenuItem>
                     <Divider sx={{ my: 0.5 }} />
                     <MenuItem
                       onClick={handleLogout}

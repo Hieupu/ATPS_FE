@@ -25,10 +25,9 @@ export const searchCoursesApi = async ({
       pageSize: String(pageSize),
     });
     if (category) params.append("category", category);
-    const response = await apiClient.get(
-      `/courses/search?${params.toString()}`
-    );
-    return response.data; // { items, total, page, pageSize }
+    
+    const response = await apiClient.get(`/courses/search?${params.toString()}`);
+    return response.data;
   } catch (error) {
     throw error.response?.data || { message: "Failed to search courses" };
   }
@@ -64,6 +63,16 @@ export const getPopularCoursesApi = async () => {
     throw (
       error.response?.data || { message: "Failed to fetch popular courses" }
     );
+  }
+};
+
+export const getPopularClassesApi = async () => {
+  try {
+    const response = await apiClient.get("/courses/classes/popular");
+    return response.data;
+  } catch (error) {
+    console.error("Get popular classes error:", error);
+    throw error.response?.data || { message: "Failed to fetch popular classes" };
   }
 };
 
@@ -106,5 +115,55 @@ export const getCourseCurriculumApi = async (courseId) => {
   } catch (error) {
     console.error("Get curriculum error:", error);
     throw error.response?.data || { message: "Failed to fetch curriculum" };
+  }
+};
+
+export const getMyClassesInCourseApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/my-classes`);
+    return response.data;
+  } catch (error) {
+    console.error("Get my classes in course error:", error);
+    throw error.response?.data || { message: "Failed to fetch your classes" };
+  }
+};
+
+export const getCourseAssignmentsApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/assignments`);
+    return response.data;
+  } catch (error) {
+    console.error("Get course assignments error:", error);
+    throw error.response?.data || { message: "Failed to fetch assignments" };
+  }
+};
+
+export const submitAssignmentApi = async (assignmentId, submissionData) => {
+  try {
+    const response = await apiClient.post(`/assignments/${assignmentId}/submit`, submissionData);
+    return response.data;
+  } catch (error) {
+    console.error("Submit assignment error:", error);
+    throw error.response?.data || { message: "Failed to submit assignment" };
+  }
+};
+
+export const getSubmissionDetailApi = async (submissionId) => {
+  try {
+    const response = await apiClient.get(`/submissions/${submissionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Get submission detail error:", error);
+    throw error.response?.data || { message: "Failed to fetch submission detail" };
+  }
+};
+
+export const checkEnrollmentStatusApi = async (classId) => {
+  try {
+    const response = await apiClient.get(`/courses/classes/${classId}/enrollment-status`);
+    return response.data;
+  } catch (error) {
+    console.error("Check enrollment error:", error);
+    throw error.response?.data || { message: "Failed to check enrollment status" };
   }
 };

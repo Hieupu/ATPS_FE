@@ -8,15 +8,15 @@ import {
   CardContent,
   CardMedia,
   Box,
-  Chip,
   CircularProgress,
   Alert,
   Button,
 } from "@mui/material";
-import { PlayArrow, AccessTime, Person } from "@mui/icons-material";
+import { AccessTime, Person } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { getMyEnrolledCourses } from "../../apiServices/courseService";
 import { useAuth } from "../../contexts/AuthContext";
+import AppHeader from "../../components/Header/AppHeader";
 
 const courseImages = [
   "https://wp-s3-edilume-test-bucket.s3.ap-southeast-1.amazonaws.com/wp-content/uploads/2022/12/31183122/IELTS_new_thumbnail.png",
@@ -53,15 +53,9 @@ const MyCourses = () => {
     }
   };
 
-  const handleContinueLearning = (courseId, classId) => {
-    if (courseId) return navigate(`/learning/${courseId}`);
-    if (classId) return navigate(`/learning/class/${classId}`);
-    return;
-  };
-
-  const handleViewCourse = (course) => {
-    if (course.CourseID) return navigate(`/courses/${course.CourseID}`);
-    return navigate(`/schedule`);
+  const handleCourseClick = (course) => {
+    // Điều hướng đến trang MyCourseDetail với courseId
+    navigate(`/my-courses/${course.CourseID}`);
   };
 
   const formatDate = (dateString) => {
@@ -91,6 +85,8 @@ const MyCourses = () => {
   }
 
   return (
+        <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
+          <AppHeader />
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
       <Typography
         variant="h4"
@@ -134,11 +130,13 @@ const MyCourses = () => {
                     display: "flex",
                     flexDirection: "column",
                     transition: "transform 0.2s",
+                    cursor: "pointer", // Thêm cursor pointer
                     "&:hover": {
                       transform: "translateY(-4px)",
                       boxShadow: 3,
                     },
                   }}
+                  onClick={() => handleCourseClick(course)} // Click toàn bộ card
                 >
                   <CardMedia
                     component="img"
@@ -146,8 +144,6 @@ const MyCourses = () => {
                     image={imageUrl}
                     alt={course.Title}
                     sx={{ objectFit: "cover" }}
-                    onClick={() => handleViewCourse(course)}
-                    style={{ cursor: "pointer" }}
                   />
 
                   <CardContent sx={{ flexGrow: 1, p: 2 }}>
@@ -160,7 +156,16 @@ const MyCourses = () => {
                       }}
                     >
                       <Typography variant="body2" color="text.secondary">
-                        {formatDate(course.EnrollmentDate)}
+                        Đăng ký: {formatDate(course.EnrollmentDate)}
+                      </Typography>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: course.EnrollmentStatus === 'Enrolled' ? 'success.main' : 'text.secondary',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        {course.EnrollmentStatus === 'Enrolled' ? 'Đang học' : course.EnrollmentStatus}
                       </Typography>
                     </Box>
 
@@ -170,10 +175,12 @@ const MyCourses = () => {
                       gutterBottom
                       sx={{
                         fontWeight: "bold",
-                        cursor: "pointer",
-                        "&:hover": { color: "primary.main" },
+                        minHeight: '64px', // Đảm bảo tiêu đề có chiều cao cố định
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
                       }}
-                      onClick={() => handleViewCourse(course)}
                     >
                       {course.Title}
                     </Typography>
@@ -181,7 +188,14 @@ const MyCourses = () => {
                     <Typography
                       variant="body2"
                       color="text.secondary"
-                      sx={{ mb: 2 }}
+                      sx={{ 
+                        mb: 2,
+                        minHeight: '40px',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}
                     >
                       {course.Description?.substring(0, 100)}...
                     </Typography>
@@ -231,15 +245,12 @@ const MyCourses = () => {
                       sx={{
                         display: "flex",
                         alignItems: "center",
-                        mb: 2,
                         p: 1,
                         bgcolor: "grey.50",
                         borderRadius: 1,
                       }}
                     >
                       <Box
-                        src={course.InstructorAvatar || "/default-avatar.png"}
-                        alt={course.InstructorName}
                         sx={{
                           width: 35,
                           height: 35,
@@ -249,55 +260,25 @@ const MyCourses = () => {
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
+                          color: "white",
+                          fontWeight: "bold",
+                          fontSize: "14px"
                         }}
                       >
-                        {course.InstructorName?.charAt(0)}
+                        {course.InstructorName?.charAt(0) || 'G'}
                       </Box>
-                      <Box>
+                      <Box sx={{ flex: 1 }}>
                         <Typography
                           variant="caption"
                           fontWeight="bold"
                           display="block"
                         >
-                          {course.InstructorName}
+                          {course.InstructorName || "Giảng viên"}
                         </Typography>
                         <Typography variant="caption" color="text.secondary">
-                          {course.InstructorMajor}
+                          {course.InstructorMajor || "Chuyên gia"}
                         </Typography>
                       </Box>
-                    </Box>
-
-                    {/* Action Buttons */}
-                    <Box sx={{ display: "flex", gap: 1 }}>
-                      <Button
-                        variant="contained"
-                        startIcon={<PlayArrow />}
-                        onClick={() =>
-                          handleContinueLearning(
-                            course.CourseID,
-                            course.ClassID
-                          )
-                        }
-                        disabled={
-                          !["active", "Enrolled"].includes(
-                            course.EnrollmentStatus
-                          )
-                        }
-                        sx={{ flex: 1 }}
-                      >
-                        {["active", "Enrolled"].includes(
-                          course.EnrollmentStatus
-                        )
-                          ? "Học tiếp"
-                          : "Đã hoàn thành"}
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        onClick={() => handleViewCourse(course)}
-                        sx={{ flex: 0.5 }}
-                      >
-                        Xem
-                      </Button>
                     </Box>
                   </CardContent>
                 </Card>
@@ -307,6 +288,7 @@ const MyCourses = () => {
         </Grid>
       )}
     </Container>
+    </Box>
   );
 };
 
