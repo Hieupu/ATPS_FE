@@ -1,309 +1,325 @@
-import React, { useState } from "react";
-import {
-  Box,
-  Grid,
-  Typography,
-  Button,
-  TextField,
-  Tabs,
-  Tab,
-  Snackbar,
-  Alert,
-  CircularProgress,
-  Card,
-  CardContent,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-} from "@mui/material";
-import { Add, FilterList, Search } from "@mui/icons-material";
-import AssignmentCard from "../components/assignment/AssignmentCard";
-import AssignmentActionsMenu from "../components/assignment/AssignmentActionsMenu";
-import AssignmentFormDialog from "../components/assignment/AssignmentFormDialog";
-import StatusConfirmDialog from "../components/assignment/StatusConfirmDialog";
+import React, { useEffect, useState } from "react";
+import { ToastContainer, toast } from "react-toastify";
 import useAssignment from "../hooks/useAssignment";
-import { getAssignmentByIdApi } from "../../../apiServices/assignmentService";
+import AssignmentStats from "../components/assignment/AssignmentStats";
+import SearchFilterBar from "../components/assignment/SearchFilterBar";
+import AssignmentList from "../components/assignment/AssignmentList";
+import TypeSelectionModal from "../components/assignment/TypeSelectionModal";
+import AssignmentFormDialog from "../components/assignment/AssignmentFormDialog";
+import QuestionBuilderDialog from "../components/assignment/QuestionBuilderDialog";
+import AssignmentPreviewDialog from "../components/assignment/AssignmentPreviewDialog";
+import { getAssignmentQuestionsApi } from "../../../apiServices/assignmentService";
 
 export default function AssignmentsPage() {
   const {
-    assignments,
+    // Data
     filtered,
-    stats,
+    courses,
+    units,
     loading,
     busy,
     error,
     success,
     setError,
     setSuccess,
-    tabValue,
-    setTabValue,
+    // Filters
     searchQuery,
     setSearchQuery,
+    filters,
+    setFilters,
+    stats,
+    // Form + Stepper
     form,
-    setForm,
-    openCreate,
-    setOpenCreate,
-    openEdit,
-    setOpenEdit,
-    openStatus,
-    setOpenStatus,
-    statusTarget,
-    setStatusTarget,
-    submitCreate,
-    submitEdit,
-    submitStatus,
-    editFromItem,
-    units,
-    uploadLocalFile,
+    setField,
+    formType,
+    activeTab,
+    setActiveTab,
+    formatDate,
+    onCourseChange,
+    step,
+    setStep,
+    // Modals
+    showTypeModal,
+    openTypeModal,
+    closeTypeModal,
+    showCreateForm,
+    closeCreateForm,
+    // Actions
     openCreateNew,
-    resetForm,
-    unitsLoading,
-    courses,
-    coursesLoading,
-    onPickCourse,
-    onPickUnit,
+    handleSelectType,
+    goFormNext,
+    proceedToPreview,
+    finalizeAndFinish,
+    uploadFile,
+    handleDelete,
+    openEdit,
   } = useAssignment();
 
-  const [anchorEl, setAnchorEl] = useState(null);
-  const [selected, setSelected] = useState(null);
-  const openMenu = (e, item) => {
-    setAnchorEl(e.currentTarget);
-    setSelected(item);
-  };
-  const closeMenu = () => {
-    setAnchorEl(null);
-    setSelected(null);
-  };
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailForm, setDetailForm] = useState({});
+  const [detailQuestions, setDetailQuestions] = useState([]);
+  const handleViewDetail = async (assignmentId) => {
+  const a = filtered.find((x) => x.AssignmentID === assignmentId);
+  if (!a) return;
 
-  // View Detail
-  const [openDetail, setOpenDetail] = useState(false);
-  const [detail, setDetail] = useState(null);
-  const handleView = async (item) => {
-    try {
-      const data = await getAssignmentByIdApi(item.AssignmentID);
-      setDetail(data);
-      setOpenDetail(true);
-    } catch (err) {
-      setError(err?.message || "Không thể tải chi tiết bài tập");
-    }
-  };
+  // map dữ liệu assignment → form cho PreviewDialog
+  setDetailForm({
+    title: a.Title,
+    description: a.Description,
+    courseTitle: a.CourseTitle,
+    unitTitle: a.UnitTitle,
+    deadline: a.Deadline || a.deadline,
+    type: a.Type,
+    showAnswersAfter: a.ShowAnswersAfter,
+    maxDuration: a.MaxDuration,
+    fileURL: a.FileURL,
+    mediaURL: a.MediaURL,
+  });
+
+  try {
+    // 🔥 GỌI API LẤY CÂU HỎI
+    const qs = await getAssignmentQuestionsApi(assignmentId);
+    setDetailQuestions(Array.isArray(qs) ? qs : []);
+  } catch (err) {
+    console.error("Load questions error:", err);
+    setDetailQuestions([]);
+    toast.error(
+      err?.message || "Không thể tải danh sách câu hỏi cho bài tập này"
+    );
+  }
+
+  setDetailOpen(true);
+};
+
+  const currentType = (form.type || formType || "quiz").toLowerCase();
+  const wizardSteps =
+    currentType === "audio" || currentType === "speaking"
+      ? ["Thông tin bài tập", "Cấu hình bài nói", "Tổng quan"]
+      : currentType === "video"
+        ? ["Thông tin bài tập", "Video & câu hỏi", "Tổng quan"]
+        : currentType === "document"
+          ? ["Thông tin bài tập", "Tài liệu & câu hỏi", "Tổng quan"]
+          : ["Thông tin bài tập", "Thêm câu hỏi", "Tổng quan"];
+
+  useEffect(() => {
+    if (error) toast.error(error);
+    if (success) toast.success(success);
+    const t = setTimeout(() => {
+      setError("");
+      setSuccess("");
+    }, 2000);
+    return () => clearTimeout(t);
+  }, [error, success, setError, setSuccess]);
 
   return (
-    <Box sx={{ p: 2, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+    <div style={styles.container}>
+      <ToastContainer
+        position="top-right"
+        autoClose={2500}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        pauseOnHover
+        theme="colored"
+      />
+
       {/* Header */}
-      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          Assignments
-        </Typography>
-        <Button
-          startIcon={<Add />}
-          variant="contained"
-          onClick={openCreateNew} // mở form sạch
-          disabled={busy}
-        >
-          Create New
-        </Button>
-      </Box>
+      <div style={styles.header}>
+        <div>
+          <h1 style={styles.title}>Quản Lý Bài Tập</h1>
+          <p style={styles.subtitle}>
+            Tạo và quản lý bài tập cho các khóa học của bạn
+          </p>
+        </div>
+        <button style={styles.addButton} onClick={() => openCreateNew()}>
+          <span style={styles.plusIcon}>+</span>
+          Bài Tập Mới
+        </button>
+      </div>
 
-      {/* Stats */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        {[
-          { label: "Total", value: stats.total },
-          { label: "Active", value: stats.active ?? stats.open }, // giữ tương thích
-          { label: "Grading", value: stats.active ?? stats.grading },
-          { label: "Deleted", value: stats.deleted },
-        ].map((s, i) => (
-          <Grid item xs={6} sm={3} key={i}>
-            <Card>
-              <CardContent>
-                <Typography variant="caption" color="text.secondary">
-                  {s.label}
-                </Typography>
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  {s.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {/* Stats & Filters */}
+      <AssignmentStats stats={stats} />
+      <SearchFilterBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        filters={filters}
+        setFilters={setFilters}
+        courses={courses}
+      />
 
-      {/* Search + Tabs */}
-      <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-        <TextField
-          size="small"
-          placeholder="Search by title or class..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          sx={{ flex: 1 }}
-          InputProps={{ startAdornment: <Search sx={{ mr: 1 }} /> }}
-        />
-        <Button variant="outlined" startIcon={<FilterList />}>
-          Filter
-        </Button>
-      </Box>
-      <Tabs value={tabValue} onChange={(e, v) => setTabValue(v)}>
-        <Tab label={`All (${assignments.length})`} />
-        <Tab label={`Assignments`} />
-        <Tab label="Homework" />
-      </Tabs>
+      {/* List với phân trang */}
+      <div>
+        <h2 style={styles.sectionTitle}>
+          Tất Cả Bài Tập ({filtered.length})
+        </h2>
+        {loading ? (
+          <div style={styles.loadingState}>Đang tải...</div>
+        ) : filtered.length === 0 ? (
+          <div style={styles.emptyState}>
+            <p>
+              Chưa có bài tập nào. Nhấn "Bài Tập Mới" để tạo bài tập đầu tiên!
+            </p>
+          </div>
+        ) : (
+          <AssignmentList
+            assignments={filtered}
+            onEdit={openEdit}
+            onViewSubmissions={() => { }}
+            onDelete={handleDelete}
+            onViewDetail={handleViewDetail}
+            itemsPerPage={6}
+          />
+        )}
+      </div>
 
-      {/* List */}
-      {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-          <CircularProgress />
-        </Box>
-      ) : filtered.length === 0 ? (
-        <Typography align="center" sx={{ mt: 8 }}>
-          Không có bài tập nào phù hợp
-        </Typography>
-      ) : (
-        <Grid container spacing={3} sx={{ mt: 1 }}>
-          {filtered.map((it) => (
-            <Grid item xs={12} sm={6} md={4} key={it.AssignmentID}>
-              <AssignmentCard item={it} onMenu={openMenu} onView={handleView} />
-            </Grid>
-          ))}
-        </Grid>
-      )}
+      {/* STEP 0 – Type selection */}
+      <TypeSelectionModal
+        show={showTypeModal}
+        onClose={closeTypeModal}
+        onSelectType={handleSelectType}
+      />
 
-      {/* Actions menu */}
-      <AssignmentActionsMenu
-        anchorEl={anchorEl}
-        onClose={closeMenu}
-        item={selected}
-        onEdit={(it) => editFromItem(it)}
-        onView={handleView} // bật View Detail
-        onAskStatus={(it, next) => {
-          setStatusTarget({ id: it.AssignmentID, next });
-          setOpenStatus(true);
+      {/* STEP 1 – Thông tin bài tập */}
+      <AssignmentFormDialog
+        show={showCreateForm && step === 1}
+        onClose={closeCreateForm}
+        formType={formType}
+        form={form}
+        setField={setField}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        courses={courses}
+        units={units}
+        onCourseChange={onCourseChange}
+        formatDate={formatDate}
+        onSubmit={goFormNext}
+        onUploadFile={uploadFile}
+        busy={busy}
+        wizardProps={{
+          steps: wizardSteps,
+          activeStep: 1,
+          onPrev: undefined,
+          onNext: goFormNext,
+          nextLabel: "Tiếp theo",
+          finish: false,
+          disabled: busy,
         }}
       />
 
-      {/* Create Dialog */}
-      <AssignmentFormDialog
-        open={openCreate}
-        onClose={() => {
-          setOpenCreate(false);
-          resetForm();
+      {/* STEP 2 – Thêm câu hỏi / Cấu hình tùy loại */}
+      <QuestionBuilderDialog
+        show={showCreateForm && step === 2}
+        onClose={closeCreateForm}
+        questions={form.localQuestions || []}
+        setQuestions={(qs) => setField("localQuestions", qs)}
+        onSubmit={(qs) => proceedToPreview(qs)}
+        busy={busy}
+        form={form}
+        setField={setField}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        onUploadFile={uploadFile}
+        wizardProps={{
+          steps: wizardSteps,
+          activeStep: 2,
+          onPrev: () => setStep(1),
+          onNext: () => proceedToPreview(form.localQuestions || []),
+          nextLabel: "Preview",
+          finish: false,
+          disabled: busy,
         }}
-        onSubmit={submitCreate}
-        busy={busy}
+      />
+
+      {/* STEP 3 – Preview */}
+      <AssignmentPreviewDialog
+        show={showCreateForm && step === 3}
+        onClose={closeCreateForm}
         form={form}
-        setForm={setForm}
-        editMode={false}
-        courses={courses}
-        coursesLoading={coursesLoading}
-        units={units}
-        unitsLoading={unitsLoading}
-        onPickCourse={onPickCourse}
-        onPickUnit={onPickUnit}
-        onPickFile={uploadLocalFile} // upload -> set FileURL
-      />
-
-      {/* Edit Dialog */}
-      <AssignmentFormDialog
-        open={openEdit}
-        onClose={() => setOpenEdit(false)}
-        onSubmit={submitEdit}
+        questions={form.localQuestions || []}
+        onConfirm={finalizeAndFinish}
         busy={busy}
-        form={form}
-        setForm={setForm}
-        editMode={true}
         courses={courses}
-        coursesLoading={coursesLoading}
         units={units}
-        unitsLoading={unitsLoading}
-        onPickCourse={onPickCourse}
-        onPickUnit={onPickUnit}
-        onPickFile={uploadLocalFile}
+        wizardProps={{
+          steps: wizardSteps,
+          activeStep: 3,
+          onPrev: () => setStep(2),
+          onNext: () => proceedToPreview(form.localQuestions || []),
+          finish: false,
+          disabled: busy,
+        }}
       />
-
-      {/* Status confirm */}
-      <StatusConfirmDialog
-        open={openStatus}
-        onClose={() => setOpenStatus(false)}
-        onConfirm={submitStatus}
-        next={statusTarget.next}
-        busy={busy}
+      {/* VIEW MODE – Xem chi tiết bài tập từ danh sách */}
+      <AssignmentPreviewDialog
+        show={detailOpen}
+        onClose={() => setDetailOpen(false)}
+        form={detailForm}
+        questions={detailQuestions}
+        busy={false}
+        courses={courses}
+        units={units}
+        wizardProps={null}
+        onConfirm={null}
+        viewMode={true}
       />
-
-      {/* View Detail Dialog */}
-      <Dialog
-        open={openDetail}
-        onClose={() => setOpenDetail(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Assignment Detail</DialogTitle>
-        <DialogContent dividers>
-          {detail ? (
-            <Box sx={{ display: "grid", rowGap: 1.25 }}>
-              <Typography>
-                <b>Title:</b> {detail.Title}
-              </Typography>
-              <Typography>
-                <b>Description:</b> {detail.Description}
-              </Typography>
-              <Typography>
-                <b>Type:</b> {detail.Type}
-              </Typography>
-              <Typography>
-                <b>Status:</b> {detail.Status}
-              </Typography>
-              <Typography>
-                <b>Unit:</b> {detail.UnitTitle || "—"}
-              </Typography>
-              <Typography>
-                <b>Course:</b> {detail.CourseTitle || "—"}
-              </Typography>
-              <Typography>
-                <b>Deadline:</b> {detail.Deadline || "—"}
-              </Typography>
-              <Typography>
-                <b>File URL:</b> {detail.FileURL || "—"}
-              </Typography>
-              <Typography>
-                <b>Instructor:</b> {detail.InstructorName || "—"}
-              </Typography>
-            </Box>
-          ) : (
-            <Typography>Đang tải…</Typography>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpenDetail(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Snackbars */}
-      <Snackbar
-        open={!!error}
-        autoHideDuration={4000}
-        onClose={() => setError("")}
-      >
-        <Alert
-          severity="error"
-          onClose={() => setError("")}
-          variant="filled"
-        >
-          {error}
-        </Alert>
-      </Snackbar>
-      <Snackbar
-        open={!!success}
-        autoHideDuration={3000}
-        onClose={() => setSuccess("")}
-      >
-        <Alert
-          severity="success"
-          onClose={() => setSuccess("")}
-          variant="filled"
-        >
-          {success}
-        </Alert>
-      </Snackbar>
-    </Box>
+    </div>
   );
 }
+
+const styles = {
+  container: {
+    minHeight: "100vh",
+    backgroundColor: "#F9FAFB",
+    padding: "24px",
+  },
+  header: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: "32px",
+    flexWrap: "wrap",
+    gap: "16px",
+  },
+  title: {
+    fontSize: "30px",
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: "8px",
+  },
+  subtitle: {
+    fontSize: "16px",
+    color: "#6B7280",
+  },
+  addButton: {
+    backgroundColor: "#000",
+    color: "#fff",
+    padding: "12px 24px",
+    borderRadius: "8px",
+    border: "none",
+    fontWeight: "500",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "15px",
+  },
+  plusIcon: { fontSize: "20px" },
+  sectionTitle: {
+    fontSize: "20px",
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: "16px",
+  },
+  loadingState: {
+    textAlign: "center",
+    padding: "40px",
+    color: "#6B7280",
+  },
+  emptyState: {
+    textAlign: "center",
+    padding: "40px",
+    backgroundColor: "#fff",
+    borderRadius: "12px",
+    border: "2px dashed #E5E7EB",
+  },
+};

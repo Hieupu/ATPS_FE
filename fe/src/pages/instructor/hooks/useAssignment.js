@@ -1,281 +1,308 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useCallback, useState } from "react";
+import { useAssignmentData } from "./useAssignmentData";
+import { useAssignmentFilter } from "./useAssignmentFilter";
+import { useAssignmentForm } from "./useAssignmentForm";
+import { useAssignmentModals } from "./useAssignmentModals";
 import {
-  getAssignmentsApi,
-  getAssignmentByIdApi,
   createAssignmentApi,
   updateAssignmentApi,
-  deleteAssignmentApi,
-  getCoursesApi,
-  getUnitsByCourseApi,
-  uploadAssignmentFileApi,
+  getAssignmentByIdApi,
+  getAssignmentQuestionsApi,
+  parseAssignmentFromApi,
 } from "../../../apiServices/assignmentService";
 
-const EMPTY_FORM = {
-  AssignmentID: null,
-  Title: "",
-  Description: "",
-  Type: "assignment",
-  Deadline: "",
-  CourseID: null,
-  CourseTitle: "",
-  UnitID: null,
-  UnitTitle: "",
-  FileURL: "",
-};
-
 export default function useAssignment() {
-  const [assignments, setAssignments] = useState([]);
+  const dataHook = useAssignmentData();
+  const filterHook = useAssignmentFilter(dataHook.assignments);
+  const formHook = useAssignmentForm();
+  const modalHook = useAssignmentModals();
 
-  // Courses / Units cho dropdown
-  const [courses, setCourses] = useState([]);
-  const [coursesLoading, setCoursesLoading] = useState(false);
-
-  const [units, setUnits] = useState([]);
-  const [unitsLoading, setUnitsLoading] = useState(false);
-
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-
-  const [tabValue, setTabValue] = useState(0);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [openCreate, setOpenCreate] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-  const [openStatus, setOpenStatus] = useState(false);
-  const [statusTarget, setStatusTarget] = useState({ id: null, next: "" });
-
-  const resetForm = () => setForm(EMPTY_FORM);
-
-  // ===== Loaders =====
-  const loadAssignments = async () => {
-    setLoading(true);
-    try {
-      const data = await getAssignmentsApi();
-      setAssignments(data || []);
-    } catch (err) {
-      setError(err.message || "Không thể tải bài tập");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadCourses = async () => {
-    try {
-      setCoursesLoading(true);
-      const data = await getCoursesApi(); 
-      setCourses(data);
-    } catch (err) {
-      setCourses([]);
-      setError(err?.message || "Không thể tải danh sách Course");
-    } finally {
-      setCoursesLoading(false);
-    }
-  };
-
-
-  const loadUnitsByCourse = async (courseId) => {
-    try {
-      setUnitsLoading(true);
-      const data = await getUnitsByCourseApi(courseId); // Call API lấy units theo courseId
-      const mapped = (data || []).map(u => ({
-        value: u.UnitID ?? u.unitId ?? u.id,
-        label: u.Title ?? u.title ?? "",
-      })).filter(x => x.value && x.label);
-      setUnits(mapped);
-    } catch (err) {
-      setUnits([]);
-      setError(err?.message || "Không thể tải danh sách Unit");
-    } finally {
-      setUnitsLoading(false);
-    }
-  };
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
-    loadAssignments();
-  }, []);
+    dataHook.loadAssignments();
+  }, [dataHook.loadAssignments]);
 
-  const openCreateNew = async () => {
-    resetForm();
-    await loadCourses();
-    setUnits([]);
-    setOpenCreate(true);
-  };
+  // ====== OPEN FLOW (TẠO MỚI) ======
+  const openCreateNew = useCallback(async () => {
+    formHook.resetForm();
+    await dataHook.loadCourses();
+    setStep(1);
+    modalHook.openTypeModal();
+  }, [formHook, dataHook, modalHook]);
 
-  // ===== Stats & filters =====
-  const stats = useMemo(() => {
-    const total = assignments.length;
-    const active = assignments.filter((a) => a.Status === "active").length;
-    const draft = assignments.filter((a) => a.Status === "draft").length;
-    const deleted = assignments.filter((a) => a.Status === "deleted").length;
-    return { total, active, draft, deleted };
-  }, [assignments]);
+  // Chọn loại bài tập (quiz/audio/video/document)
+  const handleSelectType = useCallback(
+    (type) => {
+      formHook.setFormType(type);
+      formHook.setField("type", type);
+      modalHook.closeTypeModal();
+      modalHook.openCreateForm();
+    },
+    [formHook, modalHook]
+  );
 
-  const filtered = useMemo(() => {
-    const term = searchQuery.trim().toLowerCase();
-    const base = assignments.filter((a) => {
-      const t = (a.Title ?? "").toLowerCase();
-      const c = (a.CourseTitle ?? a.ClassName ?? "").toLowerCase();
-      return !term || t.includes(term) || c.includes(term);
-    });
-    const visible = base.filter(a => (a.Status || "").toLowerCase() !== "deleted");
-    if (tabValue === 1) return visible.filter(a => (a.Type ?? "").toLowerCase() === "assignment");
-    if (tabValue === 2) return visible.filter(a => (a.Type ?? "").toLowerCase() === "homework");
-    return visible;
-  }, [assignments, searchQuery, tabValue]);
+  const onCourseChange = useCallback(
+    async (courseId) => {
+      const cid = courseId ? Number(courseId) : null;
+      formHook.setField("courseId", cid);
+      formHook.setField("unitId", null);
+      await dataHook.loadUnitsByCourse(cid);
+    },
+    [formHook, dataHook]
+  );
 
-  // ===== Create / Update =====
-  const submitCreate = async () => {
-    if (!form.Title.trim()) return setError("Vui lòng nhập tiêu đề");
-    if (!form.Description.trim()) return setError("Vui lòng nhập mô tả");
+  // ====== OPEN FLOW (CHỈNH SỬA) ======
+  const openEdit = useCallback(
+    async (assignmentId) => {
+      if (!assignmentId) return;
+      try {
+        dataHook.setError("");
+        await dataHook.loadCourses();
 
-    setBusy(true);
-    try {
-      const payload = {
-        title: form.Title,
-        description: form.Description,
-        type: form.Type,
-        deadline: form.Deadline || null,
-        unitId: form.UnitID ?? null,
-        unitTitle: form.UnitID ? null : (form.UnitTitle || null),
-        fileURL: form.FileURL || null,
-      };
-      const res = await createAssignmentApi(payload);
-      setSuccess("Tạo bài tập thành công");
-      const created = res.assignment || res.data || res;
-      setAssignments((prev) => [created, ...prev]);
-      setOpenCreate(false);
-      resetForm();
-    } catch (err) {
-      setError(err.message || "Không thể tạo bài tập");
-    } finally {
-      setBusy(false);
-    }
-  };
+        // 1. Lấy chi tiết bài tập
+        const detailRes = await getAssignmentByIdApi(assignmentId);
+        const detail = detailRes.assignment || detailRes;
+        const parsed = parseAssignmentFromApi(detail);
 
-  const editFromItem = async (item) => {
-    setForm({
-      AssignmentID: item.AssignmentID,
-      Title: item.Title || "",
-      Description: item.Description || "",
-      Type: item.Type || "assignment",
-      Deadline: item.Deadline ? String(item.Deadline).slice(0, 10) : "",
-      CourseID: item.CourseID ?? null,
-      CourseTitle: item.CourseTitle || "",
-      UnitID: item.UnitID ?? null,
-      UnitTitle: item.UnitTitle || "",
-      FileURL: item.FileURL || "",
-    });
+        // 2. Lấy danh sách câu hỏi
+        let qs = [];
+        try {
+          const qRes = await getAssignmentQuestionsApi(assignmentId);
+          qs = qRes.questions || qRes || [];
+        } catch (e) {
+          console.error("Load assignment questions error: ", e);
+        }
 
-    if (courses.length === 0 && !coursesLoading) await loadCourses();
-    if (item.CourseID) await loadUnitsByCourse(item.CourseID);
+        // Convert deadline từ API -> value cho input datetime-local
+        const toInputDateTime = (d) => {
+          if (!d) return "";
+          try {
+            const dt = new Date(d);
+            if (isNaN(dt.getTime())) return d;
+            const pad = (n) => (n < 10 ? "0" + n : n);
+            const date = `${dt.getFullYear()}-${pad(
+              dt.getMonth() + 1
+            )}-${pad(dt.getDate())}`;
+            const time = `${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
+            return `${date}T${time}`;
+          } catch {
+            return d;
+          }
+        };
 
-    setStatusTarget({ id: item.AssignmentID, next: "" });
-    setOpenEdit(true);
-  };
+        // Chuẩn hóa questions về format của QuestionBuilder
+        const normalizedQuestions = (qs || []).map((q) => {
+          const t = (q.Type || q.type || "multiple_choice").toLowerCase();
+          let correctAnswer = q.CorrectAnswer ?? q.correctAnswer ?? null;
 
-  const submitEdit = async () => {
-    if (!form.Title.trim()) return setError("Vui lòng nhập tiêu đề");
+          if (t === "matching" && typeof correctAnswer === "string") {
+            try {
+              correctAnswer = JSON.parse(correctAnswer);
+            } catch {
+              // nếu parse lỗi thì giữ nguyên string
+            }
+          }
 
-    setBusy(true);
-    try {
-      const payload = {
-        title: form.Title,
-        description: form.Description,
-        deadline: form.Deadline || null,
-        type: form.Type,
-        unitId: form.UnitID ?? null,
-        unitTitle: form.UnitID ? null : (form.UnitTitle || null),
-        fileURL: form.FileURL || null,
-      };
-      const res = await updateAssignmentApi(form.AssignmentID, payload);
-      const updated = res.assignment || res.data || res;
-      setAssignments((prev) =>
-        prev.map((a) => (a.AssignmentID === form.AssignmentID ? updated : a))
-      );
-      setSuccess("Cập nhật thành công");
-      setOpenEdit(false);
-    } catch (err) {
-      setError(err.message || "Không thể cập nhật bài tập");
-    } finally {
-      setBusy(false);
-    }
-  };
+          return {
+            QuestionID: q.QuestionID || q.questionId,
+            Content: q.Content || q.content || "",
+            Type: t,
+            Point: q.Point ?? q.point ?? 1,
+            options: (q.Options || q.options || []).map((o) => ({
+              Content: o.Content || o.content || "",
+              IsCorrect: o.IsCorrect ?? o.isCorrect ?? false,
+            })),
+            CorrectAnswer: correctAnswer,
+          };
+        });
 
-  const submitStatus = async () => {
-    setBusy(true);
-    try {
-      const { id, next } = statusTarget;
-      if (next === "deleted") {
-        await deleteAssignmentApi(id);
-        setAssignments(prev => prev.filter(a => a.AssignmentID !== id));
-      } else {
-        await updateAssignmentApi(id, { status: next });
-        setAssignments(prev => prev.map(a => a.AssignmentID === id ? { ...a, Status: next } : a));
+        // 3. Fill vào form
+        formHook.resetForm();
+        formHook.setFormType(parsed.type);
+
+        formHook.updateForm({
+          assignmentId: parsed.assignmentId,
+          title: parsed.title || "",
+          description: parsed.description || "",
+          type: parsed.type || "quiz",
+          courseId: parsed.courseId || null,
+          unitId: parsed.unitId || null,
+          deadline: toInputDateTime(parsed.deadline),
+          fileURL: parsed.fileURL || "",
+          mediaURL: parsed.mediaURL || "",
+          maxDuration: parsed.maxDuration || null,
+          showAnswersAfter: parsed.showAnswersAfter || "after_submission",
+          localQuestions: normalizedQuestions,
+          courseTitle: parsed.courseTitle,
+          unitTitle: parsed.unitTitle,
+        });
+
+        if (parsed.courseId) {
+          await dataHook.loadUnitsByCourse(parsed.courseId);
+        }
+
+        setStep(1);
+        modalHook.openCreateForm();
+      } catch (err) {
+        console.error("Open edit error:", err);
+        dataHook.setError(
+          err?.response?.data?.message ||
+          err?.message ||
+          "Không thể tải dữ liệu bài tập để chỉnh sửa"
+        );
       }
-      await loadAssignments();
-      setSuccess("Cập nhật trạng thái thành công");
-      setOpenStatus(false);
-    } catch (err) {
-      setError(err.message || "Không thể cập nhật trạng thái");
-    } finally {
-      setBusy(false);
-    }
-  };
+    },
+    [dataHook, formHook, modalHook]
+  );
 
-  const uploadLocalFile = async (file) => {
+  // ====== STEP 1 -> STEP 2 (không gọi API) ======
+  const goFormNext = useCallback(() => {
+    const { isValid, errors } =
+      formHook.validateForm?.() ?? { isValid: true, errors: {} };
+    if (!isValid) {
+      dataHook.setError(
+        Object.values(errors)[0] || "Vui lòng điền đầy đủ thông tin."
+      );
+      return;
+    }
+    setStep(2);
+    dataHook.setSuccess("Đã lưu thông tin tạm thời");
+  }, [formHook, dataHook]);
+
+  // STEP 2 -> PREVIEW  ======
+  const proceedToPreview = useCallback(
+    (questions) => {
+      try {
+        const normalized = (questions || [])
+          .map((q) => {
+            const t = (q.Type || q.type || "multiple_choice").toLowerCase();
+            return {
+              Content: (q.Content || q.content || "").trim(),
+              Type: t,
+              Point: Number(q.Point ?? q.point ?? 1) || 1,
+              options: Array.isArray(q.options)
+                ? q.options.map((o) => ({
+                  Content: (o.Content || o.content || "").trim(),
+                  IsCorrect: !!(o.IsCorrect ?? o.isCorrect),
+                }))
+                : [],
+              CorrectAnswer: q.CorrectAnswer ?? q.correctAnswer ?? null,
+            };
+          })
+          .filter((q) => q.Content);
+        formHook.setField("localQuestions", normalized);
+        setStep(3);
+      } catch {
+        dataHook.setError("Lỗi dữ liệu câu hỏi");
+      }
+    },
+    [formHook, dataHook]
+  );
+
+  // STEP 3 -> GỌI API (TẠO MỚI / CẬP NHẬT)
+  const finalizeAndFinish = useCallback(async () => {
     try {
-      setBusy(true);
-      const result = await uploadAssignmentFileApi(file);
-      const url = result.url || result.secure_url || "";
-      if (!url) throw new Error("Không nhận được URL từ server");
-      setForm((f) => ({ ...f, FileURL: url }));
-      setSuccess(`Upload file thành công: ${file.name}`);
+      const { payload, questions, isQuiz } = formHook.preparePayload();
+      if (isQuiz && (!questions || questions.length === 0)) {
+        dataHook.setError("Vui lòng thêm ít nhất 1 câu hỏi");
+        return;
+      }
+
+      const body = {
+        ...payload,
+        questions,
+      };
+
+      const assignmentId = formHook.form?.assignmentId;
+
+      if (assignmentId) {
+        // UPDATE
+        await updateAssignmentApi(assignmentId, body);
+        dataHook.setSuccess("Cập nhật bài tập thành công!");
+      } else {
+        // CREATE
+        await createAssignmentApi(body);
+        dataHook.setSuccess("Tạo bài tập thành công!");
+      }
+
+      await dataHook.loadAssignments();
+      formHook.resetForm();
+      setStep(1);
+      modalHook.closeCreateForm();
     } catch (err) {
-      setError(err.message || "Upload file thất bại");
-    } finally {
-      setBusy(false);
+      console.error("Finalize error: ", err);
+      dataHook.setError(
+        err?.response?.data?.message ||
+        err?.message ||
+        "Lỗi tạo/cập nhật bài tập"
+      );
     }
-  };
+  }, [formHook, dataHook, modalHook]);
+  
+  const handleDelete = useCallback(
+    async (id) => {
+      try {
+        await dataHook.deleteAssignment(id);
+        dataHook.setSuccess("Xóa thành công!");
+      } catch (err) {
+        dataHook.setError(err?.response?.data?.message || "Lỗi xóa");
+      }
+    },
+    [dataHook]
+  );
 
-  // ===== Handlers cho dropdown =====
-  const onPickCourse = async (course) => {
-    const id = course?.value ?? null;
-    setForm((f) => ({
-      ...f,
-      CourseID: id,
-      CourseTitle: course?.label || "",
-      // reset unit khi đổi course
-      UnitID: null,
-      UnitTitle: "",
-    }));
-    if (id) await loadUnitsByCourse(id);
-    else setUnits([]);
-  };
-
-  const onPickUnit = (unit) => {
-    setForm((f) => ({
-      ...f,
-      UnitID: unit?.value ?? null,
-      UnitTitle: unit?.label || "",
-    }));
-  };
 
   return {
-    assignments, filtered, stats,
-    courses, coursesLoading,
-    units, unitsLoading,
-    loading, busy, error, success, setError, setSuccess,
-    tabValue, setTabValue, searchQuery, setSearchQuery,
-    form, setForm, resetForm,
-    openCreate, setOpenCreate, openCreateNew,
-    openEdit, setOpenEdit,
-    openStatus, setOpenStatus,
-    statusTarget, setStatusTarget,
-    submitCreate, submitEdit, submitStatus, editFromItem,
-    uploadLocalFile,
-    onPickCourse, onPickUnit,
+    // data
+    assignments: dataHook.assignments,
+    courses: dataHook.courses,
+    units: dataHook.units,
+    loading: dataHook.loading,
+    busy: dataHook.busy,
+    error: dataHook.error,
+    success: dataHook.success,
+    setError: dataHook.setError,
+    setSuccess: dataHook.setSuccess,
+    loadAssignments: dataHook.loadAssignments,
+    uploadFile: dataHook.uploadFile,
+
+    // filter
+    filtered: filterHook.filtered,
+    searchQuery: filterHook.searchQuery,
+    setSearchQuery: filterHook.setSearchQuery,
+    filters: filterHook.filters,
+    setFilters: filterHook.setFilters,
+    stats: filterHook.stats,
+
+    // form
+    form: formHook.form,
+    setField: formHook.setField,
+    formType: formHook.formType,
+    activeTab: formHook.activeTab,
+    setActiveTab: formHook.setActiveTab,
+    formatDate: formHook.formatDate,
+    onCourseChange,
+
+    // modals
+    showTypeModal: modalHook.showTypeModal,
+    openTypeModal: modalHook.openTypeModal,
+    closeTypeModal: modalHook.closeTypeModal,
+    showCreateForm: modalHook.showCreateForm,
+    openCreateForm: modalHook.openCreateForm,
+    closeCreateForm: modalHook.closeCreateForm,
+
+    // actions
+    openCreateNew,
+    handleSelectType,
+    openEdit,
+    goFormNext,
+    proceedToPreview,
+    finalizeAndFinish,
+    handleDelete,
+
+    // stepper
+    step,
+    setStep,
   };
 }

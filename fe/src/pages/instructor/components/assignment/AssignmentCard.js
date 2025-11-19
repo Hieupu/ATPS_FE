@@ -1,60 +1,184 @@
-import React from "react";
-import {
-  Card, CardContent, Typography, Box, Stack, IconButton, Chip, LinearProgress, Tooltip,
-} from "@mui/material";
-import { MoreVert, Assignment as AssignmentIcon, Assessment, Visibility, Grade } from "@mui/icons-material";
-import dayjs from "dayjs";
+import React, { useState } from 'react';
+import { Calendar, Eye, MoreVertical, Edit2, Trash2 ,ToggleLeft } from 'lucide-react';
+import "./style/AssignmentCard.css";
+import ConfirmDialog from "./ConfirmDialog";
 
-const typeIcon = () => <AssignmentIcon />;
-const statusColor = (status) => {
-  const s = (status ?? "").toLowerCase();
-  if (s === "active") return "success";
-  if (s === "inactive") return "warning";
-  if (s === "deleted") return "default";
-  return "default";
-};
+export default function AssignmentCard({
+  assignment,
+  onEdit,
+  onViewSubmissions,
+  onDelete,
+  onViewDetail,
+  onChangeStatus
+}) {
+  const [showMenu, setShowMenu] = useState(false);
+  const [openConfirm, setOpenConfirm] = useState(false);
+  const deadlineValue = assignment.Deadline || assignment.deadline;
 
-export default function AssignmentCard({ item, onMenu,onView  }) {
-  const title = item.Title ?? "Untitled";
-  const type = (item.Type ?? "assignment").toLowerCase();
-  const deadline = item.Deadline ? dayjs(item.Deadline).format("MMM DD, YYYY") : "—";
-  const className = item.ClassName || item.CourseTitle || "";
-  const status = item.Status ?? "active";
-  const submitted = item.Submitted ?? 0;
-  const total = item.Total ?? 0;
-  const progress = total > 0 ? (submitted / total) * 100 : 0;
+  const prettyDate = (d) => {
+    if (!d) return null;
+    try {
+      const dt = new Date(d);
+      if (isNaN(dt.getTime())) return d;
+      const pad = (n) => (n < 10 ? "0" + n : n);
+      const day = pad(dt.getDate());
+      const month = pad(dt.getMonth() + 1);
+      const year = dt.getFullYear();
+      const hour = pad(dt.getHours());
+      const minute = pad(dt.getMinutes());
+      return `${hour}:${minute} ${day}/${month}/${year}`;
+    } catch {
+      return d;
+    }
+  };
+
+  const getTypeBadge = (type) => {
+    const badges = {
+      quiz: { label: 'Trắc nghiệm', className: 'assignment-badge-blue' },
+      audio: { label: 'Nói', className: 'assignment-badge-green' },
+      video: { label: 'Nghe', className: 'assignment-badge-purple' },
+      document: { label: 'Tài liệu', className: 'assignment-badge-yellow' }
+    };
+    return badges[type?.toLowerCase()] || badges.document;
+  };
+
+  const getStatusBadge = (status) => {
+    const badges = {
+      active: { label: 'Hoạt động', className: 'assignment-badge-green' },
+      draft: { label: 'Bản nháp', className: 'assignment-badge-gray' },
+      archived: { label: 'Đã đóng', className: 'assignment-badge-red' }
+    };
+    return badges[status?.toLowerCase()] || badges.draft;
+  };
+
+  const handleDelete = () => {
+    setOpenConfirm(true);
+    setShowMenu(false);
+  };
+
+  const typeBadge = getTypeBadge(assignment.Type);
+  const statusBadge = getStatusBadge(assignment.Status);
 
   return (
-    <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)", transition: "all .3s",
-      "&:hover": { transform: "translateY(-4px)", boxShadow: "0 8px 16px rgba(0,0,0,.1)" } }}>
-      <CardContent sx={{ pt: 2 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-          <Chip icon={typeIcon(type)} label={type} size="small" color={type === "exam" ? "primary" : "secondary"} />
-          <IconButton size="small" onClick={(e) => onMenu(e, item)}><MoreVert /></IconButton>
-        </Box>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>{title}</Typography>
-        {className && <Chip label={className} size="small" variant="outlined" sx={{ mb: 2 }} />}
-        <Box sx={{ mb: 2 }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography variant="caption" color="text.secondary">Submissions</Typography>
-            <Typography variant="caption">{submitted}/{total}</Typography>
-          </Box>
-          <LinearProgress variant="determinate" value={progress} sx={{ height: 6, borderRadius: 3 }} />
-        </Box>
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          <Chip label={status} size="small" color={statusColor(status)} />
-        </Stack>
-        <Box sx={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #f1f5f9", pt: 1.5 }}>
-          <Box>
-            <Typography variant="caption" color="text.secondary">Deadline</Typography>
-            <Typography variant="body2" sx={{ fontWeight: 600, fontSize: 13 }}>{deadline}</Typography>
-          </Box>
-          <Stack direction="row" spacing={1}>
-            <IconButton size="small" color="primary" onClick={() => onView?.(item)}><Visibility /></IconButton>
-            <IconButton size="small" color="secondary"><Grade /></IconButton>
-          </Stack>
-        </Box>
-      </CardContent>
-    </Card>
+
+    <div className="assignment-card">
+      <div className="assignment-card-header">
+        <div className="assignment-card-info">
+          <div className="assignment-card-title-row">
+            <h3 className="assignment-card-title">{assignment.Title}</h3>
+            <span className={typeBadge.className}>{typeBadge.label}</span>
+            <span className={statusBadge.className}>{statusBadge.label}</span>
+          </div>
+          <p className="assignment-card-meta">
+            {assignment.CourseTitle || 'Chưa gán khóa học'}
+            {assignment.UnitTitle && ` • ${assignment.UnitTitle}`}
+          </p>
+        </div>
+
+        <div className="assignment-card-actions">
+          <div className="assignment-menu-wrapper">
+            <button
+              className="assignment-menu-button"
+              onClick={() => setShowMenu(!showMenu)}
+            >
+              <MoreVertical size={20} />
+            </button>
+
+            {showMenu && (
+              <>
+                <div
+                  className="assignment-menu-backdrop"
+                  onClick={() => setShowMenu(false)}
+                />
+                <div className="assignment-dropdown-menu">
+                  {/* Chỉnh sửa */}
+                  <button
+                    className="assignment-menu-item"
+                    onClick={() => {
+                      onEdit?.(assignment.AssignmentID);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Edit2 size={16} />
+                    <span>Chỉnh sửa</span>
+                  </button>
+
+                  {/* 🆕 Nút xem chi tiết */}
+                  <button
+                    className="assignment-menu-item"
+                    onClick={() => {
+                      onViewDetail?.(assignment.AssignmentID);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <Eye size={16} />
+                    <span>Xem chi tiết</span>
+                  </button>
+
+                  {/* 🆕 Nút trạng thái */}
+                  <button
+                    className="assignment-menu-item"
+                    onClick={() => {
+                      onChangeStatus?.(assignment.AssignmentID);
+                      setShowMenu(false);
+                    }}
+                  >
+                    <ToggleLeft  size={16} /> {/* dùng icon toggle */}
+                    <span>Trạng thái</span>
+                  </button>
+
+                  {/* Xóa */}
+                  <button
+                    className="assignment-menu-item assignment-menu-item-danger"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 size={16} />
+                    <span>Xóa</span>
+                  </button>
+                </div>
+
+              </>
+            )}
+            <ConfirmDialog
+              open={openConfirm}
+              title="Xác nhận xóa"
+              message={`Bạn có chắc muốn xóa bài tập "${assignment.Title}"?`}
+              confirmText="Xóa"
+              cancelText="Hủy"
+              onCancel={() => setOpenConfirm(false)}
+              onConfirm={() => {
+                onDelete?.(assignment.AssignmentID);
+                setOpenConfirm(false);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <p className="assignment-card-description">{assignment.Description}</p>
+
+      <div className="assignment-card-footer">
+        <div className="assignment-deadline-info">
+          <Calendar size={16} color="#9CA3AF" />
+          <span className="assignment-deadline-text">
+            Hạn:{" "}
+            {deadlineValue
+              ? prettyDate(deadlineValue)
+              : "Không giới hạn"}
+          </span>
+        </div>
+
+        <div className="assignment-button-group">
+          <button
+            className="assignment-view-button"
+            onClick={() => onViewSubmissions?.(assignment.AssignmentID)}
+          >
+            <Eye size={16} />
+            <span>Bài nộp</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
   );
 }

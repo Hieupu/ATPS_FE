@@ -85,3 +85,37 @@
   transform: translateY(-4px);
   box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
 }
+
+.fancy-toast {
+  position: relative;
+  min-width: 260px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fancy-toast-success {
+  background: #16a34a;
+}
+
+.fancy-toast-error {
+  background: #dc2626;
+}
+
+.fancy-toast::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  animation: toast-progress 2.5s linear forwards;
+}
