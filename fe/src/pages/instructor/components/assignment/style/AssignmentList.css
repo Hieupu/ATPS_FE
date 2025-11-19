@@ -1,0 +1,152 @@
+/* Container */
+.assignment-list-container {
+  width: 100%;
+}
+
+/* Header */
+.assignment-list-header {
+  margin-bottom: 16px;
+}
+
+.assignment-list-info {
+  font-size: 14px;
+  color: #6B7280;
+  margin: 0;
+}
+
+/* List */
+.assignment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Empty State */
+.assignment-list-empty {
+  text-align: center;
+  padding: 48px 24px;
+  background-color: #F9FAFB;
+  border-radius: 12px;
+  border: 2px dashed #E5E7EB;
+}
+
+.assignment-list-empty p {
+  font-size: 16px;
+  color: #9CA3AF;
+  margin: 0;
+}
+
+/* Pagination Container */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0;
+  flex-wrap: wrap;
+}
+
+/* Pagination Button (Prev/Next) */
+.pagination-button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-button:hover:not(.pagination-button-disabled) {
+  background-color: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.pagination-button-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pagination Numbers */
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-number {
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination-number:hover:not(.pagination-number-active) {
+  background-color: #F9FAFB;
+  border-color: #D1D5DB;
+}
+
+.pagination-number-active {
+  background-color: #111827;
+  border-color: #111827;
+  color: #FFFFFF;
+  cursor: default;
+}
+
+.pagination-ellipsis {
+  min-width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .pagination-container {
+    gap: 6px;
+    padding: 16px 0;
+  }
+
+  .pagination-button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+
+  .pagination-button span {
+    display: none;
+  }
+
+  .pagination-number {
+    min-width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+
+  .pagination-ellipsis {
+    min-width: 36px;
+    height: 36px;
+  }
+
+  .assignment-list {
+    gap: 12px;
+  }
+}
