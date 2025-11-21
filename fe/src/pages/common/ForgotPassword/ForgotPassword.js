@@ -42,9 +42,9 @@ const ForgotPassword = () => {
       setError("");
       const data = await sendResetEmail(email);
       setActiveStep(1);
-      setSuccess("✅ Mã xác thực đã được gửi đến email của bạn!");
+      setSuccess(" Mã xác thực đã được gửi đến email của bạn!");
     } catch (err) {
-      setError(err.message || "❌ Lỗi khi gửi email.");
+      setError(err.message || " Lỗi khi gửi email.");
     } finally {
       setLoading(false);
     }
@@ -59,9 +59,9 @@ const ForgotPassword = () => {
       const data = await verifyResetCode(email, code);
       setResetToken(data.resetToken);
       setActiveStep(2);
-      setSuccess("✅ Xác thực thành công! Vui lòng đặt mật khẩu mới.");
+      setSuccess(" Xác thực thành công! Vui lòng đặt mật khẩu mới.");
     } catch (err) {
-      setError(err.message || "❌ Mã xác thực không hợp lệ.");
+      setError(err.message || " Mã xác thực không hợp lệ.");
     } finally {
       setLoading(false);
     }
@@ -70,7 +70,7 @@ const ForgotPassword = () => {
   // === Bước 3: Đổi mật khẩu ===
   const handleResetPassword = async () => {
     if (newPassword !== confirmPassword) {
-      setError("❌ Mật khẩu xác nhận không khớp!");
+      setError(" Mật khẩu xác nhận không khớp!");
       return;
     }
 
@@ -81,7 +81,7 @@ const ForgotPassword = () => {
       setSuccess("🎉 Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
       setTimeout(() => navigate("/auth/login"), 2000);
     } catch (err) {
-      setError(err.message || "❌ Không thể đặt lại mật khẩu.");
+      setError(err.message || " Không thể đặt lại mật khẩu.");
     } finally {
       setLoading(false);
     }
