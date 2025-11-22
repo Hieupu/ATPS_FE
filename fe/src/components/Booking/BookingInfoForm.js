@@ -33,19 +33,24 @@ const BookingInfoForm = ({
           }
         >
           {instructor?.Courses && instructor.Courses.length > 0 ? (
-            instructor.Courses.map((course) => (
-              <MenuItem key={course.CourseID} value={course.CourseID}>
-                {course.Title}
-                {course.Status === "Open" && (
-                  <Chip
-                    label="Mở"
-                    size="small"
-                    color="success"
-                    sx={{ ml: 1, height: 20 }}
-                  />
-                )}
-              </MenuItem>
-            ))
+       instructor.Courses.map((course) => (
+  <MenuItem
+    key={course.CourseID}
+    value={course.CourseID}
+    disabled={course.Status !== "PUBLISHED"} // khóa học không phải PUBLISHED sẽ không được chọn
+  >
+    {course.Title}
+    {course.Status === "PUBLISHED" && (
+      <Chip
+        label="Mở"
+        size="small"
+        color="success"
+        sx={{ ml: 1, height: 20 }}
+      />
+    )}
+  </MenuItem>
+))
+
           ) : (
             <MenuItem value="" disabled>
               Giảng viên chưa có khóa học nào
