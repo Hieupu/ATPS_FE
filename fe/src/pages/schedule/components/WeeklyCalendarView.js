@@ -27,17 +27,14 @@ const WeeklyCalendarView = ({ schedules, attendanceData, generateZoomLink, canJo
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  const timeSlots = [
-    { label: "Slot 1", start: "07:30", end: "09:00" },
-    { label: "Slot 2", start: "09:00", end: "10:30" },
-    { label: "Slot 3", start: "10:30", end: "12:00" },
-    { label: "Slot 4", start: "12:30", end: "14:00" },
-    { label: "Slot 5", start: "14:00", end: "15:30" },
-    { label: "Slot 6", start: "15:30", end: "17:00" },
-    { label: "Slot 7", start: "17:30", end: "19:00" },
-    { label: "Slot 8", start: "19:00", end: "20:30" }
-  ];
-
+const timeSlots = [
+  { label: "Slot 1", start: "08:00", end: "10:00" },
+  { label: "Slot 2", start: "10:20", end: "12:20" },
+  { label: "Slot 3", start: "13:00", end: "15:00" },
+  { label: "Slot 4", start: "15:20", end: "17:20" },
+  { label: "Slot 5", start: "17:40", end: "19:40" },
+  { label: "Slot 6", start: "20:00", end: "22:00" }
+];
   const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
   const getWeekStart = (date) => {

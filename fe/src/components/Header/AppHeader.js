@@ -175,24 +175,6 @@ const AppHeader = () => {
          Exam
         </MenuItem>
       );
-        items.push(
-        <MenuItem
-          key="my-progress"
-          onClick={() => navigate("/assignments")}
-          sx={{
-            py: 1.5,
-            fontSize: "1rem",
-            color: "#374151",
-            "&:hover": {
-              background: "#f0f9ff",
-              color: "#1e40af",
-            },
-          }}
-        >
-          <Quiz sx={{ mr: 1, color: "#6b7280" }} />
-          Assignment
-        </MenuItem>
-      );
       items.push(
         <MenuItem
           key="my-progress"
@@ -320,16 +302,6 @@ const AppHeader = () => {
         >
           <CheckCircle sx={{ mr: 2 }} />
           <ListItemText primary="Exam" />
-        </ListItem>
-      );
-        items.push(
-        <ListItem
-          button
-          key="my-assignment-mobile"
-          onClick={() => navigate("/assignments")}
-        >
-          <CheckCircle sx={{ mr: 2 }} />
-          <ListItemText primary="Assignment" />
         </ListItem>
       );
       items.push(
