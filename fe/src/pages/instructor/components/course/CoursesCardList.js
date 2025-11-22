@@ -64,7 +64,7 @@ export default function CoursesCardList({
             Description,
             Image,
             Duration,
-            Ojectives,
+            Objectives,
             Requirements,
             Level,
             Status,
@@ -244,9 +244,9 @@ export default function CoursesCardList({
                     </Stack>
                   </Stack>
 
-                  {(Ojectives || Requirements) && (
+                  {(Objectives || Requirements) && (
                     <Box sx={{ mt: 1 }}>
-                      {Ojectives && (
+                      {Objectives && (
                         <Typography
                           variant="caption"
                           color="text.secondary"
@@ -256,9 +256,9 @@ export default function CoursesCardList({
                             WebkitBoxOrient: "vertical",
                             overflow: "hidden",
                           }}
-                          title={Ojectives}
+                          title={Objectives}
                         >
-                          🎯 <b>Mục tiêu:</b> {Ojectives}
+                          🎯 <b>Mục tiêu:</b> {Objectives}
                         </Typography>
                       )}
                       {Requirements && (

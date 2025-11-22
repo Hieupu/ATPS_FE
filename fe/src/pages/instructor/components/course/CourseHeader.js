@@ -42,7 +42,7 @@ export default function CourseHeader({
     Description: course.Description || "",
     Duration: course.Duration || "",
     Level: course.Level || "BEGINNER",
-    Ojectives: course.Ojectives || "",
+    Objectives: course.Objectives || "",
     Requirements: course.Requirements || "",
   }));
 
@@ -52,7 +52,7 @@ export default function CourseHeader({
       Description: course.Description || "",
       Duration: course.Duration || "",
       Level: course.Level || "BEGINNER",
-      Ojectives: course.Ojectives || "",
+      Objectives: course.Objectives || "",
       Requirements: course.Requirements || "",
     });
     setEditOpen(true);
@@ -317,8 +317,8 @@ export default function CourseHeader({
               fullWidth
               multiline
               minRows={4}
-              value={values.Ojectives}
-              onChange={handleChange("Ojectives")}
+              value={values.Objectives}
+              onChange={handleChange("Objectives")}
               placeholder={
                 "Mục tiêu 1: Nắm được kiến thức cơ bản về...\n" +
                 "Mục tiêu 2: Có thể thực hành xây dựng...\n" +
