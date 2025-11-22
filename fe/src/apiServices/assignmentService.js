@@ -26,7 +26,10 @@ export const getAssignmentByIdApi = async (assignmentId) => {
 // Tạo bài tập mới
 export const createAssignmentApi = async (assignmentData) => {
   try {
-    const response = await apiClient.post("/instructor/assignments", assignmentData);
+    const response = await apiClient.post("/instructor/assignments", {
+      ...assignmentData,
+      Status: "active"
+    });
     return response.data;
   } catch (error) {
     console.error("Create assignment error:", error);
