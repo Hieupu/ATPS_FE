@@ -124,7 +124,7 @@ export default function AssignmentCard({
                     }}
                   >
                     <ToggleLeft  size={16} /> {/* dùng icon toggle */}
-                    <span>Trạng thái</span>
+                    <span>Lưu trữ bài tập</span>
                   </button>
 
                   {/* Xóa */}
