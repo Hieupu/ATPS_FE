@@ -26,6 +26,7 @@ const ScheduleGrid = ({
     "Thursday",
     "Friday",
     "Saturday",
+    "Sunday",
   ];
   
   const dayLabels = {
@@ -35,51 +36,13 @@ const ScheduleGrid = ({
     Thursday: "Thứ 5",
     Friday: "Thứ 6",
     Saturday: "Thứ 7",
+    Sunday: "Chủ nhật",
   };
 
   const [conflictAlert, setConflictAlert] = useState(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
 
-  console.log("kaka" , weeklySchedule)
-
-  // Lấy danh sách các time slots
-  const timeSlots = useMemo(() => {
-    if (!weeklySchedule || weeklySchedule.length === 0) {
-      return [
-        "07:30", "09:00", "10:30", "12:00", "12:30", "14:00", 
-        "15:30", "17:00", "17:30", "19:00", "20:30"
-      ];
-    }
-
-    const startTimes = new Set();
-    weeklySchedule.forEach((slot) => {
-      if (slot.StartTime) {
-        const timeStr = slot.StartTime.substring(0, 5);
-        startTimes.add(timeStr);
-      }
-    });
-
-    const sortedTimes = Array.from(startTimes).sort((a, b) => {
-      const [h1, m1] = a.split(":").map(Number);
-      const [h2, m2] = b.split(":").map(Number);
-      return h1 * 60 + m1 - (h2 * 60 + m2);
-    });
-
-    return sortedTimes;
-  }, [weeklySchedule]);
-
-  // Tạo schedule map để dễ truy cập
-  const scheduleMap = useMemo(() => {
-    const map = new Map();
-    weeklySchedule.forEach((slot) => {
-      if (slot.StartTime) {
-        const timeKey = slot.StartTime.substring(0, 5);
-        const key = `${slot.Day}_${timeKey}`;
-        map.set(key, slot);
-      }
-    });
-    return map;
-  }, [weeklySchedule]);
+  console.log("weeklySchedule data:", weeklySchedule);
 
   // Helper function để normalize date
   const normalizeDate = (date) => {
@@ -108,6 +71,67 @@ const ScheduleGrid = ({
     return normalizedDate;
   };
 
+  // Tính các ngày cụ thể trong tuần đã chọn
+  const weekDates = useMemo(() => {
+    if (!weeklySchedule || weeklySchedule.length === 0) return {};
+    
+    // Lấy tất cả các dates từ schedule, chỉ lấy date đầu tiên cho mỗi Day
+    const dates = new Map();
+    weeklySchedule.forEach(slot => {
+      if (slot.Date && slot.Day && !dates.has(slot.Day)) {
+        const dateStr = normalizeDate(slot.Date);
+        dates.set(slot.Day, dateStr);
+      }
+    });
+    
+    console.log("Week dates mapping:", Object.fromEntries(dates));
+    return Object.fromEntries(dates);
+  }, [weeklySchedule]);
+
+  // Lấy danh sách các time slots
+  const timeSlots = useMemo(() => {
+    if (!weeklySchedule || weeklySchedule.length === 0) {
+      return [
+        "08:00", "10:20", "13:00", "15:20", "17:40", "20:00"
+      ];
+    }
+
+    const startTimes = new Set();
+    weeklySchedule.forEach((slot) => {
+      if (slot.StartTime) {
+        const timeStr = slot.StartTime.substring(0, 5);
+        startTimes.add(timeStr);
+      }
+    });
+
+    const sortedTimes = Array.from(startTimes).sort((a, b) => {
+      const [h1, m1] = a.split(":").map(Number);
+      const [h2, m2] = b.split(":").map(Number);
+      return h1 * 60 + m1 - (h2 * 60 + m2);
+    });
+
+    return sortedTimes;
+  }, [weeklySchedule]);
+
+  // Tạo schedule map theo DATE cụ thể + TIME
+  const scheduleMap = useMemo(() => {
+    const map = new Map();
+    weeklySchedule.forEach((slot) => {
+      if (slot.StartTime && slot.Date) {
+        const timeKey = slot.StartTime.substring(0, 5);
+        const dateStr = normalizeDate(slot.Date);
+        const key = `${dateStr}_${timeKey}`;
+        
+        // Chỉ lưu slot đầu tiên cho mỗi key để tránh trùng lặp
+        if (!map.has(key)) {
+          map.set(key, slot);
+        }
+      }
+    });
+    console.log("Schedule map keys:", Array.from(map.keys()));
+    return map;
+  }, [weeklySchedule]);
+
   // Helper function để tính tuần
   const getWeekKey = (dateStr) => {
     const date = new Date(dateStr + "T00:00:00");
@@ -118,12 +142,11 @@ const ScheduleGrid = ({
     return monday.toISOString().split("T")[0];
   };
 
-  // Hàm kiểm tra trùng lịch với lịch học hiện tại - ĐÃ SỬA
+  // Hàm kiểm tra trùng lịch với lịch học hiện tại
   const checkScheduleConflict = async (slot) => {
     try {
       setCheckingConflict(true);
       
-      // Gọi API kiểm tra trùng lịch với ngày cụ thể
       const conflictCheck = await checkScheduleConflictApi(slot.TimeslotID, normalizeDate(slot.Date));
       
       if (conflictCheck.hasConflict && conflictCheck.conflictingClasses.length > 0) {
@@ -148,32 +171,27 @@ const ScheduleGrid = ({
     }
   };
 
-  // Xử lý khi click vào slot - ĐÃ THÊM KIỂM TRA TRÙNG LỊCH
+  // Xử lý khi click vào slot
   const handleSlotClickWithConflictCheck = async (slot) => {
     if (slot.Status !== "available") return;
 
-    // Kiểm tra xem slot đã được chọn chưa
     const slotDate = normalizeDate(slot.Date);
     const isSelected = selectedSlots.some(
       s => s.TimeslotID === slot.TimeslotID && normalizeDate(s.Date) === slotDate
     );
 
-    // Nếu đang bỏ chọn slot, không cần kiểm tra trùng lịch
     if (isSelected) {
       handleSlotClick(slot);
       return;
     }
 
-    // Kiểm tra trùng lịch trước khi chọn slot mới
     const hasConflict = await checkScheduleConflict(slot);
     
     if (!hasConflict) {
-      // Nếu không trùng, cho phép chọn slot
       handleSlotClick(slot);
     }
   };
 
-  // Đóng alert
   const handleCloseAlert = () => {
     setConflictAlert(null);
   };
@@ -197,7 +215,6 @@ const ScheduleGrid = ({
         Lịch học
       </Typography>
 
-      {/* Alert thông báo trùng lịch */}
       <Snackbar
         open={!!conflictAlert}
         autoHideDuration={6000}
@@ -215,27 +232,42 @@ const ScheduleGrid = ({
 
       <Box sx={{ overflowX: "auto" }}>
         <Box sx={{ minWidth: 600 }}>
-          {/* Header - Các thứ trong tuần */}
+          {/* Header - Hiển thị ngày cụ thể cho mỗi thứ */}
           <Grid container spacing={0.5} sx={{ mb: 1 }}>
             <Grid item xs={2}>
               <Typography variant="caption" sx={{ fontWeight: 600 }}>
                 Giờ
               </Typography>
             </Grid>
-            {days.map((day) => (
-              <Grid item xs={10 / 6} key={day}>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    fontWeight: 600,
-                    textAlign: "center",
-                    display: "block",
-                  }}
-                >
-                  {dayLabels[day]}
-                </Typography>
-              </Grid>
-            ))}
+            {days.map((day) => {
+              const dayDate = weekDates[day];
+              const displayDate = dayDate 
+                ? new Date(dayDate + "T00:00:00").toLocaleDateString("vi-VN", {
+                    day: "2-digit",
+                    month: "2-digit",
+                  })
+                : "";
+              
+              return (
+                <Grid item xs={10 / 7} key={day}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      fontWeight: 600,
+                      textAlign: "center",
+                      display: "block",
+                    }}
+                  >
+                    {dayLabels[day]}
+                    {displayDate && (
+                      <Box component="span" sx={{ display: "block", fontSize: "0.7rem", color: "text.secondary" }}>
+                        {displayDate}
+                      </Box>
+                    )}
+                  </Typography>
+                </Grid>
+              );
+            })}
           </Grid>
 
           {/* Grid lịch học */}
@@ -243,9 +275,19 @@ const ScheduleGrid = ({
             const sampleSlot = weeklySchedule.find(
               (s) => s.StartTime && s.StartTime.substring(0, 5) === time
             );
+            
+            const timeEndMap = {
+              "08:00": "10:00",
+              "10:20": "12:20",
+              "13:00": "15:00",
+              "15:20": "17:20",
+              "17:40": "19:40",
+              "20:00": "22:00"
+            };
+            
             const endTime = sampleSlot
               ? sampleSlot.EndTime.substring(0, 5)
-              : timeSlots[timeSlots.indexOf(time) + 1] || "20:30";
+              : timeEndMap[time] || "22:00";
             const timeRange = `${time} - ${endTime}`;
 
             return (
@@ -256,10 +298,28 @@ const ScheduleGrid = ({
                   </Typography>
                 </Grid>
                 {days.map((day) => {
-                  const slot = scheduleMap.get(`${day}_${time}`);
+                  const dayDate = weekDates[day];
+                  if (!dayDate) {
+                    return (
+                      <Grid item xs={10 / 7} key={`${day}_${time}`}>
+                        <Box
+                          sx={{
+                            height: 40,
+                            border: "1px solid",
+                            borderColor: "divider",
+                            bgcolor: "grey.100",
+                          }}
+                        />
+                      </Grid>
+                    );
+                  }
+
+                  const key = `${dayDate}_${time}`;
+                  const slot = scheduleMap.get(key);
+                  
                   if (!slot) {
                     return (
-                      <Grid item xs={10 / 6} key={`${day}_${time}`}>
+                      <Grid item xs={10 / 7} key={`${day}_${time}`}>
                         <Box
                           sx={{
                             height: 40,
@@ -279,7 +339,6 @@ const ScheduleGrid = ({
                       normalizeDate(s.Date) === slotDate
                   );
 
-                  // Kiểm tra số slots đã chọn trong cùng tuần
                   const currentWeekKey = getWeekKey(slotDate);
                   const slotsInSameWeek = selectedSlots.filter((s) => {
                     const sWeekKey = getWeekKey(normalizeDate(s.Date));
@@ -304,7 +363,7 @@ const ScheduleGrid = ({
                   const color = slot.Status === "busy" ? "#fff" : "#000";
 
                   return (
-                    <Grid item xs={10 / 6} key={`${day}_${time}`}>
+                    <Grid item xs={10 / 7} key={`${day}_${time}`}>
                       <Box
                         onClick={() => handleSlotClickWithConflictCheck(slot)}
                         sx={{
@@ -388,7 +447,7 @@ const ScheduleGrid = ({
   );
 };
 
-// API function để kiểm tra trùng lịch - ĐÃ SỬA
+// API function để kiểm tra trùng lịch
 const checkScheduleConflictApi = async (timeslotId, date) => {
   try {
     const response = await apiClient.get(`/schedule/check-conflict/timeslot/${timeslotId}?date=${date}`);
