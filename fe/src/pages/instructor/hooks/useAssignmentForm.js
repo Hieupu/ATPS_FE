@@ -57,59 +57,66 @@ export function useAssignmentForm() {
     [formatDate]
   );
 
-  const preparePayload = useCallback(() => {
-    const questions = (form.localQuestions || []).map((q) => ({
-      content: q.Content?.trim(),
-      type: q.Type,
-      point: Number(q.Point) || 1,
-      options: (q.options || [])
-        .filter((opt) => opt.Content?.trim())
-        .map((opt) => ({
-          content: opt.Content.trim(),
-          isCorrect: !!opt.IsCorrect,
-        })),
-      correctAnswer:
-        q.Type === "matching" && typeof q.CorrectAnswer === "object"
-          ? JSON.stringify(q.CorrectAnswer)
-          : q.CorrectAnswer,
-    }));
+const preparePayload = useCallback(() => {
+  const questions = (form.localQuestions || []).map((q) => ({
+    QuestionID: q.QuestionID || q.questionId || undefined,
+    questionId: q.QuestionID || q.questionId || undefined,
+    
+    content: q.Content?.trim(),
+    type: q.Type,
+    point: Number(q.Point) || 1,
+    options: (q.options || [])
+      .filter((opt) => opt.Content?.trim())
+      .map((opt) => ({
+        content: opt.Content.trim(),
+        isCorrect: !!opt.IsCorrect,
+      })),
+    correctAnswer:
+      q.Type === "matching" && typeof q.CorrectAnswer === "object"
+        ? JSON.stringify(q.CorrectAnswer)
+        : q.CorrectAnswer,
+  }));
 
-    const deadlineForApi = normalizeDeadlineForApi(form.deadline);
+  const deadlineForApi = normalizeDeadlineForApi(form.deadline);
 
-    const payload = {
-      // dùng dạng UPPER_CASE cho backend cũ
-      Title: form.title.trim(),
-      Description: form.description.trim(),
-      Type: form.type,
-      CourseID: form.courseId ? Number(form.courseId) : null,
-      UnitID: form.unitId ? Number(form.unitId) : null,
-      Deadline: deadlineForApi, // 👈 giờ không còn luôn null nữa
-      FileURL: form.fileURL || null,
-      MediaURL: form.mediaURL || null,
-      MaxDuration: form.maxDuration ? Number(form.maxDuration) : null,
-      ShowAnswersAfter: form.showAnswersAfter,
-      Status: "draft",
+  // ✅ FIX: Giữ nguyên status hiện tại khi update, mặc định "active" khi tạo mới
+  const isEditing = !!form.assignmentId;
+  const statusValue = isEditing 
+    ? (form.status || form.Status || "active")  // Giữ nguyên status cũ
+    : "active";  // Tạo mới = active
 
-      // đồng thời gửi dạng lower-case cho validateAssignmentData (nếu backend dùng)
-      title: form.title.trim(),
-      description: form.description.trim(),
-      type: form.type,
-      courseId: form.courseId ? Number(form.courseId) : null,
-      unitId: form.unitId ? Number(form.unitId) : null,
-      deadline: deadlineForApi,
-      fileURL: form.fileURL || null,
-      mediaURL: form.mediaURL || null,
-      maxDuration: form.maxDuration ? Number(form.maxDuration) : null,
-      showAnswersAfter: form.showAnswersAfter,
-      status: "draft",
-    };
+  const payload = {
+    Title: form.title.trim(),
+    Description: form.description.trim(),
+    Type: form.type,
+    CourseID: form.courseId ? Number(form.courseId) : null,
+    UnitID: form.unitId ? Number(form.unitId) : null,
+    Deadline: deadlineForApi,
+    FileURL: form.fileURL || null,
+    MediaURL: form.mediaURL || null,
+    MaxDuration: form.maxDuration ? Number(form.maxDuration) : null,
+    ShowAnswersAfter: form.showAnswersAfter,
+    Status: statusValue,  // ✅ Dùng statusValue động
 
-    return {
-      payload,
-      questions,
-      isQuiz: payload.Type === "quiz",
-    };
-  }, [form, normalizeDeadlineForApi]);
+    title: form.title.trim(),
+    description: form.description.trim(),
+    type: form.type,
+    courseId: form.courseId ? Number(form.courseId) : null,
+    unitId: form.unitId ? Number(form.unitId) : null,
+    deadline: deadlineForApi,
+    fileURL: form.fileURL || null,
+    mediaURL: form.mediaURL || null,
+    maxDuration: form.maxDuration ? Number(form.maxDuration) : null,
+    showAnswersAfter: form.showAnswersAfter,
+    status: statusValue,  // ✅ Dùng statusValue động
+  };
+
+  return {
+    payload,
+    questions,
+    isQuiz: payload.Type === "quiz",
+  };
+}, [form, normalizeDeadlineForApi]);
 
   const resetForm = useCallback(() => {
     setForm(EMPTY_FORM);

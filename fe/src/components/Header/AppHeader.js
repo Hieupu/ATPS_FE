@@ -33,7 +33,7 @@ import {
   Notifications,
   AssignmentTurnedIn,
   Payment,
-  Quiz
+  Quiz,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
@@ -157,7 +157,7 @@ const AppHeader = () => {
           Điểm danh
         </MenuItem>
       );
-         items.push(
+      items.push(
         <MenuItem
           key="my-exam"
           onClick={() => navigate("/exam")}
@@ -172,7 +172,7 @@ const AppHeader = () => {
           }}
         >
           <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
-         Exam
+          Exam
         </MenuItem>
       );
       items.push(
@@ -208,7 +208,7 @@ const AppHeader = () => {
           }}
         >
           <Payment sx={{ mr: 1, color: "#6b7280" }} />
-         Lịch sử thanh toán
+          Lịch sử thanh toán
         </MenuItem>
       );
     }
@@ -229,7 +229,7 @@ const AppHeader = () => {
           }}
         >
           <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
-          Course Management
+          Quản lý khóa học
         </MenuItem>
       );
     }
@@ -294,12 +294,8 @@ const AppHeader = () => {
         </ListItem>
       );
 
-       items.push(
-        <ListItem
-          button
-          key="my-exam-mobile"
-          onClick={() => navigate("/exam")}
-        >
+      items.push(
+        <ListItem button key="my-exam-mobile" onClick={() => navigate("/exam")}>
           <CheckCircle sx={{ mr: 2 }} />
           <ListItemText primary="Exam" />
         </ListItem>
@@ -738,7 +734,6 @@ const AppHeader = () => {
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
                       Profile
                     </MenuItem>
-
 
                     {/* Menu items theo role */}
                     {getRoleSpecificMenuItems()}
