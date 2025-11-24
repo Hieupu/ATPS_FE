@@ -34,9 +34,10 @@ export default function ClassDetailLayout({
   };
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "grey.50" }}>
+    // 1. Đổi nền thành white (hoặc bỏ luôn bgcolor) để đồng bộ màu
+    <Box sx={{ minHeight: "100vh", bgcolor: "white" }}>
       {/* HEADER */}
-      <Box sx={{ bgcolor: "white", borderBottom: 1, borderColor: "divider" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
         <Box sx={{ maxWidth: 1400, mx: "auto", px: 4, py: 3 }}>
           <Button startIcon={<ArrowBack />} onClick={onBack} sx={{ mb: 3 }}>
             Quay lại
@@ -48,9 +49,16 @@ export default function ClassDetailLayout({
                 src={course?.image}
                 alt={course?.title}
                 variant="rounded"
-                sx={{ width: 100, height: 140, borderRadius: 2 }}
+                sx={{
+                  width: 200,
+                  height: 120,
+                  borderRadius: 2,
+                  border: "1px solid #e0e0e0",
+                }}
+                imgProps={{ sx: { objectFit: "cover" } }}
               />
             </Grid>
+
             <Grid item xs={12} md>
               <Typography variant="h4" fontWeight={700} gutterBottom>
                 {className}
@@ -77,26 +85,43 @@ export default function ClassDetailLayout({
       </Box>
 
       {/* TABS + CONTENT */}
+      {/* Container này có maxWidth và px giống hệt Header ở trên -> Đảm bảo thẳng hàng */}
       <Box sx={{ maxWidth: 1400, mx: "auto", px: 4, py: 4 }}>
-        <Card elevation={0} sx={{ border: 1, borderColor: "divider" }}>
+        <Card
+          elevation={0}
+          sx={{
+            border: 1,
+            borderColor: "divider",
+            borderRadius: 2,
+            overflow: "hidden",
+            // Đảm bảo Card chiếm 100% width của Box chứa nó
+            width: "100%",
+          }}
+        >
           <Tabs
             value={activeTab}
             onChange={(_, v) => onTabChange(v)}
-            sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}
+            sx={{
+              borderBottom: 1,
+              borderColor: "divider",
+              bgcolor: "white", // 2. Bỏ màu nền xám
+              px: 0, // 3. Đưa về 0 để Tab đầu tiên sát lề trái, thẳng hàng với Header
+            }}
           >
             <Tab label="Tổng quan" />
             <Tab
               label={`Học viên (${currentStudents})`}
-              icon={<People />}
+              icon={<People fontSize="small" />}
               iconPosition="start"
             />
             <Tab
               label="Thời khóa biểu & Điểm danh"
-              icon={<CalendarMonth />}
+              icon={<CalendarMonth fontSize="small" />}
               iconPosition="start"
             />
           </Tabs>
-          <Box sx={{ p: 5 }}>{children}</Box>
+
+          <Box sx={{ p: 3, minHeight: 400 }}>{children}</Box>
         </Card>
       </Box>
     </Box>

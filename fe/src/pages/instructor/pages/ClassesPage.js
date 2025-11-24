@@ -45,13 +45,13 @@ export default function ClassesPage() {
           ? "ongoing"
           : "upcoming";
 
-        // Tính % hoàn thành buổi học
+       
         const progress =
           c.totalSessions > 0
             ? Math.round((c.completedSessions / c.totalSessions) * 100)
             : 0;
 
-        // Format ngày gần nhất
+     
         let nextSessionDisplay = "-";
         if (c.nextSessionDate) {
           const date = new Date(c.nextSessionDate);

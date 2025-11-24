@@ -1,4 +1,3 @@
-// components/class/ClassCardItem.jsx
 import React from "react";
 import {
   Card,

@@ -10,7 +10,10 @@ import {
   TableHead,
   TableRow,
   Avatar,
-  Chip,
+  TextField,
+  Radio,
+  RadioGroup,
+  FormControlLabel,
 } from "@mui/material";
 import { format } from "date-fns";
 
@@ -24,29 +27,43 @@ export default function AttendanceModal({
 }) {
   const [list, setList] = useState([]);
 
+  // Khởi tạo state khi mở modal
   useEffect(() => {
     if (attendanceSheet && attendanceSheet.length > 0) {
-      setList([...attendanceSheet]);
+      // Đảm bảo mỗi item đều có trường note, nếu chưa có thì set rỗng
+      const initializedList = attendanceSheet.map((item) => ({
+        ...item,
+        note: item.note || "",
+        status: item.status || "PRESENT", // Mặc định là có mặt nếu chưa có status
+      }));
+      setList(initializedList);
     }
   }, [attendanceSheet]);
 
-  const toggleStatus = (learnerId) => {
+  // Xử lý khi thay đổi Radio (Có mặt/Vắng)
+  const handleStatusChange = (learnerId, newStatus) => {
     setList((prev) =>
       prev.map((item) =>
-        item.learnerId === learnerId
-          ? {
-              ...item,
-              status: item.status === "PRESENT" ? "ABSENT" : "PRESENT",
-            }
-          : item
+        item.learnerId === learnerId ? { ...item, status: newStatus } : item
+      )
+    );
+  };
+
+  // Xử lý khi nhập Note
+  const handleNoteChange = (learnerId, newNote) => {
+    setList((prev) =>
+      prev.map((item) =>
+        item.learnerId === learnerId ? { ...item, note: newNote } : item
       )
     );
   };
 
   const handleSave = () => {
-    const payload = list.map(({ learnerId, status }) => ({
+    // Map lại đúng định dạng backend cần (Lưu ý: note viết thường)
+    const payload = list.map(({ learnerId, status, note }) => ({
       LearnerID: learnerId,
       Status: status,
+      note: note || "",
     }));
     onSave(payload);
   };
@@ -61,7 +78,7 @@ export default function AttendanceModal({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: { xs: "95%", md: 900 },
+          width: { xs: "95%", md: 1000 }, // Tăng chiều rộng một chút để chứa cột note
           maxHeight: "90vh",
           overflow: "auto",
           bgcolor: "background.paper",
@@ -80,33 +97,71 @@ export default function AttendanceModal({
         </Typography>
 
         {/* Bảng điểm danh */}
-        <Table>
+        <Table stickyHeader>
           <TableHead>
             <TableRow>
-              <TableCell>Học viên</TableCell>
-              <TableCell align="center" width={180}>
+              <TableCell width="30%">Học viên</TableCell>
+              <TableCell width="30%" align="center">
                 Trạng thái
               </TableCell>
+              <TableCell width="40%">Ghi chú (Lý do vắng)</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {list.map((item) => (
-              <TableRow key={item.learnerId}>
+              <TableRow key={item.learnerId} hover>
+                {/* Cột 1: Thông tin học viên */}
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
                     <Avatar src={item.avatar || "/default-avatar.png"} />
-                    <Typography fontWeight={500}>{item.fullName}</Typography>
+                    <Box>
+                      <Typography fontWeight={500}>{item.fullName}</Typography>
+                      {/* Có thể thêm email hoặc ID nhỏ ở dưới nếu cần */}
+                    </Box>
                   </Box>
                 </TableCell>
+
+                {/* Cột 2: Radio Button Trạng thái */}
                 <TableCell align="center">
-                  <Chip
-                    label={item.status === "PRESENT" ? "Có mặt" : "Vắng"}
-                    color={item.status === "PRESENT" ? "success" : "error"}
-                    onClick={() => toggleStatus(item.learnerId)}
+                  <RadioGroup
+                    row
+                    value={item.status}
+                    onChange={(e) =>
+                      handleStatusChange(item.learnerId, e.target.value)
+                    }
+                    sx={{ justifyContent: "center" }}
+                  >
+                    <FormControlLabel
+                      value="PRESENT"
+                      control={<Radio color="success" size="small" />}
+                      label="Có mặt"
+                      sx={{ mr: 2 }}
+                    />
+                    <FormControlLabel
+                      value="ABSENT"
+                      control={<Radio color="error" size="small" />}
+                      label="Vắng"
+                    />
+                  </RadioGroup>
+                </TableCell>
+
+                {/* Cột 3: Ghi chú */}
+                <TableCell>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    placeholder="Nhập lý do..."
+                    value={item.note}
+                    onChange={(e) =>
+                      handleNoteChange(item.learnerId, e.target.value)
+                    }
+                    // Nếu muốn chỉ cho nhập khi vắng thì bỏ comment dòng dưới
+                    // disabled={item.status === "PRESENT"}
                     sx={{
-                      cursor: "pointer",
-                      minWidth: 110,
-                      fontWeight: 600,
+                      "& .MuiInputBase-root": {
+                        backgroundColor:
+                          item.status === "ABSENT" ? "#fff5f5" : "inherit",
+                      },
                     }}
                   />
                 </TableCell>
@@ -122,9 +177,11 @@ export default function AttendanceModal({
             display: "flex",
             justifyContent: "flex-end",
             gap: 2,
+            pt: 2,
+            borderTop: "1px solid #eee",
           }}
         >
-          <Button onClick={onClose} disabled={saving}>
+          <Button onClick={onClose} disabled={saving} variant="outlined">
             Hủy
           </Button>
           <Button variant="contained" onClick={handleSave} disabled={saving}>

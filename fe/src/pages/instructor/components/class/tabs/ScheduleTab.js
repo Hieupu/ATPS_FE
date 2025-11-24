@@ -14,7 +14,6 @@ import {
   FormControl,
   Chip,
   Button,
-  Tooltip,
   Paper,
 } from "@mui/material";
 import {
@@ -22,6 +21,7 @@ import {
   ChevronRight,
   VideoCall,
   Assignment,
+  Edit, // Import thêm icon Edit cho nút cập nhật
 } from "@mui/icons-material";
 import { format, startOfWeek, addDays } from "date-fns";
 import AttendanceModal from "../AttendanceModal";
@@ -152,16 +152,25 @@ export default function ScheduleTab({
       </Typography>
 
       <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-        {session.totalStudents > 0 && !session.isFullyMarked && (
+        {/* Nút Điểm danh / Cập nhật - Đã bỏ điều kiện ẩn */}
+        {session.totalStudents > 0 && (
           <Button
             size="small"
-            variant="contained"
-            startIcon={<Assignment fontSize="small" />}
+            variant={session.isFullyMarked ? "outlined" : "contained"} // Đổi style để phân biệt
+            color={session.isFullyMarked ? "success" : "primary"}
+            startIcon={
+              session.isFullyMarked ? (
+                <Edit fontSize="small" />
+              ) : (
+                <Assignment fontSize="small" />
+              )
+            }
             onClick={() => onOpenAttendance(session)}
           >
-            Điểm danh
+            {session.isFullyMarked ? "Cập nhật" : "Điểm danh"}
           </Button>
         )}
+
         {session.zoomLink && (
           <Button
             size="small"
