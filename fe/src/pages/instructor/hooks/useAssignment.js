@@ -105,7 +105,7 @@ export default function useAssignment() {
           }
 
           return {
-            QuestionID: q.QuestionID || q.questionId,
+            QuestionID: q.QuestionID || q.questionId, // ✅ GIỮ QuestionID để phân biệt câu cũ/mới
             Content: q.Content || q.content || "",
             Type: t,
             Point: q.Point ?? q.point ?? 1,
@@ -133,7 +133,7 @@ export default function useAssignment() {
           mediaURL: parsed.mediaURL || "",
           maxDuration: parsed.maxDuration || null,
           showAnswersAfter: parsed.showAnswersAfter || "after_submission",
-          localQuestions: normalizedQuestions,
+          localQuestions: normalizedQuestions, // ✅ Câu hỏi cũ có QuestionID
           courseTitle: parsed.courseTitle,
           unitTitle: parsed.unitTitle,
         });
@@ -204,24 +204,37 @@ export default function useAssignment() {
   const finalizeAndFinish = useCallback(async () => {
     try {
       const { payload, questions, isQuiz } = formHook.preparePayload();
-      if (isQuiz && (!questions || questions.length === 0)) {
+      const currentType = (formHook.form?.type || "").toLowerCase();
+      const requiresQuestions = ['quiz', 'video', 'document'].includes(currentType);
+
+      if (requiresQuestions && (!questions || questions.length === 0)) {
         dataHook.setError("Vui lòng thêm ít nhất 1 câu hỏi");
         return;
       }
 
-      const body = {
-        ...payload,
-        questions,
-      };
-
       const assignmentId = formHook.form?.assignmentId;
 
+      // ✅ PHÂN BIỆT: Tạo mới vs Update
       if (assignmentId) {
-        // UPDATE
+        // UPDATE: Chỉ gửi câu hỏi MỚI (không có QuestionID)
+        const newQuestions = questions.filter(q =>
+          !q.QuestionID && !q.questionId
+        );
+
+        const body = {
+          ...payload,
+          questions: newQuestions,  // ← CHỈ GỬI CÂU MỚI
+        };
+
         await updateAssignmentApi(assignmentId, body);
         dataHook.setSuccess("Cập nhật bài tập thành công!");
       } else {
-        // CREATE
+        // CREATE: Gửi tất cả câu hỏi
+        const body = {
+          ...payload,
+          questions: questions,
+        };
+
         await createAssignmentApi(body);
         dataHook.setSuccess("Tạo bài tập thành công!");
       }
@@ -239,7 +252,7 @@ export default function useAssignment() {
       );
     }
   }, [formHook, dataHook, modalHook]);
-  
+
   const handleDelete = useCallback(
     async (id) => {
       try {
