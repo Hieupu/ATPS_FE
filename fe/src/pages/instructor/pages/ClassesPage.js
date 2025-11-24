@@ -5,7 +5,7 @@ import { Box } from "@mui/material";
 import ClassesLayout from "../components/class/ClassesLayout";
 
 // Tạm giống mẫu course nhưng chỉnh lại cho đúng route
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = "https://atps-be.onrender.com/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -45,13 +45,11 @@ export default function ClassesPage() {
           ? "ongoing"
           : "upcoming";
 
-       
         const progress =
           c.totalSessions > 0
             ? Math.round((c.completedSessions / c.totalSessions) * 100)
             : 0;
 
-     
         let nextSessionDisplay = "-";
         if (c.nextSessionDate) {
           const date = new Date(c.nextSessionDate);

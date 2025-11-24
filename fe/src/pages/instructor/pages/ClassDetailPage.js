@@ -9,7 +9,7 @@ import OverviewTab from "../components/class/tabs/OverviewTab";
 import StudentsTab from "../components/class/tabs/StudentsTab";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = "https://atps-be.onrender.com/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
