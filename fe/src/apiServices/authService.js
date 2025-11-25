@@ -6,7 +6,6 @@ export const loginApi = async (email, password) => {
     const data = response.data;
 
     if (data?.token) {
-      // Lưu cả token và thông tin user (bao gồm role)
       const userData = {
         ...data.user,
         token: data.token,
