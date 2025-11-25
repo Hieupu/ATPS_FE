@@ -151,7 +151,7 @@ function App() {
 function AdminDashboard() {
   return (
     <div style={{ padding: "24px" }}>
-      <h1>📊 Dashboard Admin</h1>
+      <h1>Dashboard Admin</h1>
       <p>Chào mừng đến với hệ thống quản lý đào tạo ATPS!</p>
       <div style={{ marginTop: "20px" }}>
         <a
@@ -165,7 +165,7 @@ function AdminDashboard() {
             display: "inline-block",
           }}
         >
-          📚 Quản lý lớp học
+          Quản lý lớp học
         </a>
       </div>
     </div>
@@ -200,7 +200,7 @@ function NotFound() {
           display: "inline-block",
         }}
       >
-        🏠 Về trang chủ
+        Về trang chủ
       </a>
     </div>
   );

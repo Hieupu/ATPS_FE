@@ -19,6 +19,7 @@ import {
   Google as GoogleIcon,
   Facebook as FacebookIcon,
   School,
+  AccountCircle,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import {
@@ -63,7 +64,7 @@ const LoginPage = () => {
         navigate("/");
       }
     } catch (error) {
-      alert(error.message || "Login failed");
+      alert(error.message || "Đăng nhập thất bại");
     }
   };
 
@@ -99,17 +100,14 @@ const LoginPage = () => {
                 backgroundColor: "primary.light",
               }}
             >
-              <School sx={{ fontSize: 48, color: "primary.main" }} />
+              <AccountCircle sx={{ fontSize: 48, color: "primary.main" }} />
             </Avatar>
           </Box>
 
           {/* Title Section */}
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-              Login to Your Account
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Welcome back! Please enter your details
+              Đăng nhập
             </Typography>
           </Box>
 
@@ -124,7 +122,7 @@ const LoginPage = () => {
                 fullWidth
                 name="email"
                 type="email"
-                placeholder="Enter your email"
+                placeholder="Nhập email"
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -135,13 +133,13 @@ const LoginPage = () => {
             {/* Password Field */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Password
+                Mật khẩu
               </Typography>
               <TextField
                 fullWidth
                 name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
+                placeholder="Nhập mật khẩu"
                 value={formData.password}
                 onChange={handleChange}
                 required
@@ -171,59 +169,57 @@ const LoginPage = () => {
                 fontSize: "1rem",
               }}
             >
-              Login
+              Đăng nhập
             </Button>
 
             {/* Divider */}
             <Divider sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                OR
+                Đăng nhập bằng
               </Typography>
             </Divider>
 
-            {/* Google Login */}
-            <Button
-              fullWidth
-              variant="outlined"
-              size="large"
-              startIcon={<GoogleIcon />}
-              onClick={handleGoogleLogin}
-              sx={{
-                mb: 2,
-                py: 1.5,
-                fontWeight: 600,
-                borderColor: "grey.300",
-                color: "text.primary",
-                "&:hover": {
-                  borderColor: "grey.400",
-                  backgroundColor: "grey.50",
-                },
-              }}
-            >
-              Login with Google
-            </Button>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Button
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  fontWeight: 600,
+                  borderColor: 'grey.300',
+                  color: 'text.primary',
+                  "&:hover": {
+                    borderColor: 'grey.400',
+                    backgroundColor: 'grey.50',
+                  },
+                }}
+                variant="outlined"
+                size="large"
+                startIcon={<GoogleIcon />}
+                onClick={handleGoogleLogin}
+              >
+                Google
+              </Button>
 
-            {/* Facebook Login */}
-            <Button
-              fullWidth
-              variant="outlined"
-              size="large"
-              startIcon={<FacebookIcon />}
-              onClick={handleFacebookLogin}
-              sx={{
-                mb: 3,
-                py: 1.5,
-                fontWeight: 600,
-                borderColor: "grey.300",
-                color: "text.primary",
-                "&:hover": {
-                  borderColor: "grey.400",
-                  backgroundColor: "grey.50",
-                },
-              }}
-            >
-              Login with Facebook
-            </Button>
+              <Button
+                sx={{
+                  flex: 1,
+                  py: 1.5,
+                  fontWeight: 600,
+                  borderColor: 'grey.300',
+                  color: 'text.primary',
+                  "&:hover": {
+                    borderColor: 'grey.400',
+                    backgroundColor: 'grey.50',
+                  },
+                }}
+                variant="outlined"
+                size="large"
+                startIcon={<FacebookIcon />}
+                onClick={handleFacebookLogin}
+              >
+                Facebook
+              </Button>
+            </Box>
 
             {/* Footer Links */}
             <Box
@@ -244,17 +240,17 @@ const LoginPage = () => {
                   fontSize: "0.9rem",
                 }}
               >
-                Forgot Password?
+                Quên mật khẩu?
               </Link>
               <Typography variant="body2" color="text.secondary">
-                Don't have an account?{" "}
+                Chưa có tài khoản?{" "}
                 <Link
                   component={RouterLink}
                   to="/auth/register"
                   underline="hover"
                   sx={{ color: "primary.main", fontWeight: 600 }}
                 >
-                  Register
+                  Đăng ký
                 </Link>
               </Typography>
             </Box>

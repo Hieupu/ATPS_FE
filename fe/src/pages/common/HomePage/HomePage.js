@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  AppBar,
-  Toolbar,
   Typography,
   Button,
   Container,
@@ -9,18 +7,10 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Chip,
   Avatar,
   Paper,
   useTheme,
   useMediaQuery,
-  Skeleton,
-  CardMedia,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -30,8 +20,6 @@ import {
   TrendingUp,
   People,
   EmojiEvents,
-  Schedule,
-  Security,
   CheckCircle,
   Star,
   ArrowForward,
@@ -59,7 +47,7 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
 
-  const navItems = ["Home", "Features", "Courses", "About", "Contact"];
+  const navItems = ["Home", "Features", "Courses", "openingCeremony", "About", "Contact"];
   const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
 
   // Fetch popular courses
@@ -108,44 +96,43 @@ const HomePage = () => {
   const features = [
     {
       icon: <MenuBook sx={{ fontSize: 40, color: "primary.main" }} />,
-      title: "Unified Learning Materials",
+      title: "Tài liệu học tập",
       description:
-        "Access all your study materials in one place - textbooks, notes, videos, and practice tests.",
+        "Sách, ghi chú, video, đề luyện tập – tất cả trong một chỗ.",
     },
     {
       icon: <VideoLibrary sx={{ fontSize: 40, color: "primary.main" }} />,
-      title: "Online Classes",
+      title: "Lớp học trực tuyến",
       description:
-        "Join live instructor-guided sessions or learn at your own pace with recorded lectures.",
+        "Tham gia lớp học trực tuyến hoặc học với các bài giảng đã ghi lại.",
     },
     {
       icon: <Assignment sx={{ fontSize: 40, color: "primary.main" }} />,
-      title: "Smart Assignments",
+      title: "Bài tập thông minh",
       description:
-        "Complete assignments with instant feedback and detailed performance analytics.",
+        "Hoàn thành bài tập với kết quả tức thì và phân tích chi tiết.",
     },
     {
       icon: <TrendingUp sx={{ fontSize: 40, color: "primary.main" }} />,
-      title: "Progress Tracking",
+      title: "Theo dõi tiến độ",
       description:
-        "Monitor your learning journey with comprehensive progress reports and insights.",
+        "Báo cáo chi tiết giúp bạn nắm rõ mọi bước tiến trong học tập.",
     },
   ];
 
   const benefits = [
-    "Self-paced and instructor-guided learning modes",
-    "Minimize distractions from multiple tools",
-    "Improve study efficiency significantly",
-    "Flexible learning schedule",
-    "Comprehensive progress analytics",
-    "Support during disruptions and epidemics",
+    "Tự học hoặc có hướng dẫn từ giảng viên",
+    "Giảm thiểu xao nhãng từ nhiều công cụ khác nhau",
+    "Nâng cao hiệu quả học tập đáng kể",
+    "Lịch học linh hoạt, phù hợp với bạn",
+    "Phân tích tiến độ học tập toàn diện",
   ];
 
   const stats = [
-    { icon: <People />, number: "10,000+", label: "Active Learners" },
-    { icon: <WorkspacePremium />, number: "500+", label: "Expert Instructors" },
-    { icon: <MenuBook />, number: "1,000+", label: "Courses Available" },
-    { icon: <Star />, number: "95%", label: "Success Rate" },
+    { icon: <People />, number: "10,000+", label: "Học viên năng động" },
+    { icon: <WorkspacePremium />, number: "500+", label: "Giảng viên giàu kinh nghiệm" },
+    { icon: <MenuBook />, number: "1,000+", label: "Khóa học đa dạng" },
+    { icon: <Star />, number: "95%", label: "Tỷ lệ đạt mục tiêu" },
   ];
 
   const toggleMobileMenu = () => {
@@ -170,8 +157,6 @@ const HomePage = () => {
       } else {
         console.log('❓ Unknown role');
       }
-      
-      console.log('============================');
     }
   }, [isAuthenticated, user, isInstructor, isLearner, isParent]);
 
@@ -200,15 +185,15 @@ const HomePage = () => {
                   component="h1"
                   gutterBottom
                   sx={{
-                    fontWeight: 700,
+                    fontWeight: 650,
                     fontSize: { xs: "2.5rem", md: "3.5rem" },
                   }}
                 >
                   All-in-One Test Preparation System
                 </Typography>
                 <Typography variant="h6" sx={{ mb: 4, opacity: 0.95 }}>
-                  Unify your learning materials, online classes, assignments,
-                  and progress tracking into a single powerful platform.
+                  Hệ thống học tập và ôn luyện thi trên một nền tảng duy nhất
+                  Giúp bạn học hiệu quả và theo dõi tiến trình dễ dàng
                 </Typography>
                 <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                   <Button
@@ -222,21 +207,7 @@ const HomePage = () => {
                       "&:hover": { backgroundColor: "grey.100" },
                     }}
                   >
-                    Start Learning
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="large"
-                    sx={{
-                      borderColor: "white",
-                      color: "white",
-                      "&:hover": {
-                        borderColor: "white",
-                        backgroundColor: "rgba(255,255,255,0.1)",
-                      },
-                    }}
-                  >
-                    Watch Demo
+                    Bắt đầu học
                   </Button>
                 </Box>
               </Grid>
@@ -296,7 +267,7 @@ const HomePage = () => {
                     </Avatar>
                     <Typography
                       variant="h4"
-                      sx={{ fontWeight: 700, color: "primary.main", mb: 1 }}
+                      sx={{ fontWeight: 650, color: "primary.main", mb: 1 }}
                     >
                       {stat.number}
                     </Typography>
@@ -327,17 +298,16 @@ const HomePage = () => {
         {/* Features Section */}
         <Container maxWidth="lg" sx={{ my: 10 }}>
           <Box sx={{ textAlign: "center", mb: 6 }}>
-            <Chip label="FEATURES" color="primary" sx={{ mb: 2 }} />
             <Typography
               variant="h3"
               component="h2"
               gutterBottom
-              sx={{ fontWeight: 700 }}
+              sx={{ fontWeight: 650 }}
             >
-              Everything You Need to Succeed
+              Mọi thứ bạn cần để thành công
             </Typography>
             <Typography variant="h6" color="text.secondary">
-              A comprehensive platform designed for modern learners
+              Nền tảng toàn diện cho học tập trong thời đại số
             </Typography>
           </Box>
 
@@ -382,14 +352,12 @@ const HomePage = () => {
         <Box sx={{ backgroundColor: "grey.50", py: 10 }}>
           <Container maxWidth="lg">
             <Grid container spacing={6} alignItems="center">
-              <Grid item xs={12} md={6}>
-                <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
-                  Why Choose ATPS?
+              <Grid item xs={12} md={7}>
+                <Typography variant="h3" gutterBottom sx={{ fontWeight: 650 }}>
+                  Tại sao nên chọn ATPS?
                 </Typography>
                 <Typography variant="body1" color="text.secondary" paragraph>
-                  Our platform is designed to provide a seamless learning
-                  experience that adapts to your needs while supporting
-                  institutions in scaling their services effectively.
+                  Nền tảng của chúng tôi được thiết kế để mang đến trải nghiệm học tập liền mạch, phù hợp với mong muốn của bạn.
                 </Typography>
                 <Box sx={{ mt: 3 }}>
                   {benefits.map((benefit, index) => (
@@ -405,7 +373,7 @@ const HomePage = () => {
                   ))}
                 </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={5}>
                 <Paper
                   elevation={8}
                   sx={{
@@ -417,17 +385,13 @@ const HomePage = () => {
                   }}
                 >
                   <Box sx={{ textAlign: "center" }}>
-                    <Security sx={{ fontSize: 80, mb: 2, opacity: 0.9 }} />
+                    <School sx={{ fontSize: 80, mb: 2, opacity: 0.9 }} />
                     <Typography
                       variant="h4"
                       gutterBottom
                       sx={{ fontWeight: 700 }}
                     >
-                      Trusted & Secure
-                    </Typography>
-                    <Typography variant="body1" sx={{ opacity: 0.95 }}>
-                      Your data is protected with enterprise-grade security.
-                      Focus on learning while we handle the rest.
+                      Học tập không giới hạn
                     </Typography>
                   </Box>
                 </Paper>
@@ -435,39 +399,6 @@ const HomePage = () => {
             </Grid>
           </Container>
         </Box>
-
-        {/* CTA Section */}
-        <Container maxWidth="md" sx={{ my: 10, textAlign: "center" }}>
-          <Paper
-            elevation={4}
-            sx={{
-              p: 6,
-              borderRadius: 4,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              color: "white",
-            }}
-          >
-            <Typography variant="h3" gutterBottom sx={{ fontWeight: 700 }}>
-              Ready to Transform Your Learning?
-            </Typography>
-            <Typography variant="h6" sx={{ mb: 4, opacity: 0.95 }}>
-              Join thousands of students already achieving their goals with ATPS
-            </Typography>
-            <Button
-              variant="contained"
-              size="large"
-              endIcon={<ArrowForward />}
-              onClick={() => navigate('/courses')}
-              sx={{
-                backgroundColor: "white",
-                color: "primary.main",
-                "&:hover": { backgroundColor: "grey.100" },
-              }}
-            >
-              Get Started for Free
-            </Button>
-          </Paper>
-        </Container>
       </Box>
 
       {/* Footer */}
@@ -485,8 +416,7 @@ const HomePage = () => {
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                All-in-One Test Preparation System - Your complete solution for
-                effective learning and exam preparation.
+                All-in-One Test Preparation System - Giải pháp toàn diện cho học tập và ôn luyện thi hiệu quả
               </Typography>
             </Grid>
             <Grid item xs={6} md={2}>

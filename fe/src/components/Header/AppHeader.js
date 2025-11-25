@@ -74,19 +74,23 @@ const AppHeader = () => {
 
   const navItems = [
     {
-      label: "Home",
+      label: "Trang chủ",
       path: "/",
     },
     {
-      label: "Courses",
+      label: "Khoá học",
       path: "/courses",
     },
     {
-      label: "Instructors",
+      label: "Giảng viên",
       path: "/instructors",
     },
     {
-      label: "Contact",
+      label: "Lịch khai giảng",
+      path: "/openingCeremony",
+    },
+    {
+      label: "Liên hệ",
       path: "/contact",
     },
   ];
@@ -172,7 +176,7 @@ const AppHeader = () => {
           }}
         >
           <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
-          Exam
+         Bài kiểm tra
         </MenuItem>
       );
       items.push(
@@ -229,7 +233,7 @@ const AppHeader = () => {
           }}
         >
           <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
-          Quản lý khóa học
+          Quản lý khoá học
         </MenuItem>
       );
     }
@@ -250,7 +254,7 @@ const AppHeader = () => {
           }}
         >
           <Group sx={{ mr: 1, color: "#6b7280" }} />
-          Tracking Student
+          Báo cáo học tập
         </MenuItem>
       );
     }
