@@ -39,11 +39,39 @@ import AudiotrackIcon from "@mui/icons-material/Audiotrack";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
+import QuizIcon from "@mui/icons-material/Quiz";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 const UNIT_STATUS_OPTIONS = ["VISIBLE", "HIDDEN"];
 const LESSON_TYPE_OPTIONS = ["video", "document", "audio"];
 const LESSON_STATUS_OPTIONS = ["VISIBLE", "HIDDEN"];
+
+const getAssignmentIcon = (type) => {
+  switch (type?.toLowerCase()) {
+    case "quiz":
+      return <QuizIcon color="primary" />;
+    case "audio":
+      return <AudiotrackIcon color="orange" />;
+    case "document":
+      return <DescriptionIcon color="success" />;
+    default:
+      return <AssignmentIcon color="action" />;
+  }
+};
+
+const getTypeLabel = (type) => {
+  switch (type?.toLowerCase()) {
+    case "quiz":
+      return "Quiz";
+    case "audio":
+      return "Bài tập nói";
+    case "document":
+      return "Bài tập tài liệu";
+    default:
+      return type || "Bài tập";
+  }
+};
 
 const getLessonIcon = (type) => {
   switch (type) {
@@ -77,6 +105,9 @@ export default function CurriculumSection({
   onUpdateUnit,
   onDeleteUnit,
   onReorderUnits,
+  assignmentsByUnit = {},
+  loadingAssignments = {},
+  onLoadAssignments,
   onLoadLessons,
   onCreateLesson,
   onUpdateLesson,
@@ -91,8 +122,15 @@ export default function CurriculumSection({
   const [lessonDialogMode, setLessonDialogMode] = useState("create");
   const [lessonDialogInitial, setLessonDialogInitial] = useState(null);
   const [lessonDialogUnitId, setLessonDialogUnitId] = useState(null);
+  const [assignmentDetailOpen, setAssignmentDetailOpen] = useState(false);
+  const [selectedAssignment, setSelectedAssignment] = useState(null);
 
   const [expandedUnits, setExpandedUnits] = useState({});
+
+  const handleViewAssignment = (assignment) => {
+    setSelectedAssignment(assignment);
+    setAssignmentDetailOpen(true);
+  };
 
   const sortedUnits = Array.isArray(units)
     ? [...units].sort((a, b) => (a.OrderIndex || 0) - (b.OrderIndex || 0))
@@ -242,6 +280,9 @@ export default function CurriculumSection({
 
     if (!expandedUnits[unitId] && !lessonsByUnit[unitId]) {
       onLoadLessons(unitId);
+    }
+    if (!assignmentsByUnit[unitId] && onLoadAssignments) {
+      onLoadAssignments(unitId);
     }
   };
 
@@ -478,7 +519,11 @@ export default function CurriculumSection({
                                           <VisibilityOffIcon />
                                         )
                                       }
-                                      label={unit.Status}
+                                      label={
+                                        unit.Status === "VISIBLE"
+                                          ? "Hiển thị"
+                                          : "Ẩn"
+                                      }
                                       size="small"
                                       color={
                                         unit.Status === "VISIBLE"
@@ -622,6 +667,57 @@ export default function CurriculumSection({
                                       onDeleteLesson={handleDeleteLessonClick}
                                     />
                                   )}
+                                  <Box sx={{ mt: 4 }}>
+                                    <Typography
+                                      variant="subtitle2"
+                                      fontWeight={600}
+                                      color="text.secondary"
+                                      sx={{ mb: 2 }}
+                                    >
+                                      Bài tập của chương
+                                    </Typography>
+
+                                    {loadingAssignments[unit.UnitID] ? (
+                                      <Box
+                                        sx={{
+                                          py: 2,
+                                          display: "flex",
+                                          justifyContent: "center",
+                                        }}
+                                      >
+                                        <CircularProgress size={24} />
+                                      </Box>
+                                    ) : !assignmentsByUnit[unit.UnitID] ||
+                                      assignmentsByUnit[unit.UnitID].length ===
+                                        0 ? (
+                                      <Paper
+                                        variant="outlined"
+                                        sx={{
+                                          p: 3,
+                                          textAlign: "center",
+                                          bgcolor: "grey.50",
+                                          borderRadius: 1,
+                                        }}
+                                      >
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                        >
+                                          Chưa có bài tập nào.
+                                        </Typography>
+                                      </Paper>
+                                    ) : (
+                                      <AssignmentsList
+                                        assignments={
+                                          assignmentsByUnit[unit.UnitID]
+                                        }
+                                        onViewDetail={(assignment) => {
+                                          setSelectedAssignment(assignment);
+                                          setAssignmentDetailOpen(true);
+                                        }}
+                                      />
+                                    )}
+                                  </Box>
                                 </Box>
                               </Collapse>
                             </Stack>
@@ -659,6 +755,197 @@ export default function CurriculumSection({
         onClose={() => setLessonDialogOpen(false)}
         onSubmit={handleSubmitLessonDialog}
       />
+      <Dialog
+        open={assignmentDetailOpen}
+        onClose={() => setAssignmentDetailOpen(false)}
+        maxWidth="md"
+        fullWidth
+        scroll="paper"
+      >
+        <DialogTitle sx={{ bgcolor: "primary.main", color: "white", py: 2 }}>
+          <Stack direction="row" alignItems="center" spacing={2}>
+            {selectedAssignment && getAssignmentIcon(selectedAssignment.Type)}
+            <Typography variant="h6" fontWeight={700}>
+              {selectedAssignment?.Title || "Chi tiết bài tập"}
+            </Typography>
+          </Stack>
+        </DialogTitle>
+
+        <DialogContent dividers sx={{ py: 4 }}>
+          {selectedAssignment ? (
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Mô tả bài tập
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+                  {selectedAssignment.Description || "Không có mô tả"}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Loại bài tập
+                </Typography>
+                <Chip
+                  label={getTypeLabel(selectedAssignment.Type)}
+                  color="primary"
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Trạng thái
+                </Typography>
+                <Chip
+                  label={
+                    selectedAssignment.Status === "published"
+                      ? "Đã phát hành"
+                      : "Nháp"
+                  }
+                  color={
+                    selectedAssignment.Status === "published"
+                      ? "success"
+                      : "warning"
+                  }
+                />
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Hạn nộp bài
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <AccessTimeIcon fontSize="small" color="action" />
+                  <Typography>
+                    {selectedAssignment.Deadline
+                      ? new Date(selectedAssignment.Deadline).toLocaleString(
+                          "vi-VN",
+                          {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }
+                        )
+                      : "Không giới hạn"}
+                  </Typography>
+                </Stack>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Thời gian làm bài
+                </Typography>
+                <Typography>
+                  {selectedAssignment.MaxDuration
+                    ? `${selectedAssignment.MaxDuration} phút`
+                    : "Không giới hạn"}
+                </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <Typography
+                  variant="subtitle2"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Hiển thị đáp án
+                </Typography>
+                <Typography textTransform="capitalize">
+                  {selectedAssignment.ShowAnswersAfter === "after_submission"
+                    ? "Sau khi nộp bài"
+                    : selectedAssignment.ShowAnswersAfter === "immediately"
+                    ? "Ngay lập tức"
+                    : selectedAssignment.ShowAnswersAfter || "Không hiển thị"}
+                </Typography>
+              </Grid>
+
+              {selectedAssignment.FileURL && (
+                <Grid item xs={12} md={6}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
+                    Tài liệu đính kèm
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<DescriptionIcon />}
+                    href={selectedAssignment.FileURL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Mở tài liệu
+                  </Button>
+                </Grid>
+              )}
+
+              {selectedAssignment.MediaURL && (
+                <Grid item xs={12}>
+                  <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                  >
+                    Video hướng dẫn
+                  </Typography>
+                  <Box
+                    component="video"
+                    controls
+                    src={selectedAssignment.MediaURL}
+                    sx={{
+                      width: "100%",
+                      maxHeight: 420,
+                      borderRadius: 2,
+                      overflow: "hidden",
+                      bgcolor: "black",
+                      boxShadow: 3,
+                    }}
+                  />
+                </Grid>
+              )}
+            </Grid>
+          ) : (
+            <Box sx={{ py: 8, textAlign: "center" }}>
+              <CircularProgress />
+            </Box>
+          )}
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2.5, bgcolor: "grey.50" }}>
+          <Button
+            onClick={() => setAssignmentDetailOpen(false)}
+            variant="contained"
+            size="large"
+          >
+            Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
@@ -865,6 +1152,98 @@ function LessonsList({ unitId, lessons, onEditLesson, onDeleteLesson }) {
         </Box>
       )}
     </Droppable>
+  );
+}
+
+function AssignmentsList({ assignments, onViewDetail }) {
+  if (!assignments || assignments.length === 0) {
+    return (
+      <Paper
+        variant="outlined"
+        sx={{ p: 3, textAlign: "center", bgcolor: "grey.50", borderRadius: 1 }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Chưa có bài tập nào.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+      {assignments.map((assign) => (
+        <Box
+          key={assign.AssignmentID}
+          sx={{
+            borderRadius: 1,
+            bgcolor: "background.paper",
+            border: "1px solid",
+            borderColor: "divider",
+            p: 2,
+            boxShadow: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 2,
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexGrow: 1,
+              minWidth: 0,
+            }}
+          >
+            {getAssignmentIcon(assign.Type)}
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="body2" fontWeight={500} noWrap>
+                {assign.Title}
+              </Typography>
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{ mt: 0.5, flexWrap: "wrap", gap: 0.5 }}
+              >
+                <Chip
+                  label={getTypeLabel(assign.Type)}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
+                />
+                {assign.Deadline && (
+                  <Chip
+                    icon={<AccessTimeIcon fontSize="small" />}
+                    label={new Date(assign.Deadline).toLocaleDateString(
+                      "vi-VN"
+                    )}
+                    size="small"
+                    variant="outlined"
+                  />
+                )}
+                <Chip
+                  label={
+                    assign.Status === "published" ? "Đã phát hành" : "Nháp"
+                  }
+                  size="small"
+                  color={assign.Status === "published" ? "success" : "default"}
+                  variant="outlined"
+                />
+              </Stack>
+            </Box>
+          </Box>
+          <IconButton
+            size="small"
+            color="primary"
+            onClick={() => onViewDetail?.(assign)}
+            sx={{ "&:hover": { bgcolor: "primary.light" } }}
+          >
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+        </Box>
+      ))}
+    </Box>
   );
 }
 
@@ -1102,7 +1481,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               }}
             >
               {values.file ? (
-                // Đã chọn file mới
+                // 1. Người dùng vừa chọn file mới → hiện tên file mới
                 <Stack direction="row" spacing={2} alignItems="center">
                   <DescriptionIcon color="primary" />
                   <Box>
@@ -1114,20 +1493,23 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
                     </Typography>
                   </Box>
                 </Stack>
-              ) : values.existingFileName || values.existingFileUrl ? (
-                // Đang dùng file cũ từ DB
+              ) : isEdit &&
+                (values.existingFileName || values.existingFileUrl) ? (
+                // 2. Đang ở chế độ EDIT + có file cũ → hiện preview file cũ
                 <Stack direction="row" spacing={2} alignItems="center">
-                  <DescriptionIcon color="action" />
+                  <DescriptionIcon color="success" />
                   <Box>
                     <Typography variant="body2" fontWeight={500}>
                       {values.existingFileName ||
-                        values.existingFileUrl.split("/").pop()}
+                        decodeURIComponent(
+                          values.existingFileUrl.split("/").pop()
+                        )}
                     </Typography>
                     {values.existingFileUrl && (
                       <Typography
                         variant="caption"
                         color="primary"
-                        sx={{ textDecoration: "underline" }}
+                        sx={{ textDecoration: "underline", cursor: "pointer" }}
                         component="a"
                         href={values.existingFileUrl}
                         target="_blank"
@@ -1146,7 +1528,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
                   </Box>
                 </Stack>
               ) : (
-                // Chưa có file
+                // 3. Trường hợp tạo mới hoặc edit nhưng chưa từng có file
                 <Stack direction="row" spacing={2} alignItems="center">
                   <AddIcon />
                   <Box>

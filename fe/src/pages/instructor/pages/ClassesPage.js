@@ -5,7 +5,7 @@ import { Box } from "@mui/material";
 import ClassesLayout from "../components/class/ClassesLayout";
 
 // Tạm giống mẫu course nhưng chỉnh lại cho đúng route
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = "https://atps-be.onrender.com/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -22,62 +22,79 @@ apiClient.interceptors.request.use((config) => {
 export default function ClassesPage() {
   const [classes, setClasses] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // filter/search state vẫn để ở page để sau dễ sync URL nếu cần
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
 
   const fetchClasses = async () => {
     try {
       setLoading(true);
-
       const res = await apiClient.get("/classes");
       const data = res.data || [];
 
-      const mapped = data.map((c, index) => {
-        const statusRaw = (c.Status || "").toLowerCase();
-        let uiStatus = "upcoming";
-        if (statusRaw.includes("ongoing") || statusRaw.includes("đang")) {
-          uiStatus = "ongoing";
-        } else if (
-          statusRaw.includes("completed") ||
-          statusRaw.includes("finished") ||
-          statusRaw.includes("kết")
-        ) {
-          uiStatus = "completed";
+      const mapped = data.map((c) => {
+        const isOngoing = c.openDate
+          ? new Date(c.openDate) <= new Date()
+          : new Date(c.openDatePlan) <= new Date();
+
+        const isCompleted =
+          c.completedSessions >= c.totalSessions && c.totalSessions > 0;
+
+        const uiStatus = isCompleted
+          ? "completed"
+          : isOngoing
+          ? "ongoing"
+          : "upcoming";
+
+        const progress =
+          c.totalSessions > 0
+            ? Math.round((c.completedSessions / c.totalSessions) * 100)
+            : 0;
+
+        let nextSessionDisplay = "-";
+        if (c.nextSessionDate) {
+          const date = new Date(c.nextSessionDate);
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const tomorrow = new Date(today);
+          tomorrow.setDate(tomorrow.getDate() + 1);
+
+          if (date.toDateString() === today.toDateString()) {
+            nextSessionDisplay = "Hôm nay";
+          } else if (date.toDateString() === tomorrow.toDateString()) {
+            nextSessionDisplay = "Ngày mai";
+          } else {
+            nextSessionDisplay = date.toLocaleDateString("vi-VN", {
+              weekday: "short",
+              day: "2-digit",
+              month: "2-digit",
+            });
+          }
         }
 
-        const palette = ["#667eea", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
-        const thumbnail = palette[index % palette.length];
-
         return {
-          id: c.ClassID,
-          courseName: c.CourseTitle,
-          className: c.Name,
-          classCode: c.Name,
-          instructorName: c.InstructorName,
+          id: c.classId,
+          className: c.className,
+          courseName: c.courseTitle || c.className,
+          courseImage: c.courseImage || "/images/default-class.jpg",
+          courseLevel: c.courseLevel,
 
-          students: Number(c.StudentCount ?? 0),
-          totalStudents: Number(c.Maxstudent ?? 0),
+          students: c.currentStudents,
+          totalStudents: c.maxStudents,
 
-          fee: c.Fee,
-          numOfSession: c.Numofsession,
+          fee: Number(c.fee),
+          totalSessions: c.totalSessions,
+          completedSessions: c.completedSessions,
+          progress,
 
           status: uiStatus,
-          startDatePlan: c.OpendatePlan,
-          endDatePlan: c.EnddatePlan,
-          startDate: c.Opendate,
-          endDate: c.Enddate,
+          startDatePlan: c.openDatePlan,
+          startDate: c.openDate,
 
-          zoomId: c.ZoomID,
-          zoomPass: c.Zoompass,
+          hasSessionToday: c.hasSessionToday,
+          nextSession: nextSessionDisplay,
+          schedule: c.scheduleSummary || "Chưa có lịch",
 
-          progress: 0,
-          attendanceRate: 0,
-          nextSession: "-",
-          schedule: "",
-          thumbnail,
-          pendingAssignments: 0,
+          isTodayClass: c.hasSessionToday,
         };
       });
 

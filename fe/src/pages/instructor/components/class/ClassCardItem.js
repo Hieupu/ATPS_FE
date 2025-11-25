@@ -1,219 +1,191 @@
 import React from "react";
 import {
   Card,
+  CardMedia,
   CardContent,
-  Box,
   Typography,
+  Box,
   Chip,
-  Stack,
-  Tooltip,
+  LinearProgress,
   IconButton,
-  Button,
 } from "@mui/material";
-import {
-  MoreVert,
-  People,
-  CheckCircle,
-  PlayCircle,
-  Schedule,
-  HourglassEmpty,
-  VideoCall,
-  EditCalendar,
-} from "@mui/icons-material";
+import { MoreVert, People, Schedule, CalendarToday } from "@mui/icons-material";
 
-export default function ClassCardItem({ cls, getStatusConfig, onMenuOpen }) {
-  const status = getStatusConfig(cls.status);
-
-  const renderStatusIcon = () => {
-    if (cls.status === "ongoing")
-      return <PlayCircle sx={{ fontSize: 56, color: "white", opacity: 0.9 }} />;
-    if (cls.status === "upcoming")
-      return (
-        <HourglassEmpty sx={{ fontSize: 56, color: "white", opacity: 0.9 }} />
-      );
-    if (cls.status === "completed")
-      return (
-        <CheckCircle sx={{ fontSize: 56, color: "white", opacity: 0.9 }} />
-      );
-    return <Schedule sx={{ fontSize: 56, color: "white", opacity: 0.9 }} />;
-  };
-
+export default function ClassCardItem({ cls, onMenuOpen }) {
   return (
     <Card
       sx={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
         borderRadius: 3,
-        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        overflow: "hidden",
+        boxShadow: "0 4px 20px rgba(0,0,0,0.09)",
         transition: "all 0.3s ease",
+        position: "relative",
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
+          transform: "translateY(-8px)",
+          boxShadow: "0 20px 40px rgba(0,0,0,0.16)",
         },
       }}
     >
-      {/* Thumbnail */}
-      <Box
-        sx={{
-          height: 120,
-          background: `linear-gradient(135deg, ${cls.thumbnail} 0%, ${cls.thumbnail}dd 100%)`,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          position: "relative",
-          borderRadius: "12px 12px 0 0",
-        }}
-      >
-        {renderStatusIcon()}
-        <IconButton
+      {/* Badge Hôm nay có lớp */}
+      {cls.isTodayClass && (
+        <Chip
+          label="HÔM NAY CÓ LỚP"
+          color="error"
+          size="small"
           sx={{
             position: "absolute",
-            top: 8,
-            right: 8,
-            backgroundColor: "rgba(255,255,255,0.9)",
-            "&:hover": { backgroundColor: "white" },
+            top: 12,
+            right: 12,
+            zIndex: 10,
+            fontWeight: 900,
+            fontSize: "11px",
+            height: 30,
+            borderRadius: 3,
           }}
-          size="small"
-          onClick={(e) => onMenuOpen(e, cls)}
-        >
-          <MoreVert />
-        </IconButton>
-      </Box>
+        />
+      )}
 
-      <CardContent sx={{ pt: 2 }}>
-        {/* Status & Class name/code */}
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            mb: 1,
-          }}
-        >
-          <Chip
-            label={status.label}
-            size="small"
-            sx={{
-              backgroundColor: status.bg,
-              color: status.color,
-              fontWeight: 600,
-              height: 26,
-              fontSize: "11px",
-            }}
-          />
-          <Typography
-            variant="caption"
-            sx={{ fontWeight: 600, color: "#64748b" }}
-          >
-            {cls.className}
-          </Typography>
-        </Box>
+      {/* Ảnh khóa học */}
+      <CardMedia
+        component="img"
+        height="150"
+        image={cls.courseImage}
+        alt={cls.courseName}
+        sx={{ objectFit: "cover", bgcolor: "#f1f5f9" }}
+      />
 
-        {/* Course title */}
+      {/* Nút More */}
+      <IconButton
+        size="small"
+        onClick={(e) => onMenuOpen(e, cls)}
+        sx={{
+          position: "absolute",
+          top: 10,
+          right: 10,
+          bgcolor: "rgba(255,255,255,0.95)",
+          boxShadow: 2,
+          "&:hover": { bgcolor: "white" },
+        }}
+      >
+        <MoreVert fontSize="small" />
+      </IconButton>
+
+      <CardContent sx={{ flexGrow: 1, pb: 2 }}>
+        {/* Tên lớp */}
         <Typography
           variant="h6"
-          sx={{ fontWeight: 700, mb: 0.5, fontSize: "15px" }}
+          fontWeight={800}
+          gutterBottom
+          sx={{ fontSize: "15px" }}
+        >
+          {cls.className}
+        </Typography>
+
+        {/* Tên khóa học */}
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          noWrap
+          sx={{ mb: 1.5 }}
         >
           {cls.courseName}
         </Typography>
 
-        {/* Instructor */}
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mb: 1 }}
-        >
-          Instructor: {cls.instructorName}
-        </Typography>
+        {/* Lịch học cố định */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1.5 }}>
+          <Schedule
+            sx={{
+              fontSize: 18,
+              color: cls.schedule?.includes("Chưa") ? "#94a3b8" : "#6366f1",
+            }}
+          />
+          <Typography
+            variant="caption"
+            fontWeight={600}
+            color={
+              cls.schedule?.includes("Chưa") ? "text.secondary" : "#4f46e5"
+            }
+          >
+            {cls.schedule}
+          </Typography>
+        </Box>
 
-        {/* Enrollment + fee/sessions */}
-        <Stack direction="row" spacing={2} sx={{ mb: 1.5 }}>
-          <Tooltip title="Enrolled Students">
-            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-              <People sx={{ fontSize: 16, color: "#64748b" }} />
+        {/* Buổi tiếp theo */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <CalendarToday
+            sx={{
+              fontSize: 18,
+              color:
+                cls.nextSession === "Hôm nay"
+                  ? "#dc2626"
+                  : cls.nextSession === "Ngày mai"
+                  ? "#f59e0b"
+                  : "#6366f1",
+            }}
+          />
+          <Typography
+            variant="caption"
+            fontWeight={cls.nextSession === "Hôm nay" ? 900 : 700}
+            color={
+              cls.nextSession === "Hôm nay"
+                ? "#dc2626"
+                : cls.nextSession === "Ngày mai"
+                ? "#f59e0b"
+                : "inherit"
+            }
+            sx={{
+              textTransform:
+                cls.nextSession === "Hôm nay" ? "uppercase" : "none",
+            }}
+          >
+            {cls.nextSession}
+          </Typography>
+        </Box>
+
+        {/* Sĩ số */}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+          <People
+            sx={{
+              fontSize: 19,
+              color:
+                cls.students >= cls.totalStudents * 0.9 ? "#dc2626" : "#10b981",
+            }}
+          />
+          <Typography variant="body2" fontWeight={700}>
+            {cls.students} / {cls.totalStudents} học viên
+          </Typography>
+        </Box>
+
+        {/* Tiến độ */}
+        {cls.totalSessions > 0 && (
+          <Box sx={{ mt: "auto" }}>
+            <Box
+              sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}
+            >
               <Typography variant="caption" color="text.secondary">
-                {cls.students}/{cls.totalStudents} students
+                Đã học
+              </Typography>
+              <Typography variant="caption" fontWeight={700}>
+                {cls.completedSessions} / {cls.totalSessions} buổi
               </Typography>
             </Box>
-          </Tooltip>
-        </Stack>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block" }}
-        >
-          Fee: {cls.fee} VND
-        </Typography>
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block", mb: 1 }}
-        >
-          Sessions: {cls.numOfSession}
-        </Typography>
-
-        <Typography
-          variant="caption"
-          color="text.secondary"
-          sx={{ display: "block" }}
-        >
-          Plan: {cls.startDatePlan} → {cls.endDatePlan}
-        </Typography>
-
-        {/* Bottom actions */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            pt: 1.5,
-            mt: 1,
-            borderTop: "1px solid #f1f5f9",
-          }}
-        >
-          <Box>
-            <Typography variant="caption" color="text.secondary">
-              Zoom ID
-            </Typography>
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 600, fontSize: "13px" }}
-            >
-              {cls.zoomId || "-"}
-            </Typography>
-          </Box>
-          <Stack direction="row" spacing={1}>
-            {cls.status === "ongoing" && (
-              <>
-                <Tooltip title="Take Attendance">
-                  <IconButton size="small" color="primary">
-                    <EditCalendar />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Join Online Class">
-                  <IconButton size="small" color="success">
-                    <VideoCall />
-                  </IconButton>
-                </Tooltip>
-              </>
-            )}
-            <Button
-              variant="outlined"
-              size="small"
+            <LinearProgress
+              variant="determinate"
+              value={cls.progress}
               sx={{
-                borderRadius: 1.5,
-                textTransform: "none",
-                fontSize: "12px",
-                borderColor: cls.thumbnail,
-                color: cls.thumbnail,
-                "&:hover": {
-                  borderColor: cls.thumbnail,
-                  backgroundColor: `${cls.thumbnail}15`,
+                height: 9,
+                borderRadius: 4,
+                bgcolor: "#e2e8f0",
+                "& .MuiLinearProgress-bar": {
+                  bgcolor: cls.isTodayClass ? "#dc2626" : "#6366f1",
                 },
               }}
-            >
-              View Details
-            </Button>
-          </Stack>
-        </Box>
+            />
+          </Box>
+        )}
       </CardContent>
     </Card>
   );

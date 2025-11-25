@@ -22,7 +22,7 @@ import MyProfile from "./pages/MyProfile/MyProfile";
 import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
 import MyCourses from "./pages/course/MyCourses";
-import MyCourseDetailPage from './pages/course/MyCourseDetailPage'; 
+import MyCourseDetailPage from "./pages/course/MyCourseDetailPage";
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
 
@@ -51,10 +51,10 @@ import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
 
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
-
 import ExamsPage from "./pages/exam/ExamsPage";
 
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
+import ClassDetailPage from "./pages/instructor/pages/ClassDetailPage";
 
 function App() {
   return (
@@ -82,7 +82,7 @@ function App() {
           <Route path="/courses" element={<CoursesPage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
           <Route path="/my-courses" element={<MyCourses />} />
-            <Route path="/my-courses/:id"  element={<MyCourseDetailPage />} />
+          <Route path="/my-courses/:id" element={<MyCourseDetailPage />} />
 
           <Route path="/payment-success" element={<PaymentSuccessPage />} />
           <Route path="/payment-failed" element={<PaymentFailedPage />} />
@@ -101,13 +101,10 @@ function App() {
             element={<RescheduleRequestsPage />}
           />
           <Route path="/attendance" element={<AttendancePage />} />
-             <Route path="/zoom" element={<ZoomMeetingPage />} />
+          <Route path="/zoom" element={<ZoomMeetingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
-          <Route
-            path="/paymenthistory"
-            element={<PaymentHistoryPage />}
-          />
+          <Route path="/paymenthistory" element={<PaymentHistoryPage />} />
 
           {/* Admin Routes */}
           <Route path="/admin" element={<AdminLayout />}>
@@ -126,7 +123,7 @@ function App() {
               <Route path="courses" element={<CoursesPagee />} />
               <Route path="courses/:courseId" element={<CourseBuilderPage />} />
               <Route path="classes" element={<InstructorClasses />} />
-              <Route path="classes/detail" element={<ClassDetail />} />
+              <Route path="classes/:classId" element={<ClassDetailPage />} />
               <Route path="assignments" element={<InstructorAssignments />} />
               <Route path="exams" element={<InstructorExams />} />
               <Route path="grades" element={<InstructorGrades />} />
@@ -154,7 +151,7 @@ function App() {
 function AdminDashboard() {
   return (
     <div style={{ padding: "24px" }}>
-      <h1>📊 Dashboard Admin</h1>
+      <h1>Dashboard Admin</h1>
       <p>Chào mừng đến với hệ thống quản lý đào tạo ATPS!</p>
       <div style={{ marginTop: "20px" }}>
         <a
@@ -168,7 +165,7 @@ function AdminDashboard() {
             display: "inline-block",
           }}
         >
-          📚 Quản lý lớp học
+          Quản lý lớp học
         </a>
       </div>
     </div>
@@ -203,7 +200,7 @@ function NotFound() {
           display: "inline-block",
         }}
       >
-        🏠 Về trang chủ
+        Về trang chủ
       </a>
     </div>
   );

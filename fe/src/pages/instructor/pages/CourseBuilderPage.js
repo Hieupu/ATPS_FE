@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import CourseBuilderLayout from "../components/course/CourseBuilderLayout";
 
-const BASE_URL = "http://localhost:9999/api/instructor/courses";
+const BASE_URL = "https://atps-be.onrender.com/api/instructor/courses";
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -28,6 +28,8 @@ export default function CourseBuilderPage() {
   const [units, setUnits] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [lessonsByUnit, setLessonsByUnit] = useState({});
+  const [assignmentsByUnit, setAssignmentsByUnit] = useState({}); // ← THIẾU
+  const [loadingAssignments, setLoadingAssignments] = useState({}); // ← THIẾU
 
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [loadingUnits, setLoadingUnits] = useState(true);
@@ -88,6 +90,9 @@ export default function CourseBuilderPage() {
     units.forEach((u) => {
       if (u.UnitID && !lessonsByUnit[u.UnitID]) {
         fetchLessonsForUnit(u.UnitID);
+      }
+      if (!assignmentsByUnit[u.UnitID]) {
+        fetchAssignmentsForUnit(u.UnitID);
       }
     });
   }, [units]);
@@ -356,6 +361,22 @@ export default function CourseBuilderPage() {
     }
   };
 
+  const fetchAssignmentsForUnit = async (unitId) => {
+    try {
+      setLoadingAssignments((prev) => ({ ...prev, [unitId]: true }));
+      const res = await apiClient.get(`/units/${unitId}/assignments`);
+      setAssignmentsByUnit((prev) => ({
+        ...prev,
+        [unitId]: res.data.assignments || [],
+      }));
+    } catch (err) {
+      console.error("Load assignments failed:", err);
+      setAssignmentsByUnit((prev) => ({ ...prev, [unitId]: [] }));
+    } finally {
+      setLoadingAssignments((prev) => ({ ...prev, [unitId]: false }));
+    }
+  };
+
   return (
     <CourseBuilderLayout
       course={course}
@@ -374,6 +395,9 @@ export default function CourseBuilderPage() {
       onUpdateUnit={handleUpdateUnit}
       onDeleteUnit={handleDeleteUnit}
       onReorderUnits={handleReorderUnits}
+      assignmentsByUnit={assignmentsByUnit}
+      loadingAssignments={loadingAssignments}
+      onLoadAssignments={fetchAssignmentsForUnit}
       // lesson handlers
       onLoadLessons={fetchLessonsForUnit}
       onCreateLesson={handleCreateLesson}

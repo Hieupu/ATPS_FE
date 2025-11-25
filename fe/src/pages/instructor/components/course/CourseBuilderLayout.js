@@ -19,6 +19,9 @@ export default function CourseBuilderLayout({
   onUpdateUnit,
   onDeleteUnit,
   onReorderUnits,
+  assignmentsByUnit,
+  loadingAssignments,
+  onLoadAssignments,
   onLoadLessons,
   onCreateLesson,
   onUpdateLesson,
@@ -83,6 +86,9 @@ export default function CourseBuilderLayout({
             onUpdateUnit={onUpdateUnit}
             onDeleteUnit={onDeleteUnit}
             onReorderUnits={onReorderUnits}
+            assignmentsByUnit={assignmentsByUnit}
+            loadingAssignments={loadingAssignments}
+            onLoadAssignments={onLoadAssignments}
             onLoadLessons={onLoadLessons}
             onCreateLesson={onCreateLesson}
             onUpdateLesson={onUpdateLesson}
