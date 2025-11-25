@@ -64,7 +64,7 @@ const PopularClassesSection = ({
             Lớp Học Nổi Bật
           </Typography>
           <Typography variant="body1" color="text.secondary" sx={{ fontSize: '1.1rem' }}>
-            Khám phá các khóa học chất lượng với giảng viên hàng đầu
+            Khám phá các lớp học chất lượng với giảng viên hàng đầu
           </Typography>
         </Box>
 
@@ -405,7 +405,7 @@ const PopularClassesSection = ({
                 }
               }}
             >
-              Xem tất cả khóa học
+              Xem tất cả lớp học
             </Button>
           </Box>
         )}

@@ -76,18 +76,6 @@ const PopularCoursesSection = ({
           position: 'relative',
           zIndex: 1
         }}>
-          <Chip 
-            label="KHÓA HỌC NỔI BẬT" 
-            sx={{ 
-              mb: 3,
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              fontWeight: 600,
-              fontSize: '0.75rem',
-              height: 32,
-              px: 2
-            }} 
-          />
           <Typography 
             variant="h3" 
             component="h2" 
@@ -99,7 +87,7 @@ const PopularCoursesSection = ({
               mb: 2
             }}
           >
-            Khám phá Khóa học
+            Khoá học nổi bật
           </Typography>
           <Typography 
             variant="h6" 
@@ -112,7 +100,7 @@ const PopularCoursesSection = ({
               fontSize: { xs: '1rem', md: '1.125rem' }
             }}
           >
-            Nâng cao kỹ năng với các khóa học chất lượng cao được thiết kế bởi chuyên gia hàng đầu
+            Các khóa học được thiết kế bởi những giảng viên giàu kinh nghiệm
           </Typography>
         </Box>
 
