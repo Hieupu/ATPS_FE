@@ -1,3 +1,4 @@
+// Thay thế phần InfoItem cho "Lịch học" bằng component riêng
 import React from "react";
 import {
   Box,
@@ -7,6 +8,7 @@ import {
   Card,
   CardContent,
   Button,
+  Chip,
 } from "@mui/material";
 import {
   Person,
@@ -42,6 +44,15 @@ export default function OverviewTab({ classData }) {
     : null;
   const circumference = 2 * Math.PI * 70;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  // Parse lịch học từ scheduleSummary
+  const parseSchedule = (scheduleStr) => {
+    if (!scheduleStr) return [];
+    // Format: "T2 10:20-12:20 | T3 10:20-12:20"
+    return scheduleStr.split("|").map((s) => s.trim());
+  };
+
+  const scheduleItems = parseSchedule(scheduleSummary);
 
   return (
     <Grid container spacing={5}>
@@ -85,12 +96,8 @@ export default function OverviewTab({ classData }) {
             value={dates.openActual || dates.openPlan}
           />
 
-          {/* Lịch học */}
-          <InfoItem
-            icon={<Schedule />}
-            title="Lịch học"
-            value={scheduleSummary}
-          />
+          {/* Lịch học - Custom Component */}
+          <ScheduleInfoCard scheduleItems={scheduleItems} />
 
           {/* Buổi tiếp theo */}
           <InfoItem
@@ -212,6 +219,49 @@ export default function OverviewTab({ classData }) {
         </Card>
       </Grid>
     </Grid>
+  );
+}
+
+
+function ScheduleInfoCard({ scheduleItems }) {
+  return (
+    <Box display="flex" alignItems="flex-start" gap={2}>
+      <Box
+        sx={{
+          width: 48,
+          height: 48,
+          borderRadius: 2,
+          bgcolor: "grey.200",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}
+      >
+        <Schedule sx={{ fontSize: 28, color: "primary.main" }} />
+      </Box>
+      <Box sx={{ flex: 1 }}>
+        <Typography variant="body2" color="text.secondary" gutterBottom>
+          Lịch học
+        </Typography>
+        <Stack direction="row" flexWrap="wrap" gap={1} mt={0.5}>
+          {scheduleItems.map((item, idx) => (
+            <Chip
+              key={idx}
+              label={item}
+              size="small"
+              sx={{
+                fontWeight: 500,
+                bgcolor: "primary.lighter",
+                color: "primary.main",
+                border: "1px solid",
+                borderColor: "primary.light",
+              }}
+            />
+          ))}
+        </Stack>
+      </Box>
+    </Box>
   );
 }
 

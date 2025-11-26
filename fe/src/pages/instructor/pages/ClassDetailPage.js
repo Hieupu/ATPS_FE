@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
 
 import ClassDetailLayout from "../components/class/ClassDetailLayout";
@@ -9,7 +9,7 @@ import OverviewTab from "../components/class/tabs/OverviewTab";
 import StudentsTab from "../components/class/tabs/StudentsTab";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 
-const BASE_URL = "https://atps-be.onrender.com/api/instructor";
+const BASE_URL = "http://localhost:9999/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -25,6 +25,7 @@ apiClient.interceptors.request.use((config) => {
 export default function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // State cho dữ liệu
   const [classData, setClassData] = useState(null);
@@ -35,7 +36,8 @@ export default function ClassDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState(0);
+  const initialTab = parseInt(searchParams.get("tab")) || 0;
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // 1. Lấy chi tiết lớp
   useEffect(() => {

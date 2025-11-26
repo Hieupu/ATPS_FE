@@ -48,6 +48,7 @@ import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
 import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
+import InstructorSchedulePage from "./pages/instructor/pages/InstructorSchedulePage";
 
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
@@ -115,6 +116,7 @@ function AppRoutes() {
           <Route path="assignments" element={<InstructorAssignments />} />
           <Route path="exams" element={<InstructorExams />} />
           <Route path="grades" element={<InstructorGrades />} />
+          <Route path="schedule" element={<InstructorSchedulePage />} />
           <Route path="settings" element={<InstructorSettings />} />
         </Route>
       </Route>
@@ -129,7 +131,7 @@ function App() {
   return (
     <AuthProvider>
       <Router>
-        <AppRoutes /> 
+        <AppRoutes />
         <ToastContainer
           position="top-right"
           autoClose={2500}

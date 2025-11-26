@@ -28,14 +28,12 @@ import AttendanceModal from "../AttendanceModal";
 
 // Tất cả các slot có thể có trong hệ thống
 const ALL_TIME_SLOTS = [
-  { start: "07:30", end: "09:00" },
-  { start: "09:10", end: "10:40" },
-  { start: "10:50", end: "12:20" },
-  { start: "12:50", end: "14:20" },
-  { start: "14:30", end: "16:00" },
-  { start: "16:10", end: "17:40" },
-  { start: "18:00", end: "19:30" },
-  { start: "19:45", end: "21:15" },
+  { start: "08:00", end: "10:00" },
+  { start: "10:20", end: "12:20" },
+  { start: "13:00", end: "15:00" },
+  { start: "15:20", end: "17:20" },
+  { start: "17:40", end: "19:40" },
+  { start: "20:00", end: "22:00" },
 ];
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
@@ -61,13 +59,12 @@ export default function ScheduleTab({
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [weekStart]);
 
-  // Chuẩn hóa giờ từ "07:30:00" → "07:30"
   const normalizeTime = (timeStr) => {
     if (!timeStr) return null;
-    return timeStr.split(":").slice(0, 2).join(":");
+    const normalized = timeStr.split(":").slice(0, 2).join(":");
+    return normalized;
   };
 
-  // Tạo lưới lịch
   const scheduleGrid = useMemo(() => {
     const grid = {};
 
@@ -152,7 +149,6 @@ export default function ScheduleTab({
       </Typography>
 
       <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
-        {/* Nút Điểm danh / Cập nhật - Đã bỏ điều kiện ẩn */}
         {session.totalStudents > 0 && (
           <Button
             size="small"
