@@ -30,6 +30,13 @@ const navItems = [
     icon: <PeopleIcon />,
     path: "/instructor/classes",
   },
+
+  {
+    id: "schedule",
+    label: "Thời khóa biểu",
+    icon: <RequestPageIcon />,
+    path: "/instructor/schedule",
+  },
   {
     id: "assignments",
     label: "Bài tập",
@@ -47,13 +54,6 @@ const navItems = [
     label: "Điểm số",
     icon: <AssessmentIcon />,
     path: "/instructor/grades",
-  },
-
-  {
-    id: "schedule",
-    label: "Thời khóa biểu",
-    icon: <RequestPageIcon />,
-    path: "/instructor/schedule",
   },
 
   {

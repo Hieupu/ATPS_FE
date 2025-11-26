@@ -186,24 +186,9 @@ const LoginPage = () => {
                     <Typography variant="body2" component="span">
                       Ghi nhớ đăng nhập
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      component="span"
-                      sx={{ ml: 0.5 }}
-                    >
-                      (30 ngày)
-                    </Typography>
                   </Box>
                 }
               />
-              <Typography
-                variant="caption"
-                color="warning.main"
-                sx={{ display: "block", ml: 4, mt: 0.5 }}
-              >
-                ⚠️ Không chọn nếu đang sử dụng máy chung
-              </Typography>
             </Box>
 
             <Button

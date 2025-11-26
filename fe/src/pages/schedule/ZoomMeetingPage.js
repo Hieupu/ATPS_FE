@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from "react";
-import { ZoomMtg } from "@zoom/meetingsdk"; 
-import { useAuth } from '../../contexts/AuthContext';
+import { ZoomMtg } from "@zoom/meetingsdk";
+import { useAuth } from "../../contexts/AuthContext";
 
 const ZoomMeetingPage = () => {
   const { user } = useAuth();
@@ -20,11 +20,11 @@ const ZoomMeetingPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ meetingNumber, role }),
       });
-      
+
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
+
       const data = await res.json();
       return data;
     } catch (err) {
@@ -35,21 +35,21 @@ const ZoomMeetingPage = () => {
 
   useEffect(() => {
     const loadScheduleData = () => {
-      const zoomData = sessionStorage.getItem('zoomScheduleData');
+      const zoomData = sessionStorage.getItem("zoomScheduleData");
       console.log("zoomData", zoomData);
-      
+
       if (zoomData) {
         try {
           const parsedData = JSON.parse(zoomData);
           setSchedule(parsedData.schedule);
           // KHÔNG xóa sessionStorage ở đây để tránh race condition
         } catch (err) {
-          console.error('Error parsing schedule data:', err);
-          setError('Không thể tải thông tin buổi học');
+          console.error("Error parsing schedule data:", err);
+          setError("Không thể tải thông tin buổi học");
           setIsLoading(false);
         }
       } else {
-        setError('Không tìm thấy thông tin buổi học');
+        setError("Không tìm thấy thông tin buổi học");
         setIsLoading(false);
       }
     };
@@ -65,11 +65,11 @@ const ZoomMeetingPage = () => {
       try {
         setIsLoading(true);
         setHasInitialized(true);
-        
+
         const meetingNumber = schedule.ZoomID;
         const passWord = schedule.Zoompass;
-        const userName = user.Email;
-        const userEmail = user.Email;
+        const userName = user.email;
+        const userEmail = user.email;
         const role = 1;
 
         if (!meetingNumber) {
@@ -82,13 +82,13 @@ const ZoomMeetingPage = () => {
         // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
-        
+
         // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
-            
+
             // Join meeting
             ZoomMtg.join({
               sdkKey: sdkKey,
@@ -97,34 +97,33 @@ const ZoomMeetingPage = () => {
               passWord: passWord,
               userName: userName,
               userEmail: userEmail,
-              tk: '',
+              tk: "",
               success: (success) => {
                 console.log("Join success:", success);
                 setIsLoading(false);
                 // Xóa sessionStorage sau khi đã join thành công
-                sessionStorage.removeItem('zoomScheduleData');
+                sessionStorage.removeItem("zoomScheduleData");
               },
               error: (error) => {
                 console.error("Join error:", error);
                 setError("Lỗi tham gia phòng học: " + error.message);
                 setIsLoading(false);
-                sessionStorage.removeItem('zoomScheduleData');
-              }
+                sessionStorage.removeItem("zoomScheduleData");
+              },
             });
           },
           error: (error) => {
             console.error("Init error:", error);
             setError("Lỗi khởi tạo: " + error.message);
             setIsLoading(false);
-            sessionStorage.removeItem('zoomScheduleData');
-          }
+            sessionStorage.removeItem("zoomScheduleData");
+          },
         });
-
       } catch (err) {
         console.error("Lỗi khởi tạo meeting:", err);
         setError(err.message || "Lỗi khi tham gia phòng học");
         setIsLoading(false);
-        sessionStorage.removeItem('zoomScheduleData');
+        sessionStorage.removeItem("zoomScheduleData");
       }
     };
 
@@ -138,16 +137,18 @@ const ZoomMeetingPage = () => {
 
   if (error) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh',
-        flexDirection: 'column'
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+          flexDirection: "column",
+        }}
+      >
         <h2>Lỗi</h2>
         <p>{error}</p>
-        <button onClick={() => window.location.href = '/'}>
+        <button onClick={() => (window.location.href = "/")}>
           Quay về trang chủ
         </button>
       </div>
@@ -156,12 +157,14 @@ const ZoomMeetingPage = () => {
 
   if (isLoading) {
     return (
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'center', 
-        alignItems: 'center', 
-        height: '100vh' 
-      }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "100vh",
+        }}
+      >
         <p>Đang kết nối đến phòng học...</p>
       </div>
     );
@@ -169,13 +172,13 @@ const ZoomMeetingPage = () => {
 
   return (
     <div style={{ width: "100vw", height: "100vh", background: "#000" }}>
-      <div 
-        id="meetingSDKElement" 
+      <div
+        id="meetingSDKElement"
         ref={meetingContainerRef}
-        style={{ width: "100%", height: "100%" }} 
+        style={{ width: "100%", height: "100%" }}
       />
     </div>
   );
-}
+};
 
 export default ZoomMeetingPage;

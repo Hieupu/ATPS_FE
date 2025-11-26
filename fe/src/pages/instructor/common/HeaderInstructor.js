@@ -40,6 +40,8 @@ export function HeaderInstructor() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  console.log(user);
+
   // Load notifications
   useEffect(() => {
     const load = async () => {
@@ -82,6 +84,7 @@ export function HeaderInstructor() {
         boxShadow: "none",
         ml: "250px",
         width: "calc(100% - 250px)",
+        zIndex: 900,
       }}
       position="fixed"
     >
@@ -284,6 +287,8 @@ export function HeaderInstructor() {
           {/* Avatar Menu */}
           <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>
             <Avatar
+              src={user?.ProfilePicture || user?.profilePicture || undefined}
+              alt={user?.username || user?.Username || "Avatar"}
               sx={{
                 width: 48,
                 height: 48,
