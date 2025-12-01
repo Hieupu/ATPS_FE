@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ListItem,
   Box,
@@ -16,6 +16,8 @@ import {
   AccessTime,
   Lock,
 } from '@mui/icons-material';
+import AssignmentDialog from './AssignmentDialog';
+import AssignmentResultDialog from './AssignmentResultDialog';
 import { 
   getFileIcon, 
   getTypeColor, 
@@ -23,60 +25,96 @@ import {
   isAssignmentOverdue,
   getAssignmentStatusColor,
   getAssignmentStatusText 
-} from './utils';
+} from '../../../utils/assignment';
 
-const AssignmentItem = ({ assignment, isEnrolled, onSubmitAssignment, index }) => {
+const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [resultDialogOpen, setResultDialogOpen] = useState(false);
+  
   const typeInfo = getTypeColor('assignment');
   const hasSubmission = assignment.Submission;
   const isOverdue = isAssignmentOverdue(assignment.Deadline);
 
+  const handleStartAssignment = () => {
+    setDialogOpen(true);
+  };
+
+  const handleViewResult = () => {
+    setResultDialogOpen(true);
+  };
+
+  const handleSubmitSuccess = () => {
+    setDialogOpen(false);
+    onRefresh?.(); // Refresh curriculum to show updated submission
+  };
+
   return (
-    <ListItem
-      sx={{
-        py: 2,
-        px: 3,
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'grey.50',
-        '&:last-child': { borderBottom: 'none' },
-        transition: 'all 0.2s',
-        '&:hover': {
-          bgcolor: 'action.hover',
-          transform: 'translateX(4px)',
-        }
-      }}
-      secondaryAction={
-        <AssignmentActions 
-          assignment={assignment}
-          isEnrolled={isEnrolled}
-          hasSubmission={hasSubmission}
-          isOverdue={isOverdue}
-          onSubmitAssignment={onSubmitAssignment}
-        />
-      }
-    >
-      <AssignmentIndex index={index} />
-      
-      <ListItemIcon sx={{ minWidth: 40 }}>
-        {getFileIcon('assignment')}
-      </ListItemIcon>
-      
-      <ListItemText
-        primary={
-          <AssignmentPrimary 
-            assignment={assignment}
-            typeInfo={typeInfo}
-          />
-        }
-        secondary={
-          <AssignmentSecondary 
+    <>
+      <ListItem
+        sx={{
+          py: 2,
+          px: 3,
+          borderBottom: '1px solid',
+          borderColor: 'divider',
+          bgcolor: 'grey.50',
+          '&:last-child': { borderBottom: 'none' },
+          transition: 'all 0.2s',
+          '&:hover': {
+            bgcolor: 'action.hover',
+            transform: 'translateX(4px)',
+          }
+        }}
+        secondaryAction={
+          <AssignmentActions 
             assignment={assignment}
             isEnrolled={isEnrolled}
             hasSubmission={hasSubmission}
+            isOverdue={isOverdue}
+            onStart={handleStartAssignment}
+            onViewResult={handleViewResult}
           />
         }
+      >
+        <AssignmentIndex index={index} />
+        
+        <ListItemIcon sx={{ minWidth: 40 }}>
+          {getFileIcon('assignment')}
+        </ListItemIcon>
+        
+        <ListItemText
+          primary={
+            <AssignmentPrimary 
+              assignment={assignment}
+              typeInfo={typeInfo}
+            />
+          }
+          secondary={
+            <AssignmentSecondary 
+              assignment={assignment}
+              isEnrolled={isEnrolled}
+              hasSubmission={hasSubmission}
+            />
+          }
+        />
+      </ListItem>
+
+      {/* Assignment Dialog */}
+      <AssignmentDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        assignment={assignment}
+        onSubmitSuccess={handleSubmitSuccess}
       />
-    </ListItem>
+
+      {/* Result Dialog */}
+      {hasSubmission && (
+        <AssignmentResultDialog
+          open={resultDialogOpen}
+          onClose={() => setResultDialogOpen(false)}
+          assignment={assignment}
+        />
+      )}
+    </>
   );
 };
 
@@ -204,7 +242,14 @@ const FileAttachments = ({ assignment }) => (
   </Box>
 );
 
-const AssignmentActions = ({ assignment, isEnrolled, hasSubmission, isOverdue, onSubmitAssignment }) => {
+const AssignmentActions = ({ 
+  assignment, 
+  isEnrolled, 
+  hasSubmission, 
+  isOverdue, 
+  onStart,
+  onViewResult 
+}) => {
   if (!isEnrolled) {
     return (
       <Chip
@@ -230,6 +275,13 @@ const AssignmentActions = ({ assignment, isEnrolled, hasSubmission, isOverdue, o
             Điểm: {assignment.Submission.Score}
           </Typography>
         )}
+        <Button
+          size="small"
+          variant="outlined"
+          onClick={onViewResult}
+        >
+          Xem kết quả
+        </Button>
       </Box>
     );
   }
@@ -238,7 +290,7 @@ const AssignmentActions = ({ assignment, isEnrolled, hasSubmission, isOverdue, o
     <Button
       variant="contained"
       size="small"
-      onClick={() => onSubmitAssignment(assignment)}
+      onClick={onStart}
       disabled={isOverdue}
       sx={{
         borderRadius: 2,
@@ -247,7 +299,7 @@ const AssignmentActions = ({ assignment, isEnrolled, hasSubmission, isOverdue, o
         px: 2,
       }}
     >
-      {isOverdue ? 'Quá hạn' : 'Nộp bài'}
+      {isOverdue ? 'Quá hạn' : 'Làm bài'}
     </Button>
   );
 };

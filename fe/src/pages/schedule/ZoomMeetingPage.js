@@ -10,8 +10,6 @@ const ZoomMeetingPage = () => {
   const meetingContainerRef = useRef(null);
   const [hasInitialized, setHasInitialized] = useState(false);
 
-  console.log("user", user);
-
   // Lấy signature từ backend
   const getSignature = async (meetingNumber, role) => {
     try {
@@ -42,7 +40,6 @@ const ZoomMeetingPage = () => {
         try {
           const parsedData = JSON.parse(zoomData);
           setSchedule(parsedData.schedule);
-          // KHÔNG xóa sessionStorage ở đây để tránh race condition
         } catch (err) {
           console.error("Error parsing schedule data:", err);
           setError("Không thể tải thông tin buổi học");
@@ -68,41 +65,42 @@ const ZoomMeetingPage = () => {
 
         const meetingNumber = schedule.ZoomID;
         const passWord = schedule.Zoompass;
-        const userName = user.email;
-        const userEmail = user.email;
+        
+        const Username = user.Username || user.Email || 'User';
+        const userEmail = user.Email || '';
         const role = 1;
 
         if (!meetingNumber) {
           throw new Error("Thiếu meeting number");
         }
 
-        // Lấy signature
+        if (!Username || typeof Username !== 'string' || Username.trim() === '') {
+          throw new Error("Username không hợp lệ");
+        }
+
         const { signature, sdkKey } = await getSignature(meetingNumber, role);
 
-        // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
-        // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
+            
 
-            // Join meeting
             ZoomMtg.join({
               sdkKey: sdkKey,
               signature: signature,
               meetingNumber: meetingNumber,
               passWord: passWord,
-              userName: userName,
+              userName: Username, 
               userEmail: userEmail,
               tk: "",
               success: (success) => {
                 console.log("Join success:", success);
                 setIsLoading(false);
-                // Xóa sessionStorage sau khi đã join thành công
-                sessionStorage.removeItem("zoomScheduleData");
+                sessionStorage.removeItem('zoomScheduleData');
               },
               error: (error) => {
                 console.error("Join error:", error);
@@ -128,11 +126,6 @@ const ZoomMeetingPage = () => {
     };
 
     initializeMeeting();
-
-    // Cleanup function
-    return () => {
-      // Có thể thêm cleanup logic nếu cần
-    };
   }, [schedule, user, hasInitialized]);
 
   if (error) {
