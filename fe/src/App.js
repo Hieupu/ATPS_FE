@@ -54,8 +54,6 @@ import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
 import ExamsPage from "./pages/exam/ExamsPage";
 
-import AssignmentsPage from "./pages/assignment/AssignmentsPage";
-
 function App() {
   return (
     <AuthProvider>
@@ -90,7 +88,6 @@ function App() {
           <Route path="/instructors" element={<InstructorsPage />} />
           <Route path="/instructors/:id" element={<InstructorDetailPage />} />
 
-          <Route path="/assignments" element={<AssignmentsPage />} />
 
           <Route path="/exam" element={<ExamsPage />} />
 
@@ -101,7 +98,7 @@ function App() {
             element={<RescheduleRequestsPage />}
           />
           <Route path="/attendance" element={<AttendancePage />} />
-             <Route path="/zoom" element={<ZoomMeetingPage />} />
+               <Route path="/zoom/:zoomId?/:zoomPass?" element={<ZoomMeetingPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/materials" element={<MaterialsPage />} />
           <Route

@@ -10,7 +10,7 @@ import {
   Alert,
   Button,
 } from '@mui/material';
-import { Schedule, People, VideoCall, Assignment } from '@mui/icons-material';
+import { Schedule, People, Assignment } from '@mui/icons-material';
 import { getMyClassesInCourseApi } from '../../../apiServices/courseService';
 
 const MyClassList = ({ courseId }) => {
@@ -85,99 +85,139 @@ const MyClassList = ({ courseId }) => {
 
   return (
     <Box>
-      <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
-        Lớp học của bạn ({classes.length})
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            fontFamily: "'Poppins', sans-serif",
+          }}
+        >
+          👥 Lớp học của bạn
+        </Typography>
+        <Chip
+          label={`${classes.length} lớp`}
+          size="small"
+          sx={{
+            bgcolor: "primary.main",
+            color: "white",
+            fontWeight: 600,
+          }}
+        />
+      </Box>
       <Grid container spacing={3}>
         {classes.map((classItem) => (
           <Grid item xs={12} key={classItem.ClassID}>
             <Card 
-              variant="outlined" 
+              elevation={0}
               sx={{ 
+                borderRadius: 4,
+                border: "1px solid rgba(99,102,241,0.15)",
+                boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
                 transition: 'all 0.3s ease',
                 '&:hover': {
-                  boxShadow: 2,
-                  borderColor: 'primary.main'
+                  boxShadow: '0 15px 35px rgba(99,102,241,0.2)',
+                  transform: 'translateY(-3px)',
+                  borderColor: 'rgba(99,102,241,0.3)',
                 }
               }}
             >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+              <CardContent sx={{ p: 3 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
                   <Box>
-                    <Typography variant="h6" component="h3" gutterBottom>
+                    <Typography
+                      variant="h6"
+                      component="h3"
+                      sx={{
+                        fontWeight: 700,
+                        fontFamily: "'Poppins', sans-serif",
+                        mb: 1,
+                      }}
+                    >
                       {classItem.ClassName || `Lớp ${classItem.ClassID}`}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Giảng viên: {classItem.InstructorName}
+                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.9rem" }}>
+                      👨‍🏫 Giảng viên: <strong>{classItem.InstructorName}</strong>
                     </Typography>
                   </Box>
                   <Chip 
-                    label={classItem.Status === 'active' ? 'Đang hoạt động' : classItem.Status} 
-                    color={classItem.Status === 'active' ? 'success' : 'default'}
+                    label={classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'Đang hoạt động' : classItem.Status} 
+                    sx={{
+                      bgcolor: classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'success.light' : 'grey.200',
+                      color: classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'success.dark' : 'text.secondary',
+                      fontWeight: 600,
+                    }}
                     size="small"
                   />
                 </Box>
                 
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 2 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <People sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
-                    <Typography variant="body2">
-                      {classItem.StudentCount || 0} học viên
+                <Box
+                  sx={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 2,
+                    mb: 3,
+                    p: 2,
+                    bgcolor: "#f8f9fe",
+                    borderRadius: 3,
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <People sx={{ fontSize: 20, color: 'primary.main' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {classItem.StudentCount || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      học viên
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Schedule sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
-                    <Typography variant="body2">
-                      {classItem.TotalSessions || 0} buổi học
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                    <Schedule sx={{ fontSize: 20, color: 'primary.main' }} />
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {classItem.TotalSessions || 0}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      buổi học
                     </Typography>
                   </Box>
-                  {classItem.startDate && (
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <Assignment sx={{ mr: 1, fontSize: 20, color: 'text.secondary' }} />
-                      <Typography variant="body2">
-                        Khai giảng: {new Date(classItem.startDate).toLocaleDateString('vi-VN')}
+                  {classItem.Opendate && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      <Assignment sx={{ fontSize: 20, color: 'primary.main' }} />
+                      <Typography variant="caption" color="text.secondary">
+                        Khai giảng: <strong>{new Date(classItem.Opendate).toLocaleDateString('vi-VN')}</strong>
                       </Typography>
                     </Box>
                   )}
                 </Box>
 
                 {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
-                  <Box sx={{ mb: 3 }}>
-                    <Typography variant="subtitle2" gutterBottom sx={{ fontWeight: 600 }}>
-                      Lịch học hàng tuần:
+                  <Box>
+                    <Typography
+                      variant="subtitle2"
+                      gutterBottom
+                      sx={{
+                        fontWeight: 700,
+                        color: "text.primary",
+                        mb: 1.5,
+                      }}
+                    >
+                      📅 Lịch học hàng tuần:
                     </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
                       {classItem.weeklySchedule.map((schedule, index) => (
                         <Chip
                           key={index}
                           label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
-                          variant="outlined"
+                          sx={{
+                            bgcolor: "rgba(102,126,234,0.1)",
+                            color: "primary.main",
+                            fontWeight: 600,
+                            borderRadius: 2,
+                          }}
                           size="small"
-                          color="primary"
                         />
                       ))}
                     </Box>
-                  </Box>
-                )}
-
-                {classItem.ZoomURL && (
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                      <VideoCall sx={{ mr: 1, color: 'primary.main' }} />
-                      <Typography variant="body2" color="text.secondary">
-                        Lớp học trực tuyến
-                      </Typography>
-                    </Box>
-                    <Button 
-                      variant="contained" 
-                      size="small"
-                      component="a"
-                      href={classItem.ZoomURL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Tham gia ngay
-                    </Button>
                   </Box>
                 )}
               </CardContent>

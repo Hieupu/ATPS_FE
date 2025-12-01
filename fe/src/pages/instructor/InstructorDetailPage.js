@@ -85,6 +85,7 @@ const InstructorDetailPage = () => {
       setLoading(true);
       setError(null);
       const data = await getInstructorByIdApi(id);
+      console.log("getInstructorByIdApi" , data)
       setInstructor(data.instructor);
     } catch (error) {
       console.error("Error fetching instructor:", error);
@@ -298,7 +299,8 @@ const formatDuration = (hours) => {
                     variant="h4"
                     sx={{ fontWeight: 800, mb: 0.5 }}
                   >
-                    {instructor.TotalCourses || 0}
+               {instructor?.Courses?.length ?? 0}
+
                   </Typography>
                   <Typography variant="body2" sx={{ opacity: 0.9, fontSize: "0.9rem" }}>
                     Khóa học
@@ -694,46 +696,6 @@ const formatDuration = (hours) => {
                       </Box>
                     </Grid>
                   )}
-
-                  {instructor.CV && (
-                    <Grid item xs={12}>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          alignItems: "start",
-                          gap: 2,
-                          p: 2,
-                          borderRadius: 2,
-                          bgcolor: "grey.50",
-                        }}
-                      >
-                        <BusinessCenter color="primary" sx={{ mt: 0.5 }} />
-                        <Box sx={{ flex: 1 }}>
-                          <Typography
-                            variant="subtitle2"
-                            sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}
-                          >
-                            CV / Hồ sơ
-                          </Typography>
-                          <Button
-                            variant="outlined"
-                            size="medium"
-                            startIcon={<Visibility />}
-                            href={instructor.CV}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            sx={{
-                              borderRadius: 2,
-                              textTransform: "none",
-                              fontWeight: 600,
-                            }}
-                          >
-                            Xem CV
-                          </Button>
-                        </Box>
-                      </Box>
-                    </Grid>
-                  )}
                 </Grid>
               </CardContent>
             </Card>
@@ -827,107 +789,158 @@ const formatDuration = (hours) => {
           </Grid>
 
           {/* Right Column - Summary */}
-          <Grid item xs={12} md={4}>
-            <Card
-              sx={{
-                position: { md: "sticky" },
-                top: { md: 100 },
-                borderRadius: 4,
-                boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-                border: "1px solid rgba(0,0,0,0.05)",
-                mb: 4,
-              }}
-            >
-              <CardContent sx={{ p: 3 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-                  <CheckCircle color="primary" />
-                  Thông tin tóm tắt
-                </Typography>
-                <Divider sx={{ mb: 3 }} />
+<Grid item xs={12} md={4}>
+  <Card
+    sx={{
+      position: { md: "sticky" },
+      top: { md: 100 },
+      borderRadius: 4,
+      boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+      border: "1px solid rgba(0,0,0,0.05)",
+      mb: 4,
+    }}
+  >
+    <CardContent sx={{ p: 3 }}>
+      <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
+        <CheckCircle color="primary" />
+        Thông tin tóm tắt
+      </Typography>
+      <Divider sx={{ mb: 3 }} />
 
-                <Stack spacing={2}>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: "grey.50",
-                    }}
-                  >
-                    <School color="primary" />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        Chuyên ngành
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {instructor.Major}
-                      </Typography>
-                    </Box>
-                  </Box>
+      <Stack spacing={2}>
+        {/* Thêm phần học phí vào đây */}
+       <Box
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    gap: 2,
+    p: 3,
+    borderRadius: 3,
+    background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    color: "white",
+    position: "relative",
+    overflow: "hidden",
+    boxShadow: "0 4px 14px rgba(220, 38, 38, 0.3)",
+    "&::before": {
+      content: '""',
+      position: "absolute",
+      top: 0,
+      right: 0,
+      width: "60%",
+      height: "100%",
+      background: "radial-gradient(circle at top right, rgba(255,255,255,0.15) 0%, transparent 70%)",
+    },
+  }}
+>
+  <Box sx={{ zIndex: 1, flex: 1 }}>
+    <Typography 
+      variant="caption" 
+      sx={{ 
+        fontWeight: 700, 
+        opacity: 0.95,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px",
+        fontSize: "0.75rem",
+      }}
+    >
+      Học phí 1 kèm 1
+    </Typography>
+    <Typography 
+      variant="h5" 
+      sx={{ 
+        fontWeight: 800, 
+        mt: 0.5,
+        letterSpacing: "-0.02em",
+      }}
+    >
+      {formatCurrency(instructor.InstructorFee)}/buổi
+    </Typography>
+  </Box>
+</Box>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: "grey.50",
-                    }}
-                  >
-                    <Business color="primary" />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        Công việc
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {instructor.Job}
-                      </Typography>
-                    </Box>
-                  </Box>
 
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 2,
-                      p: 2,
-                      borderRadius: 2,
-                      bgcolor: "grey.50",
-                    }}
-                  >
-                    <LocationOn color="primary" />
-                    <Box>
-                      <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        Địa chỉ
-                      </Typography>
-                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
-                        {instructor.Address || "Chưa cập nhật"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </Stack>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "grey.50",
+          }}
+        >
+          <School color="primary" />
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Chuyên ngành
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {instructor.Major}
+            </Typography>
+          </Box>
+        </Box>
 
-                <Divider sx={{ my: 3 }} />
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "grey.50",
+          }}
+        >
+          <Business color="primary" />
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Công việc
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {instructor.Job}
+            </Typography>
+          </Box>
+        </Box>
 
-                <Box sx={{ textAlign: "center" }}>
-                  <Chip
-                    icon={<VerifiedUser />}
-                    label="Giảng viên được xác nhận"
-                    color="success"
-                    sx={{
-                      fontWeight: 700,
-                      fontSize: "0.9rem",
-                      py: 2.5,
-                      px: 1,
-                    }}
-                  />
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+            p: 2,
+            borderRadius: 2,
+            bgcolor: "grey.50",
+          }}
+        >
+          <LocationOn color="primary" />
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
+              Địa chỉ
+            </Typography>
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {instructor.Address || "Chưa cập nhật"}
+            </Typography>
+          </Box>
+        </Box>
+      </Stack>
+
+      <Divider sx={{ my: 3 }} />
+
+      <Box sx={{ textAlign: "center" }}>
+        <Chip
+          icon={<VerifiedUser />}
+          label="Giảng viên được xác nhận"
+          color="success"
+          sx={{
+            fontWeight: 700,
+            fontSize: "0.9rem",
+            py: 2.5,
+            px: 1,
+          }}
+        />
+      </Box>
+    </CardContent>
+  </Card>
+</Grid>
         </Grid>
       </Container>
 

@@ -5,11 +5,10 @@ import {
   CircularProgress,
   Typography,
 } from '@mui/material';
-import { getCourseCurriculumApi, getCourseAssignmentsApi, submitAssignmentApi } from "../../../apiServices/courseService";
+import { getCourseCurriculumApi, getCourseAssignmentsApi} from "../../../apiServices/courseService";
 import LessonPreviewDialog from './LessonPreviewDialog';
 import CurriculumHeader from './CurriculumHeader';
 import UnitAccordion from './UnitAccordion';
-import SubmitAssignmentDialog from './SubmitAssignmentDialog';
 
 const CourseCurriculum = ({ courseId, isEnrolled }) => {
   const [curriculum, setCurriculum] = useState([]);
@@ -18,8 +17,6 @@ const CourseCurriculum = ({ courseId, isEnrolled }) => {
   const [error, setError] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
-  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
-  const [selectedAssignment, setSelectedAssignment] = useState(null);
 
   const fetchCurriculum = useCallback(async () => {
     if (!courseId) return;
@@ -57,32 +54,10 @@ const CourseCurriculum = ({ courseId, isEnrolled }) => {
     setPreviewItem(null);
   };
 
-  const handleSubmitAssignment = (assignment) => {
-    setSelectedAssignment(assignment);
-    setSubmitDialogOpen(true);
+  const handleRefresh = () => {
+    fetchCurriculum();
   };
 
-  const handleCloseSubmitDialog = () => {
-    setSubmitDialogOpen(false);
-    setSelectedAssignment(null);
-  };
-
-  const handleConfirmSubmit = async () => {
-    try {
-      await submitAssignmentApi(selectedAssignment.AssignmentID, {
-        Content: "Bài nộp từ học viên",
-        FileURL: null,
-      });
-      
-      await fetchCurriculum();
-      handleCloseSubmitDialog();
-    } catch (err) {
-      console.error('Error submitting assignment:', err);
-      alert(err.message || 'Không thể nộp bài tập');
-    }
-  };
-
-  // Tính toán thống kê
   const totalUnits = curriculum.length;
   const totalLessons = curriculum.reduce((total, unit) => total + (unit.Lessons?.length || 0), 0);
   const totalAssignments = assignments.length;
@@ -133,7 +108,7 @@ const CourseCurriculum = ({ courseId, isEnrolled }) => {
               assignments={assignments}
               isEnrolled={isEnrolled}
               onViewMaterial={handleViewMaterial}
-              onSubmitAssignment={handleSubmitAssignment}
+              onRefresh={handleRefresh}
             />
           ))}
         </Box>
@@ -143,13 +118,6 @@ const CourseCurriculum = ({ courseId, isEnrolled }) => {
         open={previewOpen}
         onClose={handleClosePreview}
         lesson={previewItem}
-      />
-
-      <SubmitAssignmentDialog
-        open={submitDialogOpen}
-        onClose={handleCloseSubmitDialog}
-        assignment={selectedAssignment}
-        onConfirm={handleConfirmSubmit}
       />
     </Box>
   );
