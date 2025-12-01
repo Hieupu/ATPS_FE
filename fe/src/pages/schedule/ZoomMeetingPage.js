@@ -41,7 +41,6 @@ const ZoomMeetingPage = () => {
       if (zoomData) {
         try {
           setSchedule(zoomData.schedule);
-          // KHÔNG xóa sessionStorage ở đây để tránh race condition
         } catch (err) {
           console.error("Error parsing schedule data:", err);
           setError("Không thể tải thông tin buổi học");
@@ -86,26 +85,27 @@ const ZoomMeetingPage = () => {
           throw new Error("Thiếu meeting number");
         }
 
-        // Lấy signature
+        if (!userName || typeof userName !== 'string' || userName.trim() === '') {
+          throw new Error("Username không hợp lệ");
+        }
+
         const { signature, sdkKey } = await getSignature(meetingNumber, role);
 
-        // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
-        // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
+            
 
-            // Join meeting
             ZoomMtg.join({
               sdkKey: sdkKey,
               signature: signature,
               meetingNumber: meetingNumber,
               passWord: passWord,
-              userName: userName,
+              userName: userName, 
               userEmail: userEmail,
               tk: "",
               success: (success) => {
@@ -133,11 +133,6 @@ const ZoomMeetingPage = () => {
     };
 
     initializeMeeting();
-
-    // Cleanup function
-    return () => {
-      // Có thể thêm cleanup logic nếu cần
-    };
   }, [schedule, user, hasInitialized]);
 
   if (error) {

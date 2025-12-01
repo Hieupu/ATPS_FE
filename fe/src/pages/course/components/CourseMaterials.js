@@ -79,18 +79,35 @@ const MaterialItem = ({ material, onDownload, onView }) => {
     <ListItem
       sx={{
         borderBottom: '1px solid',
-        borderColor: 'divider',
+        borderColor: 'rgba(99,102,241,0.1)',
         '&:last-child': { borderBottom: 'none' },
-        py: 2,
+        py: 2.5,
+        px: 3,
+        transition: "all 0.3s ease",
+        "&:hover": {
+          bgcolor: "#f8f9fe",
+          transform: "translateX(4px)",
+        },
       }}
       secondaryAction={
-        <Box sx={{ display: 'flex', gap: 1 }}>
+        <Box sx={{ display: 'flex', gap: 1.5 }}>
           {canPreview && (
             <Button
               variant="outlined"
               size="small"
               startIcon={<Visibility />}
               onClick={() => onView(material)}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+                fontWeight: 600,
+                borderColor: "primary.main",
+                color: "primary.main",
+                "&:hover": {
+                  bgcolor: "primary.light",
+                  borderColor: "primary.main",
+                },
+              }}
             >
               Xem
             </Button>
@@ -100,31 +117,49 @@ const MaterialItem = ({ material, onDownload, onView }) => {
             size="small"
             startIcon={<Download />}
             onClick={() => onDownload(material)}
+            sx={{
+              borderRadius: 2,
+              textTransform: "none",
+              fontWeight: 600,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+            }}
           >
             Tải
           </Button>
         </Box>
       }
     >
-      <ListItemIcon>
+      <ListItemIcon sx={{ minWidth: 48 }}>
         {getFileIcon(material.FileType)}
       </ListItemIcon>
       <ListItemText
         primary={
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-            <Typography variant="h6" sx={{ fontWeight: 500 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 600,
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
               {material.Title}
             </Typography>
             <Chip 
               label={getFileTypeLabel(material.FileType)} 
               size="small" 
-              color="primary"
-              variant="outlined"
+              sx={{
+                bgcolor: "rgba(102,126,234,0.1)",
+                color: "primary.main",
+                fontWeight: 700,
+                fontSize: "0.7rem",
+                height: 22,
+              }}
             />
           </Box>
         }
         secondary={
-          <Typography variant="body2" color="text.secondary">
+          <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.85rem" }}>
             {material.Description || 'Tài liệu học tập'}
           </Typography>
         }
@@ -212,32 +247,68 @@ const CourseMaterials = ({ courseId }) => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-        Tài liệu khóa học ({materials.length} files)
-      </Typography>
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            fontFamily: "'Poppins', sans-serif",
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+          }}
+        >
+          📚 Tài liệu khóa học
+          <Chip
+            label={`${materials.length} files`}
+            size="small"
+            sx={{
+              bgcolor: "primary.main",
+              color: "white",
+              fontWeight: 600,
+            }}
+          />
+        </Typography>
+      </Box>
 
       {materials.length === 0 ? (
-        <Alert severity="info">
+        <Alert
+          severity="info"
+          sx={{
+            borderRadius: 3,
+            border: "1px solid rgba(33, 150, 243, 0.2)",
+          }}
+        >
           Chưa có tài liệu nào cho khóa học này.
         </Alert>
       ) : (
-        <Card>
-          <CardContent sx={{ p: 0 }}>
-            {Object.entries(groupedMaterials).map(([type, typeMaterials]) => (
-              <Box key={type}>
-                <Box sx={{ 
-                  px: 3, 
-                  py: 2, 
-                  bgcolor: 'primary.main', 
-                  color: 'white' 
-                }}>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {type} ({typeMaterials.length})
-                  </Typography>
-                </Box>
-                
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          {Object.entries(groupedMaterials).map(([type, typeMaterials]) => (
+            <Card
+              key={type}
+              elevation={0}
+              sx={{
+                borderRadius: 4,
+                border: "1px solid rgba(99,102,241,0.15)",
+                overflow: "hidden",
+              }}
+            >
+              <Box
+                sx={{
+                  px: 3,
+                  py: 2,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  color: "white",
+                }}
+              >
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  {type} ({typeMaterials.length})
+                </Typography>
+              </Box>
+
+              <CardContent sx={{ p: 0 }}>
                 <List>
-                  {typeMaterials.map(material => (
+                  {typeMaterials.map((material) => (
                     <MaterialItem
                       key={material.MaterialID}
                       material={material}
@@ -246,10 +317,10 @@ const CourseMaterials = ({ courseId }) => {
                     />
                   ))}
                 </List>
-              </Box>
-            ))}
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </Box>
       )}
 
       {/* Preview Dialog */}

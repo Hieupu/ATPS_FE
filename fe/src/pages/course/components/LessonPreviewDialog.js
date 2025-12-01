@@ -23,6 +23,7 @@ import {
   VideoLibrary,
   MenuBook,
   Edit,
+  PictureAsPdf 
 } from '@mui/icons-material';
 
 const getFileIcon = (type) => {
@@ -78,10 +79,14 @@ const LessonPreviewDialog = ({ open, onClose, lesson }) => {
 
   if (!lesson) return null;
 
+    console.log('lesson.Type:', lesson.Type);
+  console.log('lesson.FileURL:', lesson.FileURL);
+
   const typeInfo = getTypeColor(lesson.Type);
   const isVideo = ['video', 'mp4'].includes((lesson.Type || "").toLowerCase());
   const isAudio = ['listening', 'audio', 'mp3'].includes((lesson.Type || "").toLowerCase());
-  const isPDF = ['reading', 'pdf'].includes((lesson.Type || "").toLowerCase());
+const isPDF = ['reading', 'pdf', 'document'].includes((lesson.Type || "").toLowerCase()) 
+  || lesson.FileURL?.toLowerCase().endsWith('.pdf');
 
   const handleDownload = () => {
     if (lesson.FileURL) {
@@ -185,41 +190,104 @@ const LessonPreviewDialog = ({ open, onClose, lesson }) => {
             </Box>
           )}
 
-          {isAudio && lesson.FileURL && (
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                minHeight: 300,
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                p: 4,
-              }}
-            >
-              <Box sx={{ textAlign: 'center', width: '100%', maxWidth: 600 }}>
-                <Headphones sx={{ fontSize: 80, color: 'white', mb: 3 }} />
-                <Typography variant="h5" sx={{ color: 'white', mb: 4, fontWeight: 500 }}>
-                  Listening Exercise
-                </Typography>
-                <audio
-                  controls
-                  autoPlay
-                  style={{
-                    width: '100%',
-                    filter: 'brightness(0) invert(1)',
-                  }}
-                >
-                  <source src={lesson.FileURL} type="audio/mpeg" />
-                  Trình duyệt của bạn không hỗ trợ audio.
-                </audio>
-              </Box>
-            </Box>
-          )}
+{isAudio && lesson.FileURL && (
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: 350,
+      background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)',
+      p: 4,
+    }}
+  >
+    <Box sx={{ width: '100%', maxWidth: 480, textAlign: 'center' }}>
+      {/* Animated Icon */}
+      <Box
+        sx={{
+          width: 100,
+          height: 100,
+          borderRadius: '50%',
+          bgcolor: 'rgba(255,255,255,0.2)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          margin: '0 auto 24px',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255,255,255,0.3)',
+        }}
+      >
+        <Headphones sx={{ fontSize: 48, color: 'white' }} />
+      </Box>
 
-          {isPDF && lesson.FileURL && (
+      <Typography 
+        variant="h5" 
+        sx={{ 
+          color: 'white', 
+          mb: 1, 
+          fontWeight: 600,
+          textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}
+      >
+        Bài tập Nghe
+      </Typography>
+      
+      <Typography 
+        variant="body1" 
+        sx={{ 
+          color: 'rgba(255,255,255,0.9)', 
+          mb: 4,
+          textShadow: '0 1px 2px rgba(0,0,0,0.2)'
+        }}
+      >
+        {lesson.Title}
+      </Typography>
+
+      {/* Enhanced Audio Player */}
+      <Box
+        sx={{
+          bgcolor: 'white',
+          borderRadius: 3,
+          p: 3,
+          boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+        }}
+      >
+        <audio
+          controls
+          autoPlay
+          style={{
+            width: '100%',
+            height: '50px',
+            borderRadius: '12px',
+            border: 'none',
+            outline: 'none',
+          }}
+        >
+          <source src={lesson.FileURL} type="audio/mpeg" />
+          Trình duyệt của bạn không hỗ trợ audio.
+        </audio>
+      </Box>
+
+      {/* Tips */}
+      <Typography 
+        variant="caption" 
+        sx={{ 
+          color: 'rgba(255,255,255,0.7)', 
+          mt: 2, 
+          display: 'block',
+          fontStyle: 'italic'
+        }}
+      >
+        💡 Sử dụng biểu tượng tốc độ để điều chỉnh tốc độ phát
+      </Typography>
+    </Box>
+  </Box>
+)}
+
+{isPDF && lesson.FileURL && (
             <Box sx={{ height: fullscreen ? '80vh' : '600px', bgcolor: 'white' }}>
               <iframe
-                src={`${lesson.FileURL}#toolbar=1&navpanes=1&scrollbar=1`}
+                src={lesson.FileURL}
                 style={{
                   width: '100%',
                   height: '100%',

@@ -84,7 +84,6 @@ const ScheduleGrid = ({
       }
     });
     
-    console.log("Week dates mapping:", Object.fromEntries(dates));
     return Object.fromEntries(dates);
   }, [weeklySchedule]);
 
@@ -128,7 +127,6 @@ const ScheduleGrid = ({
         }
       }
     });
-    console.log("Schedule map keys:", Array.from(map.keys()));
     return map;
   }, [weeklySchedule]);
 
@@ -354,12 +352,8 @@ const ScheduleGrid = ({
                     slot.Status !== "available" ||
                     checkingConflict;
                   
-                  const bgColor =
-                    slot.Status === "busy"
-                      ? "#f44336"
-                      : slot.Status === "available"
-                      ? "#4caf50"
-                      : "#ffffff";
+                const bgColor =
+  slot.Status === "available" ? "#4caf50" : "#ffffff";
                   const color = slot.Status === "busy" ? "#fff" : "#000";
 
                   return (
@@ -401,46 +395,7 @@ const ScheduleGrid = ({
               </Grid>
             );
           })}
-
-          {/* Legend */}
-          <Box sx={{ mt: 2, display: "flex", gap: 2, flexWrap: "wrap" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  bgcolor: "#4caf50",
-                  border: "1px solid",
-                  borderColor: "divider",
-                }}
-              />
-              <Typography variant="caption">Có sẵn</Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  bgcolor: "#f44336",
-                  border: "1px solid",
-                  borderColor: "divider",
-                }}
-              />
-              <Typography variant="caption">Bận</Typography>
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  bgcolor: "#ffffff",
-                  border: "1px solid",
-                  borderColor: "divider",
-                }}
-              />
-              <Typography variant="caption">Trống</Typography>
-            </Box>
-          </Box>
+         
         </Box>
       </Box>
     </Paper>

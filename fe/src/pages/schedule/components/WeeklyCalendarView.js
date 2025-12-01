@@ -1,43 +1,22 @@
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
-import {
-  Box,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Typography,
-  IconButton,
-  Select,
-  MenuItem,
-  FormControl,
-  Chip,
-  Button,
-  Tooltip,
-  Paper
-} from "@mui/material";
-import {
-  ChevronLeft,
-  ChevronRight,
-  VideoCall,
-} from "@mui/icons-material";
 import { useAuth } from "../../../contexts/AuthContext";
 
-const WeeklyCalendarView = ({ schedules, attendanceData, generateZoomLink, canJoinZoom }) => {
+const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedWeek, setSelectedWeek] = useState(null);
   const user = useAuth();
 
-const timeSlots = [
-  { label: "Slot 1", start: "08:00", end: "10:00" },
-  { label: "Slot 2", start: "10:20", end: "12:20" },
-  { label: "Slot 3", start: "13:00", end: "15:00" },
-  { label: "Slot 4", start: "15:20", end: "17:20" },
-  { label: "Slot 5", start: "17:40", end: "19:40" },
-  { label: "Slot 6", start: "20:00", end: "22:00" }
-];
+  const timeSlots = [
+    { label: "Slot 1", start: "08:00", end: "10:00" },
+    { label: "Slot 2", start: "10:20", end: "12:20" },
+    { label: "Slot 3", start: "13:00", end: "15:00" },
+    { label: "Slot 4", start: "15:20", end: "17:20" },
+    { label: "Slot 5", start: "17:40", end: "19:40" },
+    { label: "Slot 6", start: "20:00", end: "22:00" }
+  ];
+  
   const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
 
   const getWeekStart = (date) => {
@@ -46,6 +25,63 @@ const timeSlots = [
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
     return new Date(d.setDate(diff));
   };
+
+  const getWeekNumber = (date) => {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  };
+
+  const availableWeeks = useMemo(() => {
+    const weeks = new Map();
+    
+    schedules.forEach(schedule => {
+      const scheduleDate = new Date(schedule.Date);
+      const scheduleYear = scheduleDate.getFullYear();
+      
+      if (scheduleYear === selectedYear) {
+        const weekStart = getWeekStart(scheduleDate);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        
+        const weekKey = weekStart.toISOString().split('T')[0];
+        
+        if (!weeks.has(weekKey)) {
+          weeks.set(weekKey, {
+            weekStart: weekStart,
+            weekEnd: weekEnd,
+            weekNumber: getWeekNumber(weekStart),
+            label: `Week ${getWeekNumber(weekStart)} (${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1})`
+          });
+        }
+      }
+    });
+    
+    return Array.from(weeks.values()).sort((a, b) => a.weekStart - b.weekStart);
+  }, [schedules, selectedYear]);
+
+  useEffect(() => {
+    if (availableWeeks.length > 0) {
+      const now = new Date();
+      const currentWeekStart = getWeekStart(now);
+      
+      let closestWeek = availableWeeks[0];
+      let minDiff = Math.abs(currentWeekStart - availableWeeks[0].weekStart);
+      
+      availableWeeks.forEach(week => {
+        const diff = Math.abs(currentWeekStart - week.weekStart);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestWeek = week;
+        }
+      });
+      
+      setSelectedWeek(closestWeek.weekStart.toISOString().split('T')[0]);
+      setCurrentDate(closestWeek.weekStart);
+    }
+  }, [availableWeeks]);
 
   const weekStart = useMemo(() => getWeekStart(currentDate), [currentDate]);
 
@@ -90,43 +126,17 @@ const timeSlots = [
     return grid;
   }, [schedules, timeSlots, attendanceMap]);
 
-  const handlePreviousWeek = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() - 7);
-    setCurrentDate(newDate);
+  const handleYearChange = (e) => {
+    setSelectedYear(parseInt(e.target.value));
   };
 
-  const handleNextWeek = () => {
-    const newDate = new Date(currentDate);
-    newDate.setDate(newDate.getDate() + 7);
-    setCurrentDate(newDate);
-  };
-
-  const handleYearChange = (event) => {
-    const year = event.target.value;
-    setSelectedYear(year);
-    
-    const schedulesInYear = schedules.filter(schedule => {
-      const scheduleYear = new Date(schedule.Date).getFullYear();
-      return scheduleYear === year;
-    });
-    
-    if (schedulesInYear.length > 0) {
-      const firstScheduleDate = new Date(schedulesInYear[0].Date);
-      setCurrentDate(firstScheduleDate);
-    } else {
-      const newDate = new Date(currentDate);
-      newDate.setFullYear(year);
-      newDate.setMonth(0);
-      newDate.setDate(1);
-      setCurrentDate(newDate);
+  const handleWeekChange = (e) => {
+    const weekKey = e.target.value;
+    setSelectedWeek(weekKey);
+    const selectedWeekData = availableWeeks.find(w => w.weekStart.toISOString().split('T')[0] === weekKey);
+    if (selectedWeekData) {
+      setCurrentDate(selectedWeekData.weekStart);
     }
-  };
-
-  const formatDateRange = () => {
-    const start = weekDates[0];
-    const end = weekDates[6];
-    return `${start.getDate()}/${start.getMonth() + 1} To ${end.getDate()}/${end.getMonth() + 1}`;
   };
 
   const getAttendanceColor = (status) => {
@@ -134,7 +144,6 @@ const timeSlots = [
     switch (s) {
       case 'present': return '#4caf50';
       case 'absent': return '#f44336';
-      case 'late': return '#ff9800';
       default: return '#9e9e9e';
     }
   };
@@ -142,10 +151,9 @@ const timeSlots = [
   const getAttendanceLabel = (status) => {
     const s = (status || "").toLowerCase();
     switch (s) {
-      case 'present': return 'attended';
-      case 'absent': return 'absent';
-      case 'late': return 'late';
-      default: return 'pending';
+      case 'present': return 'Attended';
+      case 'absent': return 'Absent';
+      default: return 'Not yet';
     }
   };
 
@@ -180,207 +188,275 @@ const timeSlots = [
   };
 
   const renderScheduleCard = (schedule, slot, idx) => (
-    <Paper
+    <div
       key={idx}
-      elevation={2}
-      sx={{
-        p: 1.5,
-        mb: 1,
-        borderLeft: 4,
-        borderColor: schedule.attendance 
-          ? getAttendanceColor(schedule.attendance.Status)
-          : '#9e9e9e',
-        '&:hover': {
-          boxShadow: 4
-        }
+      style={{
+        padding: '12px',
+        marginBottom: '8px',
+        borderLeft: `4px solid ${getAttendanceColor(schedule.attendance?.Status)}`,
+        backgroundColor: '#fff',
+        borderRadius: '4px',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+        maxWidth: '180px',
+        minHeight: '80px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        transition: 'box-shadow 0.2s'
       }}
+      onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'}
+      onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'}
     >
-      <Typography 
-        variant="body2" 
-        sx={{ 
-          fontWeight: 600, 
+      <div>
+        <div style={{
+          fontWeight: 600,
           color: '#1976d2',
-          mb: 0.5,
-          fontSize: '0.85rem'
-        }}
-      >
-        {schedule.ClassName || schedule.CourseTitle}
-      </Typography>
+          marginBottom: '6px',
+          fontSize: '0.8rem',
+          lineHeight: '1.2',
+          overflow: 'hidden',
+          display: '-webkit-box',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical'
+        }}>
+          {schedule.ClassName || schedule.CourseTitle}
+        </div>
 
-      {schedule.attendance && (
-        <Chip
-          label={getAttendanceLabel(schedule.attendance.Status)}
-          size="small"
-          sx={{
-            bgcolor: getAttendanceColor(schedule.attendance.Status),
-            color: 'white',
-            fontWeight: 500,
-            fontSize: '0.7rem',
-            height: 20,
-            mb: 0.5
-          }}
-        />
-      )}
+        <span style={{
+          display: 'inline-block',
+          padding: '2px 8px',
+          backgroundColor: getAttendanceColor(schedule.attendance?.Status),
+          color: 'white',
+          borderRadius: '12px',
+          fontSize: '0.65rem',
+          fontWeight: 500,
+          marginBottom: '6px'
+        }}>
+          {getAttendanceLabel(schedule.attendance?.Status)}
+        </span>
+      </div>
 
-      <Typography 
-        variant="caption" 
-        sx={{ 
+      <div>
+        <div style={{
           display: 'block',
           color: '#4caf50',
           fontWeight: 500,
-          mb: 0.5
-        }}
-      >
-        ({slot.start}-{slot.end})
-      </Typography>
+          fontSize: '0.75rem',
+          marginBottom: '6px'
+        }}>
+          {slot.start}-{slot.end}
+        </div>
 
-      {schedule.Location && (
-        <Typography variant="caption" sx={{ display: 'block', color: 'text.secondary' }}>
-          at {schedule.Location}
-        </Typography>
-      )}
-
-      {canJoinZoom(schedule) && (
-        <Tooltip title="Tham gia Zoom">
-          <Button
-            variant="contained"
-            size="small"
-            startIcon={<VideoCall />}
+        {canJoinZoom(schedule) && (
+          <button
             onClick={() => handleJoinZoom(schedule)}
-            sx={{
-              mt: 1,
-              fontSize: '0.7rem',
-              py: 0.5,
-              px: 1,
+            style={{
+              width: '100%',
+              padding: '4px 8px',
               backgroundColor: '#ff9800',
-              '&:hover': {
-                backgroundColor: '#f57c00',
-              }
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '0.7rem',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px',
+              transition: 'background-color 0.2s'
             }}
-            fullWidth
+            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f57c00'}
+            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff9800'}
           >
-            Zoom
-          </Button>
-        </Tooltip>
-      )}
-    </Paper>
-  );
-
-  const renderLegendItem = (color, label) => (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <Box sx={{ width: 20, height: 20, bgcolor: color, borderRadius: 0.5 }} />
-      <Typography variant="body2">{label}</Typography>
-    </Box>
+            📹 Join Zoom
+          </button>
+        )}
+      </div>
+    </div>
   );
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 2 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontWeight: 600, color: '#f44336', minWidth: 50 }}>
-            YEAR
-          </Typography>
-          <FormControl size="small" sx={{ minWidth: 100 }}>
-            <Select
+    <div style={{ padding: '24px', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: '24px',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{
+              fontWeight: 700,
+              color: '#d32f2f',
+              minWidth: '50px',
+              fontSize: '1.1rem'
+            }}>
+              YEAR
+            </label>
+            <select
               value={selectedYear}
               onChange={handleYearChange}
-              sx={{ bgcolor: 'white' }}
+              style={{
+                padding: '8px 12px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                border: '2px solid #d32f2f',
+                borderRadius: '4px',
+                backgroundColor: 'white',
+                cursor: 'pointer',
+                minWidth: '100px'
+              }}
             >
               {[2023, 2024, 2025, 2026].map(year => (
-                <MenuItem key={year} value={year}>{year}</MenuItem>
+                <option key={year} value={year}>{year}</option>
               ))}
-            </Select>
-          </FormControl>
-        </Box>
+            </select>
+          </div>
 
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontWeight: 600, minWidth: 50 }}>
-            WEEK
-          </Typography>
-          <Box sx={{ display: 'flex', alignItems: 'center', bgcolor: 'white', border: '1px solid #ccc', borderRadius: 1 }}>
-            <IconButton onClick={handlePreviousWeek} size="small">
-              <ChevronLeft />
-            </IconButton>
-            <Typography sx={{ px: 2, minWidth: 140, textAlign: 'center' }}>
-              {formatDateRange()}
-            </Typography>
-            <IconButton onClick={handleNextWeek} size="small">
-              <ChevronRight />
-            </IconButton>
-          </Box>
-        </Box>
-      </Box>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{
+              fontWeight: 700,
+              color: '#1976d2',
+              minWidth: '60px',
+              fontSize: '1.1rem'
+            }}>
+              WEEK
+            </label>
+            <select
+              value={selectedWeek || ''}
+              onChange={handleWeekChange}
+              disabled={availableWeeks.length === 0}
+              style={{
+                padding: '8px 12px',
+                fontSize: '0.95rem',
+                fontWeight: 600,
+                border: '2px solid #1976d2',
+                borderRadius: '4px',
+                backgroundColor: 'white',
+                cursor: availableWeeks.length === 0 ? 'not-allowed' : 'pointer',
+                minWidth: '280px',
+                opacity: availableWeeks.length === 0 ? 0.6 : 1
+              }}
+            >
+              {availableWeeks.length === 0 ? (
+                <option disabled>No schedules available for {selectedYear}</option>
+              ) : (
+                availableWeeks.map((week) => (
+                  <option
+                    key={week.weekStart.toISOString().split('T')[0]}
+                    value={week.weekStart.toISOString().split('T')[0]}
+                  >
+                    {week.label}
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+        </div>
+      </div>
 
-      <TableContainer component={Paper} sx={{ border: '1px solid #ddd' }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 600, width: 100 }} />
+      <div style={{
+        border: '1px solid #e0e0e0',
+        borderRadius: '8px',
+        overflow: 'hidden',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        backgroundColor: 'white'
+      }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={{
+                backgroundColor: '#f1f8e9',
+                fontWeight: 700,
+                width: '100px',
+                fontSize: '0.9rem',
+                borderRight: '1px solid #e0e0e0',
+                padding: '12px'
+              }} />
               {daysOfWeek.map((day, index) => (
-                <TableCell 
-                  key={day} 
-                  align="center" 
-                  sx={{ 
-                    bgcolor: day === 'SAT' || day === 'SUN' ? '#fce4ec' : '#e3f2fd',
-                    fontWeight: 600,
-                    py: 1
+                <th
+                  key={day}
+                  style={{
+                    backgroundColor: day === 'SAT' || day === 'SUN' ? '#fce4ec' : '#e3f2fd',
+                    fontWeight: 700,
+                    padding: '12px',
+                    fontSize: '0.9rem',
+                    borderRight: index < daysOfWeek.length - 1 ? '1px solid #e0e0e0' : 'none',
+                    textAlign: 'center'
                   }}
                 >
-                  <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>
                     {day}
-                  </Typography>
-                  <Typography variant="body2">
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#666', marginTop: '4px' }}>
                     {weekDates[index].getDate()}/{weekDates[index].getMonth() + 1}
-                  </Typography>
-                </TableCell>
+                  </div>
+                </th>
               ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
+            </tr>
+          </thead>
+          <tbody>
             {timeSlots.map((slot, slotIndex) => (
-              <TableRow key={slotIndex}>
-                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 600 }}>
-                  <Typography variant="body2">{slot.label}</Typography>
-                </TableCell>
+              <tr key={slotIndex}>
+                <td style={{
+                  backgroundColor: '#f1f8e9',
+                  fontWeight: 600,
+                  fontSize: '0.85rem',
+                  borderRight: '1px solid #e0e0e0',
+                  padding: '12px',
+                  verticalAlign: 'top'
+                }}>
+                  <div>
+                    <div style={{ fontWeight: 600 }}>{slot.label}</div>
+                    <div style={{ color: '#666', fontSize: '0.75rem', marginTop: '4px' }}>
+                      {slot.start}-{slot.end}
+                    </div>
+                  </div>
+                </td>
                 {weekDates.map((date, dayIndex) => {
                   const dateStr = date.toISOString().split('T')[0];
                   const key = `${dateStr}-${slotIndex}`;
                   const cellSchedules = scheduleGrid[key] || [];
 
                   return (
-                    <TableCell 
-                      key={dayIndex} 
-                      sx={{ 
-                        p: 1, 
+                    <td
+                      key={dayIndex}
+                      style={{
+                        padding: '8px',
                         verticalAlign: 'top',
-                        bgcolor: cellSchedules.length > 0 ? '#fff' : '#fafafa',
-                        minHeight: 80
+                        backgroundColor: cellSchedules.length > 0 ? '#fff' : '#fafafa',
+                        minHeight: '120px',
+                        width: '14.28%',
+                        maxWidth: '200px',
+                        borderRight: dayIndex < daysOfWeek.length - 1 ? '1px solid #e0e0e0' : 'none',
+                        borderTop: '1px solid #e0e0e0'
                       }}
                     >
                       {cellSchedules.length > 0 ? (
-                        cellSchedules.map((schedule, idx) => 
-                          renderScheduleCard(schedule, slot, idx)
-                        )
+                        <div style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center'
+                        }}>
+                          {cellSchedules.map((schedule, idx) =>
+                            renderScheduleCard(schedule, slot, idx)
+                          )}
+                        </div>
                       ) : (
-                        <Typography variant="body2" align="center" sx={{ color: '#999' }}>
-                          -
-                        </Typography>
+                        <div style={{ height: '100%', minHeight: '80px' }} />
                       )}
-                    </TableCell>
+                    </td>
                   );
                 })}
-              </TableRow>
+              </tr>
             ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      <Box sx={{ mt: 2, display: 'flex', gap: 3, justifyContent: 'center' }}>
-        {renderLegendItem('#4caf50', 'Có mặt')}
-        {renderLegendItem('#f44336', 'Vắng mặt')}
-        {renderLegendItem('#9e9e9e', 'Chưa điểm danh')}
-      </Box>
-    </Box>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 };
 

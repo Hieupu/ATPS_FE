@@ -18,15 +18,15 @@ const LessonItem = ({ lesson, isEnrolled, onViewMaterial, index }) => {
   return (
     <ListItem
       sx={{
-        py: 2,
+        py: 2.5,
         px: 3,
         borderBottom: '1px solid',
-        borderColor: 'divider',
+        borderColor: 'rgba(99,102,241,0.1)',
         '&:last-child': { borderBottom: 'none' },
-        transition: 'all 0.2s',
+        transition: 'all 0.3s ease',
         '&:hover': {
-          bgcolor: 'action.hover',
-          transform: 'translateX(4px)',
+          bgcolor: '#f8f9fe',
+          transform: 'translateX(6px)',
         }
       }}
       secondaryAction={
@@ -37,10 +37,18 @@ const LessonItem = ({ lesson, isEnrolled, onViewMaterial, index }) => {
             onClick={() => onViewMaterial(lesson)}
             startIcon={<PlayCircle />}
             sx={{
-              borderRadius: 2,
+              borderRadius: 999,
               textTransform: 'none',
-              fontWeight: 600,
-              px: 2,
+              fontWeight: 700,
+              px: 3,
+              py: 1,
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #653a8b 100%)",
+                transform: "translateY(-2px)",
+                boxShadow: "0 6px 16px rgba(102, 126, 234, 0.4)",
+              },
             }}
           >
             Học ngay
@@ -50,21 +58,31 @@ const LessonItem = ({ lesson, isEnrolled, onViewMaterial, index }) => {
             icon={<Lock />}
             label="Cần đăng ký"
             size="small"
-            sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}
+            sx={{
+              bgcolor: 'warning.light',
+              color: 'warning.dark',
+              fontWeight: 600,
+            }}
           />
         )
       }
     >
       <LessonIndex index={index} />
       
-      <ListItemIcon sx={{ minWidth: 40 }}>
+      <ListItemIcon sx={{ minWidth: 48 }}>
         {getFileIcon(lesson.Type)}
       </ListItemIcon>
       
       <ListItemText
         primary={
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                fontWeight: 600,
+                fontFamily: "'Poppins', sans-serif",
+              }}
+            >
               {lesson.Title}
             </Typography>
             <TypeChip typeInfo={typeInfo} />
@@ -86,14 +104,15 @@ const LessonIndex = ({ index }) => (
     display: 'flex', 
     alignItems: 'center', 
     justifyContent: 'center',
-    minWidth: 36,
-    height: 36,
-    borderRadius: '50%',
-    bgcolor: 'grey.100',
+    minWidth: 40,
+    height: 40,
+    borderRadius: 2,
+    background: 'linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%)',
     mr: 2,
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    color: 'text.secondary',
+    fontWeight: 700,
+    fontSize: '0.95rem',
+    color: 'primary.main',
+    border: "1px solid rgba(99,102,241,0.2)",
   }}>
     {index + 1}
   </Box>
@@ -106,9 +125,10 @@ const TypeChip = ({ typeInfo }) => (
     sx={{
       bgcolor: typeInfo.bg,
       color: typeInfo.text,
-      fontWeight: 600,
-      height: 22,
-      fontSize: '0.75rem',
+      fontWeight: 700,
+      height: 24,
+      fontSize: '0.7rem',
+      borderRadius: 1.5,
     }}
   />
 );

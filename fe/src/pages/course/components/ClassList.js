@@ -15,6 +15,8 @@ import {
   InputAdornment,
   Alert,
   CircularProgress,
+  Divider,
+  Stack,
 } from '@mui/material';
 import {
   Schedule,
@@ -24,6 +26,9 @@ import {
   LocalOffer,
   CalendarToday,
   AccessTime,
+  PersonOutline,
+  EventAvailable,
+  ErrorOutline,
 } from '@mui/icons-material';
 import { createPaymentLinkApi, checkPromotionCodeApi } from "../../../apiServices/paymentService";
 import { checkEnrollmentStatusApi } from "../../../apiServices/courseService";
@@ -43,11 +48,8 @@ const ClassCard = ({ classItem, onEnroll }) => {
   const [checkingConflict, setCheckingConflict] = useState(false);
 
   const { user, isLearner } = useAuth();
-
-  console.log("classItem" , classItem)
   const navigate = useNavigate();
 
-  // Hàm kiểm tra trạng thái đăng ký
   const checkEnrollmentStatus = async () => {
     if (!user || !isLearner) return false;
     
@@ -64,13 +66,11 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
   };
 
-  // Hàm kiểm tra trùng lịch - ĐÃ SỬA
   const checkScheduleConflict = async () => {
     try {
       setCheckingConflict(true);
       setEnrollError(null);
       const conflictCheck = await checkScheduleConflictApi(classItem.ClassID);
-      console.log("conflictCheck", conflictCheck);
       
       if (conflictCheck.hasConflict) {
         setScheduleConflict(conflictCheck.conflictingClasses);
@@ -87,7 +87,6 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
   };
 
-  // Format price function
   const formatPrice = (price) => {
     if (price == null || isNaN(price)) return "Liên hệ";
     return new Intl.NumberFormat('vi-VN', {
@@ -96,7 +95,6 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }).format(price);
   };
 
-  // Xử lý khi nhấn nút đăng ký - ĐÃ SỬA
   const handleEnrollClick = async () => {
     if (!user) {
       window.location.href = "/auth/login";
@@ -108,7 +106,6 @@ const ClassCard = ({ classItem, onEnroll }) => {
       return;
     }
 
-    // Kiểm tra xem đã đăng ký chưa
     const enrolled = await checkEnrollmentStatus();
     
     if (enrolled) {
@@ -116,9 +113,8 @@ const ClassCard = ({ classItem, onEnroll }) => {
       return;
     }
 
-    // Mở dialog và kiểm tra trùng lịch ngay
     setEnrollDialog(true);
-    await checkScheduleConflict(); // Kiểm tra ngay khi mở dialog
+    await checkScheduleConflict();
   };
 
   const handleApplyPromo = async () => {
@@ -141,20 +137,17 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
   };
 
-  // Hàm enroll - ĐÃ SỬA
   const handleEnroll = async () => {
     try {
       setEnrolling(true);
       setEnrollError(null);
 
-      // Kiểm tra lại trùng lịch trước khi thanh toán
       const hasConflict = await checkScheduleConflict();
       if (hasConflict) {
         setEnrolling(false);
         return;
       }
 
-      // Nếu không trùng, tiếp tục thanh toán
       const { paymentUrl } = await createPaymentLinkApi(
         classItem.ClassID,
         promoInfo?.code || promoCode || undefined
@@ -168,7 +161,6 @@ const ClassCard = ({ classItem, onEnroll }) => {
     }
   };
 
-  // Reset state khi đóng dialog
   const handleCloseDialog = () => {
     if (!enrolling) {
       setEnrollDialog(false);
@@ -180,202 +172,303 @@ const ClassCard = ({ classItem, onEnroll }) => {
   };
 
   const formatDateWithDay = (dateString) => {
-  const date = new Date(dateString);
-  const days = ["Chủ nhật", "Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"];
+    const date = new Date(dateString);
+    const days = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+    const dayName = days[date.getDay()];
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    return `${dayName}, ${day}/${month}/${date.getFullYear()}`;
+  };
 
-  const dayName = days[date.getDay()];
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear();
-
-  return `${dayName}, ${day}/${month}/${year}`;
-};
+  const dayMap = {
+    Monday: "T2",
+    Tuesday: "T3",
+    Wednesday: "T4",
+    Thursday: "T5",
+    Friday: "T6",
+    Saturday: "T7",
+    Sunday: "CN"
+  };
 
   return (
     <>
-      <Card sx={{ height: '100%', transition: 'all 0.3s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 3 } }}>
-        <CardContent sx={{ p: 3 }}>
-          {/* Class Header */}
+      <Card 
+        sx={{ 
+          height: '100%',
+          borderRadius: 2,
+          border: '1px solid #f0f0f0',
+          transition: 'all 0.3s ease',
+          '&:hover': { 
+            transform: 'translateY(-4px)', 
+            boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
+            borderColor: '#e0e0e0'
+          } 
+        }}
+      >
+        <CardContent sx={{ p: 2.5 }}>
+          {/* Header - Tên lớp và giá */}
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600, flex: 1 }}>
+            <Typography 
+              variant="h6" 
+              sx={{ 
+                fontWeight: 700, 
+                fontSize: '1.1rem',
+                color: '#1a1a1a',
+                flex: 1,
+                lineHeight: 1.3
+              }}
+            >
               {classItem.ClassName}
             </Typography>
             <Chip 
               label={formatPrice(classItem.Fee)} 
-              color="primary" 
-              variant="filled"
-              sx={{ fontWeight: 600, fontSize: '1rem' }}
+              sx={{ 
+                fontWeight: 700, 
+                fontSize: '0.95rem',
+                bgcolor: '#dc2626',
+                color: 'white',
+                height: 32,
+                '& .MuiChip-label': { px: 1.5 }
+              }}
             />
           </Box>
 
           {/* Instructor */}
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Giảng viên: <strong>{classItem.InstructorName}</strong>
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5, gap: 1 }}>
+            <PersonOutline sx={{ fontSize: 18, color: '#666' }} />
+            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.9rem' }}>
+              GV: <strong style={{ color: '#1a1a1a' }}>{classItem.InstructorName}</strong>
+            </Typography>
+          </Box>
 
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-  Lịch khai giảng: <strong>{formatDateWithDay(classItem.Opendate)}</strong>
-</Typography>
+          {/* Ngày khai giảng */}
+          <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+            <EventAvailable sx={{ fontSize: 18, color: '#dc2626' }} />
+            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.9rem' }}>
+              Khai giảng: <strong style={{ color: '#dc2626' }}>{formatDateWithDay(classItem.Opendate)}</strong>
+            </Typography>
+          </Box>
 
+          <Divider sx={{ my: 2 }} />
 
-          {/* Schedule */}
+          {/* Lịch học tuần */}
           {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
             <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, mb: 1, display: 'flex', alignItems: 'center' }}>
-                <CalendarToday sx={{ fontSize: 16, mr: 1 }} />
-                Lịch học hàng tuần:
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  fontWeight: 600, 
+                  mb: 1, 
+                  fontSize: '0.85rem',
+                  color: '#666',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5
+                }}
+              >
+                Lịch học hàng tuần
               </Typography>
-              {classItem.weeklySchedule.map((session, index) => (
-                <Box key={index} sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
-               <Chip 
-  label={{
-    Monday: "Thứ Hai",
-    Tuesday: "Thứ Ba",
-    Wednesday: "Thứ Tư",
-    Thursday: "Thứ Năm",
-    Friday: "Thứ Sáu",
-    Saturday: "Thứ Bảy",
-    Sunday: "Chủ Nhật"
-  }[session.Day]}
-  size="small"
-  variant="outlined"
-  sx={{ mr: 1, minWidth: 80 }}
-/>
-
-                  <Typography variant="body2">
-                    {session.StartTime} - {session.EndTime}
-                  </Typography>
-                </Box>
-              ))}
+              <Stack spacing={0.75}>
+                {classItem.weeklySchedule.map((session, index) => (
+                  <Box 
+                    key={index} 
+                    sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      bgcolor: '#f8f8f8',
+                      borderRadius: 1,
+                      p: 1,
+                      gap: 1.5
+                    }}
+                  >
+                    <Chip 
+                      label={dayMap[session.Day]}
+                      size="small"
+                      sx={{ 
+                        minWidth: 40,
+                        height: 24,
+                        bgcolor: 'white',
+                        border: '1px solid #e0e0e0',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        '& .MuiChip-label': { px: 1 }
+                      }}
+                    />
+                    <Typography variant="body2" sx={{ fontSize: '0.85rem', color: '#333', fontWeight: 500 }}>
+                      {session.StartTime.slice(0, 5)} - {session.EndTime.slice(0, 5)}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
             </Box>
           )}
 
-          {/* Class Info */}
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          {/* Thông tin lớp */}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
             <Chip
-              icon={<People />}
-              label={`${classItem.StudentCount || 0} học viên`}
+              icon={<People sx={{ fontSize: 16 }} />}
+              label={`${classItem.StudentCount || 0} HV`}
               size="small"
-              variant="outlined"
+              sx={{ 
+                bgcolor: '#f5f5f5',
+                border: '1px solid #e0e0e0',
+                fontSize: '0.8rem',
+                height: 28
+              }}
             />
             <Chip
-              icon={<Schedule />}
+              icon={<Schedule sx={{ fontSize: 16 }} />}
               label={`${classItem.TotalSessions || 0} buổi`}
               size="small"
-              variant="outlined"
+              sx={{ 
+                bgcolor: '#f5f5f5',
+                border: '1px solid #e0e0e0',
+                fontSize: '0.8rem',
+                height: 28
+              }}
             />
             {classItem.ZoomURL && (
               <Chip
-                icon={<VideoCall />}
-                label="Zoom"
+                icon={<VideoCall sx={{ fontSize: 16 }} />}
+                label="Online"
                 size="small"
-                color="primary"
+                sx={{ 
+                  bgcolor: '#fee2e2',
+                  color: '#dc2626',
+                  border: '1px solid #fca5a5',
+                  fontSize: '0.8rem',
+                  height: 28,
+                  fontWeight: 600
+                }}
               />
             )}
           </Box>
-
-          {/* Start Date */}
-          {classItem.startDate && (
-            <Box sx={{ mb: 2, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
-              <Typography variant="body2" sx={{ color: 'primary.dark', fontWeight: 600 }}>
-                🎉 Khai giảng: {new Date(classItem.startDate).toLocaleDateString('vi-VN')}
-              </Typography>
-            </Box>
-          )}
 
           {/* Nút đăng ký */}
           <Button
             fullWidth
             variant="contained"
-            size="large"
+            size="medium"
             onClick={handleEnrollClick}
             disabled={checkingEnrollment}
-            startIcon={checkingEnrollment ? <CircularProgress size={16} /> : <Payment />}
-            sx={{ fontWeight: 600 }}
+            startIcon={checkingEnrollment ? <CircularProgress size={16} /> : null}
+            sx={{ 
+              fontWeight: 600,
+              bgcolor: '#dc2626',
+              py: 1.2,
+              borderRadius: 1.5,
+              textTransform: 'none',
+              fontSize: '0.95rem',
+              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+              '&:hover': {
+                bgcolor: '#b91c1c',
+                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+              }
+            }}
           >
-            {checkingEnrollment ? 'Đang kiểm tra...' : (isEnrolled ? 'Vào học' : 'Đăng ký ngay')}
+            {checkingEnrollment ? 'Đang kiểm tra...' : (isEnrolled ? 'Vào học ngay' : 'Đăng ký ngay')}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Enrollment Dialog */}
+      {/* Dialog đăng ký */}
       <Dialog
         open={enrollDialog}
         onClose={handleCloseDialog}
         maxWidth="sm"
         fullWidth
+        PaperProps={{
+          sx: { borderRadius: 2 }
+        }}
       >
-        <DialogTitle>
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, color: '#1a1a1a' }}>
             Đăng ký lớp {classItem.ClassName}
           </Typography>
           {checkingConflict && (
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{ color: '#666', display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+              <CircularProgress size={12} />
               Đang kiểm tra lịch học...
             </Typography>
           )}
         </DialogTitle>
         
-        <DialogContent>
-          {/* Hiển thị thông báo trùng lịch */}
+        <DialogContent sx={{ pt: 2 }}>
+          {/* Thông báo trùng lịch */}
           {scheduleConflict && scheduleConflict.length > 0 && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
-    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-      ⚠️ Lịch học bị trùng!
-    </Typography>
-
-    {(() => {
-      const conflict = scheduleConflict[0]; // Chỉ lấy 1 lớp trùng
-      return (
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          Lớp này trùng với:{" "}
-          <strong>{conflict.ClassName}</strong> – {conflict.Schedule}
-        </Typography>
-      );
-    })()}
-
-    <Typography variant="body2" sx={{ fontWeight: 600, color: "warning.dark" }}>
-      Vui lòng chọn lớp khác.
-    </Typography>
-  </Alert>
+            <Alert 
+              severity="error" 
+              icon={<ErrorOutline />}
+              sx={{ 
+                mb: 2,
+                borderRadius: 1.5,
+                '& .MuiAlert-message': { width: '100%' }
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 700, mb: 1, color: '#dc2626' }}>
+                ⚠️ Lịch học bị trùng!
+              </Typography>
+              {(() => {
+                const conflict = scheduleConflict[0];
+                return (
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Lớp này trùng với: <strong>{conflict.ClassName}</strong> – {conflict.Schedule}
+                  </Typography>
+                );
+              })()}
+              <Typography variant="body2" sx={{ fontWeight: 600, color: '#b91c1c' }}>
+                Vui lòng chọn lớp khác hoặc điều chỉnh lịch học.
+              </Typography>
+            </Alert>
           )}
 
-          {/* Hiển thị lỗi khác */}
+          {/* Lỗi khác */}
           {enrollError && !scheduleConflict && (
-            <Alert severity="error" sx={{ mb: 2 }}>
+            <Alert severity="error" sx={{ mb: 2, borderRadius: 1.5 }}>
               {enrollError}
             </Alert>
           )}
 
-          {/* Price Summary - Ẩn khi có trùng lịch */}
+          {/* Tóm tắt giá */}
           {(!scheduleConflict || scheduleConflict.length === 0) && (
-            <Box sx={{ mb: 3, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
-              <Typography variant="body2" color="text.secondary">
-                Học phí:
+            <Box sx={{ mb: 3, p: 2.5, bgcolor: '#fafafa', borderRadius: 2, border: '1px solid #f0f0f0' }}>
+              <Typography variant="body2" sx={{ color: '#666', mb: 0.5, fontSize: '0.85rem' }}>
+                Học phí
               </Typography>
-              <Typography variant="h6" color="primary.main" sx={{ fontWeight: 600 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#dc2626', mb: 0.5 }}>
                 {formatPrice(classItem.Fee)}
               </Typography>
               {promoInfo && (
-                <Typography variant="body2" color="success.main">
-                  Đã áp dụng giảm {promoInfo.discountPercent}%
-                </Typography>
+                <Chip
+                  label={`Giảm ${promoInfo.discountPercent}%`}
+                  size="small"
+                  sx={{ 
+                    bgcolor: '#dcfce7',
+                    color: '#166534',
+                    fontWeight: 600,
+                    fontSize: '0.75rem',
+                    height: 24
+                  }}
+                />
               )}
             </Box>
           )}
 
-          {/* Promotion Code - Ẩn khi có trùng lịch */}
+          {/* Mã giảm giá */}
           {(!scheduleConflict || scheduleConflict.length === 0) && (
             <TextField
               fullWidth
-              label="Mã giảm giá"
+              label="Mã giảm giá (nếu có)"
               value={promoCode}
               onChange={(e) => setPromoCode(e.target.value)}
-              sx={{ mb: 2 }}
+              sx={{ 
+                '& .MuiOutlinedInput-root': {
+                  borderRadius: 1.5,
+                }
+              }}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <LocalOffer />
+                    <LocalOffer sx={{ color: '#999' }} />
                   </InputAdornment>
                 ),
                 endAdornment: (
@@ -384,6 +477,11 @@ const ClassCard = ({ classItem, onEnroll }) => {
                       size="small" 
                       onClick={handleApplyPromo}
                       disabled={!promoCode.trim()}
+                      sx={{ 
+                        textTransform: 'none',
+                        fontWeight: 600,
+                        color: '#dc2626'
+                      }}
                     >
                       Áp dụng
                     </Button>
@@ -392,13 +490,18 @@ const ClassCard = ({ classItem, onEnroll }) => {
               }}
             />
           )}
-
         </DialogContent>
 
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
           <Button
             onClick={handleCloseDialog}
             disabled={enrolling}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              color: '#666',
+              px: 2.5
+            }}
           >
             {scheduleConflict ? 'Đã hiểu' : 'Hủy'}
           </Button>
@@ -408,6 +511,15 @@ const ClassCard = ({ classItem, onEnroll }) => {
             onClick={handleEnroll}
             disabled={enrolling || checkingConflict || (scheduleConflict && scheduleConflict.length > 0)}
             startIcon={enrolling ? <CircularProgress size={16} /> : <Payment />}
+            sx={{ 
+              textTransform: 'none',
+              fontWeight: 600,
+              bgcolor: '#dc2626',
+              px: 3,
+              '&:hover': {
+                bgcolor: '#b91c1c'
+              }
+            }}
           >
             {enrolling ? 'Đang xử lý...' : 'Thanh toán'}
           </Button>
@@ -417,19 +529,18 @@ const ClassCard = ({ classItem, onEnroll }) => {
   );
 };
 
-// ClassList component giữ nguyên
 const ClassList = ({ classes, loading, courseId, onEnrollmentChange }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress />
+        <CircularProgress sx={{ color: '#dc2626' }} />
       </Box>
     );
   }
 
   if (classes.length === 0) {
     return (
-      <Alert severity="info">
+      <Alert severity="info" sx={{ borderRadius: 2 }}>
         Hiện chưa có lớp học nào cho khóa học này.
       </Alert>
     );
@@ -437,13 +548,23 @@ const ClassList = ({ classes, loading, courseId, onEnrollmentChange }) => {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-        Danh sách lớp học ({classes.length} lớp)
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, color: '#1a1a1a' }}>
+        Danh sách lớp học 
+        <Chip 
+          label={`${classes.length} lớp`} 
+          size="small" 
+          sx={{ 
+            ml: 1.5, 
+            bgcolor: '#fee2e2',
+            color: '#dc2626',
+            fontWeight: 600
+          }} 
+        />
       </Typography>
       
-      <Grid container spacing={3}>
+      <Grid container spacing={2.5}>
         {classes.map((classItem) => (
-          <Grid item xs={12} md={6} key={classItem.ClassID}>
+          <Grid item xs={12} md={6} lg={4} key={classItem.ClassID}>
             <ClassCard 
               classItem={classItem} 
               onEnroll={onEnrollmentChange}
