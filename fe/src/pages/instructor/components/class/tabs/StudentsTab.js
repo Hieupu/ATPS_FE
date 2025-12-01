@@ -7,7 +7,6 @@ import {
   TableHead,
   TableRow,
   Paper,
-  Avatar,
   Typography,
   Box,
   Chip,
@@ -15,7 +14,6 @@ import {
 import { Email, Phone } from "@mui/icons-material";
 
 export default function StudentsTab({ students = [] }) {
-  // Bảo vệ tuyệt đối
   const studentList = Array.isArray(students) ? students : [];
 
   if (studentList.length === 0) {
@@ -37,7 +35,7 @@ export default function StudentsTab({ students = [] }) {
       <Table>
         <TableHead>
           <TableRow sx={{ bgcolor: "grey.50" }}>
-            <TableCell sx={{ fontWeight: 700 }}>STT</TableCell>
+            <TableCell sx={{ fontWeight: 700, width: "50px" }}>STT</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>Học viên</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
             <TableCell sx={{ fontWeight: 700 }}>Số điện thoại</TableCell>
@@ -49,13 +47,43 @@ export default function StudentsTab({ students = [] }) {
               <TableCell>{i + 1}</TableCell>
               <TableCell>
                 <Box display="flex" alignItems="center" gap={2}>
-                  <Avatar
-                    src={s.ProfilePicture}
-                    sx={{ bgcolor: "primary.main" }}
-                  >
-                    {s.FullName?.[0]}
-                  </Avatar>
-                  <Typography fontWeight={600}>{s.FullName}</Typography>
+                  {s.ProfilePicture ? (
+                    <Box
+                      component="img"
+                      src={s.ProfilePicture}
+                      alt={s.FullName}
+                      sx={{
+                        width: 60,
+                        height: 80,
+                        objectFit: "cover",
+                        borderRadius: 1.5,
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                        border: "1px solid #eee",
+                      }}
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: 60,
+                        height: 80,
+                        bgcolor: "primary.light",
+                        color: "white",
+                        borderRadius: 1.5,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontWeight: "bold",
+                        fontSize: "24px",
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+                      }}
+                    >
+                      {s.FullName?.charAt(0)?.toUpperCase()}
+                    </Box>
+                  )}
+
+                  <Typography fontWeight={600} variant="subtitle1">
+                    {s.FullName}
+                  </Typography>
                 </Box>
               </TableCell>
               <TableCell>
@@ -71,7 +99,7 @@ export default function StudentsTab({ students = [] }) {
                     {s.Phone}
                   </Box>
                 ) : (
-                  <Chip label="Chưa có" size="small" />
+                  <Chip label="Chưa có" size="small" variant="outlined" />
                 )}
               </TableCell>
             </TableRow>

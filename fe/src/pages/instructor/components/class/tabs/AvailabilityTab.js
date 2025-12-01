@@ -102,12 +102,6 @@ export default function AvailabilityTab({
     try {
       // Gọi hàm từ cha để lưu
       await onSaveAvailability(startDateStr, endDateStr, localSlots);
-
-      // Hiển thị thông báo thành công bằng Toast thay vì alert
-      // Lưu ý: Nếu hàm onSaveAvailability ở cha đã có toast success,
-      // bạn có thể bỏ dòng này để tránh duplicate toast.
-      // Tuy nhiên để chắc chắn component con phản hồi, tôi cứ để đây.
-      // toast.success("Đã lưu lịch thành công!");
     } catch (error) {
       toast.error("Lỗi khi lưu lịch. Vui lòng thử lại.");
     }

@@ -46,6 +46,7 @@ export default function ScheduleTab({
   onOpenAttendance,
   onSaveAttendance,
   onCloseAttendance,
+  onStartZoom,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -167,15 +168,13 @@ export default function ScheduleTab({
           </Button>
         )}
 
-        {session.zoomLink && (
+        {onStartZoom && (
           <Button
             size="small"
             variant="outlined"
             color="secondary"
             startIcon={<VideoCall fontSize="small" />}
-            onClick={() =>
-              window.open(`https://zoom.us/j/${session.zoomLink}`, "_blank")
-            }
+            onClick={() => onStartZoom(session)}
           >
             Zoom
           </Button>

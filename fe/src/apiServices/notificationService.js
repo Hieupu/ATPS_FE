@@ -2,7 +2,7 @@ import apiClient from "./apiClient";
 
 export const listNotificationsApi = async (limit = 20) => {
   const res = await apiClient.get(`/notifications?limit=${limit}`);
-  return res.data; // { notifications }
+  return res.data;
 };
 
 export const markNotificationReadApi = async (id) => {

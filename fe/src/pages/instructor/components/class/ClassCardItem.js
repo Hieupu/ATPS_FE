@@ -15,33 +15,25 @@ import {
   Schedule,
   CalendarToday,
   CheckCircle,
-  Flag, // Import thêm icon cờ
+  Flag,
 } from "@mui/icons-material";
 
 export default function ClassCardItem({ cls, onMenuOpen }) {
-  // Parse schedule
-  const scheduleLines = cls.schedule
-    ? cls.schedule
+  const scheduleLines = cls.scheduleSummary
+    ? cls.scheduleSummary
         .split("|")
         .map((line) => line.trim())
         .filter(Boolean)
     : [];
 
-  // Parse numbers
-  const completedSessions = parseInt(cls.completedSessions) || 0;
+  const completedSessions = parseInt(cls.finishedSessions) || 0;
   const totalSessions = parseInt(cls.totalSessions) || 0;
-  const currentStudents = parseInt(cls.students) || 0;
-  const maxStudents = parseInt(cls.totalStudents) || 0;
-  const progress = cls.progress || 0;
+  const currentStudents = parseInt(cls.currentStudents) || 0;
+  const maxStudents = parseInt(cls.maxStudents) || 0;
+  const progress = cls.progressPercent || 0;
 
-  // Check today
-  const hasSessionToday =
-    cls.isTodayClass === true ||
-    cls.isTodayClass === 1 ||
-    cls.hasSessionToday === true ||
-    cls.hasSessionToday === 1;
+  const hasSessionToday = !!cls.hasSessionToday;
 
-  // Level Colors
   const levelColors = {
     BEGINNER: { bg: "#dbeafe", text: "#1e40af", label: "Cơ bản" },
     INTERMEDIATE: { bg: "#fef3c7", text: "#92400e", label: "Trung cấp" },
@@ -53,9 +45,6 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
     label: cls.courseLevel || "Khác",
   };
 
-  const nextSessionText = cls.nextSession || "Chưa có lịch";
-
-  // Helper format ngày ngắn (dd/mm)
   const formatShortDate = (dateStr) => {
     if (!dateStr) return "---";
     const date = new Date(dateStr);
@@ -67,6 +56,27 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
 
     return `${day}/${month}/${year}`;
   };
+
+  let nextSessionText = "Chưa có lịch";
+  if (cls.nextSessionDate) {
+    const date = new Date(cls.nextSessionDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+
+    if (targetDate.getTime() === today.getTime()) {
+      nextSessionText = "Hôm nay";
+    } else if (targetDate.getTime() === tomorrow.getTime()) {
+      nextSessionText = "Ngày mai";
+    } else {
+      nextSessionText = formatShortDate(cls.nextSessionDate);
+    }
+  }
 
   const endDateText = formatShortDate(cls.endDate);
 
@@ -89,13 +99,12 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
         },
       }}
     >
-      {/* Header Image */}
       <Box sx={{ position: "relative" }}>
         <CardMedia
           component="img"
           height="140"
           image={cls.courseImage}
-          alt={cls.courseName}
+          alt={cls.courseTitle}
           sx={{ objectFit: "cover", bgcolor: "#f8fafc" }}
         />
         {hasSessionToday && (
@@ -117,13 +126,13 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
         )}
         <Chip
           label={
-            cls.classStatus === "ACTIVE"
+            cls.classStatus === "APPROVED" || cls.classStatus === "ACTIVE"
               ? "Đang hoạt động"
-              : cls.classStatus === "PENDING"
+              : cls.classStatus === "PENDING" || cls.classStatus === "WAITING"
               ? "Chờ khai giảng"
-              : cls.classStatus === "COMPLETED"
+              : cls.classStatus === "CLOSE" || cls.classStatus === "COMPLETED"
               ? "Đã kết thúc"
-              : cls.classStatus === "CANCELLED"
+              : cls.classStatus === "CANCEL" || cls.classStatus === "CANCELLED"
               ? "Đã hủy"
               : cls.classStatus
           }
@@ -133,13 +142,14 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             top: 10,
             right: 50,
             bgcolor:
-              cls.classStatus === "ACTIVE"
+              cls.classStatus === "ACTIVE" || cls.classStatus === "APPROVED"
                 ? "#10b981"
-                : cls.classStatus === "PENDING"
+                : cls.classStatus === "PENDING" || cls.classStatus === "WAITING"
                 ? "#f59e0b"
-                : cls.classStatus === "COMPLETED"
+                : cls.classStatus === "CLOSE" || cls.classStatus === "COMPLETED"
                 ? "#6366f1"
-                : cls.classStatus === "CANCELLED"
+                : cls.classStatus === "CANCEL" ||
+                  cls.classStatus === "CANCELLED"
                 ? "#ef4444"
                 : "#94a3b8",
             color: "white",
@@ -213,7 +223,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             overflow: "hidden",
           }}
         >
-          {cls.courseName}
+          {cls.courseTitle}
         </Typography>
 
         <Box
@@ -236,7 +246,9 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
               LỊCH HỌC
             </Typography>
           </Box>
-          {cls.schedule && cls.schedule !== "Chưa có lịch" ? (
+
+          {cls.scheduleSummary &&
+          cls.scheduleSummary !== "Chưa có lịch cố định" ? (
             scheduleLines.length > 0 ? (
               scheduleLines.map((line, index) => (
                 <Typography
@@ -262,7 +274,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
                   lineHeight: 1.6,
                 }}
               >
-                {cls.schedule}
+                {cls.scheduleSummary}
               </Typography>
             )
           ) : (
@@ -276,7 +288,6 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
           )}
         </Box>
 
-        {/* --- GRID 3 CỘT MỚI: Buổi tiếp - Sĩ số - Kết thúc --- */}
         <Box
           sx={{
             display: "grid",
@@ -285,7 +296,6 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             mb: 2,
           }}
         >
-          {/* CỘT 1: Buổi tiếp (Trái) */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <CalendarToday
@@ -324,7 +334,6 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
-          {/* CỘT 2: Sĩ số (Giữa) */}
           <Box
             sx={{
               display: "flex",
@@ -364,7 +373,6 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
-          {/* CỘT 3: Kết thúc (Phải) */}
           <Box
             sx={{
               display: "flex",

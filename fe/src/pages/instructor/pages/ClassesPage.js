@@ -30,63 +30,46 @@ export default function ClassesPage() {
 
       const mapped = data.map((c) => {
         let uiStatus = "upcoming";
-
-        if (["CLOSE", "CANCEL", "COMPLETED"].includes(c.classStatus)) {
+        if (
+          ["CLOSE", "CANCEL", "COMPLETED", "CANCELLED"].includes(c.classStatus)
+        ) {
           uiStatus = "completed";
-        } else if (["ACTIVE", "ON_GOING"].includes(c.classStatus)) {
+        } else if (["ACTIVE", "ON_GOING", "APPROVED"].includes(c.classStatus)) {
           uiStatus = "ongoing";
         } else {
-          const isStarted = c.openDate
-            ? new Date(c.openDate) <= new Date()
-            : new Date(c.openDatePlan) <= new Date();
-          uiStatus = isStarted ? "ongoing" : "upcoming";
-        }
-
-        let nextSessionDisplay = "-";
-        if (c.nextSessionDate) {
-          const date = new Date(c.nextSessionDate);
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-
-          const tomorrow = new Date(today);
-          tomorrow.setDate(tomorrow.getDate() + 1);
-
-          if (date.getTime() === today.getTime()) {
-            nextSessionDisplay = "Hôm nay";
-          } else if (date.getTime() === tomorrow.getTime()) {
-            nextSessionDisplay = "Ngày mai";
-          } else {
-            nextSessionDisplay = date.toLocaleDateString("vi-VN", {
-              weekday: "short",
-              day: "2-digit",
-              month: "2-digit",
-            });
-          }
+          const start = c.openDate
+            ? new Date(c.openDate)
+            : new Date(c.openDatePlan);
+          const now = new Date();
+          uiStatus = start <= now ? "ongoing" : "upcoming";
         }
 
         return {
           id: c.classId,
+
           className: c.className,
-          courseName: c.courseTitle || c.className,
+          classStatus: c.classStatus,
+          status: uiStatus,
+
+          courseTitle: c.courseTitle,
           courseImage: c.courseImage || "/images/default-class.jpg",
           courseLevel: c.courseLevel,
-          students: c.currentStudents,
-          totalStudents: c.maxStudents,
-          fee: Number(c.fee),
-          totalSessions: c.planSessions || c.totalSessions,
-          completedSessions: c.finishedSessions,
-          progress: c.progressPercent || 0,
-          status: uiStatus,
-          classStatus: c.classStatus,
-          startDatePlan: c.openDatePlan,
-          startDate: c.openDate,
 
+          fee: Number(c.fee),
+          currentStudents: c.currentStudents,
+          maxStudents: c.maxStudents,
+
+          totalSessions: c.totalSessions || c.planSessions,
+          finishedSessions: c.finishedSessions,
+          progressPercent: c.progressPercent || 0,
+
+          startDate: c.openDate || c.openDatePlan,
           endDate: c.endDate || c.endDatePlan,
 
+          nextSessionDate: c.nextSessionDate,
           hasSessionToday: c.hasSessionToday,
-          nextSession: nextSessionDisplay,
-          schedule: c.scheduleSummary || "Chưa xếp lịch",
-          isTodayClass: c.hasSessionToday,
+
+          scheduleSummary: c.scheduleSummary,
         };
       });
 
