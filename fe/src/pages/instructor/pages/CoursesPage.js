@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CoursesLayout from "../components/course/CoursesLayout";
 
-const BASE_URL = "http://localhost:9999/api/instructor/courses";
+const BASE_URL = "https://atps-be.onrender.com/api/instructor/courses";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });

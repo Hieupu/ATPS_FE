@@ -80,7 +80,7 @@ export default function CoursesLayout({
       if (values.Duration !== null && values.Duration !== undefined) {
         formData.append("Duration", values.Duration);
       }
-      formData.append("Ojectives", values.Ojectives || "");
+      formData.append("Objectives", values.Objectives || "");
       formData.append("Requirements", values.Requirements || "");
       formData.append("Level", values.Level || "BEGINNER");
       formData.append("Status", values.Status || "DRAFT");
@@ -121,7 +121,7 @@ export default function CoursesLayout({
       if (values.Duration !== null && values.Duration !== undefined) {
         formData.append("Duration", values.Duration);
       }
-      formData.append("Ojectives", values.Ojectives || "");
+      formData.append("Objectives", values.Objectives || "");
       formData.append("Requirements", values.Requirements || "");
       formData.append("Level", values.Level || "BEGINNER");
       formData.append("Status", values.Status || "DRAFT");
@@ -266,7 +266,7 @@ export default function CoursesLayout({
           Description: "",
           Image: "",
           Duration: "",
-          Ojectives: "",
+          Objectives: "",
           Requirements: "",
           Level: "BEGINNER",
           Status: "DRAFT",
@@ -286,7 +286,7 @@ export default function CoursesLayout({
                 Description: editingCourse.Description || "",
                 Image: editingCourse.Image || "",
                 Duration: editingCourse.Duration || "",
-                Ojectives: editingCourse.Ojectives || "",
+                Objectives: editingCourse.Objectives || "",
                 Requirements: editingCourse.Requirements || "",
                 Level: editingCourse.Level || "BEGINNER",
                 Status: editingCourse.Status || "DRAFT",

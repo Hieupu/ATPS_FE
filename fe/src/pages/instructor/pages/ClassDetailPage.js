@@ -1,0 +1,180 @@
+import React, { useEffect, useState } from "react";
+import axios from "axios";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Box, Typography, CircularProgress } from "@mui/material";
+
+import ClassDetailLayout from "../components/class/ClassDetailLayout";
+
+import OverviewTab from "../components/class/tabs/OverviewTab";
+import StudentsTab from "../components/class/tabs/StudentsTab";
+import ScheduleTab from "../components/class/tabs/ScheduleTab";
+
+const BASE_URL = "http://localhost:9999/api/instructor";
+const apiClient = axios.create({
+  baseURL: BASE_URL,
+});
+
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem("token");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export default function ClassDetailPage() {
+  const { classId } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // State cho dữ liệu
+  const [classData, setClassData] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [attendanceSheet, setAttendanceSheet] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const initialTab = parseInt(searchParams.get("tab")) || 0;
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // 1. Lấy chi tiết lớp
+  useEffect(() => {
+    const fetchClassDetail = async () => {
+      try {
+        const res = await apiClient.get(`/classes/${classId}`);
+        setClassData(res.data);
+      } catch (err) {
+        console.error(err);
+        alert("Không thể tải thông tin lớp");
+      }
+    };
+    fetchClassDetail();
+  }, [classId]);
+
+  // 3. Lấy danh sách học viên
+  useEffect(() => {
+    const fetchStudents = async () => {
+      try {
+        const res = await apiClient.get(`/classes/${classId}/students`);
+        setStudents(res.data.Students || []);
+      } catch (err) {
+        console.error("Lỗi tải danh sách học viên:", err);
+      }
+    };
+    if (classId) fetchStudents();
+  }, [classId]);
+
+  // 4. Lấy thời khóa biểu
+  useEffect(() => {
+    const fetchSchedule = async () => {
+      try {
+        const res = await apiClient.get(`/classes/${classId}/schedule`);
+        console.log("DỮ LIỆU MỚI TỪ SERVER:", res.data.Sessions);
+        setSessions(res.data.Sessions || []);
+      } catch (err) {
+        console.error("Lỗi tải lịch học:", err);
+      }
+    };
+    if (classId) fetchSchedule();
+  }, [classId]);
+
+  // 5. Mở modal điểm danh
+  const openAttendanceModal = async (session) => {
+    setSelectedSession(session);
+    const sessionId = session.sessionId;
+
+    if (!sessionId || sessionId <= 0) {
+      alert("Buổi học không có ID hợp lệ");
+      return;
+    }
+
+    try {
+      const res = await apiClient.get(
+        `/classes/${classId}/sessions/${sessionId}/attendance`
+      );
+      setAttendanceSheet(res.data.AttendanceRecords || []);
+    } catch (err) {
+      console.error("Lỗi tải bảng điểm danh:", err);
+      alert("Không thể mở bảng điểm danh");
+    }
+  };
+
+  // 6. Lưu điểm danh
+  const saveAttendance = async (updatedList) => {
+    setSaving(true);
+    try {
+      await apiClient.post(
+        `/classes/${classId}/sessions/${selectedSession.sessionId}/attendance`,
+        updatedList
+      );
+      alert("Điểm danh thành công!");
+
+      const res = await apiClient.get(`/classes/${classId}/schedule`);
+      setSessions(res.data.Sessions || []);
+
+      setSelectedSession(null);
+      setAttendanceSheet(null);
+    } catch (err) {
+      alert("Lưu điểm danh thất bại");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const closeAttendanceModal = () => {
+    setSelectedSession(null);
+    setAttendanceSheet(null);
+  };
+
+  // Loading chung
+  useEffect(() => {
+    if (classData) setLoading(false);
+  }, [classData]);
+
+  if (loading) {
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>Đang tải chi tiết lớp...</Typography>
+      </Box>
+    );
+  }
+
+  if (!classData) {
+    return (
+      <Box sx={{ p: 4, textAlign: "center" }}>
+        <Typography color="error">Không tìm thấy lớp học</Typography>
+      </Box>
+    );
+  }
+
+  return (
+    <ClassDetailLayout
+      classData={classData}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onBack={() => navigate(-1)}
+    >
+      {/* Tab 0: Tổng quan */}
+      {activeTab === 0 && <OverviewTab classData={classData} />}
+
+      {/* Tab 1: Học viên */}
+      {activeTab === 1 && <StudentsTab students={students} />}
+
+      {/* Tab 2: Thời khóa biểu & Điểm danh */}
+      {activeTab === 2 && (
+        <ScheduleTab
+          sessions={sessions}
+          selectedSession={selectedSession}
+          attendanceSheet={attendanceSheet}
+          savingAttendance={saving}
+          onOpenAttendance={openAttendanceModal}
+          onSaveAttendance={saveAttendance}
+          onCloseAttendance={closeAttendanceModal}
+        />
+      )}
+    </ClassDetailLayout>
+  );
+}

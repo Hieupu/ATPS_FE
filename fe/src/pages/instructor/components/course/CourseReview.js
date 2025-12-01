@@ -47,7 +47,7 @@ export default function CourseReview({ course, onClose }) {
     Duration,
     Level,
     Status,
-    Ojectives,
+    Objectives,
     Requirements,
     Category,
     Rating,
@@ -76,8 +76,8 @@ export default function CourseReview({ course, onClose }) {
       : null;
 
   const objectiveItems =
-    typeof Ojectives === "string" && Ojectives.trim()
-      ? Ojectives.split(/\r?\n|\. |- /).filter((s) => s.trim().length > 3)
+    typeof Objectives === "string" && Objectives.trim()
+      ? Objectives.split(/\r?\n|\. |- /).filter((s) => s.trim().length > 3)
       : [];
 
   const instructorDisplayName = InstructorName || "Giảng viên chưa đặt tên";

@@ -28,7 +28,7 @@ export default function CourseFormDialog({
     Description: "",
     Image: "",
     Duration: "",
-    Ojectives: "",
+    Objectives: "",
     Requirements: "",
     Level: "BEGINNER",
     Status: "DRAFT",
@@ -56,7 +56,7 @@ export default function CourseFormDialog({
         Description: "",
         Image: "",
         Duration: "",
-        Ojectives: "",
+        Objectives: "",
         Requirements: "",
         Level: "BEGINNER",
         Status: "DRAFT",
@@ -220,8 +220,8 @@ export default function CourseFormDialog({
 
           <TextField
             label="Mục tiêu học tập"
-            value={values.Ojectives}
-            onChange={handleChange("Ojectives")}
+            value={values.Objectives}
+            onChange={handleChange("Objectives")}
             fullWidth
             multiline
             minRows={4}

@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import {
-  AppBar,
-  Toolbar,
   Typography,
   Button,
   Container,
@@ -9,18 +7,10 @@ import {
   Grid,
   Card,
   CardContent,
-  IconButton,
-  Drawer,
-  List,
-  ListItem,
-  ListItemText,
-  Chip,
   Avatar,
   Paper,
   useTheme,
   useMediaQuery,
-  Skeleton,
-  CardMedia,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -30,8 +20,6 @@ import {
   TrendingUp,
   People,
   EmojiEvents,
-  Schedule,
-  Security,
   CheckCircle,
   Star,
   ArrowForward,
@@ -67,7 +55,7 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
 
-  const navItems = ["Home", "Features", "Courses", "About", "Contact"];
+  const navItems = ["Home", "Features", "Courses", "openingCeremony", "About", "Contact"];
   const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
 
   // Fetch popular courses
@@ -198,8 +186,6 @@ const HomePage = () => {
       } else {
         console.log('❓ Unknown role');
       }
-      
-      console.log('============================');
     }
   }, [isAuthenticated, user, isInstructor, isLearner, isParent]);
 
@@ -677,7 +663,7 @@ const HomePage = () => {
                     </Avatar>
                     <Typography
                       variant="h4"
-                      sx={{ fontWeight: 700, color: "primary.main", mb: 1 }}
+                      sx={{ fontWeight: 650, color: "primary.main", mb: 1 }}
                     >
                       {stat.number}
                     </Typography>
@@ -719,7 +705,7 @@ const HomePage = () => {
               variant="h3"
               component="h2"
               gutterBottom
-              sx={{ fontWeight: 700 }}
+              sx={{ fontWeight: 650 }}
             >
               Mọi Thứ Bạn Cần Để Thành Công
             </Typography>
@@ -793,7 +779,7 @@ const HomePage = () => {
                   ))}
                 </Box>
               </Grid>
-              <Grid item xs={12} md={6}>
+              <Grid item xs={12} md={5}>
                 <Paper
                   elevation={8}
                   sx={{
@@ -805,7 +791,7 @@ const HomePage = () => {
                   }}
                 >
                   <Box sx={{ textAlign: "center" }}>
-                    <Security sx={{ fontSize: 80, mb: 2, opacity: 0.9 }} />
+                    <School sx={{ fontSize: 80, mb: 2, opacity: 0.9 }} />
                     <Typography
                       variant="h4"
                       gutterBottom
@@ -882,8 +868,7 @@ const HomePage = () => {
                 </Typography>
               </Box>
               <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                All-in-One Test Preparation System - Your complete solution for
-                effective learning and exam preparation.
+                All-in-One Test Preparation System - Giải pháp toàn diện cho học tập và ôn luyện thi hiệu quả
               </Typography>
             </Grid>
             <Grid item xs={6} md={2}>

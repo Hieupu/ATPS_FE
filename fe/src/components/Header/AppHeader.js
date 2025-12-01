@@ -33,7 +33,7 @@ import {
   Notifications,
   AssignmentTurnedIn,
   Payment,
-  Quiz
+  Quiz,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
@@ -74,19 +74,23 @@ const AppHeader = () => {
 
   const navItems = [
     {
-      label: "Home",
+      label: "Trang chủ",
       path: "/",
     },
     {
-      label: "Courses",
+      label: "Khoá học",
       path: "/courses",
     },
     {
-      label: "Instructors",
+      label: "Giảng viên",
       path: "/instructors",
     },
     {
-      label: "Contact",
+      label: "Lịch khai giảng",
+      path: "/openingCeremony",
+    },
+    {
+      label: "Liên hệ",
       path: "/contact",
     },
   ];
@@ -157,7 +161,7 @@ const AppHeader = () => {
           Điểm danh
         </MenuItem>
       );
-         items.push(
+      items.push(
         <MenuItem
           key="my-exam"
           onClick={() => navigate("/exam")}
@@ -172,7 +176,7 @@ const AppHeader = () => {
           }}
         >
           <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
-         Exam
+         Bài kiểm tra
         </MenuItem>
       );
       items.push(
@@ -208,7 +212,7 @@ const AppHeader = () => {
           }}
         >
           <Payment sx={{ mr: 1, color: "#6b7280" }} />
-         Lịch sử thanh toán
+          Lịch sử thanh toán
         </MenuItem>
       );
     }
@@ -229,7 +233,7 @@ const AppHeader = () => {
           }}
         >
           <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
-          Course Management
+          Quản lý khoá học
         </MenuItem>
       );
     }
@@ -250,7 +254,7 @@ const AppHeader = () => {
           }}
         >
           <Group sx={{ mr: 1, color: "#6b7280" }} />
-          Tracking Student
+          Báo cáo học tập
         </MenuItem>
       );
     }
@@ -294,12 +298,8 @@ const AppHeader = () => {
         </ListItem>
       );
 
-       items.push(
-        <ListItem
-          button
-          key="my-exam-mobile"
-          onClick={() => navigate("/exam")}
-        >
+      items.push(
+        <ListItem button key="my-exam-mobile" onClick={() => navigate("/exam")}>
           <CheckCircle sx={{ mr: 2 }} />
           <ListItemText primary="Exam" />
         </ListItem>
@@ -738,7 +738,6 @@ const AppHeader = () => {
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
                       Profile
                     </MenuItem>
-
 
                     {/* Menu items theo role */}
                     {getRoleSpecificMenuItems()}

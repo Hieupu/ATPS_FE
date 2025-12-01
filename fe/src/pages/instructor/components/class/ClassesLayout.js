@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -10,10 +11,10 @@ import {
   Menu,
   MenuItem,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 import {
   Search,
-  FilterList,
   MoreVert,
   People,
   Assignment,
@@ -27,13 +28,14 @@ import {
 import ClassCardItem from "./ClassCardItem";
 
 export default function ClassesLayout({
-  classes,
-  loading,
+  classes = [],
+  loading = false,
   tabValue,
   setTabValue,
   searchQuery,
   setSearchQuery,
 }) {
+  const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
 
@@ -47,205 +49,175 @@ export default function ClassesLayout({
     setSelectedClass(null);
   };
 
-  const getStatusConfig = (status) => {
-    switch (status) {
-      case "ongoing":
-        return {
-          label: "Ongoing",
-          color: "#16a34a",
-          bg: "#dcfce7",
-        };
-      case "upcoming":
-        return {
-          label: "Upcoming",
-          color: "#d97706",
-          bg: "#fef3c7",
-        };
-      case "completed":
-        return {
-          label: "Completed",
-          color: "#2563eb",
-          bg: "#dbeafe",
-        };
-      default:
-        return {
-          label: "Unknown",
-          color: "#64748b",
-          bg: "#f1f5f9",
-        };
-    }
-  };
-
+  // Lọc theo tab + tìm kiếm
   const getFilteredClasses = () => {
-    let filtered = classes || [];
+    let filtered = [...classes];
 
-    switch (tabValue) {
-      case 1:
-        filtered = filtered.filter((c) => c.status === "ongoing");
-        break;
-      case 2:
-        filtered = filtered.filter((c) => c.status === "upcoming");
-        break;
-      case 3:
-        filtered = filtered.filter((c) => c.status === "completed");
-        break;
-      default:
-        break;
-    }
+    // Tab filter
+    if (tabValue === 1)
+      filtered = filtered.filter((c) => c.status === "ongoing");
+    if (tabValue === 2)
+      filtered = filtered.filter((c) => c.status === "upcoming");
+    if (tabValue === 3)
+      filtered = filtered.filter((c) => c.status === "completed");
 
-    if (searchQuery) {
+    // Tìm kiếm
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.courseName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          c.classCode.toLowerCase().includes(searchQuery.toLowerCase())
+          (c.className || "").toLowerCase().includes(q) ||
+          (c.courseName || "").toLowerCase().includes(q)
       );
     }
 
     return filtered;
   };
 
+  const handleViewDetail = () => {
+    if (selectedClass) {
+      navigate(
+        `/instructor/classes/${selectedClass.classId || selectedClass.id}`
+      );
+    }
+    handleMenuClose();
+  };
+  const handleViewStudents = () => {
+    if (selectedClass) {
+      navigate(
+        `/instructor/classes/${selectedClass.classId || selectedClass.id}?tab=1`
+      );
+    }
+    handleMenuClose();
+  };
+
+  const handleViewSchedule = () => {
+    if (selectedClass) {
+      navigate(
+        `/instructor/classes/${selectedClass.classId || selectedClass.id}?tab=2`
+      );
+    }
+    handleMenuClose();
+  };
+
+  // Đếm số lượng cho từng tab
   const allCount = classes.length;
   const ongoingCount = classes.filter((c) => c.status === "ongoing").length;
   const upcomingCount = classes.filter((c) => c.status === "upcoming").length;
   const completedCount = classes.filter((c) => c.status === "completed").length;
 
+  const filteredClasses = getFilteredClasses();
+
   return (
-    <div className="instructor-page">
+    <Box sx={{ p: { xs: 2, md: 3 } }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              My Classes
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              View and manage classes assigned to you by Admin
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Search & Filter */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
-          <TextField
-            placeholder="Search by class name or code..."
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{
-              flex: 1,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: "#fff",
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ color: "#94a3b8" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="outlined"
-            startIcon={<FilterList />}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              borderColor: "#e2e8f0",
-              color: "#64748b",
-              "&:hover": {
-                borderColor: "#667eea",
-                backgroundColor: "#f0f4ff",
-              },
-            }}
-          >
-            Filter
-          </Button>
-        </Box>
-
-        {/* Tabs */}
-        <Tabs
-          value={tabValue}
-          onChange={(e, newValue) => setTabValue(newValue)}
-          sx={{
-            "& .MuiTab-root": {
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "14px",
-              minHeight: "48px",
-            },
-            "& .Mui-selected": { color: "#667eea" },
-            "& .MuiTabs-indicator": { backgroundColor: "#667eea" },
-          }}
-        >
-          <Tab label={`All (${allCount})`} />
-          <Tab label={`Ongoing (${ongoingCount})`} />
-          <Tab label={`Upcoming (${upcomingCount})`} />
-          <Tab label={`Completed (${completedCount})`} />
-        </Tabs>
+        <Typography variant="h4" fontWeight={700} gutterBottom>
+          Lớp học của tôi
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
+          Quản lý tất cả lớp học bạn đang giảng dạy
+        </Typography>
       </Box>
 
-      {/* Class Grid */}
-      <Grid container spacing={3}>
-        {getFilteredClasses().map((cls) => (
-          <Grid item xs={12} sm={6} md={3} lg={3} key={cls.id}>
-            <ClassCardItem
-              cls={cls}
-              loading={loading}
-              getStatusConfig={getStatusConfig}
-              onMenuOpen={handleMenuOpen}
-            />
-          </Grid>
-        ))}
-      </Grid>
+      {/* Search */}
+      <Box sx={{ mb: 3 }}>
+        <TextField
+          fullWidth
+          size="small"
+          placeholder="Tìm kiếm tên lớp hoặc khóa học..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search />
+              </InputAdornment>
+            ),
+          }}
+          sx={{
+            maxWidth: 500,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              backgroundColor: "#fff",
+            },
+          }}
+        />
+      </Box>
 
-      {/* Actions Menu */}
+      {/* Tabs */}
+      <Tabs
+        value={tabValue}
+        onChange={(_, v) => setTabValue(v)}
+        sx={{
+          mb: 4,
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 600,
+            minWidth: "auto",
+            px: 3,
+          },
+          "& .MuiTabs-indicator": {
+            height: 3,
+            borderRadius: "3px 3px 0 0",
+            backgroundColor: "#6366f1",
+          },
+        }}
+      >
+        <Tab label={`Tất cả (${allCount})`} />
+        <Tab label={`Đang diễn ra (${ongoingCount})`} />
+        <Tab label={`Sắp khai giảng (${upcomingCount})`} />
+        <Tab label={`Đã kết thúc (${completedCount})`} />
+      </Tabs>
+
+      {/* Loading */}
+      {loading && (
+        <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
+          <CircularProgress />
+        </Box>
+      )}
+
+      {/* Danh sách lớp – Grid 4 cột */}
+      {!loading && (
+        <Grid container spacing={3}>
+          {filteredClasses.length === 0 ? (
+            <Grid item xs={12}>
+              <Box sx={{ textAlign: "center", py: 10 }}>
+                <Typography color="text.secondary">
+                  {searchQuery || tabValue !== 0
+                    ? "Không tìm thấy lớp học nào phù hợp"
+                    : "Bạn chưa có lớp học nào"}
+                </Typography>
+              </Box>
+            </Grid>
+          ) : (
+            filteredClasses.map((cls) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={cls.id}>
+                <ClassCardItem cls={cls} onMenuOpen={handleMenuOpen} />
+              </Grid>
+            ))
+          )}
+        </Grid>
+      )}
+
+      {/* Menu hành động */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            minWidth: 200,
-          },
-        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
       >
-        <MenuItem onClick={handleMenuClose}>
-          <Visibility sx={{ fontSize: 18, mr: 1.5 }} /> View Details
+        <MenuItem onClick={handleViewDetail}>
+          <Visibility sx={{ mr: 1.5, fontSize: 18 }} /> Xem chi tiết
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <People sx={{ fontSize: 18, mr: 1.5 }} /> Student List
+        <MenuItem onClick={handleViewStudents}>
+          <People sx={{ mr: 1.5, fontSize: 18 }} /> Danh sách học viên
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Assignment sx={{ fontSize: 18, mr: 1.5 }} /> Assignments
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Assessment sx={{ fontSize: 18, mr: 1.5 }} /> Exams
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <EditCalendar sx={{ fontSize: 18, mr: 1.5 }} /> Request Schedule
-          Change
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <CloudUpload sx={{ fontSize: 18, mr: 1.5 }} /> Upload Materials
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <NoteAlt sx={{ fontSize: 18, mr: 1.5 }} /> Class Notes
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Poll sx={{ fontSize: 18, mr: 1.5 }} /> Create Survey
+        <MenuItem onClick={handleViewSchedule}>
+          <EditCalendar sx={{ mr: 1.5, fontSize: 18 }} /> Thời Khóa Biểu
         </MenuItem>
       </Menu>
-    </div>
+    </Box>
   );
 }

@@ -26,7 +26,10 @@ export const getAssignmentByIdApi = async (assignmentId) => {
 // Tạo bài tập mới
 export const createAssignmentApi = async (assignmentData) => {
   try {
-    const response = await apiClient.post("/instructor/assignments", assignmentData);
+    const response = await apiClient.post("/instructor/assignments", {
+      ...assignmentData,
+      Status: "active"
+    });
     return response.data;
   } catch (error) {
     console.error("Create assignment error:", error);
@@ -142,6 +145,7 @@ export const addQuestionToAssignmentApi = async (assignmentId, questionData) => 
       `/instructor/assignments/${assignmentId}/questions`,
       payload
     );
+    console.log("Add question response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Add question error:", error);
@@ -347,7 +351,7 @@ export const prepareAssignmentForApi = (formData) => {
     mediaURL: formData.mediaURL || null,
     maxDuration: formData.maxDuration || null,
     showAnswersAfter: formData.showAnswersAfter || "after_submission",
-    questions: formData.type === "quiz" ? (formData.localQuestions || []) : []
-
+    // Thêm câu hỏi ngay cả khi type không phải "quiz"
+    questions: formData.localQuestions || []
   };
 };
