@@ -11,22 +11,18 @@ import {
   IconButton,
   Select,
   MenuItem,
-  FormControl,
-  Chip,
   Button,
-  Paper,
 } from "@mui/material";
 import {
   ChevronLeft,
   ChevronRight,
   VideoCall,
   Assignment,
-  Edit, // Import thêm icon Edit cho nút cập nhật
+  Edit,
 } from "@mui/icons-material";
 import { format, startOfWeek, addDays } from "date-fns";
 import AttendanceModal from "../AttendanceModal";
 
-// Tất cả các slot có thể có trong hệ thống
 const ALL_TIME_SLOTS = [
   { start: "08:00", end: "10:00" },
   { start: "10:20", end: "12:20" },
@@ -36,7 +32,7 @@ const ALL_TIME_SLOTS = [
   { start: "20:00", end: "22:00" },
 ];
 
-const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 export default function ScheduleTab({
   sessions = [],
@@ -51,7 +47,17 @@ export default function ScheduleTab({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // Tuần bắt đầu từ thứ Hai
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 3;
+    const endYear = currentYear + 1;
+    const list = [];
+    for (let i = startYear; i <= endYear; i++) {
+      list.push(i);
+    }
+    return list;
+  }, []);
+
   const weekStart = useMemo(() => {
     return startOfWeek(currentDate, { weekStartsOn: 1 });
   }, [currentDate]);
@@ -62,13 +68,11 @@ export default function ScheduleTab({
 
   const normalizeTime = (timeStr) => {
     if (!timeStr) return null;
-    const normalized = timeStr.split(":").slice(0, 2).join(":");
-    return normalized;
+    return timeStr.split(":").slice(0, 2).join(":");
   };
 
   const scheduleGrid = useMemo(() => {
     const grid = {};
-
     sessions.forEach((session) => {
       const sessionDate = new Date(session.date);
       const dateStr = format(sessionDate, "yyyy-MM-dd");
@@ -86,7 +90,6 @@ export default function ScheduleTab({
         endTimeFormatted: normalizeTime(session.endTime),
       });
     });
-
     return grid;
   }, [sessions]);
 
@@ -95,7 +98,9 @@ export default function ScheduleTab({
   const handleYearChange = (e) => {
     const year = e.target.value;
     setSelectedYear(year);
-    setCurrentDate((d) => new Date(d.setFullYear(year)));
+    const newDate = new Date(currentDate);
+    newDate.setFullYear(year);
+    setCurrentDate(newDate);
   };
 
   const getStatusColor = (s) => {
@@ -105,198 +110,302 @@ export default function ScheduleTab({
   };
 
   const getStatusLabel = (s) => {
-    if (s.isFullyMarked) return "Đã điểm danh";
+    if (s.isFullyMarked) return "Hoàn thành";
     if (s.attendedCount > 0)
       return `Đã điểm danh ${s.attendedCount}/${s.totalStudents}`;
     return "Chưa điểm danh";
   };
 
-  const renderSessionCard = (session) => (
-    <Paper
-      key={session.sessionId}
-      elevation={3}
+  const renderSessionCard = (session, idx) => (
+    <Box
+      key={session.sessionId || idx}
       sx={{
-        p: 1.5,
-        borderLeft: `5px solid ${getStatusColor(session)}`,
-        bgcolor: "background.paper",
-        "&:hover": { boxShadow: 8 },
-        fontSize: "0.85rem",
+        p: "12px",
+        mb: "8px",
+        borderLeft: `4px solid ${getStatusColor(session)}`,
+        bgcolor: "#fff",
+        borderRadius: "4px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        transition: "box-shadow 0.2s",
+        "&:hover": { boxShadow: "0 4px 8px rgba(0,0,0,0.15)" },
       }}
     >
-      <Typography variant="subtitle2" fontWeight={700} color="primary">
-        {session.title}
-      </Typography>
+      <Box>
+        <Typography
+          sx={{
+            fontWeight: 600,
+            color: "#1976d2",
+            mb: "6px",
+            fontSize: "0.8rem",
+            lineHeight: "1.2",
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
+          }}
+        >
+          {session.title || session.ClassName}
+        </Typography>
 
-      <Chip
-        label={getStatusLabel(session)}
-        size="small"
-        sx={{
-          mt: 0.5,
-          bgcolor: getStatusColor(session),
-          color: "white",
-          fontSize: "0.7rem",
-          height: 22,
-        }}
-      />
+        <Box
+          component="span"
+          sx={{
+            display: "inline-block",
+            padding: "2px 8px",
+            bgcolor: getStatusColor(session),
+            color: "white",
+            borderRadius: "12px",
+            fontSize: "0.65rem",
+            fontWeight: 500,
+            mb: "6px",
+          }}
+        >
+          {getStatusLabel(session)}
+        </Box>
+      </Box>
 
-      <Typography
-        variant="caption"
-        display="block"
-        mt={0.5}
-        color="success.main"
-        fontWeight={500}
-      >
-        {session.startTimeFormatted} - {session.endTimeFormatted}
-      </Typography>
+      <Box>
+        <Typography
+          sx={{
+            display: "block",
+            color: "#4caf50",
+            fontWeight: 500,
+            fontSize: "0.75rem",
+            mb: "6px",
+          }}
+        >
+          {session.startTimeFormatted} - {session.endTimeFormatted}
+        </Typography>
 
-      <Box sx={{ mt: 1, display: "flex", gap: 1, flexWrap: "wrap" }}>
+        {onStartZoom && (
+          <Button
+            onClick={() => onStartZoom(session)}
+            fullWidth
+            size="small"
+            sx={{
+              padding: "2px 8px",
+              bgcolor: "#ff9800",
+              color: "white",
+              fontSize: "0.7rem",
+              fontWeight: 500,
+              textTransform: "none",
+              minWidth: "unset",
+              mb: 0.5,
+              "&:hover": { bgcolor: "#f57c00" },
+            }}
+            startIcon={<VideoCall sx={{ width: 16, height: 16 }} />}
+          >
+            Vào Zoom
+          </Button>
+        )}
+
         {session.totalStudents > 0 && (
           <Button
+            onClick={() => onOpenAttendance(session)}
+            fullWidth
             size="small"
-            variant={session.isFullyMarked ? "outlined" : "contained"} // Đổi style để phân biệt
-            color={session.isFullyMarked ? "success" : "primary"}
+            sx={{
+              padding: "2px 8px",
+              bgcolor: session.isFullyMarked ? "#4caf50" : "#1976d2",
+              color: "white",
+              fontSize: "0.7rem",
+              fontWeight: 500,
+              textTransform: "none",
+              minWidth: "unset",
+              "&:hover": {
+                bgcolor: session.isFullyMarked ? "#388e3c" : "#1565c0",
+              },
+            }}
             startIcon={
               session.isFullyMarked ? (
-                <Edit fontSize="small" />
+                <Edit sx={{ width: 14, height: 14 }} />
               ) : (
-                <Assignment fontSize="small" />
+                <Assignment sx={{ width: 14, height: 14 }} />
               )
             }
-            onClick={() => onOpenAttendance(session)}
           >
             {session.isFullyMarked ? "Cập nhật" : "Điểm danh"}
           </Button>
         )}
-
-        {onStartZoom && (
-          <Button
-            size="small"
-            variant="outlined"
-            color="secondary"
-            startIcon={<VideoCall fontSize="small" />}
-            onClick={() => onStartZoom(session)}
-          >
-            Zoom
-          </Button>
-        )}
       </Box>
-    </Paper>
+    </Box>
   );
 
   return (
-    <Box sx={{ p: { xs: 1, md: 3 } }}>
-      <Typography variant="h5" fontWeight={700} gutterBottom>
-        Thời khóa biểu
-      </Typography>
-
-      {/* Điều khiển tuần */}
+    <Box sx={{ p: 3, bgcolor: "#f8f9fa", minHeight: "100vh" }}>
       <Box
         sx={{
           display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
           flexWrap: "wrap",
           gap: 2,
-          mb: 3,
-          alignItems: "center",
         }}
       >
-        <FormControl size="small">
-          <Select value={selectedYear} onChange={handleYearChange}>
-            {[2024, 2025, 2026, 2027].map((y) => (
-              <MenuItem key={y} value={y}>
-                {y}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography
+              sx={{ fontWeight: 700, color: "#d32f2f", fontSize: "1.1rem" }}
+            >
+              NĂM
+            </Typography>
+            <Select
+              value={selectedYear}
+              onChange={handleYearChange}
+              size="small"
+              sx={{
+                bgcolor: "white",
+                fontWeight: 600,
+                border: "2px solid #d32f2f",
+                "& .MuiOutlinedInput-notchedOutline": { border: "none" },
+                "&:hover .MuiOutlinedInput-notchedOutline": { border: "none" },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  border: "none",
+                },
+                borderRadius: "4px",
+                minWidth: "100px",
+                height: "40px",
+              }}
+            >
+              {yearsList.map((y) => (
+                <MenuItem key={y} value={y}>
+                  {y}
+                </MenuItem>
+              ))}
+            </Select>
+          </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            bgcolor: "white",
-            borderRadius: 1,
-            border: "1px solid #ddd",
-          }}
-        >
-          <IconButton onClick={handlePrevWeek}>
-            <ChevronLeft />
-          </IconButton>
-          <Typography
-            sx={{ px: 3, fontWeight: 600, minWidth: 180, textAlign: "center" }}
-          >
-            {format(weekDates[0], "dd/MM")} -{" "}
-            {format(weekDates[6], "dd/MM/yyyy")}
-          </Typography>
-          <IconButton onClick={handleNextWeek}>
-            <ChevronRight />
-          </IconButton>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography
+              sx={{ fontWeight: 700, color: "#1976d2", fontSize: "1.1rem" }}
+            >
+              TUẦN
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                bgcolor: "white",
+                border: "2px solid #1976d2",
+                borderRadius: "4px",
+                height: "40px",
+                px: 1,
+              }}
+            >
+              <IconButton size="small" onClick={handlePrevWeek}>
+                <ChevronLeft />
+              </IconButton>
+              <Typography sx={{ px: 2, fontWeight: 600, fontSize: "0.9rem" }}>
+                {format(weekDates[0], "dd/MM")} -{" "}
+                {format(weekDates[6], "dd/MM")}
+              </Typography>
+              <IconButton size="small" onClick={handleNextWeek}>
+                <ChevronRight />
+              </IconButton>
+            </Box>
+          </Box>
         </Box>
       </Box>
 
-      {/* Bảng lịch */}
-      <TableContainer component={Paper} elevation={3}>
-        <Table size="small">
+      <TableContainer
+        component={Box}
+        sx={{
+          border: "1px solid #e0e0e0",
+          borderRadius: "8px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+          bgcolor: "white",
+          overflowX: "auto",
+        }}
+      >
+        <Table sx={{ minWidth: 800, borderCollapse: "collapse" }}>
           <TableHead>
             <TableRow>
               <TableCell
-                sx={{ bgcolor: "#f5f5f5", fontWeight: 700, width: 120 }}
-              >
-                Giờ
-              </TableCell>
+                sx={{
+                  bgcolor: "#f1f8e9",
+                  width: 100,
+                  borderRight: "1px solid #e0e0e0",
+                  p: "12px",
+                }}
+              />
               {DAYS.map((day, i) => (
                 <TableCell
                   key={day}
                   align="center"
                   sx={{
                     bgcolor: i >= 5 ? "#fce4ec" : "#e3f2fd",
-                    fontWeight: 700,
+                    borderRight: i < 6 ? "1px solid #e0e0e0" : "none",
+                    p: "12px",
                   }}
                 >
-                  <Typography variant="subtitle2">{day}</Typography>
-                  <Typography variant="body2">
+                  <Typography
+                    sx={{ fontWeight: 700, fontSize: "0.9rem", color: "#000" }}
+                  >
+                    {day}
+                  </Typography>
+                  <Typography
+                    sx={{ fontSize: "0.8rem", color: "#666", mt: 0.5 }}
+                  >
                     {format(weekDates[i], "dd/MM")}
                   </Typography>
                 </TableCell>
               ))}
             </TableRow>
           </TableHead>
+
           <TableBody>
-            {ALL_TIME_SLOTS.map((slot) => {
+            {ALL_TIME_SLOTS.map((slot, slotIndex) => {
               const slotStart = slot.start;
               return (
                 <TableRow key={slotStart}>
                   <TableCell
                     sx={{
-                      bgcolor: "#f5f5f5",
-                      fontWeight: 600,
-                      fontSize: "0.9rem",
+                      bgcolor: "#f1f8e9",
+                      borderRight: "1px solid #e0e0e0",
+                      verticalAlign: "top",
+                      p: "12px",
                     }}
                   >
-                    {slotStart} - {slot.end}
+                    <Typography sx={{ fontWeight: 600, fontSize: "0.85rem" }}>
+                      Ca {slotIndex + 1}
+                    </Typography>
+                    <Typography
+                      sx={{ color: "#666", fontSize: "0.75rem", mt: 0.5 }}
+                    >
+                      {slot.start}-{slot.end}
+                    </Typography>
                   </TableCell>
-                  {weekDates.map((date) => {
+
+                  {weekDates.map((date, dateIndex) => {
                     const dateStr = format(date, "yyyy-MM-dd");
                     const key = `${dateStr}-${slotStart}`;
                     const cellSessions = scheduleGrid[key] || [];
+                    const hasData = cellSessions.length > 0;
 
                     return (
                       <TableCell
                         key={dateStr}
                         sx={{
-                          p: 1,
+                          p: "8px",
                           verticalAlign: "top",
-                          minHeight: 100,
-                          bgcolor:
-                            cellSessions.length > 0
-                              ? "#fffde7"
-                              : "background.paper",
+                          bgcolor: hasData ? "#fff" : "#fafafa",
+                          borderRight:
+                            dateIndex < 6 ? "1px solid #e0e0e0" : "none",
+                          borderTop: "1px solid #e0e0e0",
+                          minHeight: "120px",
+                          width: "14.28%",
                         }}
                       >
-                        {cellSessions.map(renderSessionCard)}
-                        {cellSessions.length === 0 && (
-                          <Typography color="#ddd" align="center">
-                            —
-                          </Typography>
+                        {hasData ? (
+                          cellSessions.map((session, idx) =>
+                            renderSessionCard(session, idx)
+                          )
+                        ) : (
+                          <Box sx={{ minHeight: "80px" }} />
                         )}
                       </TableCell>
                     );
@@ -307,30 +416,6 @@ export default function ScheduleTab({
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* Chú thích */}
-      <Box
-        sx={{
-          mt: 3,
-          display: "flex",
-          justifyContent: "center",
-          gap: 3,
-          flexWrap: "wrap",
-        }}
-      >
-        <Chip
-          label="Đã điểm danh"
-          sx={{ bgcolor: "#4caf50", color: "white" }}
-        />
-        <Chip
-          label="Đang điểm danh"
-          sx={{ bgcolor: "#ff9800", color: "white" }}
-        />
-        <Chip
-          label="Chưa điểm danh"
-          sx={{ bgcolor: "#9e9e9e", color: "white" }}
-        />
-      </Box>
 
       <AttendanceModal
         open={!!selectedSession}

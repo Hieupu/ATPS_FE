@@ -176,7 +176,7 @@ export default function InstructorSchedulePage() {
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
-            Quản Lý Thời Gian
+            Quản Lý Thời Khóa Biểu
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Xem lịch dạy và đăng ký thời gian rảnh của bạn
