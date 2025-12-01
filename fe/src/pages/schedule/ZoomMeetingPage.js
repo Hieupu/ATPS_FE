@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useRef } from "react";
 import { ZoomMtg } from "@zoom/meetingsdk";
-import { useAuth } from "../../contexts/AuthContext";
 
 const ZoomMeetingPage = () => {
   const [schedule, setSchedule] = useState(null);
