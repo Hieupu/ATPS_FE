@@ -15,16 +15,6 @@ import {
   Button,
   CardContent,
 } from '@mui/material';
-import {
-  People,
-  Schedule,
-  Star,
-  WorkspacePremium,
-  Language,
-  PlayCircle,
-  AccessTime,
-  Payment,
-} from '@mui/icons-material';
 import { useParams } from 'react-router-dom';
 import AppHeader from '../../components/Header/AppHeader';
 import ClassList from './components/ClassList';
@@ -149,10 +139,10 @@ const CourseDetailPage = () => {
 
   if (loading) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
         <AppHeader />
         <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress />
+          <CircularProgress sx={{ color: "#dc2626" }} />
         </Box>
       </Box>
     );
@@ -160,7 +150,7 @@ const CourseDetailPage = () => {
 
   if (error) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
         <AppHeader />
         <Container maxWidth="lg" sx={{ py: 8 }}>
           <Alert
@@ -180,7 +170,7 @@ const CourseDetailPage = () => {
 
   if (!course) {
     return (
-      <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
         <AppHeader />
         <Container maxWidth="lg" sx={{ py: 8 }}>
           <Alert severity="warning">Không tìm thấy khóa học</Alert>
@@ -190,112 +180,295 @@ const CourseDetailPage = () => {
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
       <AppHeader />
       
       {/* Course Header */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
           color: "white",
-          py: 6,
+          py: 8,
+          position: "relative",
+          overflow: "hidden",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "40%",
+            height: "100%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }
         }}
       >
         <Container maxWidth="lg">
           <Grid container spacing={4}>
             <Grid item xs={12} md={8}>
               <Chip
-                label={course.Category || "Programming"}
-                sx={{ bgcolor: "rgba(255,255,255,0.2)", color: "white", mb: 2 }}
+                label={course.Level || "BEGINNER"}
+                sx={{ 
+                  bgcolor: "rgba(255,255,255,0.25)", 
+                  color: "white", 
+                  mb: 3,
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  px: 1,
+                  height: 32,
+                  borderRadius: 2,
+                }}
               />
               <Typography
                 variant="h3"
                 component="h1"
                 sx={{
-                  fontWeight: 700,
-                  mb: 2,
+                  fontWeight: 800,
+                  mb: 3,
                   fontSize: { xs: "2rem", md: "3rem" },
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
                 }}
               >
                 {course.Title}
               </Typography>
               <Typography
                 variant="h6"
-                sx={{ opacity: 0.9, mb: 3, maxWidth: 600 }}
+                sx={{ 
+                  opacity: 0.95, 
+                  mb: 4, 
+                  maxWidth: 650,
+                  lineHeight: 1.6,
+                  fontWeight: 400,
+                  fontSize: "1.125rem",
+                }}
               >
                 {course.Description}
               </Typography>
 
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <People sx={{ mr: 1 }} />
-                  <Typography>
-                    {course.EnrollmentCount || 0} học viên
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <Schedule sx={{ mr: 1 }} />
-                  <Typography>{course.Duration || 0} giờ học</Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <Star sx={{ mr: 1 }} />
-                  <Typography>
-                    {course.AverageRating
-                      ? course.AverageRating.toFixed(1)
-                      : "N/A"}{" "}
-                    đánh giá
-                  </Typography>
-                </Box>
-              </Box>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {course.TotalStudents || 0}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Học viên
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {parseFloat(course.Duration || 0).toFixed(0)}h
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Thời lượng
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {course.ReviewCount || 0}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Đánh giá
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
 
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Avatar
-                  src={course.InstructorAvatar}
-                  sx={{ width: 56, height: 56, mr: 2 }}
-                  alt={course.InstructorName}
-                >
-                  {course.InstructorName?.charAt(0)}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {course.InstructorName}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    {course.InstructorJob} • {course.InstructorMajor}
-                  </Typography>
-                </Box>
-              </Box>
+           <Box 
+  sx={{ 
+    display: "flex", 
+    alignItems: "center",
+    bgcolor: "rgba(255,255,255,0.18)",
+    borderRadius: 4,
+    p: 3,
+    backdropFilter: "blur(12px)",
+  }}
+>
+  <Avatar
+    src={course.InstructorAvatar}
+    sx={{ 
+      width: 84, 
+      height: 84, 
+      mr: 3,
+      border: "4px solid rgba(255,255,255,0.35)",
+      fontSize: "2rem",
+    }}
+    alt={course.InstructorName}
+  >
+    {course.InstructorName?.charAt(0)}
+  </Avatar>
+
+  <Box>
+    <Typography 
+      variant="body1" 
+      sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+    >
+      Giảng viên
+    </Typography>
+
+    <Typography 
+      variant="h5" 
+      sx={{ fontWeight: 700, mb: 0.8, fontSize: "1.8rem" }}
+    >
+      {course.InstructorName}
+    </Typography>
+
+    <Typography 
+      variant="body1" 
+      sx={{ opacity: 0.9, fontSize: "1.1rem" }}
+    >
+      {course.InstructorJob} • {course.InstructorMajor}
+    </Typography>
+  </Box>
+</Box>
+
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Card sx={{ position: "relative", top: { md: 40 } }}>
-                <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ textAlign: "center", mb: 3 }}>
-                    <Typography variant="h6" color="text.secondary">
-                      Bắt đầu học ngay
-                    </Typography>
-                  </Box>
+              <Card 
+                sx={{ 
+                  position: "relative", 
+                  top: { md: 40 },
+                  borderRadius: 3,
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                    color: "white",
+                    p: 3,
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                    Bắt đầu học ngay
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Nâng cao kỹ năng của bạn ngay hôm nay
+                  </Typography>
+                </Box>
 
-                  <Box sx={{ textAlign: "left" }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                      Khóa học bao gồm:
-                    </Typography>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <PlayCircle color="primary" sx={{ mr: 1 }} />
-                        <Typography>{course.UnitCount || 0} chương học</Typography>
+                <CardContent sx={{ p: 3 }}>
+                  <Typography 
+                    variant="subtitle1" 
+                    sx={{ 
+                      fontWeight: 700, 
+                      mb: 2.5,
+                      color: "#1f2937",
+                    }}
+                  >
+                    Khóa học bao gồm:
+                  </Typography>
+                  
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          {course.UnitCount || 0} chương học
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Nội dung chi tiết
+                        </Typography>
                       </Box>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <AccessTime color="primary" sx={{ mr: 1 }} />
-                        <Typography>Học mọi lúc mọi nơi</Typography>
+                    </Box>
+
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Học mọi lúc mọi nơi
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Truy cập không giới hạn
+                        </Typography>
                       </Box>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <WorkspacePremium color="primary" sx={{ mr: 1 }} />
-                        <Typography>Chứng chỉ hoàn thành</Typography>
+                    </Box>
+
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Chứng chỉ hoàn thành
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Được công nhận
+                        </Typography>
                       </Box>
-                      <Box sx={{ display: "flex", alignItems: "center" }}>
-                        <Language color="primary" sx={{ mr: 1 }} />
-                        <Typography>Hỗ trợ trực tuyến</Typography>
+                    </Box>
+
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Hỗ trợ trực tuyến
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Giải đáp 24/7
+                        </Typography>
                       </Box>
                     </Box>
                   </Box>
@@ -308,19 +481,36 @@ const CourseDetailPage = () => {
 
       {/* Course Content Tabs */}
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          aria-label="course information tabs"
-        >
-          <Tab label="Lớp học" />
-          <Tab label="Lộ trình học" />
-          <Tab label="Giảng viên" />
-          <Tab label="Đánh giá" />
-          {isEnrolledInCourse && <Tab label="Tài liệu" />}
-        </Tabs>
-
-        <Divider />
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="course information tabs"
+            sx={{
+              "& .MuiTab-root": {
+                fontWeight: 600,
+                fontSize: "1rem",
+                textTransform: "none",
+                minHeight: 64,
+                color: "#6b7280",
+                "&.Mui-selected": {
+                  color: "#dc2626",
+                },
+              },
+              "& .MuiTabs-indicator": {
+                backgroundColor: "#dc2626",
+                height: 3,
+                borderRadius: "3px 3px 0 0",
+              },
+            }}
+          >
+            <Tab label="Lớp học" />
+            <Tab label="Lộ trình học" />
+            <Tab label="Giảng viên" />
+            <Tab label="Đánh giá" />
+            {isEnrolledInCourse && <Tab label="Tài liệu" />}
+          </Tabs>
+        </Box>
 
         {/* Class List Tab */}
         <TabPanel value={tabValue} index={0}>

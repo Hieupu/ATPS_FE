@@ -1,7 +1,7 @@
 import React from "react";
-import { Container, Typography, Box } from "@mui/material";
+import { Box, Container, Typography } from "@mui/material";
 
-const ScheduleHeader = () => {
+const PageHeader = () => {
   return (
     <Box
       sx={{
@@ -23,8 +23,8 @@ const ScheduleHeader = () => {
       }}
     >
       <Container maxWidth="lg">
-        <Typography
-          variant="h3"
+        <Typography 
+          variant="h3" 
           sx={{ 
             fontWeight: 800, 
             mb: 2, 
@@ -33,7 +33,7 @@ const ScheduleHeader = () => {
             letterSpacing: "-0.02em",
           }}
         >
-          Lịch học của tôi
+          Điểm danh
         </Typography>
         <Typography 
           variant="h6" 
@@ -44,11 +44,11 @@ const ScheduleHeader = () => {
             fontSize: "1.125rem",
           }}
         >
-          Xem lịch học và theo dõi các buổi học sắp tới
+          Theo dõi chi tiết tình hình tham gia học tập của bạn
         </Typography>
       </Container>
     </Box>
   );
 };
 
-export default ScheduleHeader;
+export default PageHeader;

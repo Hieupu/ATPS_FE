@@ -31,14 +31,14 @@ const CourseCard = ({ course }) => {
     navigate(`/courses/${course.CourseID}`);
   };
 
-  const formatPrice = (price) => {
-    if (price == null || isNaN(price)) {
-      return "0 ₫";
-    }
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+  // Level labels in Vietnamese
+  const getLevelLabel = (level) => {
+    const labels = {
+      BEGINNER: "Dành cho người mới",
+      INTERMEDIATE: "Trình độ trung cấp",
+      ADVANCED: "Trình độ nâng cao",
+    };
+    return labels[level] || level;
   };
 
   // Sử dụng ảnh từ database mới
@@ -51,27 +51,38 @@ const CourseCard = ({ course }) => {
         display: "flex",
         flexDirection: "column",
         transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-        borderRadius: 3,
+        borderRadius: 5,
         overflow: "hidden",
         position: "relative",
+        border: "1px solid rgba(99,102,241,0.12)",
+        boxShadow: "0 20px 40px rgba(15,23,42,0.08)",
+        background:
+          "linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,249,255,0.9) 100%)",
         "&:hover": {
           transform: "translateY(-12px)",
-          boxShadow: "0 20px 60px rgba(102, 126, 234, 0.25)",
+          boxShadow: "0 25px 60px rgba(99,102,241,0.3)",
+          borderColor: "rgba(99,102,241,0.4)",
           "& .course-image": {
-            transform: "scale(1.1)",
+            transform: "scale(1.05)",
           },
           "& .view-button": {
-            transform: "translateX(8px)",
+            background: "linear-gradient(135deg, #4c51bf 0%, #6d28d9 100%)",
+            boxShadow: "0 10px 25px rgba(109,40,217,0.35)",
           },
         },
       }}
     >
       {/* Course Image */}
-      <Box sx={{ position: "relative", overflow: "hidden", height: 200 }}>
+      <Box
+        sx={{
+          position: "relative",
+          overflow: "hidden",
+          height: 210,
+        }}
+      >
         <CardMedia
           component="img"
           className="course-image"
-          height="200"
           image={imageUrl}
           alt={course.Title}
           sx={{
@@ -79,28 +90,33 @@ const CourseCard = ({ course }) => {
             transition: "transform 0.4s ease",
           }}
         />
-        <Box
+        <Chip
+          label={getLevelLabel(course.Level || "BEGINNER")}
+          size="small"
           sx={{
             position: "absolute",
-            top: 16,
-            right: 16,
+            top: 18,
+            left: 18,
+            bgcolor: "rgba(17, 25, 40, 0.75)",
+            color: "white",
+            fontWeight: 600,
+            fontSize: "0.7rem",
+            borderRadius: 999,
+            px: 2,
+            backdropFilter: "blur(8px)",
+            boxShadow: "0 10px 20px rgba(0,0,0,0.35)",
           }}
-        >
-          <Chip
-            label={course.Level || "BEGINNER"}
-            size="small"
-            sx={{
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              fontWeight: 600,
-              backdropFilter: "blur(10px)",
-              textTransform: 'capitalize'
-            }}
-          />
-        </Box>
+        />
       </Box>
 
       <CardContent
-        sx={{ flexGrow: 1, p: 3, display: "flex", flexDirection: "column" }}
+        sx={{
+          flexGrow: 1,
+          p: { xs: 2.5, md: 3 },
+          display: "flex",
+          flexDirection: "column",
+          gap: 2.5,
+        }}
       >
         {/* Course Title */}
         <Typography
@@ -108,14 +124,14 @@ const CourseCard = ({ course }) => {
           component="h3"
           sx={{
             fontWeight: 700,
-            mb: 2,
             height: "56px",
             overflow: "hidden",
             display: "-webkit-box",
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
-            lineHeight: 1.4,
+            lineHeight: 1.35,
             color: "text.primary",
+            fontFamily: "'Poppins', 'Segoe UI', sans-serif",
           }}
         >
           {course.Title}
@@ -139,31 +155,55 @@ const CourseCard = ({ course }) => {
         </Typography>
 
         {/* Instructor Info */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1.5,
+            p: 1.5,
+            bgcolor: "#f4f6ff",
+            borderRadius: 3,
+            border: "1px solid rgba(99,102,241,0.08)",
+          }}
+        >
           <Avatar
             src={course.InstructorAvatar}
             sx={{
-              width: 36,
-              height: 36,
-              mr: 1.5,
+              width: 40,
+              height: 40,
               border: "2px solid",
               borderColor: "primary.light",
+              boxShadow: "0 8px 20px rgba(99, 102, 241, 0.25)",
             }}
           >
             {course.InstructorName?.charAt(0)}
           </Avatar>
-          <Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="body2"
-              sx={{ fontWeight: 600, color: "text.primary" }}
+              sx={{ 
+                fontWeight: 700, 
+                color: "text.primary",
+                mb: 0.2,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
             >
               {course.InstructorName}
             </Typography>
             <Typography
               variant="caption"
-              sx={{ color: "text.secondary", display: 'block' }}
+              sx={{ 
+                color: "text.secondary",
+                display: "block",
+                fontSize: "0.75rem",
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
             >
-              {course.InstructorMajor}
+              {course.InstructorMajor || "Giảng viên"}
             </Typography>
           </Box>
         </Box>
@@ -172,70 +212,112 @@ const CourseCard = ({ course }) => {
         <Box
           sx={{
             display: "flex",
-            gap: 2,
+            justifyContent: "space-around",
+            gap: 1,
             mb: 3,
             pb: 3,
-            borderBottom: "1px solid",
+            borderBottom: "2px solid",
             borderColor: "divider",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <People sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.2,
+            }}
+          >
+            <People sx={{ fontSize: 20, color: "primary.main" }} />
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, color: "text.primary" }}
+            >
               {course.EnrollmentCount || 0}
             </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Schedule sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {course.Duration || 0}h
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", fontSize: "0.65rem" }}
+            >
+              Học viên
             </Typography>
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Star sx={{ fontSize: 18, color: "warning.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.2,
+            }}
+          >
+            <Schedule sx={{ fontSize: 20, color: "primary.main" }} />
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, color: "text.primary" }}
+            >
+              {course.Duration || 0}h
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", fontSize: "0.65rem" }}
+            >
+              Thời lượng
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 0.2,
+            }}
+          >
+            <Star sx={{ fontSize: 20, color: "warning.main" }} />
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 700, color: "text.primary" }}
+            >
               {course.ReviewCount || 0}
+            </Typography>
+            <Typography
+              variant="caption"
+              sx={{ color: "text.secondary", fontSize: "0.65rem" }}
+            >
+              Đánh giá
             </Typography>
           </Box>
         </Box>
 
-        {/* Price and Action */}
+        {/* Action Button */}
         <Box
           sx={{
             display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
+            justifyContent: "flex-end",
             mt: "auto",
           }}
         >
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 800,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {formatPrice(course.TuitionFee || course.MinFee)}
-          </Typography>
           <Button
             className="view-button"
             variant="contained"
             endIcon={<ArrowForward />}
             onClick={handleViewDetails}
             sx={{
-              borderRadius: 2,
+              borderRadius: 999,
               px: 3,
-              py: 1,
+              py: 1.1,
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              transition: "transform 0.3s ease",
+              transition: "all 0.3s ease",
               textTransform: "none",
               fontWeight: 600,
-              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+              fontSize: "0.95rem",
+              boxShadow: "0 8px 20px rgba(102, 126, 234, 0.35)",
+              "&:hover": {
+                transform: "translateY(-1px)",
+                boxShadow: "0 12px 28px rgba(102, 126, 234, 0.45)",
+              },
             }}
           >
-            View
+            Xem Chi Tiết
           </Button>
         </Box>
       </CardContent>

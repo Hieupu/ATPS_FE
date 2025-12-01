@@ -143,7 +143,6 @@ useEffect(() => {
       );
       
       console.log('✅ Schedule data received:', data);
-      console.log('📅 Schedule array:', data.schedule || []);
       
       setWeeklySchedule(data.schedule || []);
       setSelectedSlots([]);
