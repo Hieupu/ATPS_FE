@@ -84,7 +84,6 @@ const ScheduleGrid = ({
       }
     });
     
-    console.log("Week dates mapping:", Object.fromEntries(dates));
     return Object.fromEntries(dates);
   }, [weeklySchedule]);
 
@@ -128,7 +127,6 @@ const ScheduleGrid = ({
         }
       }
     });
-    console.log("Schedule map keys:", Array.from(map.keys()));
     return map;
   }, [weeklySchedule]);
 

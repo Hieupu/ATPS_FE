@@ -66,7 +66,6 @@ const ZoomMeetingPage = () => {
         const meetingNumber = schedule.ZoomID;
         const passWord = schedule.Zoompass;
         
-        // FIX: Sửa lỗi Username - đảm bảo không null/undefined và là string
         const Username = user.Username || user.Email || 'User';
         const userEmail = user.Email || '';
         const role = 1;
@@ -75,31 +74,27 @@ const ZoomMeetingPage = () => {
           throw new Error("Thiếu meeting number");
         }
 
-        // Validate username
         if (!Username || typeof Username !== 'string' || Username.trim() === '') {
           throw new Error("Username không hợp lệ");
         }
 
-        // Lấy signature
         const { signature, sdkKey } = await getSignature(meetingNumber, role);
 
-        // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
-        // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
             
-            // Join meeting với username đã được validate
+
             ZoomMtg.join({
               sdkKey: sdkKey,
               signature: signature,
               meetingNumber: meetingNumber,
               passWord: passWord,
-              userName: Username, // FIX: Thay đổi từ 'Username' thành 'userName'
+              userName: Username, 
               userEmail: userEmail,
               tk: "",
               success: (success) => {
