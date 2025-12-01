@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
 import {
   Box,
   Table,
@@ -22,10 +23,12 @@ import {
   ChevronRight,
   VideoCall,
 } from "@mui/icons-material";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const WeeklyCalendarView = ({ schedules, attendanceData, generateZoomLink, canJoinZoom }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const user = useAuth();
 
 const timeSlots = [
   { label: "Slot 1", start: "08:00", end: "10:00" },
@@ -146,15 +149,34 @@ const timeSlots = [
     }
   };
 
-  const handleJoinZoom = (schedule) => {
-    sessionStorage.setItem('zoomScheduleData', JSON.stringify({
+  const handleJoinZoom = async (schedule) => {
+    localStorage.setItem('zoomScheduleData', JSON.stringify({
       schedule: schedule,
-      timestamp: new Date().getTime()
+      timestamp: new Date().getTime(),
+      userId: user.user.id,
+      userRole: user.user.role,
+      userName: user.user.username,
+      email: user.user.email,
     }));
 
-    setTimeout(() => {
-      window.open('/zoom', '_blank');
-    }, 100);
+    try {
+    await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
+      sessionId: schedule.SessionID,
+      accId: user.user.id,
+      userName: user.user.username,
+      startTime: schedule.StartTime,
+      endTime: schedule.EndTime,
+      date: schedule.Date,
+    });
+
+    window.open(
+      `/zoom?zoomId=${schedule.ZoomID}&pass=${schedule.Zoompass}`,
+      "_blank"
+    );
+
+  } catch (err) {
+    console.error("Join Zoom API failed:", err);
+  }
   };
 
   const renderScheduleCard = (schedule, slot, idx) => (
@@ -356,7 +378,6 @@ const timeSlots = [
       <Box sx={{ mt: 2, display: 'flex', gap: 3, justifyContent: 'center' }}>
         {renderLegendItem('#4caf50', 'Có mặt')}
         {renderLegendItem('#f44336', 'Vắng mặt')}
-        {renderLegendItem('#ff9800', 'Đi muộn')}
         {renderLegendItem('#9e9e9e', 'Chưa điểm danh')}
       </Box>
     </Box>

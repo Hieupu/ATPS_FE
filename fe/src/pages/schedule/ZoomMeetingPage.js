@@ -3,15 +3,17 @@ import { ZoomMtg } from "@zoom/meetingsdk";
 import { useAuth } from "../../contexts/AuthContext";
 
 const ZoomMeetingPage = () => {
-  const { user } = useAuth();
   const [schedule, setSchedule] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const meetingContainerRef = useRef(null);
   const [hasInitialized, setHasInitialized] = useState(false);
-
-  console.log("user", user);
-
+  const raw = localStorage.getItem("zoomScheduleData");
+  const zoomData = raw ? JSON.parse(raw) : null;
+  const raw1 = localStorage.getItem("user");
+  const user = raw1 ? JSON.parse(raw1) : null;
+  console.log("Zoom data:", zoomData);
+  
   // Lấy signature từ backend
   const getSignature = async (meetingNumber, role) => {
     try {
@@ -35,13 +37,10 @@ const ZoomMeetingPage = () => {
 
   useEffect(() => {
     const loadScheduleData = () => {
-      const zoomData = sessionStorage.getItem("zoomScheduleData");
-      console.log("zoomData", zoomData);
 
       if (zoomData) {
         try {
-          const parsedData = JSON.parse(zoomData);
-          setSchedule(parsedData.schedule);
+          setSchedule(zoomData.schedule);
           // KHÔNG xóa sessionStorage ở đây để tránh race condition
         } catch (err) {
           console.error("Error parsing schedule data:", err);
@@ -59,18 +58,29 @@ const ZoomMeetingPage = () => {
 
   // Khởi tạo và join meeting
   useEffect(() => {
-    if (!schedule || !user || hasInitialized) return;
+  const userId = zoomData?.userId ?? 0;
+  if (!zoomData || !zoomData.schedule) {
+    console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
+    return;
+  }
+  const isWithin15MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 15*60*1000);
+  const isWithin10MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 10*60*1000);
+    console.log(isWithin15MinBefore, isWithin10MinBefore, zoomData.schedule, hasInitialized, userId, user?.id);
+    if (!zoomData.schedule || userId !== user.id 
+      // || (zoomData.userRole !== "instructor" && !isWithin15MinBefore) || 
+      //   (zoomData.userRole !== "learner" && !isWithin10MinBefore)
+      ) alert("Không thể tham gia phòng học lúc này. Vui lòng kiểm tra lại thông tin hoặc thời gian tham gia phòng học.");
 
     const initializeMeeting = async () => {
       try {
         setIsLoading(true);
         setHasInitialized(true);
 
-        const meetingNumber = schedule.ZoomID;
-        const passWord = schedule.Zoompass;
-        const userName = user.email;
-        const userEmail = user.email;
-        const role = 1;
+        const meetingNumber = zoomData.schedule.ZoomID;
+        const passWord = zoomData.schedule.Zoompass;
+        const userName = zoomData.userName;
+        const userEmail = zoomData.email;
+        const role = zoomData.userRole === "instructor" ? 1 : 0;
 
         if (!meetingNumber) {
           throw new Error("Thiếu meeting number");
@@ -101,14 +111,11 @@ const ZoomMeetingPage = () => {
               success: (success) => {
                 console.log("Join success:", success);
                 setIsLoading(false);
-                // Xóa sessionStorage sau khi đã join thành công
-                sessionStorage.removeItem("zoomScheduleData");
               },
               error: (error) => {
                 console.error("Join error:", error);
                 setError("Lỗi tham gia phòng học: " + error.message);
                 setIsLoading(false);
-                sessionStorage.removeItem("zoomScheduleData");
               },
             });
           },
@@ -116,14 +123,12 @@ const ZoomMeetingPage = () => {
             console.error("Init error:", error);
             setError("Lỗi khởi tạo: " + error.message);
             setIsLoading(false);
-            sessionStorage.removeItem("zoomScheduleData");
           },
         });
       } catch (err) {
         console.error("Lỗi khởi tạo meeting:", err);
         setError(err.message || "Lỗi khi tham gia phòng học");
         setIsLoading(false);
-        sessionStorage.removeItem("zoomScheduleData");
       }
     };
 
