@@ -71,7 +71,6 @@ export default function ClassDetailPage() {
     const fetchSchedule = async () => {
       try {
         const res = await apiClient.get(`/classes/${classId}/schedule`);
-        console.log("DỮ LIỆU MỚI TỪ SERVER:", res.data.Sessions);
         setSessions(res.data.Sessions || []);
       } catch (err) {
         console.error("Lỗi tải lịch học:", err);

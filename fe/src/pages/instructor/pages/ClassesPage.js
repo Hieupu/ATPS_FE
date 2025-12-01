@@ -1,16 +1,13 @@
-// pages/ClassesPage.js
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Box } from "@mui/material";
 import ClassesLayout from "../components/class/ClassesLayout";
 
-// Tạm giống mẫu course nhưng chỉnh lại cho đúng route
 const BASE_URL = "http://localhost:9999/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
 
-// luôn gắn token
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
@@ -32,35 +29,31 @@ export default function ClassesPage() {
       const data = res.data || [];
 
       const mapped = data.map((c) => {
-        const isOngoing = c.openDate
-          ? new Date(c.openDate) <= new Date()
-          : new Date(c.openDatePlan) <= new Date();
+        let uiStatus = "upcoming";
 
-        const isCompleted =
-          c.completedSessions >= c.totalSessions && c.totalSessions > 0;
-
-        const uiStatus = isCompleted
-          ? "completed"
-          : isOngoing
-          ? "ongoing"
-          : "upcoming";
-
-        const progress =
-          c.totalSessions > 0
-            ? Math.round((c.completedSessions / c.totalSessions) * 100)
-            : 0;
+        if (["CLOSE", "CANCEL", "COMPLETED"].includes(c.classStatus)) {
+          uiStatus = "completed";
+        } else if (["ACTIVE", "ON_GOING"].includes(c.classStatus)) {
+          uiStatus = "ongoing";
+        } else {
+          const isStarted = c.openDate
+            ? new Date(c.openDate) <= new Date()
+            : new Date(c.openDatePlan) <= new Date();
+          uiStatus = isStarted ? "ongoing" : "upcoming";
+        }
 
         let nextSessionDisplay = "-";
         if (c.nextSessionDate) {
           const date = new Date(c.nextSessionDate);
           const today = new Date();
           today.setHours(0, 0, 0, 0);
+
           const tomorrow = new Date(today);
           tomorrow.setDate(tomorrow.getDate() + 1);
 
-          if (date.toDateString() === today.toDateString()) {
+          if (date.getTime() === today.getTime()) {
             nextSessionDisplay = "Hôm nay";
-          } else if (date.toDateString() === tomorrow.toDateString()) {
+          } else if (date.getTime() === tomorrow.getTime()) {
             nextSessionDisplay = "Ngày mai";
           } else {
             nextSessionDisplay = date.toLocaleDateString("vi-VN", {
@@ -77,24 +70,22 @@ export default function ClassesPage() {
           courseName: c.courseTitle || c.className,
           courseImage: c.courseImage || "/images/default-class.jpg",
           courseLevel: c.courseLevel,
-
           students: c.currentStudents,
           totalStudents: c.maxStudents,
-
           fee: Number(c.fee),
-          totalSessions: c.totalSessions,
-          completedSessions: c.completedSessions,
-          progress,
-
+          totalSessions: c.planSessions || c.totalSessions,
+          completedSessions: c.finishedSessions,
+          progress: c.progressPercent || 0,
           status: uiStatus,
           classStatus: c.classStatus,
           startDatePlan: c.openDatePlan,
           startDate: c.openDate,
 
+          endDate: c.endDate || c.endDatePlan,
+
           hasSessionToday: c.hasSessionToday,
           nextSession: nextSessionDisplay,
-          schedule: c.scheduleSummary || "Chưa có lịch",
-
+          schedule: c.scheduleSummary || "Chưa xếp lịch",
           isTodayClass: c.hasSessionToday,
         };
       });
