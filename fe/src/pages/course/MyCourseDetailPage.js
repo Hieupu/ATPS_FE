@@ -9,8 +9,11 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Breadcrumbs,
+  Link,
 } from "@mui/material";
-import { useParams } from "react-router-dom";
+import NavigateNextIcon from "@mui/icons-material/NavigateNext";
+import { useParams, Link as RouterLink } from "react-router-dom";
 import AppHeader from "../../components/Header/AppHeader";
 import CourseMaterials from "./components/CourseMaterials";
 import CourseCurriculum from "./components/CourseCurriculum";
@@ -112,14 +115,25 @@ const MyCourseDetailPage = () => {
             }}
           >
             <Box sx={{ mb: 4, px: 2 }}>
-              <Typography
-                variant="overline"
-                display="block"
-                gutterBottom
-                sx={{ color: "#0056d2", fontWeight: "bold", letterSpacing: 1 }}
+              <Breadcrumbs
+                separator={<NavigateNextIcon fontSize="small" />}
+                aria-label="breadcrumb"
+                sx={{ mb: 2 }}
               >
-                TỔ CHỨC / TRƯỜNG HỌC
-              </Typography>
+                <Link
+                  component={RouterLink}
+                  underline="hover"
+                  color="inherit"
+                  to="/my-courses"
+                  sx={{ display: "flex", alignItems: "center" }}
+                >
+                  Khóa Học Của Tôi
+                </Link>
+                <Typography sx={{ color: "text.primary", fontWeight: 500 }}>
+                  Khóa Học Chi Tiết
+                </Typography>
+              </Breadcrumbs>
+
               <Typography
                 variant="h6"
                 component="h1"

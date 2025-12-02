@@ -7,13 +7,12 @@ import React, {
 } from "react";
 import { Navigate, Outlet } from "react-router-dom";
 
-
 const AuthContext = createContext();
 
 export function RequireAuth({ allowedRoles }) {
   const { user, loading } = useAuth();
 
-  if (loading) return <div>Loading...</div>; 
+  if (loading) return <div>Loading...</div>;
   if (!user) return <Navigate to="/auth/login" replace />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
@@ -63,8 +62,8 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     setUser(null);
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    localStorage.clear();
+    sessionStorage.clear();
   }, []);
 
   const updateUser = useCallback((userData) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   ListItem,
   Box,
@@ -7,31 +7,32 @@ import {
   Chip,
   ListItemIcon,
   ListItemText,
-} from '@mui/material';
+} from "@mui/material";
 import {
-  Assignment,
   CheckCircle,
   Download,
   Schedule,
   AccessTime,
   Lock,
-} from '@mui/icons-material';
-import AssignmentDialog from './AssignmentDialog';
-import AssignmentResultDialog from './AssignmentResultDialog';
-import { 
-  getFileIcon, 
-  getTypeColor, 
-  formatDate, 
+  Replay, // Import icon làm lại cho đẹp
+} from "@mui/icons-material";
+import AssignmentDialog from "./AssignmentDialog";
+import AssignmentResultDialog from "./AssignmentResultDialog";
+import {
+  getFileIcon,
+  getTypeColor,
+  formatDate,
   isAssignmentOverdue,
   getAssignmentStatusColor,
-  getAssignmentStatusText 
-} from '../../../utils/assignment';
+  getAssignmentStatusText,
+} from "../../../utils/assignment";
 
 const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  
-  const typeInfo = getTypeColor('assignment');
+  console.log(assignment, "assignment in AssignmentItem");
+
+  const typeInfo = getTypeColor("assignment");
   const hasSubmission = assignment.Submission;
   const isOverdue = isAssignmentOverdue(assignment.Deadline);
 
@@ -54,18 +55,18 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
         sx={{
           py: 2,
           px: 3,
-          borderBottom: '1px solid',
-          borderColor: 'divider',
-          bgcolor: 'grey.50',
-          '&:last-child': { borderBottom: 'none' },
-          transition: 'all 0.2s',
-          '&:hover': {
-            bgcolor: 'action.hover',
-            transform: 'translateX(4px)',
-          }
+          borderBottom: "1px solid",
+          borderColor: "divider",
+          bgcolor: "grey.50",
+          "&:last-child": { borderBottom: "none" },
+          transition: "all 0.2s",
+          "&:hover": {
+            bgcolor: "action.hover",
+            transform: "translateX(4px)",
+          },
         }}
         secondaryAction={
-          <AssignmentActions 
+          <AssignmentActions
             assignment={assignment}
             isEnrolled={isEnrolled}
             hasSubmission={hasSubmission}
@@ -76,20 +77,17 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
         }
       >
         <AssignmentIndex index={index} />
-        
+
         <ListItemIcon sx={{ minWidth: 40 }}>
-          {getFileIcon('assignment')}
+          {getFileIcon("assignment")}
         </ListItemIcon>
-        
+
         <ListItemText
           primary={
-            <AssignmentPrimary 
-              assignment={assignment}
-              typeInfo={typeInfo}
-            />
+            <AssignmentPrimary assignment={assignment} typeInfo={typeInfo} />
           }
           secondary={
-            <AssignmentSecondary 
+            <AssignmentSecondary
               assignment={assignment}
               isEnrolled={isEnrolled}
               hasSubmission={hasSubmission}
@@ -119,25 +117,35 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
 };
 
 const AssignmentIndex = ({ index }) => (
-  <Box sx={{ 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    minWidth: 36,
-    height: 36,
-    borderRadius: '50%',
-    bgcolor: 'primary.light',
-    mr: 2,
-    fontWeight: 600,
-    fontSize: '0.875rem',
-    color: 'primary.contrastText',
-  }}>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      minWidth: 36,
+      height: 36,
+      borderRadius: "50%",
+      bgcolor: "primary.light",
+      mr: 2,
+      fontWeight: 600,
+      fontSize: "0.875rem",
+      color: "primary.contrastText",
+    }}
+  >
     A{index + 1}
   </Box>
 );
 
 const AssignmentPrimary = ({ assignment, typeInfo }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5, flexWrap: 'wrap' }}>
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      gap: 1.5,
+      mb: 0.5,
+      flexWrap: "wrap",
+    }}
+  >
     <Typography variant="body1" sx={{ fontWeight: 600 }}>
       {assignment.Title}
     </Typography>
@@ -149,11 +157,11 @@ const AssignmentPrimary = ({ assignment, typeInfo }) => (
         color: typeInfo.text,
         fontWeight: 600,
         height: 22,
-        fontSize: '0.75rem',
+        fontSize: "0.75rem",
       }}
     />
-    <Chip 
-      label={assignment.Type} 
+    <Chip
+      label={assignment.Type}
       color="primary"
       variant="outlined"
       size="small"
@@ -162,17 +170,20 @@ const AssignmentPrimary = ({ assignment, typeInfo }) => (
 );
 
 const AssignmentSecondary = ({ assignment, isEnrolled, hasSubmission }) => (
-  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 0.5 }}>
+  <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mt: 0.5 }}>
     {assignment.Description && (
       <Typography variant="body2" color="text.secondary">
         {assignment.Description}
       </Typography>
     )}
-    
+
     <AssignmentDetails assignment={assignment} />
-    
+
     {!isEnrolled && (
-      <Typography variant="body2" sx={{ color: 'warning.main', fontWeight: 500 }}>
+      <Typography
+        variant="body2"
+        sx={{ color: "warning.main", fontWeight: 500 }}
+      >
         📌 Đăng ký để làm bài tập
       </Typography>
     )}
@@ -188,9 +199,11 @@ const AssignmentDetails = ({ assignment }) => {
   const hasSubmission = assignment.Submission;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-        <Schedule sx={{ fontSize: 16, color: 'text.secondary' }} />
+    <Box
+      sx={{ display: "flex", alignItems: "center", gap: 2, flexWrap: "wrap" }}
+    >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        <Schedule sx={{ fontSize: 16, color: "text.secondary" }} />
         <Typography variant="body2" color="text.secondary">
           Hạn nộp: {formatDate(assignment.Deadline)}
         </Typography>
@@ -198,10 +211,10 @@ const AssignmentDetails = ({ assignment }) => {
           <Chip label="Quá hạn" color="error" size="small" />
         )}
       </Box>
-      
+
       {assignment.MaxDuration && (
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <AccessTime sx={{ fontSize: 16, color: "text.secondary" }} />
           <Typography variant="body2" color="text.secondary">
             {assignment.MaxDuration} phút
           </Typography>
@@ -214,7 +227,7 @@ const AssignmentDetails = ({ assignment }) => {
 };
 
 const FileAttachments = ({ assignment }) => (
-  <Box sx={{ display: 'flex', gap: 0.5 }}>
+  <Box sx={{ display: "flex", gap: 0.5 }}>
     {assignment.FileURL && (
       <Button
         size="small"
@@ -222,7 +235,7 @@ const FileAttachments = ({ assignment }) => (
         component="a"
         href={assignment.FileURL}
         target="_blank"
-        sx={{ minWidth: 'auto' }}
+        sx={{ minWidth: "auto" }}
       >
         Đề bài
       </Button>
@@ -234,7 +247,7 @@ const FileAttachments = ({ assignment }) => (
         component="a"
         href={assignment.MediaURL}
         target="_blank"
-        sx={{ minWidth: 'auto' }}
+        sx={{ minWidth: "auto" }}
       >
         Tài liệu
       </Button>
@@ -242,13 +255,14 @@ const FileAttachments = ({ assignment }) => (
   </Box>
 );
 
-const AssignmentActions = ({ 
-  assignment, 
-  isEnrolled, 
-  hasSubmission, 
-  isOverdue, 
+// --- PHẦN ĐÃ CHỈNH SỬA ---
+const AssignmentActions = ({
+  assignment,
+  isEnrolled,
+  hasSubmission,
+  isOverdue,
   onStart,
-  onViewResult 
+  onViewResult,
 }) => {
   if (!isEnrolled) {
     return (
@@ -256,32 +270,57 @@ const AssignmentActions = ({
         icon={<Lock />}
         label="Cần đăng ký"
         size="small"
-        sx={{ bgcolor: 'warning.light', color: 'warning.dark' }}
+        sx={{ bgcolor: "warning.light", color: "warning.dark" }}
       />
     );
   }
 
   if (hasSubmission) {
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-        <Chip 
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "flex-end",
+          gap: 1,
+        }}
+      >
+        <Chip
           icon={<CheckCircle />}
-          label={getAssignmentStatusText(assignment.Submission.Status)} 
+          label={getAssignmentStatusText(assignment.Submission.Status)}
           color={getAssignmentStatusColor(assignment.Submission.Status)}
           size="small"
         />
         {assignment.Submission.Score !== null && (
-          <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.main' }}>
+          <Typography
+            variant="body2"
+            sx={{ fontWeight: 600, color: "success.main" }}
+          >
             Điểm: {assignment.Submission.Score}
           </Typography>
         )}
-        <Button
-          size="small"
-          variant="outlined"
-          onClick={onViewResult}
-        >
-          Xem kết quả
-        </Button>
+
+        {/* Nhóm 2 nút: Làm lại và Xem kết quả */}
+        <Box sx={{ display: "flex", gap: 1 }}>
+          <Button
+            size="small"
+            variant="outlined" // Nút phụ
+            color="primary"
+            onClick={onStart}
+            disabled={isOverdue} // Không cho làm lại nếu quá hạn
+            startIcon={<Replay />}
+          >
+            Làm lại
+          </Button>
+
+          <Button
+            size="small"
+            variant="contained" // Nút chính
+            onClick={onViewResult}
+          >
+            Xem kết quả
+          </Button>
+        </Box>
       </Box>
     );
   }
@@ -294,22 +333,34 @@ const AssignmentActions = ({
       disabled={isOverdue}
       sx={{
         borderRadius: 2,
-        textTransform: 'none',
+        textTransform: "none",
         fontWeight: 600,
         px: 2,
       }}
     >
-      {isOverdue ? 'Quá hạn' : 'Làm bài'}
+      {isOverdue ? "Quá hạn" : "Làm bài"}
     </Button>
   );
 };
 
 const Feedback = ({ feedback }) => (
-  <Box sx={{ mt: 1, p: 1.5, bgcolor: 'success.50', borderRadius: 1, border: '1px solid', borderColor: 'success.200' }}>
-    <Typography variant="subtitle2" sx={{ color: 'success.800', fontWeight: 600, mb: 0.5 }}>
+  <Box
+    sx={{
+      mt: 1,
+      p: 1.5,
+      bgcolor: "success.50",
+      borderRadius: 1,
+      border: "1px solid",
+      borderColor: "success.200",
+    }}
+  >
+    <Typography
+      variant="subtitle2"
+      sx={{ color: "success.800", fontWeight: 600, mb: 0.5 }}
+    >
       Nhận xét từ giảng viên:
     </Typography>
-    <Typography variant="body2" sx={{ color: 'success.700' }}>
+    <Typography variant="body2" sx={{ color: "success.700" }}>
       {feedback}
     </Typography>
   </Box>
