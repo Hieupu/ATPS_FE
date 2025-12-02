@@ -46,6 +46,7 @@ export default function InstructorSchedulePage() {
       try {
         const res = await apiClient.get(`/schedule`);
         setSessions(res.data.Sessions || []);
+        console.log(res.data.Sessions, " schedule data");
       } catch (err) {
         console.error(err);
       } finally {
@@ -140,6 +141,27 @@ export default function InstructorSchedulePage() {
     setTabIndex(newValue);
   };
 
+  const handleStartZoom = (session) => {
+    if (!session) return;
+    console.log("Start Zoom với session:", session);
+
+    const zoomPayload = {
+      schedule: {
+        ZoomID: session.ZoomID,
+        Zoompass: session.ZoomPass,
+        ClassName: session.className,
+      },
+      userRole: "instructor",
+      timestamp: new Date().getTime(),
+    };
+
+    sessionStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+
+    setTimeout(() => {
+      window.open("/zoom", "_blank");
+    }, 100);
+  };
+
   if (loadingSchedule) {
     return (
       <Container sx={{ py: 4, textAlign: "center" }}>
@@ -154,7 +176,7 @@ export default function InstructorSchedulePage() {
       <Paper elevation={2} sx={{ p: 3 }}>
         <Box sx={{ mb: 3 }}>
           <Typography variant="h4" fontWeight="bold" gutterBottom>
-            📅 Quản Lý Thời Gian
+            Quản Lý Thời Khóa Biểu
           </Typography>
           <Typography variant="body2" color="text.secondary">
             Xem lịch dạy và đăng ký thời gian rảnh của bạn
@@ -177,6 +199,7 @@ export default function InstructorSchedulePage() {
             onOpenAttendance={openAttendanceModal}
             onSaveAttendance={saveAttendance}
             onCloseAttendance={closeAttendanceModal}
+            onStartZoom={handleStartZoom}
           />
         )}
 

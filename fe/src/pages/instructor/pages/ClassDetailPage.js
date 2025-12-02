@@ -71,7 +71,6 @@ export default function ClassDetailPage() {
     const fetchSchedule = async () => {
       try {
         const res = await apiClient.get(`/classes/${classId}/schedule`);
-        console.log("DỮ LIỆU MỚI TỪ SERVER:", res.data.Sessions);
         setSessions(res.data.Sessions || []);
       } catch (err) {
         console.error("Lỗi tải lịch học:", err);
@@ -133,6 +132,34 @@ export default function ClassDetailPage() {
     if (classData) setLoading(false);
   }, [classData]);
 
+  //load zoom
+  const handleStartZoom = () => {
+    if (!classData) {
+      alert("Chưa có thông tin lớp học!");
+      return;
+    }
+
+    // 1. Chuẩn bị dữ liệu
+    const zoomPayload = {
+      schedule: {
+        ZoomID: classData.zoomMeetingId,
+        Zoompass: classData.zoomPassword,
+        ClassName: classData.className,
+        CourseTitle: classData.course?.title,
+      },
+      userRole: "instructor", // Đánh dấu là giảng viên
+      timestamp: new Date().getTime(),
+    };
+
+    // 2. Lưu vào Session Storage
+    sessionStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+
+    // 3. Mở tab Zoom mới
+    setTimeout(() => {
+      window.open("/zoom", "_blank");
+    }, 100);
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -158,7 +185,9 @@ export default function ClassDetailPage() {
       onBack={() => navigate(-1)}
     >
       {/* Tab 0: Tổng quan */}
-      {activeTab === 0 && <OverviewTab classData={classData} />}
+      {activeTab === 0 && (
+        <OverviewTab classData={classData} onStartZoom={handleStartZoom} />
+      )}
 
       {/* Tab 1: Học viên */}
       {activeTab === 1 && <StudentsTab students={students} />}
@@ -173,6 +202,7 @@ export default function ClassDetailPage() {
           onOpenAttendance={openAttendanceModal}
           onSaveAttendance={saveAttendance}
           onCloseAttendance={closeAttendanceModal}
+          onStartZoom={handleStartZoom}
         />
       )}
     </ClassDetailLayout>

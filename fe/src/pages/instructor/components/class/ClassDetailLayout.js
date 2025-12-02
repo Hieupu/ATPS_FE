@@ -105,7 +105,7 @@ export default function ClassDetailLayout({
               borderBottom: 1,
               borderColor: "divider",
               bgcolor: "white", // 2. Bỏ màu nền xám
-              px: 0, // 3. Đưa về 0 để Tab đầu tiên sát lề trái, thẳng hàng với Header
+              px: 0,
             }}
           >
             <Tab label="Tổng quan" />

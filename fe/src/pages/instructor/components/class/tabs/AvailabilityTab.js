@@ -27,8 +27,7 @@ import {
   Cancel as CancelIcon,
   EventAvailable as EventAvailableIcon,
 } from "@mui/icons-material";
-import { format, startOfWeek, addDays, getYear, setYear } from "date-fns";
-// Import Toast
+import { format, startOfWeek, addDays, setYear } from "date-fns";
 import { toast } from "react-toastify";
 
 const ALL_TIME_SLOTS = [
@@ -40,7 +39,7 @@ const ALL_TIME_SLOTS = [
   { id: 6, label: "Ca 6 (20:00 - 22:00)", start: "20:00", end: "22:00" },
 ];
 
-const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 export default function AvailabilityTab({
   existingSessions,
@@ -52,7 +51,18 @@ export default function AvailabilityTab({
 }) {
   const [localSlots, setLocalSlots] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  const yearsList = useMemo(() => {
+    const currentYear = new Date().getFullYear();
+    const startYear = currentYear - 3;
+    const endYear = currentYear + 1;
+    const list = [];
+    for (let i = startYear; i <= endYear; i++) {
+      list.push(i);
+    }
+    return list;
+  }, []);
 
   const weekStart = useMemo(() => {
     return startOfWeek(currentDate, { weekStartsOn: 1 });
@@ -100,14 +110,7 @@ export default function AvailabilityTab({
     const endDateStr = format(weekDates[6], "yyyy-MM-dd");
 
     try {
-      // Gọi hàm từ cha để lưu
       await onSaveAvailability(startDateStr, endDateStr, localSlots);
-
-      // Hiển thị thông báo thành công bằng Toast thay vì alert
-      // Lưu ý: Nếu hàm onSaveAvailability ở cha đã có toast success,
-      // bạn có thể bỏ dòng này để tránh duplicate toast.
-      // Tuy nhiên để chắc chắn component con phản hồi, tôi cứ để đây.
-      // toast.success("Đã lưu lịch thành công!");
     } catch (error) {
       toast.error("Lỗi khi lưu lịch. Vui lòng thử lại.");
     }
@@ -175,7 +178,7 @@ export default function AvailabilityTab({
           <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
             <FormControl size="small" sx={{ minWidth: 100 }}>
               <Select value={selectedYear} onChange={handleYearChange}>
-                {[2024, 2025, 2026, 2027].map((y) => (
+                {yearsList.map((y) => (
                   <MenuItem key={y} value={y}>
                     {y}
                   </MenuItem>

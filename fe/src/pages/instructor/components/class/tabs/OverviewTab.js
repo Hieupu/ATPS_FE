@@ -1,4 +1,3 @@
-// Thay thế phần InfoItem cho "Lịch học" bằng component riêng
 import React from "react";
 import {
   Box,
@@ -17,12 +16,13 @@ import {
   CalendarToday,
   Schedule,
   AccessTime,
-  VideoCall,
+  VideoCameraFront, // Đổi icon cho hợp với Instructor
   CheckCircle,
   RadioButtonUnchecked,
 } from "@mui/icons-material";
 
-export default function OverviewTab({ classData }) {
+// 1. Nhận thêm prop onStartZoom từ cha truyền xuống
+export default function OverviewTab({ classData, onStartZoom }) {
   const {
     instructor,
     currentStudents,
@@ -37,18 +37,27 @@ export default function OverviewTab({ classData }) {
     completedSessions,
     totalSessions,
     progress,
+    status,
   } = classData;
 
-  const zoomLink = zoomMeetingId
-    ? `https://zoom.us/j/${zoomMeetingId}?pwd=${zoomPassword}`
-    : null;
   const circumference = 2 * Math.PI * 70;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  const formatDateVN = (dateString) => {
+    if (!dateString) return "---";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "---";
+
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
 
   // Parse lịch học từ scheduleSummary
   const parseSchedule = (scheduleStr) => {
     if (!scheduleStr) return [];
-    // Format: "T2 10:20-12:20 | T3 10:20-12:20"
     return scheduleStr.split("|").map((s) => s.trim());
   };
 
@@ -63,14 +72,12 @@ export default function OverviewTab({ classData }) {
         </Typography>
 
         <Stack spacing={3}>
-          {/* Giảng viên */}
           <InfoItem
             icon={<Person />}
             title="Giảng viên"
             value={instructor?.fullName || "Chưa có"}
           />
 
-          {/* Sĩ số */}
           <InfoItem
             icon={<People />}
             title="Sĩ số"
@@ -78,7 +85,6 @@ export default function OverviewTab({ classData }) {
             sub={`Còn ${remainingSlots} chỗ trống`}
           />
 
-          {/* Học phí */}
           <InfoItem
             icon={<AttachMoney />}
             title="Học phí"
@@ -89,39 +95,55 @@ export default function OverviewTab({ classData }) {
             }
           />
 
-          {/* Khai giảng */}
           <InfoItem
             icon={<CalendarToday />}
             title="Khai giảng"
-            value={dates.openActual || dates.openPlan}
+            value={formatDateVN(dates.openActual || dates.openPlan)}
           />
 
-          {/* Lịch học - Custom Component */}
           <ScheduleInfoCard scheduleItems={scheduleItems} />
 
-          {/* Buổi tiếp theo */}
           <InfoItem
             icon={<AccessTime />}
             title="Buổi học tiếp theo"
             value={nextSession}
           />
 
-          {/* Nút Zoom */}
-          {zoomLink && (
+          <Box
+            sx={{
+              mt: 2,
+              p: 2,
+              bgcolor: "grey.50",
+              borderRadius: 2,
+              border: "1px dashed #ccc",
+            }}
+          >
             <Button
               variant="contained"
+              color="error"
               size="large"
-              startIcon={<VideoCall />}
-              href={zoomLink}
-              target="_blank"
+              fullWidth
+              startIcon={<VideoCameraFront />}
+              onClick={onStartZoom}
+              disabled={status !== "ACTIVE"}
+              sx={{ mb: 1, fontWeight: "bold", py: 1.5 }}
             >
-              Vào lớp Zoom
+              BẮT ĐẦU LỚP HỌC
             </Button>
-          )}
+
+            <Typography
+              variant="caption"
+              align="center"
+              display="block"
+              color="text.secondary"
+            >
+              Zoom ID: <b>{zoomMeetingId}</b> &nbsp;|&nbsp; Pass:
+              <b>{zoomPassword}</b>
+            </Typography>
+          </Box>
         </Stack>
       </Grid>
 
-      {/* Tiến độ khóa học */}
       <Grid item xs={12} lg={5}>
         <Card
           elevation={0}
@@ -222,7 +244,6 @@ export default function OverviewTab({ classData }) {
   );
 }
 
-
 function ScheduleInfoCard({ scheduleItems }) {
   return (
     <Box display="flex" alignItems="flex-start" gap={2}>
@@ -265,7 +286,6 @@ function ScheduleInfoCard({ scheduleItems }) {
   );
 }
 
-// Helper component
 function InfoItem({ icon, title, value, sub }) {
   return (
     <Box display="flex" alignItems="center" gap={2}>
