@@ -16,6 +16,7 @@ import { Event } from "@mui/icons-material";
 import {
   getInstructorWeeklyScheduleApi,
   createOneOnOneBookingApi,
+    getInstructorTimeslotsFromTodayApi 
 } from "../../apiServices/scheduleService";
 import { checkPromotionCodeApi } from "../../apiServices/paymentService";
 
@@ -46,6 +47,7 @@ const BookSessionDialog = ({
   const [successMessage, setSuccessMessage] = useState(null);
   const [courseInfo, setCourseInfo] = useState(null);
   const [cachedSlotDuration, setCachedSlotDuration] = useState(null);
+    const [allTimeslots, setAllTimeslots] = useState([]);
 
   // Format currency
   const formatCurrency = (amount) => {
@@ -115,6 +117,27 @@ useEffect(() => {
     }
   }
 }, [open]);
+
+  const fetchAllTimeslots = async () => {
+    const instructorId = instructor?.id || instructor?.InstructorID;
+    
+    if (!instructorId) return;
+
+    try {
+      setLoading(true);
+      const response = await getInstructorTimeslotsFromTodayApi(instructorId);
+      console.log("getInstructorTimeslotsFromTodayApi" , response)
+      
+      if (response.success) {
+        setAllTimeslots(response.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching all timeslots:', error);
+      // Không set error vì đây là optional data
+    } finally {
+      setLoading(false);
+    }
+  };
 
 // Load lịch học khi chọn tuần
 useEffect(() => {
@@ -403,6 +426,12 @@ const handleSlotClick = (slot) => {
     }
   };
 
+   useEffect(() => {
+    if (open && instructor) {
+      fetchAllTimeslots();
+    }
+  }, [open, instructor]);
+
   const handleClose = () => {
     setError(null);
     setSuccessMessage(null);
@@ -489,6 +518,7 @@ const handleSlotClick = (slot) => {
               selectedCourseId={selectedCourseId}
               courseInfo={courseInfo}
               requiredNumberOfSessions={requiredNumberOfSessions}
+              allTimeslots={allTimeslots}
             />
           </Grid>
         </Grid>

@@ -225,7 +225,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
               sx={{ 
                 fontWeight: 700, 
                 fontSize: '0.95rem',
-                bgcolor: '#dc2626',
+                bgcolor: '#667eea',
                 color: 'white',
                 height: 32,
                 '& .MuiChip-label': { px: 1.5 }
@@ -243,9 +243,9 @@ const ClassCard = ({ classItem, onEnroll }) => {
 
           {/* Ngày khai giảng */}
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
-            <EventAvailable sx={{ fontSize: 18, color: '#dc2626' }} />
+            <EventAvailable sx={{ fontSize: 18, color: '#667eea' }} />
             <Typography variant="body2" sx={{ color: '#666', fontSize: '0.9rem' }}>
-              Khai giảng: <strong style={{ color: '#dc2626' }}>{formatDateWithDay(classItem.Opendate)}</strong>
+              Khai giảng: <strong style={{ color: '#667eea' }}>{formatDateWithDay(classItem.Opendate)}</strong>
             </Typography>
           </Box>
 
@@ -332,9 +332,9 @@ const ClassCard = ({ classItem, onEnroll }) => {
                 label="Online"
                 size="small"
                 sx={{ 
-                  bgcolor: '#fee2e2',
-                  color: '#dc2626',
-                  border: '1px solid #fca5a5',
+                  bgcolor: '#e0e7ff',
+                  color: '#4f46e5',
+                  border: '1px solid #c7d2fe',
                   fontSize: '0.8rem',
                   height: 28,
                   fontWeight: 600
@@ -353,15 +353,15 @@ const ClassCard = ({ classItem, onEnroll }) => {
             startIcon={checkingEnrollment ? <CircularProgress size={16} /> : null}
             sx={{ 
               fontWeight: 600,
-              bgcolor: '#dc2626',
+              bgcolor: '#667eea',
               py: 1.2,
               borderRadius: 1.5,
               textTransform: 'none',
               fontSize: '0.95rem',
-              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
+              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
               '&:hover': {
-                bgcolor: '#b91c1c',
-                boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)',
+                bgcolor: '#5a67d8',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
               }
             }}
           >
@@ -434,7 +434,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
               <Typography variant="body2" sx={{ color: '#666', mb: 0.5, fontSize: '0.85rem' }}>
                 Học phí
               </Typography>
-              <Typography variant="h5" sx={{ fontWeight: 700, color: '#dc2626', mb: 0.5 }}>
+              <Typography variant="h5" sx={{ fontWeight: 700, color: '#667eea', mb: 0.5 }}>
                 {formatPrice(classItem.Fee)}
               </Typography>
               {promoInfo && (
@@ -480,7 +480,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
                       sx={{ 
                         textTransform: 'none',
                         fontWeight: 600,
-                        color: '#dc2626'
+                        color: '#667eea'
                       }}
                     >
                       Áp dụng
@@ -514,10 +514,10 @@ const ClassCard = ({ classItem, onEnroll }) => {
             sx={{ 
               textTransform: 'none',
               fontWeight: 600,
-              bgcolor: '#dc2626',
+              bgcolor: '#667eea',
               px: 3,
               '&:hover': {
-                bgcolor: '#b91c1c'
+                bgcolor: '#5a67d8'
               }
             }}
           >
@@ -533,7 +533,7 @@ const ClassList = ({ classes, loading, courseId, onEnrollmentChange }) => {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
-        <CircularProgress sx={{ color: '#dc2626' }} />
+        <CircularProgress sx={{ color: '#667eea' }} />
       </Box>
     );
   }
@@ -555,8 +555,8 @@ const ClassList = ({ classes, loading, courseId, onEnrollmentChange }) => {
           size="small" 
           sx={{ 
             ml: 1.5, 
-            bgcolor: '#fee2e2',
-            color: '#dc2626',
+            bgcolor: '#e0e7ff',
+            color: '#4f46e5',
             fontWeight: 600
           }} 
         />

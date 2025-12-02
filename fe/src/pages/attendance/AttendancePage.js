@@ -62,6 +62,8 @@ const AttendancePage = () => {
         getAttendanceStatsApi(learnerIdValue),
       ]);
 
+      console.log("attendanceData" , attendanceData)
+
       setAttendance(attendanceData.attendance || []);
       setStats(statsData);
     } catch (err) {

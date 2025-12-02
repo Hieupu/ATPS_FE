@@ -1,9 +1,7 @@
-import React from "react";
-import { Box, Container, Typography, Button } from "@mui/material";
-import CheckCircleRoundedIcon from "@mui/icons-material/CheckCircleRounded";
-import CalendarMonthRoundedIcon from "@mui/icons-material/CalendarMonthRounded";
+import React from 'react';
+import { Box, Container, Typography } from '@mui/material';
 
-const PageHeader = () => {
+const HeroSection = () => {
   return (
     <Box
       sx={{
@@ -16,7 +14,6 @@ const PageHeader = () => {
         borderBottomLeftRadius: { xs: 40, md: 60 },
         borderBottomRightRadius: { xs: 40, md: 60 },
         boxShadow: "0 50px 100px rgba(102, 126, 234, 0.4)",
-        // Gradient overlay với light glow
         "&::before": {
           content: '""',
           position: "absolute",
@@ -24,8 +21,7 @@ const PageHeader = () => {
           height: "100%",
           top: 0,
           left: 0,
-          background:
-            "radial-gradient(circle at 15% 30%, rgba(255,255,255,0.25) 0%, transparent 60%)",
+          background: "radial-gradient(circle at 15% 30%, rgba(255,255,255,0.25) 0%, transparent 60%)",
           zIndex: 1,
         },
         "&::after": {
@@ -35,8 +31,7 @@ const PageHeader = () => {
           height: "100%",
           top: 0,
           right: 0,
-          background:
-            "radial-gradient(circle at 85% 70%, rgba(255,255,255,0.22) 0%, transparent 60%)",
+          background: "radial-gradient(circle at 85% 70%, rgba(255,255,255,0.22) 0%, transparent 60%)",
           zIndex: 1,
         },
       }}
@@ -53,78 +48,20 @@ const PageHeader = () => {
           zIndex: 0,
         }}
       >
-        {/* Icon Checkmark */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "4rem",
-            top: "15%",
-            left: "8%",
-            transform: "rotate(-15deg)",
-          }}
-        >
-          ✅
-        </Box>
-        {/* Icon Clock */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "3.5rem",
-            top: "65%",
-            left: "12%",
-            transform: "rotate(25deg)",
-          }}
-        >
-          ⏰
-        </Box>
-        {/* Icon Statistics */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "3rem",
-            top: "25%",
-            right: "10%",
-            transform: "rotate(15deg)",
-          }}
-        >
-          📊
-        </Box>
-        {/* Icon Star */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "3.5rem",
-            top: "70%",
-            right: "15%",
-            transform: "rotate(-20deg)",
-          }}
-        >
-          ⭐
-        </Box>
-        {/* Icon Target */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "4rem",
-            top: "45%",
-            left: "5%",
-            transform: "rotate(10deg)",
-          }}
-        >
-          🎯
-        </Box>
-        {/* Icon Calendar */}
-        <Box
-          sx={{
-            position: "absolute",
-            fontSize: "3.5rem",
-            top: "50%",
-            right: "8%",
-            transform: "rotate(-12deg)",
-          }}
-        >
-          📅
-        </Box>
+        {['📊', '✅', '📈', '🎯', '💯', '🏆'].map((icon, index) => (
+          <Box
+            key={index}
+            sx={{
+              position: "absolute",
+              fontSize: `${3 + Math.random()}rem`,
+              top: `${15 + Math.random() * 60}%`,
+              left: index % 2 === 0 ? `${5 + Math.random() * 15}%` : `${70 + Math.random() * 25}%`,
+              transform: `rotate(${-20 + Math.random() * 40}deg)`,
+            }}
+          >
+            {icon}
+          </Box>
+        ))}
       </Box>
 
       <Container
@@ -143,9 +80,8 @@ const PageHeader = () => {
           sx={{
             width: 70,
             height: 70,
-            borderRadius: "22px",
-            background:
-              "linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18))",
+            borderRadius: "24px",
+            background: "linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18))",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -155,7 +91,7 @@ const PageHeader = () => {
             border: "3px solid rgba(255,255,255,0.35)",
           }}
         >
-          ✅
+          📊
         </Box>
 
         {/* Title */}
@@ -172,7 +108,7 @@ const PageHeader = () => {
             lineHeight: 1.2,
           }}
         >
-          Điểm danh
+          Báo Cáo Tiến Độ Học Tập
         </Typography>
 
         {/* Subtitle */}
@@ -184,17 +120,17 @@ const PageHeader = () => {
             maxWidth: 700,
             mx: "auto",
             fontWeight: 300,
-            lineHeight: 1.6,
+            lineHeight: 1.7,
             fontSize: { xs: "0.9rem", md: "1rem" },
             fontFamily: "'Inter', 'Segoe UI', sans-serif",
             letterSpacing: "0.2px",
           }}
         >
-          Theo dõi chi tiết tình hình tham gia học tập của bạn
+          Theo dõi chi tiết điểm số, bài tập và điểm danh của bạn
         </Typography>
       </Container>
     </Box>
   );
 };
 
-export default PageHeader;
+export default HeroSection;

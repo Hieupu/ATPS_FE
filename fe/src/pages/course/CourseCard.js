@@ -115,7 +115,6 @@ const CourseCard = ({ course }) => {
           p: { xs: 2.5, md: 3 },
           display: "flex",
           flexDirection: "column",
-          gap: 2.5,
         }}
       >
         {/* Course Title */}
@@ -214,7 +213,8 @@ const CourseCard = ({ course }) => {
             display: "flex",
             justifyContent: "space-around",
             gap: 1,
-            mb: 3,
+            mt:2,
+            mb: 2,
             pb: 3,
             borderBottom: "2px solid",
             borderColor: "divider",
