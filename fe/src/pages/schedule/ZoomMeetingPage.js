@@ -2,7 +2,6 @@ import React, { useEffect, useState, useRef } from "react";
 import { ZoomMtg } from "@zoom/meetingsdk";
 
 const ZoomMeetingPage = () => {
-  const [schedule, setSchedule] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const meetingContainerRef = useRef(null);
@@ -34,36 +33,16 @@ const ZoomMeetingPage = () => {
     }
   };
 
-  useEffect(() => {
-    const loadScheduleData = () => {
-
-      if (zoomData) {
-        try {
-          setSchedule(zoomData.schedule);
-        } catch (err) {
-          console.error("Error parsing schedule data:", err);
-          setError("Không thể tải thông tin buổi học");
-          setIsLoading(false);
-        }
-      } else {
-        setError("Không tìm thấy thông tin buổi học");
-        setIsLoading(false);
-      }
-    };
-
-    loadScheduleData();
-  }, []);
-
   // Khởi tạo và join meeting
   useEffect(() => {
-  const userId = zoomData?.userId ?? 0;
-  if (!zoomData || !zoomData.schedule) {
-    console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
-    return;
-  }
-  const isWithin15MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 15*60*1000);
-  const isWithin10MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 10*60*1000);
-    console.log(isWithin15MinBefore, isWithin10MinBefore, zoomData.schedule, hasInitialized, userId, user?.id);
+    const userId = zoomData?.userId ?? 0;
+    if (!zoomData || !zoomData.schedule) {
+      console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
+      return;
+    }
+    const isWithin15MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 15*60*1000);
+    const isWithin10MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 10*60*1000);
+    console.log(isWithin15MinBefore, isWithin10MinBefore, zoomData.schedule, hasInitialized, userId === user?.id);
     if (!zoomData.schedule || userId !== user.id 
       // || (zoomData.userRole !== "instructor" && !isWithin15MinBefore) || 
       //   (zoomData.userRole !== "learner" && !isWithin10MinBefore)
@@ -78,7 +57,7 @@ const ZoomMeetingPage = () => {
         const passWord = zoomData.schedule.Zoompass;
         const userName = zoomData.userName;
         const userEmail = zoomData.email;
-        const role = zoomData.userRole === "instructor" ? 1 : 0;
+        const role = zoomData.userRole === "instructor" ? 1 : 1;
 
         if (!meetingNumber) {
           throw new Error("Thiếu meeting number");
@@ -88,7 +67,7 @@ const ZoomMeetingPage = () => {
           throw new Error("Username không hợp lệ");
         }
 
-        const { signature, sdkKey } = await getSignature(meetingNumber, role);
+        const { signature } = await getSignature(meetingNumber, role);
 
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
@@ -100,13 +79,11 @@ const ZoomMeetingPage = () => {
             
 
             ZoomMtg.join({
-              sdkKey: sdkKey,
               signature: signature,
               meetingNumber: meetingNumber,
               passWord: passWord,
               userName: userName, 
               userEmail: userEmail,
-              tk: "",
               success: (success) => {
                 console.log("Join success:", success);
                 setIsLoading(false);
@@ -132,7 +109,45 @@ const ZoomMeetingPage = () => {
     };
 
     initializeMeeting();
-  }, [schedule, user, hasInitialized]);
+
+    const handleBeforeUnload = () => {
+      if (!zoomData) return;
+      localStorage.setItem('zoomData', JSON.stringify({
+        sessionId: zoomData.schedule.SessionID,
+        accId: userId,
+        timestamp: new Date().toISOString(),
+      }));
+
+      sendZoomLeftPayload();
+    };
+
+    const sendZoomLeftPayload = async () => {
+      const raw = localStorage.getItem('zoomData');
+      if (!raw) return;
+
+      const payload = JSON.parse(raw);
+
+      try {
+        await fetch('http://localhost:9999/api/zoom/webhook', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+
+        localStorage.removeItem('zoomData');
+      } catch (err) {
+        console.error("Failed to send Zoom LEFT payload:", err);
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+    
+  }, [user, zoomData, hasInitialized ]);
 
   if (error) {
     return (
