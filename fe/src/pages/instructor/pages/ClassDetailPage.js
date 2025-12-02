@@ -134,29 +134,41 @@ export default function ClassDetailPage() {
 
   //load zoom
   const handleStartZoom = () => {
-    if (!classData) {
-      alert("Chưa có thông tin lớp học!");
+    if (!classData || !classData.zoomMeetingId) {
+      alert("Chưa có thông tin phòng Zoom cho lớp học này!");
       return;
     }
 
-    // 1. Chuẩn bị dữ liệu
+    const rawUser = localStorage.getItem("user");
+    const currentUser = rawUser ? JSON.parse(rawUser) : {};
+
     const zoomPayload = {
       schedule: {
         ZoomID: classData.zoomMeetingId,
         Zoompass: classData.zoomPassword,
         ClassName: classData.className,
         CourseTitle: classData.course?.title,
+
+        Date: new Date().toISOString().split("T")[0],
+        StartTime: new Date().toTimeString().split(" ")[0],
       },
-      userRole: "instructor", // Đánh dấu là giảng viên
+
+      userId: currentUser.id,
+      userName: currentUser.username || currentUser.fullname || "Giảng viên",
+      email: currentUser.email,
+      userRole: currentUser.role || "instructor",
+
       timestamp: new Date().getTime(),
     };
 
-    // 2. Lưu vào Session Storage
-    sessionStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+    localStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
 
-    // 3. Mở tab Zoom mới
     setTimeout(() => {
-      window.open("/zoom", "_blank");
+      let url = `/zoom/${classData.zoomMeetingId}`;
+      if (classData.zoomPassword) {
+        url += `/${classData.zoomPassword}`;
+      }
+      window.open(url, "_blank");
     }, 100);
   };
 
