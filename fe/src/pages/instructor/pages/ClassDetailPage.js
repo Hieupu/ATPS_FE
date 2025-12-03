@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
 
 import ClassDetailLayout from "../components/class/ClassDetailLayout";
@@ -9,7 +9,7 @@ import OverviewTab from "../components/class/tabs/OverviewTab";
 import StudentsTab from "../components/class/tabs/StudentsTab";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 
-const BASE_URL = "https://atps-be.onrender.com/api/instructor";
+const BASE_URL = "http://localhost:9999/api/instructor";
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -25,6 +25,7 @@ apiClient.interceptors.request.use((config) => {
 export default function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // State cho dữ liệu
   const [classData, setClassData] = useState(null);
@@ -35,7 +36,8 @@ export default function ClassDetailPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  const [activeTab, setActiveTab] = useState(0);
+  const initialTab = parseInt(searchParams.get("tab")) || 0;
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // 1. Lấy chi tiết lớp
   useEffect(() => {
@@ -69,7 +71,6 @@ export default function ClassDetailPage() {
     const fetchSchedule = async () => {
       try {
         const res = await apiClient.get(`/classes/${classId}/schedule`);
-        console.log("DỮ LIỆU MỚI TỪ SERVER:", res.data.Sessions);
         setSessions(res.data.Sessions || []);
       } catch (err) {
         console.error("Lỗi tải lịch học:", err);
@@ -131,6 +132,34 @@ export default function ClassDetailPage() {
     if (classData) setLoading(false);
   }, [classData]);
 
+  //load zoom
+  const handleStartZoom = () => {
+    if (!classData) {
+      alert("Chưa có thông tin lớp học!");
+      return;
+    }
+
+    // 1. Chuẩn bị dữ liệu
+    const zoomPayload = {
+      schedule: {
+        ZoomID: classData.zoomMeetingId,
+        Zoompass: classData.zoomPassword,
+        ClassName: classData.className,
+        CourseTitle: classData.course?.title,
+      },
+      userRole: "instructor", // Đánh dấu là giảng viên
+      timestamp: new Date().getTime(),
+    };
+
+    // 2. Lưu vào Session Storage
+    sessionStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+
+    // 3. Mở tab Zoom mới
+    setTimeout(() => {
+      window.open("/zoom", "_blank");
+    }, 100);
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -156,7 +185,9 @@ export default function ClassDetailPage() {
       onBack={() => navigate(-1)}
     >
       {/* Tab 0: Tổng quan */}
-      {activeTab === 0 && <OverviewTab classData={classData} />}
+      {activeTab === 0 && (
+        <OverviewTab classData={classData} onStartZoom={handleStartZoom} />
+      )}
 
       {/* Tab 1: Học viên */}
       {activeTab === 1 && <StudentsTab students={students} />}
@@ -171,6 +202,7 @@ export default function ClassDetailPage() {
           onOpenAttendance={openAttendanceModal}
           onSaveAttendance={saveAttendance}
           onCloseAttendance={closeAttendanceModal}
+          onStartZoom={handleStartZoom}
         />
       )}
     </ClassDetailLayout>

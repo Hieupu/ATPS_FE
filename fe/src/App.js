@@ -38,100 +38,119 @@ import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
 import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
-
 import CoursesPagee from "./pages/instructor/pages/CoursesPage";
 import CourseBuilderPage from "./pages/instructor/pages/CourseBuilderPage";
+import InstructorSchedulePage from "./pages/instructor/pages/InstructorSchedulePage";
 
 import InstructorsPage from "./pages/instructor/InstructorsPage";
 import InstructorDetailPage from "./pages/instructor/InstructorDetailPage";
 
 import SchedulePage from "./pages/schedule/SchedulePage";
 import RescheduleRequestsPage from "./pages/schedule/RescheduleRequestsPage";
-import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
-
 import AttendancePage from "./pages/attendance/AttendancePage";
 import ProgressPage from "./pages/progress/ProgressPage";
 import MaterialsPage from "./pages/materials/MaterialsPage";
 
+import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
+
+import ExamsPage from "./pages/exam/ExamsPage";
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
+import { useTokenExpiry } from "./hooks/useTokenExpiry";
+
+// ⭐ Các route mới từ nhánh của bạn
 import CreateExamPage from "./pages/instructor/components/exam/CreateExamPage";
 import EditExamPage from "./pages/instructor/components/exam/EditExamPage";
+
+function AppRoutes() {
+  useTokenExpiry();
+
+  return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
+      <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
+      <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
+      <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
+      <Route path="/oauth/callback" element={<OAuthCallback />} />
+      <Route path="/profile" element={<MyProfile />} />
+
+      <Route path="/courses" element={<CoursesPage />} />
+      <Route path="/courses/:id" element={<CourseDetailPage />} />
+      <Route path="/my-courses" element={<MyCourses />} />
+      <Route path="/my-courses/:id" element={<MyCourseDetailPage />} />
+
+      <Route path="/payment-success" element={<PaymentSuccessPage />} />
+      <Route path="/payment-failed" element={<PaymentFailedPage />} />
+      <Route path="/paymenthistory" element={<PaymentHistoryPage />} />
+
+      <Route path="/instructors" element={<InstructorsPage />} />
+      <Route path="/instructors/:id" element={<InstructorDetailPage />} />
+
+      <Route path="/assignments" element={<AssignmentsPage />} />
+      <Route path="/exam" element={<ExamsPage />} />
+
+      {/* Learner Routes */}
+      <Route path="/schedule" element={<SchedulePage />} />
+      <Route path="/reschedule-requests" element={<RescheduleRequestsPage />} />
+      <Route path="/attendance" element={<AttendancePage />} />
+      <Route
+        path="/zoom/:zoomId?/:zoomPass?"
+        element={<ZoomMeetingPage />}
+      />
+      <Route path="/progress" element={<ProgressPage />} />
+      <Route path="/materials" element={<MaterialsPage />} />
+
+      {/* Admin Routes */}
+      <Route path="/admin" element={<AdminLayout />}>
+        <Route index element={<AdminDashboard />} />
+        <Route path="classes" element={<ClassManagementPage />} />
+        <Route
+          path="classes/:courseId/schedule"
+          element={<ScheduleManagementPage />}
+        />
+      </Route>
+
+      {/* Instructor Routes */}
+      <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
+        <Route path="/instructor" element={<InstructorLayout />}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<InstructorDashboard />} />
+
+          <Route path="courses" element={<CoursesPagee />} />
+          <Route path="courses/:courseId" element={<CourseBuilderPage />} />
+
+          <Route path="classes" element={<InstructorClasses />} />
+          <Route path="classes/:classId" element={<ClassDetailPage />} />
+
+          <Route path="assignments" element={<InstructorAssignments />} />
+          <Route path="exams" element={<InstructorExams />} />
+          <Route path="grades" element={<InstructorGrades />} />
+          <Route path="schedule" element={<InstructorSchedulePage />} />
+          <Route path="settings" element={<InstructorSettings />} />
+          <Route path="exams/create" element={<CreateExamPage />} />
+          <Route path="exams/edit/:examId" element={<EditExamPage />} />
+        </Route>
+      </Route>
+
+      {/* 404 */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 function App() {
   return (
     <AuthProvider>
       <Router>
-        <Routes>
-          {/* Public Routes */}
-          <Route path={PUBLIC_ROUTES.HOME} element={<HomePage />} />
-          <Route path={PUBLIC_ROUTES.LOGIN} element={<LoginPage />} />
-          <Route path={PUBLIC_ROUTES.FORGOTPASSWORD} element={<ForgotPassword />} />
-          <Route path="/profile" element={<MyProfile />} />
-          <Route path={PUBLIC_ROUTES.REGISTER} element={<RegisterPage />} />
-          <Route path="/oauth/callback" element={<OAuthCallback />} />
-          <Route path="/register" element={<Navigate to={PUBLIC_ROUTES.REGISTER} replace />} />
-
-          <Route path="/courses" element={<CoursesPage />} />
-          <Route path="/courses/:id" element={<CourseDetailPage />} />
-          <Route path="/my-courses" element={<MyCourses />} />
-          <Route path="/my-courses/:id" element={<MyCourseDetailPage />} />
-
-          <Route path="/payment-success" element={<PaymentSuccessPage />} />
-          <Route path="/payment-failed" element={<PaymentFailedPage />} />
-          <Route path="/paymenthistory" element={<PaymentHistoryPage />} />
-
-          <Route path="/instructors" element={<InstructorsPage />} />
-          <Route path="/instructors/:id" element={<InstructorDetailPage />} />
-          <Route path="/assignments" element={<AssignmentsPage />} />
-
-          {/* Learner Routes */}
-          <Route path="/schedule" element={<SchedulePage />} />
-          <Route path="/reschedule-requests" element={<RescheduleRequestsPage />} />
-          <Route path="/attendance" element={<AttendancePage />} />
-          <Route path="/zoom" element={<ZoomMeetingPage />} />
-          <Route path="/progress" element={<ProgressPage />} />
-          <Route path="/materials" element={<MaterialsPage />} />
-
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboard />} />
-            <Route path="classes" element={<ClassManagementPage />} />
-            <Route path="classes/:courseId/schedule" element={<ScheduleManagementPage />} />
-          </Route>
-
-          {/* Instructor Routes */}
-          <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
-            <Route path="/instructor" element={<InstructorLayout />}>
-              <Route index element={<Navigate to="dashboard" replace />} />
-              <Route path="dashboard" element={<InstructorDashboard />} />
-              <Route path="courses" element={<CoursesPagee />} />
-              <Route path="courses/:courseId" element={<CourseBuilderPage />} />
-              <Route path="classes" element={<InstructorClasses />} />
-              <Route path="classes/:classId" element={<ClassDetailPage />} />
-              <Route path="assignments" element={<InstructorAssignments />} />
-              <Route path="grades" element={<InstructorGrades />} />
-              <Route path="settings" element={<InstructorSettings />} />
-              <Route path="exams">
-                <Route index element={<InstructorExams />} />
-                <Route path="create" element={<CreateExamPage />} />
-                <Route path="edit/:examId" element={<EditExamPage />} />
-              </Route>
-            </Route>
-          </Route>
-
-          {/* 404 Page */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-
+        <AppRoutes />
         <ToastContainer
           position="top-right"
           autoClose={2500}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
           pauseOnHover
+          closeOnClick
+          newestOnTop={false}
           theme="colored"
         />
       </Router>
@@ -139,7 +158,7 @@ function App() {
   );
 }
 
-// Admin Dashboard & 404
+// Admin Dashboard
 function AdminDashboard() {
   return (
     <div style={{ padding: "24px" }}>
@@ -154,7 +173,6 @@ function AdminDashboard() {
             color: "white",
             textDecoration: "none",
             borderRadius: "8px",
-            display: "inline-block",
           }}
         >
           Quản lý lớp học
@@ -164,6 +182,7 @@ function AdminDashboard() {
   );
 }
 
+// Not Found
 function NotFound() {
   return (
     <div
@@ -173,12 +192,13 @@ function NotFound() {
         minHeight: "100vh",
         display: "flex",
         flexDirection: "column",
-        alignItems: "center",
         justifyContent: "center",
       }}
     >
       <h1 style={{ fontSize: "72px", margin: 0 }}>404</h1>
-      <p style={{ fontSize: "24px", color: "#6c757d" }}>Không tìm thấy trang</p>
+      <p style={{ fontSize: "24px", color: "#6c757d" }}>
+        Không tìm thấy trang
+      </p>
       <a
         href="/"
         style={{
@@ -188,7 +208,6 @@ function NotFound() {
           color: "white",
           textDecoration: "none",
           borderRadius: "8px",
-          display: "inline-block",
         }}
       >
         Về trang chủ

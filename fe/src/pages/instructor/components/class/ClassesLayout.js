@@ -82,6 +82,23 @@ export default function ClassesLayout({
     }
     handleMenuClose();
   };
+  const handleViewStudents = () => {
+    if (selectedClass) {
+      navigate(
+        `/instructor/classes/${selectedClass.classId || selectedClass.id}?tab=1`
+      );
+    }
+    handleMenuClose();
+  };
+
+  const handleViewSchedule = () => {
+    if (selectedClass) {
+      navigate(
+        `/instructor/classes/${selectedClass.classId || selectedClass.id}?tab=2`
+      );
+    }
+    handleMenuClose();
+  };
 
   // Đếm số lượng cho từng tab
   const allCount = classes.length;
@@ -194,13 +211,10 @@ export default function ClassesLayout({
         <MenuItem onClick={handleViewDetail}>
           <Visibility sx={{ mr: 1.5, fontSize: 18 }} /> Xem chi tiết
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleViewStudents}>
           <People sx={{ mr: 1.5, fontSize: 18 }} /> Danh sách học viên
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <People sx={{ mr: 1.5, fontSize: 18 }} /> Điểm Danh
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem onClick={handleViewSchedule}>
           <EditCalendar sx={{ mr: 1.5, fontSize: 18 }} /> Thời Khóa Biểu
         </MenuItem>
       </Menu>

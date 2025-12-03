@@ -1,4 +1,12 @@
 /* style.css - Dùng chung cho Instructor Dashboard, Courses, Classes */
+.sidebar-header-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
 .instructor-page {
   min-height: 100vh;
   background-color: #f8fafc;
@@ -83,7 +91,7 @@
 
 .MuiCard-root:hover {
   transform: translateY(-4px);
-  box-shadow: 0 8px 16px rgba(0,0,0,0.1) !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1) !important;
 }
 
 .fancy-toast {

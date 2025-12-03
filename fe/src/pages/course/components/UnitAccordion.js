@@ -19,8 +19,8 @@ const UnitAccordion = ({
   unitIndex, 
   assignments = [], 
   isEnrolled, 
-  onViewMaterial, 
-  onSubmitAssignment 
+  onViewMaterial,
+  onRefresh,
 }) => {
   const unitAssignments = assignments.filter(assignment => assignment.UnitID === unit.UnitID);
 
@@ -28,14 +28,15 @@ const UnitAccordion = ({
     <Card 
       elevation={0}
       sx={{
-        border: '1px solid',
-        borderColor: 'divider',
-        borderRadius: 3,
+        border: '1px solid rgba(99,102,241,0.15)',
+        borderRadius: 4,
         overflow: 'hidden',
-        transition: 'all 0.3s',
+        transition: 'all 0.3s ease',
+        boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
         '&:hover': {
-          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
-          transform: 'translateY(-2px)',
+          boxShadow: '0 15px 35px rgba(99,102,241,0.15)',
+          transform: 'translateY(-3px)',
+          borderColor: 'rgba(99,102,241,0.3)',
         }
       }}
     >
@@ -48,13 +49,21 @@ const UnitAccordion = ({
         }}
       >
         <AccordionSummary 
-          expandIcon={<ExpandMore />}
+          expandIcon={
+            <ExpandMore
+              sx={{
+                bgcolor: "rgba(102,126,234,0.1)",
+                borderRadius: "50%",
+                p: 0.5,
+              }}
+            />
+          }
           sx={{ 
             px: 3, 
-            py: 2,
-            background: 'linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%)',
+            py: 2.5,
+            background: 'linear-gradient(90deg, #f8f9fe 0%, #ffffff 100%)',
             '&:hover': {
-              bgcolor: 'action.hover',
+              background: 'linear-gradient(90deg, #eef0ff 0%, #f8f9fe 100%)',
             }
           }}
         >
@@ -70,7 +79,7 @@ const UnitAccordion = ({
             unitAssignments={unitAssignments}
             isEnrolled={isEnrolled}
             onViewMaterial={onViewMaterial}
-            onSubmitAssignment={onSubmitAssignment}
+            onRefresh={onRefresh}
           />
         </AccordionDetails>
       </Accordion>
@@ -141,7 +150,7 @@ const UnitHeader = ({ unit, unitIndex, assignmentCount }) => (
   </Box>
 );
 
-const UnitContent = ({ unit, unitAssignments, isEnrolled, onViewMaterial, onSubmitAssignment }) => {
+const UnitContent = ({ unit, unitAssignments, isEnrolled, onViewMaterial, onRefresh }) => {
   const hasContent = unit.Lessons?.length > 0 || unitAssignments.length > 0;
 
   if (!hasContent) {
@@ -154,7 +163,6 @@ const UnitContent = ({ unit, unitAssignments, isEnrolled, onViewMaterial, onSubm
 
   return (
     <List disablePadding>
-      {/* Hiển thị lessons */}
       {unit.Lessons?.map((lesson, lessonIndex) => (
         <LessonItem
           key={lesson.LessonID}
@@ -165,14 +173,13 @@ const UnitContent = ({ unit, unitAssignments, isEnrolled, onViewMaterial, onSubm
         />
       ))}
       
-      {/* Hiển thị assignments */}
       {unitAssignments.map((assignment, assignmentIndex) => (
         <AssignmentItem
           key={assignment.AssignmentID}
           assignment={assignment}
           isEnrolled={isEnrolled}
-          onSubmitAssignment={onSubmitAssignment}
           index={assignmentIndex}
+          onRefresh={onRefresh}
         />
       ))}
     </List>

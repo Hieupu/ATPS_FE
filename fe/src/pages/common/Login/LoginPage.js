@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
+import { toast } from "react-toastify";
 import {
   Box,
   Container,
@@ -12,13 +13,14 @@ import {
   InputAdornment,
   IconButton,
   Avatar,
+  Checkbox,
+  FormControlLabel,
 } from "@mui/material";
 import {
   Visibility,
   VisibilityOff,
   Google as GoogleIcon,
   Facebook as FacebookIcon,
-  School,
   AccountCircle,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
@@ -28,12 +30,15 @@ import {
   startFacebookAuth,
 } from "../../../apiServices/authService";
 import { useAuth } from "../../../contexts/AuthContext";
+
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
+    rememberMe: false,
   });
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
@@ -42,29 +47,44 @@ const LoginPage = () => {
   };
 
   const handleChange = (e) => {
+    const { name, value, checked, type } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: type === "checkbox" ? checked : value,
     });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+
     try {
-      const { token, user } = await loginApi(formData.email, formData.password);
+      const data = await loginApi(
+        formData.email,
+        formData.password,
+        formData.rememberMe
+      );
 
-      // Sử dụng Auth Context để login
-      login(user, token);
+      login(data.user, data.token);
 
-      if (user.role === "learner") {
-        navigate("/");
-      } else if (user.role === "instructor") {
-        navigate("/instructor");
-      } else {
-        navigate("/");
-      }
+      const userName = data.user.username || data.user.email.split("@")[0];
+      toast.success(`Xin chào ${userName}! Đăng nhập thành công`, {
+        autoClose: 2000,
+      });
+
+      setTimeout(() => {
+        if (data.user.role === "learner") {
+          navigate("/");
+        } else if (data.user.role === "instructor") {
+          navigate("/instructor");
+        } else {
+          navigate("/");
+        }
+      }, 500);
     } catch (error) {
-      alert(error.message || "Đăng nhập thất bại");
+      toast.error(error.message || "Đăng nhập thất bại. Vui lòng thử lại!");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -91,7 +111,6 @@ const LoginPage = () => {
             backgroundColor: "white",
           }}
         >
-          {/* Logo Section */}
           <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
             <Avatar
               sx={{
@@ -104,16 +123,13 @@ const LoginPage = () => {
             </Avatar>
           </Box>
 
-          {/* Title Section */}
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
               Đăng nhập
             </Typography>
           </Box>
 
-          {/* Login Form */}
           <Box component="form" onSubmit={handleSubmit}>
-            {/* Email Field */}
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Email
@@ -130,8 +146,7 @@ const LoginPage = () => {
               />
             </Box>
 
-            {/* Password Field */}
-            <Box sx={{ mb: 3 }}>
+            <Box sx={{ mb: 2 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
                 Mật khẩu
               </Typography>
@@ -156,12 +171,32 @@ const LoginPage = () => {
               />
             </Box>
 
-            {/* Login Button */}
+            <Box sx={{ mb: 2 }}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    name="rememberMe"
+                    checked={formData.rememberMe}
+                    onChange={handleChange}
+                    color="primary"
+                  />
+                }
+                label={
+                  <Box>
+                    <Typography variant="body2" component="span">
+                      Ghi nhớ đăng nhập
+                    </Typography>
+                  </Box>
+                }
+              />
+            </Box>
+
             <Button
               type="submit"
               fullWidth
               variant="contained"
               size="large"
+              disabled={loading}
               sx={{
                 mb: 3,
                 py: 1.5,
@@ -169,27 +204,26 @@ const LoginPage = () => {
                 fontSize: "1rem",
               }}
             >
-              Đăng nhập
+              {loading ? "Đang đăng nhập..." : "Đăng nhập"}
             </Button>
 
-            {/* Divider */}
             <Divider sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary">
                 Đăng nhập bằng
               </Typography>
             </Divider>
 
-            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+            <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
               <Button
                 sx={{
                   flex: 1,
                   py: 1.5,
                   fontWeight: 600,
-                  borderColor: 'grey.300',
-                  color: 'text.primary',
+                  borderColor: "grey.300",
+                  color: "text.primary",
                   "&:hover": {
-                    borderColor: 'grey.400',
-                    backgroundColor: 'grey.50',
+                    borderColor: "grey.400",
+                    backgroundColor: "grey.50",
                   },
                 }}
                 variant="outlined"
@@ -205,11 +239,11 @@ const LoginPage = () => {
                   flex: 1,
                   py: 1.5,
                   fontWeight: 600,
-                  borderColor: 'grey.300',
-                  color: 'text.primary',
+                  borderColor: "grey.300",
+                  color: "text.primary",
                   "&:hover": {
-                    borderColor: 'grey.400',
-                    backgroundColor: 'grey.50',
+                    borderColor: "grey.400",
+                    backgroundColor: "grey.50",
                   },
                 }}
                 variant="outlined"
@@ -221,7 +255,6 @@ const LoginPage = () => {
               </Button>
             </Box>
 
-            {/* Footer Links */}
             <Box
               sx={{
                 display: "flex",
