@@ -12,12 +12,16 @@ import {
   PersonOutline,
   Assignment,
   EventAvailable,
+  Assessment,
   RocketLaunchRounded,
 } from '@mui/icons-material';
 import ProgressBarCard from './ProgressBarCard';
 import ClassAccordion from './ClassAccordion';
 
 const CourseProgressCard = ({ item, index }) => {
+  console.log("item", item)
+  
+  // Tính toán phần trăm hoàn thành
   const assignmentProgress = item.stats.totalAssignments > 0
     ? (item.stats.completedAssignments / item.stats.totalAssignments) * 100
     : 0;
@@ -26,6 +30,11 @@ const CourseProgressCard = ({ item, index }) => {
     ? (item.stats.attendedSessions / item.stats.totalSessions) * 100
     : 0;
 
+  const examProgress = item.stats.totalExams > 0
+    ? (item.stats.completedExams / item.stats.totalExams) * 100
+    : 0;
+
+  // Kiểm tra xem khóa học đã hoàn thành chưa
   const isCourseCompleted = item.classesDetail?.some(classItem =>
     classItem.stats.attendedSessions + classItem.stats.absentSessions >= classItem.stats.totalSessions
   );
@@ -99,13 +108,25 @@ const CourseProgressCard = ({ item, index }) => {
                   backdropFilter: "blur(5px)",
                 }}
               />
+              {/* Hiển thị tổng số units */}
+              <Chip
+                label={`${item.stats.totalUnits || 0} units`}
+                size="small"
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.2)",
+                  color: "white",
+                  fontWeight: 600,
+                  backdropFilter: "blur(5px)",
+                }}
+              />
             </Box>
           </Box>
 
-          {/* Stats Summary */}
+          {/* Stats Summary - Grid 3 cột */}
           <Box sx={{ p: 3 }}>
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+              {/* Bài tập */}
+              <Grid item xs={12} md={4}>
                 <ProgressBarCard
                   icon={Assignment}
                   title="Bài Tập"
@@ -118,7 +139,29 @@ const CourseProgressCard = ({ item, index }) => {
                   showAverage
                 />
               </Grid>
-              <Grid item xs={12} md={6}>
+              
+              
+              {/* Bài kiểm tra */}
+              <Grid item xs={12} md={4}>
+                <ProgressBarCard
+                  icon={Assessment}
+                  title="Bài Kiểm Tra"
+                  completed={item.stats.completedExams}
+                  total={item.stats.totalExams}
+                  percentage={examProgress}
+                  averageScore={item.stats.avgExamScore}
+                  emptyMessage="Khóa học này chưa có bài kiểm tra nào"
+                  color="warning"
+                  showAverage
+                  additionalInfo={{
+                    avgExamScore: item.stats.avgExamScore || 0,
+                    remainingExams: item.stats.remainingExams || 0
+                  }}
+                />
+              </Grid>
+
+                           {/* Điểm danh */}
+              <Grid item xs={12} md={4}>
                 <ProgressBarCard
                   icon={EventAvailable}
                   title="Điểm Danh"
@@ -129,6 +172,10 @@ const CourseProgressCard = ({ item, index }) => {
                   emptyMessage="Chưa có buổi học nào được ghi nhận"
                   color="success"
                   showHours
+                  additionalInfo={{
+                    absent: item.stats.absentSessions || 0,
+                    totalLessons: item.stats.totalLessons || 0
+                  }}
                 />
               </Grid>
             </Grid>
@@ -141,6 +188,7 @@ const CourseProgressCard = ({ item, index }) => {
                 key={idx}
                 classItem={classItem}
                 courseId={item.courseId}
+                  stats={item.stats}
                 index={idx}
               />
             ))}

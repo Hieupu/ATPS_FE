@@ -683,6 +683,7 @@ const AppHeader = () => {
                   </Menu>
                   <Avatar
                     onClick={(e) => setAnchorEl(e.currentTarget)}
+                      src={user?.ProfilePicture || user?.profilePicture}
                     sx={{
                       cursor: "pointer",
                       background:

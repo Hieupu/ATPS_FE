@@ -19,7 +19,7 @@ import {
     getInstructorTimeslotsFromTodayApi 
 } from "../../apiServices/scheduleService";
 import { checkPromotionCodeApi } from "../../apiServices/paymentService";
-
+import { slotReservationApi } from "../../apiServices/slotReservationApi";
 // Import các component con
 import BookingInfoForm from "./BookingInfoForm";
 import ScheduleGrid from "./ScheduleGrid";
@@ -432,18 +432,27 @@ const handleSlotClick = (slot) => {
     }
   }, [open, instructor]);
 
-  const handleClose = () => {
-    setError(null);
-    setSuccessMessage(null);
-    setWeeklySchedule([]);
-    setSelectedSlots([]);
-    setSelectedCourseId("");
-    setSelectedWeek("");
-    setPromoCode("");
-    setPromoInfo(null);
-    setCourseInfo(null);
-    onClose();
-  };
+const handleClose = async () => {
+  // ⭐️ THÊM: Release tất cả slots đang giữ trước khi đóng
+  if (selectedSlots.length > 0) {
+    try {
+      await slotReservationApi.releaseAllSlots();
+    } catch (error) {
+      console.error("Error releasing slots on close:", error);
+    }
+  }
+  
+  setError(null);
+  setSuccessMessage(null);
+  setWeeklySchedule([]);
+  setSelectedSlots([]);
+  setSelectedCourseId("");
+  setSelectedWeek("");
+  setPromoCode("");
+  setPromoInfo(null);
+  setCourseInfo(null);
+  onClose();
+};
 
   return (
     <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>

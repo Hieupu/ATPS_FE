@@ -16,7 +16,6 @@ import AppHeader from "../../components/Header/AppHeader";
 
 // Import components
 import HeroSection from "./components/HeroSection";
-import OverallStatistics from "./components/OverallStatistics";
 import CourseProgressCard from "./components/CourseProgressCard";
 import EmptyState from "./components/EmptyState";
 
@@ -112,8 +111,6 @@ const ProgressPage = () => {
       <HeroSection />
 
       <Container maxWidth="xl" sx={{ pb: 8 }} ref={contentRef}>
-        {/* Overall Statistics */}
-        <OverallStatistics statistics={statistics} />
 
         {/* Course Progress List */}
         <Grid container spacing={3}>

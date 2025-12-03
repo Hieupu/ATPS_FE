@@ -816,11 +816,11 @@ const formatDuration = (hours) => {
     gap: 2,
     p: 3,
     borderRadius: 3,
-    background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+    background: "linear-gradient(135deg, #7c3cc0ff 0%, #603cceff 100%)",
     color: "white",
     position: "relative",
     overflow: "hidden",
-    boxShadow: "0 4px 14px rgba(220, 38, 38, 0.3)",
+    boxShadow: "0 4px 14px rgba(118, 86, 225, 0.3)",
     "&::before": {
       content: '""',
       position: "absolute",

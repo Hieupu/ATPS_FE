@@ -1,5 +1,5 @@
 import React from 'react';
-import { Paper, Box, Typography, LinearProgress, Alert } from '@mui/material';
+import { Paper, Box, Typography, LinearProgress, Alert, Chip, Stack } from '@mui/material';
 
 const ProgressBarCard = ({ 
   icon: Icon, 
@@ -12,7 +12,8 @@ const ProgressBarCard = ({
   emptyMessage,
   color = "primary",
   showAverage = false,
-  showHours = false 
+  showHours = false,
+  additionalInfo = null
 }) => {
   const getProgressColor = (percentage) => {
     if (percentage >= 80) return "success";
@@ -28,6 +29,7 @@ const ProgressBarCard = ({
         borderRadius: 3,
         bgcolor: "#f8f9fe",
         border: "1px solid rgba(99,102,241,0.1)",
+        height: '100%',
       }}
     >
       <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 1.5 }}>
@@ -59,13 +61,17 @@ const ProgressBarCard = ({
           />
           <Box sx={{ display: "flex", justifyContent: "space-between", mt: 1 }}>
             <Typography variant="caption" color="text.secondary">
-              {title === "Bài Tập" ? "Tiến độ hoàn thành" : "Tỷ lệ tham gia"}
+              {title === "Bài Tập" ? "Tiến độ hoàn thành" : 
+               title === "Bài Kiểm Tra" ? "Tiến độ làm bài" : 
+               "Tỷ lệ tham gia"}
             </Typography>
             <Typography variant="caption" sx={{ fontWeight: 700, color: `${color}.main` }}>
               {Math.round(percentage)}%
             </Typography>
           </Box>
-          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+          
+          {/* Thông tin chính */}
+          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <Typography variant="body2" color="text.secondary">
               {showAverage ? "Điểm trung bình:" : showHours ? "Tổng giờ học:" : ""}
             </Typography>
@@ -74,10 +80,11 @@ const ProgressBarCard = ({
                 variant="body1"
                 sx={{
                   fontWeight: 800,
-                  color: averageScore >= 8 ? "success.main" : averageScore >= 6.5 ? "warning.main" : "error.main",
+                  color: averageScore >= 8 ? "success.main" : 
+                         averageScore >= 6.5 ? "warning.main" : "error.main",
                 }}
               >
-                {averageScore}
+                {averageScore.toFixed(1)}
               </Typography>
             )}
             {showHours && (
@@ -92,6 +99,7 @@ const ProgressBarCard = ({
               </Typography>
             )}
           </Box>
+          
         </>
       ) : (
         <Alert
@@ -99,6 +107,7 @@ const ProgressBarCard = ({
           sx={{
             borderRadius: 2,
             border: "1px solid rgba(33,150,243,0.2)",
+            mt: 1,
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 600 }}>
