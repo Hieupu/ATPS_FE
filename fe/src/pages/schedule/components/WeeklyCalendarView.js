@@ -158,19 +158,49 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   };
 
   const handleJoinZoom = async (schedule) => {
-    localStorage.setItem('zoomScheduleData', JSON.stringify({
-      schedule: schedule,
-      timestamp: new Date().getTime(),
-      userId: user.user.id,
-      userRole: user.user.role,
-      userName: user.user.username,
-      email: user.user.email,
-    }));
+  if (!schedule) {
+    alert("Không tìm thấy thông tin buổi học.");
+    return;
+  }
 
-    try {
+  const start = new Date(`${schedule.Date}T${schedule.StartTime}`);
+  const now = new Date();
+
+  const isWithin15MinBefore = now >= new Date(start.getTime() - 15 * 60 * 1000);
+  const isWithin10MinBefore = now >= new Date(start.getTime() - 10 * 60 * 1000);
+
+  const userId = user?.user?.id;
+  const role = user?.user?.role;
+
+  if (!userId) {
+    alert("Không xác định được người dùng.");
+    return;
+  }
+  if (role !== "instructor" && role !== "learner") {
+    alert("Bạn không có quyền truy cập vào buổi học này.");
+    return;
+  }
+  if (role === "instructor" && !isWithin15MinBefore) {
+    alert("Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu.");
+    return;
+  }
+  if (role === "learner" && !isWithin10MinBefore) {
+    alert("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+    return;
+  }
+
+  localStorage.setItem('zoomScheduleData', JSON.stringify({
+    schedule: schedule,
+    timestamp: Date.now(),
+    userId: userId,
+    userRole: role,
+    userName: user.user.username,
+    email: user.user.email,
+  }));
+  try {
     await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
       sessionId: schedule.SessionID,
-      accId: user.user.id,
+      accId: userId,
       userName: user.user.username,
       startTime: schedule.StartTime,
       endTime: schedule.EndTime,
@@ -184,8 +214,10 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
 
   } catch (err) {
     console.error("Join Zoom API failed:", err);
+    alert("Không thể kết nối đến server. Vui lòng thử lại.");
   }
-  };
+};
+
 
   const renderScheduleCard = (schedule, slot, idx) => (
     <div

@@ -40,13 +40,6 @@ const ZoomMeetingPage = () => {
       console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
       return;
     }
-    const isWithin15MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 15*60*1000);
-    const isWithin10MinBefore = new Date() >= new Date(new Date(`${zoomData?.schedule?.Date}T${zoomData?.schedule?.StartTime}`).getTime() - 10*60*1000);
-    console.log(isWithin15MinBefore, isWithin10MinBefore, zoomData.schedule, hasInitialized, userId === user?.id);
-    if (!zoomData.schedule || userId !== user.id 
-      // || (zoomData.userRole !== "instructor" && !isWithin15MinBefore) || 
-      //   (zoomData.userRole !== "learner" && !isWithin10MinBefore)
-      ) alert("Không thể tham gia phòng học lúc này. Vui lòng kiểm tra lại thông tin hoặc thời gian tham gia phòng học.");
 
     const initializeMeeting = async () => {
       try {
@@ -57,7 +50,7 @@ const ZoomMeetingPage = () => {
         const passWord = zoomData.schedule.Zoompass;
         const userName = zoomData.userName;
         const userEmail = zoomData.email;
-        const role = zoomData.userRole === "instructor" ? 1 : 1;
+        const role = zoomData.userRole === "instructor" ? 1 : 0;
 
         if (!meetingNumber) {
           throw new Error("Thiếu meeting number");
