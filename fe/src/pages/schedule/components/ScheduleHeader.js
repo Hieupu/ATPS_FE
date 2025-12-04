@@ -173,24 +173,6 @@ const ScheduleHeader = () => {
         >
           Lịch học của tôi
         </Typography>
-
-        {/* Subtitle */}
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            opacity: 0.92,
-            maxWidth: 700,
-            mx: "auto",
-            fontWeight: 300,
-            lineHeight: 1.6,
-            fontSize: { xs: "0.9rem", md: "1rem" },
-            fontFamily: "'Inter', 'Segoe UI', sans-serif",
-            letterSpacing: "0.2px",
-          }}
-        >
-          Xem lịch học và theo dõi các buổi học sắp tới
-        </Typography>
       </Container>
     </Box>
   );

@@ -110,24 +110,6 @@ const HeroSection = () => {
         >
           Báo Cáo Tiến Độ Học Tập
         </Typography>
-
-        {/* Subtitle */}
-        <Typography
-          variant="h6"
-          sx={{
-            textAlign: "center",
-            opacity: 0.92,
-            maxWidth: 700,
-            mx: "auto",
-            fontWeight: 300,
-            lineHeight: 1.7,
-            fontSize: { xs: "0.9rem", md: "1rem" },
-            fontFamily: "'Inter', 'Segoe UI', sans-serif",
-            letterSpacing: "0.2px",
-          }}
-        >
-          Theo dõi chi tiết điểm số, bài tập và điểm danh của bạn
-        </Typography>
       </Container>
     </Box>
   );

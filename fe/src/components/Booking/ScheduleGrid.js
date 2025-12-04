@@ -43,81 +43,187 @@ const ScheduleGrid = ({
 
   const [conflictAlert, setConflictAlert] = useState(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
-  const [checkingFutureSlots, setCheckingFutureSlots] = useState(false);
-  const [futureSlotsAlert, setFutureSlotsAlert] = useState(null);
   
-  // ⭐️ State để lưu các slot đang được reserved
   const [reservedSlots, setReservedSlots] = useState(new Set());
-  const [myReservedSlots, setMyReservedSlots] = useState(new Set()); // Slot do mình reserve
+  const [myReservedSlots, setMyReservedSlots] = useState(new Set());
   const [checkingReservations, setCheckingReservations] = useState(false);
 
-// ⭐️ Function để check và cập nhật reserved slots
-const checkReservedSlots = useCallback(async () => {
-  if (!weeklySchedule || weeklySchedule.length === 0) return;
-  
-  setCheckingReservations(true);
-  try {
-    const reserved = new Set();
-    const expiredSlots = []; // ⭐️ THÊM: Lưu các slot đã hết timeout
-    
-    // Check từng slot trong weeklySchedule
-    const checkPromises = weeklySchedule.map(async (slot) => {
-      try {
-        const result = await slotReservationApi.checkSlotStatus(
-          slot.TimeslotID, 
-          normalizeDate(slot.Date)
-        );
+  // ⭐️ ANTI-SPAM: Theo dõi lịch sử reserve của từng slot
+  const [slotReserveHistory, setSlotReserveHistory] = useState(() => {
+    // Load từ localStorage nếu có
+    const saved = localStorage.getItem('slotReserveHistory');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  // ⭐️ ANTI-SPAM: Trạng thái bị khóa (banned)
+  const [isBanned, setIsBanned] = useState(false);
+  const [banEndTime, setBanEndTime] = useState(null);
+  const [banTimeRemaining, setBanTimeRemaining] = useState(0);
+
+  // ⭐️ ANTI-SPAM: Check trạng thái ban khi component mount
+  useEffect(() => {
+    const checkBanStatus = () => {
+      const banData = localStorage.getItem('slotReserveBan');
+      if (banData) {
+        const { endTime } = JSON.parse(banData);
+        const now = Date.now();
         
-        const key = `${slot.TimeslotID}_${normalizeDate(slot.Date)}`;
-        
-        // Nếu slot đang được reserved
-        if (result.data.reserved) {
-          reserved.add(key);
+        if (now < endTime) {
+          setIsBanned(true);
+          setBanEndTime(endTime);
+          setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
         } else {
-          // ⭐️ THÊM: Check nếu là slot của mình đã hết timeout
-          if (myReservedSlots.has(key)) {
-            expiredSlots.push(slot);
-          }
+          // Hết thời gian ban, xóa
+          localStorage.removeItem('slotReserveBan');
+          setIsBanned(false);
+          setBanEndTime(null);
         }
-      } catch (error) {
-        console.error("Error checking slot:", error);
       }
-    });
+    };
+
+    checkBanStatus();
     
-    await Promise.all(checkPromises);
-    setReservedSlots(reserved);
-    
-    // ⭐️ THÊM: Xử lý các slot đã hết timeout
-    if (expiredSlots.length > 0) {
-      expiredSlots.forEach(slot => {
-        const slotDate = normalizeDate(slot.Date);
-        const slotKey = `${slot.TimeslotID}_${slotDate}`;
-        
-        // Xóa khỏi myReservedSlots
-        setMyReservedSlots(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(slotKey);
-          return newSet;
+    // Check mỗi giây để update countdown
+    const interval = setInterval(checkBanStatus, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ⭐️ ANTI-SPAM: Cleanup history cũ (sau 15 phút)
+  useEffect(() => {
+    const cleanupHistory = () => {
+      const now = Date.now();
+      const fifteenMinutes = 15 * 60 * 1000;
+      
+      setSlotReserveHistory(prev => {
+        const cleaned = {};
+        Object.keys(prev).forEach(key => {
+          const history = prev[key].filter(timestamp => 
+            now - timestamp < fifteenMinutes
+          );
+          if (history.length > 0) {
+            cleaned[key] = history;
+          }
         });
         
-        // Bỏ chọn slot
-        handleSlotClick(slot);
+        // Save to localStorage
+        localStorage.setItem('slotReserveHistory', JSON.stringify(cleaned));
+        return cleaned;
       });
-    }
-  } catch (error) {
-    console.error("Error checking reserved slots:", error);
-  } finally {
-    setCheckingReservations(false);
-  }
-}, [weeklySchedule, myReservedSlots, handleSlotClick]);
+    };
 
-  // ⭐️ Auto refresh reserved slots mỗi 5 giây
+    // Cleanup mỗi phút
+    const interval = setInterval(cleanupHistory, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ⭐️ ANTI-SPAM: Function để check spam behavior
+  const checkSpamBehavior = (slotKey) => {
+    const now = Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
+    
+    // Lấy lịch sử reserve của slot này trong 5 phút gần đây
+    const recentHistory = (slotReserveHistory[slotKey] || []).filter(
+      timestamp => now - timestamp < fiveMinutes
+    );
+    
+    // Nếu đã reserve cùng 1 slot >= 5 lần trong 5 phút
+    if (recentHistory.length >= 5) {
+      // Ban user trong 10 phút
+      const banUntil = now + (10 * 60 * 1000);
+      localStorage.setItem('slotReserveBan', JSON.stringify({
+        endTime: banUntil,
+        reason: 'spam_reserve'
+      }));
+      
+      setIsBanned(true);
+      setBanEndTime(banUntil);
+      
+      setConflictAlert({
+        severity: "error",
+        message: `Bạn đã giữ slot này quá nhiều lần (${recentHistory.length} lần trong 5 phút). Bạn bị tạm khóa trong 10 phút.`
+      });
+      
+      return true; // Spam detected
+    }
+    
+    return false; // OK
+  };
+
+  // ⭐️ ANTI-SPAM: Record reserve action
+  const recordReserveAction = (slotKey) => {
+    const now = Date.now();
+    
+    setSlotReserveHistory(prev => {
+      const updated = {
+        ...prev,
+        [slotKey]: [...(prev[slotKey] || []), now]
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('slotReserveHistory', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  const checkReservedSlots = useCallback(async () => {
+    if (!weeklySchedule || weeklySchedule.length === 0) return;
+    
+    setCheckingReservations(true);
+    try {
+      const reserved = new Set();
+      const expiredSlots = [];
+      
+      const checkPromises = weeklySchedule.map(async (slot) => {
+        try {
+          const result = await slotReservationApi.checkSlotStatus(
+            slot.TimeslotID, 
+            normalizeDate(slot.Date)
+          );
+          
+          const key = `${slot.TimeslotID}_${normalizeDate(slot.Date)}`;
+          
+          if (result.data.reserved) {
+            reserved.add(key);
+          } else {
+            if (myReservedSlots.has(key)) {
+              expiredSlots.push(slot);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking slot:", error);
+        }
+      });
+      
+      await Promise.all(checkPromises);
+      setReservedSlots(reserved);
+      
+      if (expiredSlots.length > 0) {
+        expiredSlots.forEach(slot => {
+          const slotDate = normalizeDate(slot.Date);
+          const slotKey = `${slot.TimeslotID}_${slotDate}`;
+          
+          setMyReservedSlots(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(slotKey);
+            return newSet;
+          });
+          
+          handleSlotClick(slot);
+        });
+      }
+    } catch (error) {
+      console.error("Error checking reserved slots:", error);
+    } finally {
+      setCheckingReservations(false);
+    }
+  }, [weeklySchedule, myReservedSlots, handleSlotClick]);
+
   useEffect(() => {
     checkReservedSlots();
     
     const interval = setInterval(() => {
       checkReservedSlots();
-    }, 5000); // Refresh mỗi 5 giây
+    }, 5000);
     
     return () => clearInterval(interval);
   }, [checkReservedSlots]);
@@ -180,134 +286,6 @@ const checkReservedSlots = useCallback(async () => {
     return Object.fromEntries(dates);
   }, [weeklySchedule]);
 
-  const getSlotInfo = (slot) => {
-    if (!slot) return null;
-    
-    return {
-      TimeslotID: slot.TimeslotID,
-      Day: slot.Day,
-      StartTime: slot.StartTime?.substring(0, 5) || "",
-      EndTime: slot.EndTime?.substring(0, 5) || "",
-      Date: normalizeDate(slot.Date),
-      DayOfWeek: getDayOfWeekFromDate(normalizeDate(slot.Date))
-    };
-  };
-
-  const calculateDateForSlotInWeek = (slotDetail, targetWeekDate) => {
-    const originalDate = new Date(slotDetail.Date + "T00:00:00");
-    const targetDate = new Date(targetWeekDate);
-    
-    const originalDayOfWeek = originalDate.getDay();
-    const targetDayOfWeek = targetDate.getDay();
-    const dayDifference = originalDayOfWeek - targetDayOfWeek;
-    targetDate.setDate(targetDate.getDate() + dayDifference);
-    
-    return targetDate;
-  };
-
-  const checkAllSelectedSlotsFutureAvailability = async (newSlot) => {
-    try {
-      setCheckingFutureSlots(true);
-      
-      if (!allTimeslots || allTimeslots.length === 0) {
-        throw new Error("Không có dữ liệu lịch học tương lai");
-      }
-
-      const slotsToCheck = [...selectedSlots, {
-        TimeslotID: newSlot.TimeslotID,
-        Date: normalizeDate(newSlot.Date)
-      }];
-      
-      const slotDetails = slotsToCheck.map(slotItem => {
-        const slotInSchedule = weeklySchedule.find(s => 
-          s.TimeslotID === slotItem.TimeslotID && 
-          normalizeDate(s.Date) === slotItem.Date
-        );
-        return slotInSchedule ? getSlotInfo(slotInSchedule) : null;
-      }).filter(Boolean);
-
-      if (slotDetails.length === 0) return true;
-      if (requiredNumberOfSessions <= 1) return true;
-
-      const selectedSlotDate = new Date(normalizeDate(newSlot.Date) + "T00:00:00");
-      
-      const futureSlots = allTimeslots.filter(slot => {
-        const slotDate = new Date(slot.Date + "T00:00:00");
-        return slotDate > selectedSlotDate;
-      });
-      
-      const sessionsPerWeek = slotsToCheck.length;
-      
-      let weeksNeededForNewSelection;
-      if (requiredNumberOfSessions <= sessionsPerWeek) {
-        weeksNeededForNewSelection = 1;
-      } else {
-        weeksNeededForNewSelection = Math.ceil(requiredNumberOfSessions / sessionsPerWeek);
-      }
-      
-      const futureWeeksNeeded = weeksNeededForNewSelection - 1;
-
-      if (futureWeeksNeeded <= 0) return true;
-
-      let availableFutureWeeks = 0;
-      const maxWeeksToCheck = Math.min(12, futureWeeksNeeded * 2);
-      
-      for (let weekOffset = 1; weekOffset <= maxWeeksToCheck; weekOffset++) {
-        const targetWeekDate = new Date(selectedSlotDate);
-        targetWeekDate.setDate(selectedSlotDate.getDate() + (weekOffset * 7));
-        
-        const allSlotsAvailableInThisWeek = slotDetails.every(slotDetail => {
-          const slotDateInTargetWeek = calculateDateForSlotInWeek(slotDetail, targetWeekDate);
-          const targetDateStr = normalizeDate(slotDateInTargetWeek);
-          
-          const foundSlot = futureSlots.find(futureSlot => {
-            const futureSlotDay = getDayOfWeekFromDate(futureSlot.Date);
-            
-            return (
-              futureSlot.TimeslotID === slotDetail.TimeslotID &&
-              (futureSlot.Status === "AVAILABLE" || futureSlot.Status === "available") &&
-              futureSlotDay === slotDetail.DayOfWeek &&
-              futureSlot.StartTime?.substring(0, 5) === slotDetail.StartTime &&
-              normalizeDate(futureSlot.Date) === targetDateStr
-            );
-          });
-          
-          return !!foundSlot;
-        });
-        
-        if (allSlotsAvailableInThisWeek) {
-          availableFutureWeeks++;
-          
-          if (availableFutureWeeks >= futureWeeksNeeded) {
-            return true;
-          }
-        }
-      }
-      
-      let message = `Không đủ lịch trống trong tương lai.\n`; 
-      message += `💡 Gợi ý: Thử chọn slot khác hoặc thời gian khác.`;
-
-      setFutureSlotsAlert({
-        severity: "warning",
-        message: message,
-        slot: newSlot,
-        hasEnoughSlots: false
-      });
-      
-      return false;
-    } catch (error) {
-      console.error("Error checking future slots:", error);
-      setFutureSlotsAlert({
-        severity: "error",
-        message: "Không thể kiểm tra lịch học tương lai. Vui lòng thử lại.",
-        hasEnoughSlots: false
-      });
-      return false;
-    } finally {
-      setCheckingFutureSlots(false);
-    }
-  };
-
   const checkScheduleConflict = async (slot) => {
     try {
       setCheckingConflict(true);
@@ -337,10 +315,20 @@ const checkReservedSlots = useCallback(async () => {
   };
 
   const handleSlotClickWithConflictCheck = async (slot) => {
+    // ⭐️ ANTI-SPAM: Check nếu user bị ban
+    if (isBanned) {
+      const minutes = Math.floor(banTimeRemaining / 60);
+      const seconds = banTimeRemaining % 60;
+      setConflictAlert({
+        severity: "error",
+        message: `Bạn đã bị tạm khóa do spam. Vui lòng đợi ${minutes}:${seconds.toString().padStart(2, '0')}`
+      });
+      return;
+    }
+
     const slotDate = normalizeDate(slot.Date);
     const slotKey = `${slot.TimeslotID}_${slotDate}`;
     
-    // ⭐️ Check nếu slot đang được reserved bởi NGƯỜI KHÁC (không phải mình)
     if (reservedSlots.has(slotKey) && !myReservedSlots.has(slotKey)) {
       setConflictAlert({
         severity: "info",
@@ -359,7 +347,6 @@ const checkReservedSlots = useCallback(async () => {
     if (isSelected) {
       try {
         await slotReservationApi.releaseSlot(slot.TimeslotID, slotDate);
-        // ⭐️ Xóa khỏi cả 2 Set
         setReservedSlots(prev => {
           const newSet = new Set(prev);
           newSet.delete(slotKey);
@@ -375,6 +362,11 @@ const checkReservedSlots = useCallback(async () => {
       }
       handleSlotClick(slot);
       return;
+    }
+
+    // ⭐️ ANTI-SPAM: Check spam behavior TRƯỚC KHI reserve
+    if (checkSpamBehavior(slotKey)) {
+      return; // Đã spam, không cho tiếp tục
     }
 
     if (selectedSlots.length >= 3) {
@@ -409,20 +401,25 @@ const checkReservedSlots = useCallback(async () => {
     const hasConflict = await checkScheduleConflict(slot);
     if (hasConflict) return;
 
-    if (requiredNumberOfSessions > 1) {
-      const hasEnoughFutureSlots = await checkAllSelectedSlotsFutureAvailability(slot);
-      if (!hasEnoughFutureSlots) return;
-    }
-
-    // ⭐️ Giữ chỗ slot
     try {
       const reserveResult = await slotReservationApi.reserveSlot(slot.TimeslotID, slotDate);
       
       if (reserveResult.success) {
-        // ⭐️ Thêm vào cả 2 Set
+        // ⭐️ ANTI-SPAM: Record reserve action
+        recordReserveAction(slotKey);
+        
         setReservedSlots(prev => new Set([...prev, slotKey]));
-        setMyReservedSlots(prev => new Set([...prev, slotKey])); // Đánh dấu là của mình
+        setMyReservedSlots(prev => new Set([...prev, slotKey]));
         handleSlotClick(slot);
+        
+        // Hiển thị warning nếu gần đến giới hạn
+        const recentCount = (slotReserveHistory[slotKey] || []).length + 1;
+        if (recentCount >= 3) {
+          setConflictAlert({
+            severity: "warning",
+            message: `Cảnh báo: Bạn đã giữ slot này ${recentCount} lần. Nếu giữ quá 5 lần trong 5 phút, bạn sẽ bị khóa 10 phút.`
+          });
+        }
       } else {
         setConflictAlert({
           severity: "warning",
@@ -442,11 +439,6 @@ const checkReservedSlots = useCallback(async () => {
     setConflictAlert(null);
   };
 
-  const handleCloseFutureSlotsAlert = () => {
-    setFutureSlotsAlert(null);
-  };
-
-  // ⭐️ Cleanup khi unmount
   useEffect(() => {
     return () => {
       if (selectedSlots.length > 0) {
@@ -455,15 +447,9 @@ const checkReservedSlots = useCallback(async () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (selectedSlots.length === 0) {
-      setFutureSlotsAlert(null);
-    }
-  }, [selectedSlots]);
-
   const timeSlots = useMemo(() => {
     if (!weeklySchedule || weeklySchedule.length === 0) {
-      return ["08:00", "10:20", "13:00", "15:20", "17:40", "20:00"];
+      return ["08:00", "10:20", "13:00", "15:20", "18:00", "20:00"];
     }
 
     const startTimes = new Set();
@@ -527,6 +513,13 @@ const checkReservedSlots = useCallback(async () => {
         Lịch học
       </Typography>
 
+      {/* ⭐️ ANTI-SPAM: Hiển thị thông báo ban */}
+      {isBanned && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Bạn đã bị tạm khóa do spam. Thời gian còn lại: {Math.floor(banTimeRemaining / 60)}:{(banTimeRemaining % 60).toString().padStart(2, '0')}
+        </Alert>
+      )}
+
       <Snackbar
         open={!!conflictAlert}
         autoHideDuration={6000}
@@ -539,21 +532,6 @@ const checkReservedSlots = useCallback(async () => {
           sx={{ width: '100%' }}
         >
           {conflictAlert?.message}
-        </Alert>
-      </Snackbar>
-
-      <Snackbar
-        open={!!futureSlotsAlert}
-        autoHideDuration={8000}
-        onClose={handleCloseFutureSlotsAlert}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-      >
-        <Alert 
-          severity={futureSlotsAlert?.severity || "warning"} 
-          onClose={handleCloseFutureSlotsAlert}
-          sx={{ width: '100%', whiteSpace: 'pre-line' }}
-        >
-          {futureSlotsAlert?.message}
         </Alert>
       </Snackbar>
 
@@ -606,7 +584,7 @@ const checkReservedSlots = useCallback(async () => {
               "10:20": "12:20",
               "13:00": "15:00",
               "15:20": "17:20",
-              "17:40": "19:40",
+              "18:00": "20:00",
               "20:00": "22:00"
             };
             
@@ -666,7 +644,6 @@ const checkReservedSlots = useCallback(async () => {
                       normalizeDate(s.Date) === slotDate
                   );
 
-                  // ⭐️ Check nếu slot đang được reserved bởi NGƯỜI KHÁC
                   const isReservedByOthers = reservedSlots.has(slotKey) && !myReservedSlots.has(slotKey);
 
                   const currentWeekKey = getWeekKey(slotDate);
@@ -678,26 +655,21 @@ const checkReservedSlots = useCallback(async () => {
                     slotsInSameWeek.length >= 3 && !isSelected;
 
                   const isDisabled =
+                    isBanned || // ⭐️ Disable khi bị ban
                     !selectedCourseId ||
                     !courseInfo ||
                     hasReachedMaxSlotsInWeek ||
                     isReservedByOthers ||
                     slot.Status !== "available" ||
                     checkingConflict ||
-                    checkingFutureSlots ||
                     (selectedSlots.length >= 3 && !isSelected);
                   
-                  // ⭐️ Slot reserved hiển thị như slot trắng
                   let bgColor = slot.Status === "available" ? "#4caf50" : "#ffffff";
                   if (isReservedByOthers || slot.Status === "busy") {
-                    bgColor = "#ffffff"; // reserved/busy - trắng
+                    bgColor = "#ffffff";
                   }
                   
                   const color = (slot.Status === "busy" || isReservedByOthers) ? "#000" : "#000";
-
-                  const isWarningSlot = futureSlotsAlert?.slot && 
-                    futureSlotsAlert.slot.TimeslotID === slot.TimeslotID &&
-                    normalizeDate(futureSlotsAlert.slot.Date) === slotDate;
 
                   return (
                     <Grid item xs={10 / 7} key={`${day}_${time}`}>
@@ -706,8 +678,7 @@ const checkReservedSlots = useCallback(async () => {
                         sx={{
                           height: 40,
                           border: isSelected ? "2px solid" : "1px solid",
-                          borderColor: isSelected ? "primary.main" : 
-                                     isWarningSlot ? "warning.main" : "divider",
+                          borderColor: isSelected ? "primary.main" : "divider",
                           bgcolor: isSelected ? "primary.light" : bgColor,
                           color: isSelected ? "primary.main" : color,
                           cursor: !isDisabled ? "pointer" : "not-allowed",
@@ -730,23 +701,8 @@ const checkReservedSlots = useCallback(async () => {
                             ✓
                           </Typography>
                         )}
-                        {(checkingConflict || checkingFutureSlots) && !isSelected && (
+                        {checkingConflict && !isSelected && (
                           <CircularProgress size={16} />
-                        )}
-                        
-                        {isWarningSlot && !isSelected && (
-                          <Box
-                            sx={{
-                              position: "absolute",
-                              top: -4,
-                              right: -4,
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              bgcolor: "warning.main",
-                              border: "1px solid white"
-                            }}
-                          />
                         )}
                       </Box>
                     </Grid>

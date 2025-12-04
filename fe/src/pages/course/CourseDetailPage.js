@@ -22,7 +22,7 @@ import CourseCurriculum from './components/CourseCurriculum';
 import CourseMaterials from './components/CourseMaterials';
 import InstructorInfo from './components/InstructorInfo';
 import CourseReviews from './components/CourseReviews';
-
+import { useNavigate } from "react-router-dom";
 // API imports
 import {
   getCourseByIdApi,
@@ -52,7 +52,7 @@ const CourseDetailPage = () => {
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
-
+   const navigate = useNavigate();
   // Format price
   const priceFormatter = useMemo(
     () =>
@@ -79,6 +79,7 @@ const CourseDetailPage = () => {
       setLoading(true);
       setError(null);
       const data = await getCourseByIdApi(id);
+      console.log("getCourseByIdApi" , data)
       setCourse(data);
     } catch (error) {
       console.error("Error fetching course:", error);
@@ -318,53 +319,80 @@ const CourseDetailPage = () => {
                 </Grid>
               </Grid>
 
-              <Box 
-                sx={{ 
-                  display: "flex", 
-                  alignItems: "center",
-                  bgcolor: "rgba(255,255,255,0.18)",
-                  borderRadius: 4,
-                  p: 3,
-                  backdropFilter: "blur(12px)",
-                }}
-              >
-                <Avatar
-                  src={course.InstructorAvatar}
-                  sx={{ 
-                    width: 84, 
-                    height: 84, 
-                    mr: 3,
-                    border: "4px solid rgba(255,255,255,0.35)",
-                    fontSize: "2rem",
-                  }}
-                  alt={course.InstructorName}
-                >
-                  {course.InstructorName?.charAt(0)}
-                </Avatar>
+                   <Card
+  sx={{ 
+    display: "flex", 
+    alignItems: "center",
+    bgcolor: "rgba(255,255,255,0.18)",
+    borderRadius: 4,
+    p: 3,
+    backdropFilter: "blur(12px)",
+    cursor: "pointer",
+    transition: "all 0.3s ease",
+    position: "relative",
+    zIndex: 2,
+    color: "white",
+    border: "1px solid rgba(255,255,255,0.1)",
+    "&:hover": {
+      bgcolor: "rgba(255,255,255,0.25)",
+      transform: "translateY(-2px)",
+      boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+    },
+    "&:active": {
+      transform: "translateY(0)",
+    },
+  }}
+  onClick={() => navigate(`/instructors/${course.InstructorID}`)}
+>
+  <CardContent sx={{ 
+    display: "flex", 
+    alignItems: "center", 
+    width: "100%",
+    p: "0 !important",
+    "&:last-child": { pb: 0 }
+  }}>
+    <Avatar
+      src={course.InstructorAvatar}
+      sx={{ 
+        width: 84, 
+        height: 84, 
+        mr: 3,
+        border: "4px solid rgba(255,255,255,0.35)",
+        fontSize: "2rem",
+      }}
+      alt={course.InstructorName}
+    >
+      {course.InstructorName?.charAt(0)}
+    </Avatar>
 
-                <Box>
-                  <Typography 
-                    variant="body1" 
-                    sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
-                  >
-                    Giảng viên
-                  </Typography>
+    <Box>
+      <Typography 
+        variant="body1" 
+        sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+      >
+        Giảng viên
+      </Typography>
 
-                  <Typography 
-                    variant="h5" 
-                    sx={{ fontWeight: 700, mb: 0.8, fontSize: "1.8rem" }}
-                  >
-                    {course.InstructorName}
-                  </Typography>
+      <Typography 
+        variant="h5" 
+        sx={{ 
+          fontWeight: 700, 
+          mb: 0.8, 
+          fontSize: "1.8rem",
+        }}
+      >
+        {course.InstructorName}
+      </Typography>
 
-                  <Typography 
-                    variant="body1" 
-                    sx={{ opacity: 0.9, fontSize: "1.1rem" }}
-                  >
-                    {course.InstructorJob} • {course.InstructorMajor}
-                  </Typography>
-                </Box>
-              </Box>
+      <Typography 
+        variant="body1" 
+        sx={{ opacity: 0.9, fontSize: "1.1rem" }}
+      >
+        {course.InstructorJob} • {course.InstructorMajor}
+      </Typography>
+    </Box>
+  </CardContent>
+</Card>
             </Grid>
 
             <Grid item xs={12} md={4}>

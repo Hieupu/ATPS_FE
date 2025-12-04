@@ -387,7 +387,7 @@ const formatDuration = (hours) => {
             >
               <Box
                 sx={{
-                  bgcolor: "primary.main",
+                background: "linear-gradient(135deg, #9564caff 0%, #8a3cc6ff 100%)",
                   color: "white",
                   p: 3,
                   display: "flex",
@@ -407,149 +407,165 @@ const formatDuration = (hours) => {
                   </Typography>
                 </Box>
               </Box>
-              <CardContent sx={{ p: 3 }}>
-                {instructor.Courses && instructor.Courses.length > 0 ? (
-                  <Grid container spacing={3}>
-                    {instructor.Courses.map((course) => (
-                      <Grid item xs={12} sm={6} key={course.CourseID}>
-                        <Card
-                          sx={{
-                            height: "100%",
-                            borderRadius: 3,
-                            boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
-                            transition: "all 0.3s ease",
-                            border: "1px solid rgba(0,0,0,0.08)",
-                            "&:hover": {
-                              transform: "translateY(-4px)",
-                              boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
-                            },
-                            cursor: "pointer",
-                          }}
-                          onClick={() => navigate(`/courses/${course.CourseID}`)}
-                        >
-                          <CardActionArea>
-                            <Box
-                              sx={{
-                                height: 160,
-                                bgcolor: "primary.main",
-                                background: `linear-gradient(135deg, #667eea 0%, #764ba2 100%)`,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                position: "relative",
-                                overflow: "hidden",
-                                "&::before": {
-                                  content: '""',
-                                  position: "absolute",
-                                  top: "-50%",
-                                  right: "-50%",
-                                  width: "200%",
-                                  height: "200%",
-                                  background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
-                                },
-                              }}
-                            >
-                              <MenuBook sx={{ fontSize: 64, color: "white", opacity: 0.3, position: "relative", zIndex: 1 }} />
-                              <Chip
-                                label={course.Status === "Open" ? "Đang mở" : course.Status}
-                                size="small"
-                                sx={{
-                                  position: "absolute",
-                                  top: 12,
-                                  right: 12,
-                                  bgcolor: course.Status === "Open" ? "success.main" : "grey.500",
-                                  color: "white",
-                                  fontWeight: 600,
-                                  zIndex: 2,
-                                }}
-                              />
-                            </Box>
-                            <CardContent sx={{ p: 2.5 }}>
-                              <Typography
-                                variant="h6"
-                                sx={{
-                                  fontWeight: 700,
-                                  mb: 1,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: "vertical",
-                                  minHeight: 60,
-                                }}
-                              >
-                                {course.Title}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{
-                                  mb: 2,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  display: "-webkit-box",
-                                  WebkitLineClamp: 2,
-                                  WebkitBoxOrient: "vertical",
-                                  minHeight: 40,
-                                }}
-                              >
-                                {course.Description}
-                              </Typography>
-                              <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
-                                <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                                  <AccessTime sx={{ fontSize: 18, color: "text.secondary" }} />
-                                  <Typography variant="caption" color="text.secondary">
-                                    {formatDuration(course.Duration)}
-                                  </Typography>
-                                </Box>
-                              </Stack>
-                              <Button
-                                variant="contained"
-                                fullWidth
-                                size="small"
-                                sx={{
-                                  borderRadius: 2,
-                                  textTransform: "none",
-                                  fontWeight: 600,
-                                }}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  navigate(`/courses/${course.CourseID}`);
-                                }}
-                              >
-                                Xem chi tiết
-                              </Button>
-                            </CardContent>
-                          </CardActionArea>
-                        </Card>
-                      </Grid>
-                    ))}
-                  </Grid>
-                ) : (
-                  <Box
+                 <CardContent sx={{ p: 3 }}>
+  {instructor.Courses && instructor.Courses.filter(course => course.Status === "PUBLISHED").length > 0 ? (
+    <Grid container spacing={3}>
+      {instructor.Courses
+        .filter(course => course.Status === "PUBLISHED")
+        .map((course) => (
+          <Grid item xs={12} sm={6} key={course.CourseID}>
+            <Card
+              sx={{
+                height: "100%",
+                borderRadius: 3,
+                boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+                transition: "all 0.3s ease",
+                border: "1px solid rgba(0,0,0,0.08)",
+                "&:hover": {
+                  transform: "translateY(-4px)",
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                },
+                cursor: "pointer",
+              }}
+              onClick={() => navigate(`/courses/${course.CourseID}`)}
+            >
+              <CardActionArea>
+                <Box
+                  sx={{
+                    height: 160,
+                    bgcolor: "primary.main",
+                    background: course.Image 
+                      ? `url(${course.Image}) center/cover no-repeat`
+                      : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    position: "relative",
+                    overflow: "hidden",
+                    "&::before": {
+                      content: '""',
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: course.Image ? "rgba(0,0,0,0.3)" : "transparent",
+                    },
+                  }}
+                >
+                  {!course.Image && (
+                    <MenuBook sx={{ fontSize: 64, color: "white", opacity: 0.3, position: "relative", zIndex: 1 }} />
+                  )}
+                  <Chip
+                    label="Đang Mở"
+                    size="small"
                     sx={{
-                      textAlign: "center",
-                      py: 6,
-                      px: 3,
+                      position: "absolute",
+                      top: 12,
+                      right: 12,
+                      bgcolor: "success.main",
+                      color: "white",
+                      fontWeight: 600,
+                      zIndex: 2,
+                    }}
+                  />
+                </Box>
+                <CardContent sx={{ p: 2.5 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 700,
+                      mb: 1,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      minHeight: 60,
                     }}
                   >
-                    <MenuBook
-                      sx={{
-                        fontSize: 64,
-                        color: "text.secondary",
-                        opacity: 0.3,
-                        mb: 2,
-                      }}
-                    />
-                    <Typography variant="h6" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
-                      Chưa có khóa học nào
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      Giảng viên này chưa tạo khóa học nào. Vui lòng quay lại sau.
-                    </Typography>
-                  </Box>
-                )}
-              </CardContent>
+                    {course.Title}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    color="text.secondary"
+                    sx={{
+                      mb: 2,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                      minHeight: 40,
+                    }}
+                  >
+                    {course.Description}
+                  </Typography>
+                  <Stack direction="row" spacing={2} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                      <AccessTime sx={{ fontSize: 18, color: "text.secondary" }} />
+                      <Typography variant="caption" color="text.secondary">
+                        {formatDuration(course.Duration)}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                  <Button
+  variant="text"
+  fullWidth
+  size="small"
+  sx={{
+    borderRadius: 2,
+    textTransform: "none",
+    fontWeight: 600,
+    color: "grey.700",
+    backgroundColor: "transparent",
+    border: "1px solid transparent",
+    transition: "all 0.2s ease",
+    
+    "&:hover": {
+      backgroundColor: "rgba(124, 58, 237, 0.04)",
+      color: "#7C3AED",
+      borderColor: "rgba(124, 58, 237, 0.2)",
+    },
+  }}
+  onClick={(e) => {
+    e.stopPropagation();
+    navigate(`/courses/${course.CourseID}`);
+  }}
+>
+  Xem chi tiết
+</Button>
+                </CardContent>
+              </CardActionArea>
+            </Card>
+          </Grid>
+        ))}
+    </Grid>
+  ) : (
+    <Box
+      sx={{
+        textAlign: "center",
+        py: 6,
+        px: 3,
+      }}
+    >
+      <MenuBook
+        sx={{
+          fontSize: 64,
+          color: "text.secondary",
+          opacity: 0.3,
+          mb: 2,
+        }}
+      />
+      <Typography variant="h6" color="text.secondary" sx={{ mb: 1, fontWeight: 600 }}>
+        Chưa có khóa học nào
+      </Typography>
+      <Typography variant="body2" color="text.secondary">
+        Giảng viên này chưa có khóa học nào đã xuất bản. Vui lòng quay lại sau.
+      </Typography>
+    </Box>
+  )}
+</CardContent>
             </Card>
 
             {/* About Section */}
