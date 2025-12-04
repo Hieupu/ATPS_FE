@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 import AvailabilityTab from "../components/class/tabs/AvailabilityTab";
+import { toast } from "react-toastify";
 
 const BASE_URL = "http://localhost:9999/api/instructor";
 const apiClient = axios.create({
@@ -127,11 +128,30 @@ export default function InstructorSchedulePage() {
         endDate,
         slots,
       });
-      alert("Cập nhật lịch rảnh thành công!");
+      toast.success("Lưu lịch rảnh thành công!");
+
       await handleFetchAvailability(startDate, endDate);
     } catch (err) {
+      toast.error(err.response?.data?.message || "Lỗi khi lưu lịch rảnh.");
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
+  const handleAddAvailability = async (slots) => {
+    setSavingAvailability(true);
+    try {
+      await apiClient.post("/availability/add", {
+        slots,
+      });
+      toast.success(`Đã đăng ký thêm thành công ${slots.length} buổi!`);
+
+      return true;
+    } catch (err) {
       console.error(err);
-      alert("Lỗi khi lưu dữ liệu.");
+
+      const message = err.response?.data?.message || "Lỗi khi đăng ký lịch";
+      toast.error(message);
     } finally {
       setSavingAvailability(false);
     }
@@ -233,6 +253,7 @@ export default function InstructorSchedulePage() {
             saving={savingAvailability}
             onFetchAvailability={handleFetchAvailability}
             onSaveAvailability={handleSaveAvailability}
+            onAddAvailability={handleAddAvailability}
           />
         )}
       </Paper>

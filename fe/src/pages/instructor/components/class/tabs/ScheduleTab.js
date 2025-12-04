@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem,
   Button,
+  FormControl, // Thêm FormControl
 } from "@mui/material";
 import {
   ChevronLeft,
@@ -20,7 +21,15 @@ import {
   Assignment,
   Edit,
 } from "@mui/icons-material";
-import { format, startOfWeek, addDays } from "date-fns";
+import {
+  format,
+  startOfWeek,
+  addDays,
+  startOfYear,
+  endOfYear,
+  eachWeekOfInterval,
+  endOfWeek,
+} from "date-fns";
 import AttendanceModal from "../AttendanceModal";
 
 const ALL_TIME_SLOTS = [
@@ -28,7 +37,7 @@ const ALL_TIME_SLOTS = [
   { start: "10:20", end: "12:20" },
   { start: "13:00", end: "15:00" },
   { start: "15:20", end: "17:20" },
-  { start: "17:40", end: "19:40" },
+  { start: "18:00", end: "20:00" },
   { start: "20:00", end: "22:00" },
 ];
 
@@ -66,6 +75,13 @@ export default function ScheduleTab({
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [weekStart]);
 
+  // --- 1. LOGIC TẠO DANH SÁCH TUẦN TRONG NĂM ---
+  const allWeeksInYear = useMemo(() => {
+    const start = startOfYear(new Date(selectedYear, 0, 1));
+    const end = endOfYear(new Date(selectedYear, 0, 1));
+    return eachWeekOfInterval({ start, end }, { weekStartsOn: 1 });
+  }, [selectedYear]);
+
   const normalizeTime = (timeStr) => {
     if (!timeStr) return null;
     return timeStr.split(":").slice(0, 2).join(":");
@@ -95,11 +111,17 @@ export default function ScheduleTab({
 
   const handlePrevWeek = () => setCurrentDate((d) => addDays(d, -7));
   const handleNextWeek = () => setCurrentDate((d) => addDays(d, 7));
+
   const handleYearChange = (e) => {
-    const year = e.target.value;
+    const year = parseInt(e.target.value, 10);
     setSelectedYear(year);
-    const newDate = new Date(currentDate);
-    newDate.setFullYear(year);
+    // Reset về ngày đầu năm khi đổi năm
+    setCurrentDate(new Date(year, 0, 1));
+  };
+
+  // --- 2. SỰ KIỆN CHỌN TUẦN ---
+  const handleWeekSelectChange = (e) => {
+    const newDate = new Date(e.target.value);
     setCurrentDate(newDate);
   };
 
@@ -116,127 +138,134 @@ export default function ScheduleTab({
     return "Chưa điểm danh";
   };
 
-  const renderSessionCard = (session, idx) => (
-    <Box
-      key={session.sessionId || idx}
-      sx={{
-        p: "12px",
-        mb: "8px",
-        borderLeft: `4px solid ${getStatusColor(session)}`,
-        bgcolor: "#fff",
-        borderRadius: "4px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "space-between",
-        transition: "box-shadow 0.2s",
-        "&:hover": { boxShadow: "0 4px 8px rgba(0,0,0,0.15)" },
-      }}
-    >
-      <Box>
-        <Typography
-          sx={{
-            fontWeight: 600,
-            color: "#1976d2",
-            mb: "6px",
-            fontSize: "0.8rem",
-            lineHeight: "1.2",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            overflow: "hidden",
-          }}
-        >
-          {session.title || session.ClassName}
-        </Typography>
+  const renderSessionCard = (session, idx) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const sessionDate = new Date(session.date);
+    sessionDate.setHours(0, 0, 0, 0);
+    const isPast = sessionDate.getTime() < today.getTime();
 
-        <Box
-          component="span"
-          sx={{
-            display: "inline-block",
-            padding: "2px 8px",
-            bgcolor: getStatusColor(session),
-            color: "white",
-            borderRadius: "12px",
-            fontSize: "0.65rem",
-            fontWeight: 500,
-            mb: "6px",
-          }}
-        >
-          {getStatusLabel(session)}
+    return (
+      <Box
+        key={session.sessionId || idx}
+        sx={{
+          p: "12px",
+          mb: "8px",
+          borderLeft: `4px solid ${getStatusColor(session)}`,
+          bgcolor: "#fff",
+          borderRadius: "4px",
+          boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          transition: "box-shadow 0.2s",
+          "&:hover": { boxShadow: "0 4px 8px rgba(0,0,0,0.15)" },
+        }}
+      >
+        <Box>
+          <Typography
+            sx={{
+              fontWeight: 600,
+              color: "#1976d2",
+              mb: "6px",
+              fontSize: "0.8rem",
+              lineHeight: "1.2",
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {session.title || session.ClassName}
+          </Typography>
+
+          <Box
+            component="span"
+            sx={{
+              display: "inline-block",
+              padding: "2px 8px",
+              bgcolor: getStatusColor(session),
+              color: "white",
+              borderRadius: "12px",
+              fontSize: "0.65rem",
+              fontWeight: 500,
+              mb: "6px",
+            }}
+          >
+            {getStatusLabel(session)}
+          </Box>
+        </Box>
+
+        <Box>
+          <Typography
+            sx={{
+              display: "block",
+              color: "#4caf50",
+              fontWeight: 500,
+              fontSize: "0.75rem",
+              mb: "6px",
+            }}
+          >
+            {session.startTimeFormatted} - {session.endTimeFormatted}
+          </Typography>
+
+          {!isPast && onStartZoom && (
+            <Button
+              onClick={() => onStartZoom(session)}
+              fullWidth
+              size="small"
+              sx={{
+                padding: "2px 8px",
+                bgcolor: "#ff9800",
+                color: "white",
+                fontSize: "0.7rem",
+                fontWeight: 500,
+                textTransform: "none",
+                minWidth: "unset",
+                mb: 0.5,
+                "&:hover": { bgcolor: "#f57c00" },
+              }}
+              startIcon={<VideoCall sx={{ width: 16, height: 16 }} />}
+            >
+              Vào Zoom
+            </Button>
+          )}
+
+          {!isPast && session.totalStudents > 0 && (
+            <Button
+              onClick={() => onOpenAttendance(session)}
+              fullWidth
+              size="small"
+              sx={{
+                padding: "2px 8px",
+                bgcolor: session.isFullyMarked ? "#4caf50" : "#1976d2",
+                color: "white",
+                fontSize: "0.7rem",
+                fontWeight: 500,
+                textTransform: "none",
+                minWidth: "unset",
+                "&:hover": {
+                  bgcolor: session.isFullyMarked ? "#388e3c" : "#1565c0",
+                },
+              }}
+              startIcon={
+                session.isFullyMarked ? (
+                  <Edit sx={{ width: 14, height: 14 }} />
+                ) : (
+                  <Assignment sx={{ width: 14, height: 14 }} />
+                )
+              }
+            >
+              {session.isFullyMarked ? "Cập nhật" : "Điểm danh"}
+            </Button>
+          )}
         </Box>
       </Box>
-
-      <Box>
-        <Typography
-          sx={{
-            display: "block",
-            color: "#4caf50",
-            fontWeight: 500,
-            fontSize: "0.75rem",
-            mb: "6px",
-          }}
-        >
-          {session.startTimeFormatted} - {session.endTimeFormatted}
-        </Typography>
-
-        {/* Nút Vào Zoom */}
-        {onStartZoom && (
-          <Button
-            onClick={() => onStartZoom(session)}
-            fullWidth
-            size="small"
-            sx={{
-              padding: "2px 8px",
-              bgcolor: "#ff9800",
-              color: "white",
-              fontSize: "0.7rem",
-              fontWeight: 500,
-              textTransform: "none",
-              minWidth: "unset",
-              mb: 0.5,
-              "&:hover": { bgcolor: "#f57c00" },
-            }}
-            startIcon={<VideoCall sx={{ width: 16, height: 16 }} />}
-          >
-            Vào Zoom
-          </Button>
-        )}
-
-        {session.totalStudents > 0 && (
-          <Button
-            onClick={() => onOpenAttendance(session)}
-            fullWidth
-            size="small"
-            sx={{
-              padding: "2px 8px",
-              bgcolor: session.isFullyMarked ? "#4caf50" : "#1976d2",
-              color: "white",
-              fontSize: "0.7rem",
-              fontWeight: 500,
-              textTransform: "none",
-              minWidth: "unset",
-              "&:hover": {
-                bgcolor: session.isFullyMarked ? "#388e3c" : "#1565c0",
-              },
-            }}
-            startIcon={
-              session.isFullyMarked ? (
-                <Edit sx={{ width: 14, height: 14 }} />
-              ) : (
-                <Assignment sx={{ width: 14, height: 14 }} />
-              )
-            }
-          >
-            {session.isFullyMarked ? "Cập nhật" : "Điểm danh"}
-          </Button>
-        )}
-      </Box>
-    </Box>
-  );
+    );
+  };
 
   return (
-    <Box sx={{ p: 3, bgcolor: "#f8f9fa", minHeight: "100vh" }}>
+    <Box sx={{ p: 3, minHeight: "100vh" }}>
       <Box
         sx={{
           display: "flex",
@@ -248,6 +277,7 @@ export default function ScheduleTab({
         }}
       >
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          {/* --- CHỌN NĂM --- */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography
               sx={{ fontWeight: 700, color: "#d32f2f", fontSize: "1.1rem" }}
@@ -280,6 +310,7 @@ export default function ScheduleTab({
             </Select>
           </Box>
 
+          {/* --- CHỌN TUẦN (MỚI) --- */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography
               sx={{ fontWeight: 700, color: "#1976d2", fontSize: "1.1rem" }}
@@ -300,10 +331,40 @@ export default function ScheduleTab({
               <IconButton size="small" onClick={handlePrevWeek}>
                 <ChevronLeft />
               </IconButton>
-              <Typography sx={{ px: 2, fontWeight: 600, fontSize: "0.9rem" }}>
-                {format(weekDates[0], "dd/MM")} -{" "}
-                {format(weekDates[6], "dd/MM")}
-              </Typography>
+
+              <FormControl variant="standard" sx={{ minWidth: 200 }}>
+                <Select
+                  value={weekStart.getTime()}
+                  onChange={handleWeekSelectChange}
+                  disableUnderline
+                  sx={{
+                    fontWeight: 600,
+                    fontSize: "0.9rem",
+                    textAlign: "center",
+                    ".MuiSelect-select": { py: 0.5, px: 1 },
+                  }}
+                  MenuProps={{ PaperProps: { sx: { maxHeight: 300 } } }}
+                >
+                  {allWeeksInYear.map((startOfWeekDate, index) => {
+                    const endOfWeekDate = endOfWeek(startOfWeekDate, {
+                      weekStartsOn: 1,
+                    });
+                    const label = `Tuần ${index + 1} (${format(
+                      startOfWeekDate,
+                      "dd/MM"
+                    )} - ${format(endOfWeekDate, "dd/MM")})`;
+                    return (
+                      <MenuItem
+                        key={startOfWeekDate.getTime()}
+                        value={startOfWeekDate.getTime()}
+                      >
+                        {label}
+                      </MenuItem>
+                    );
+                  })}
+                </Select>
+              </FormControl>
+
               <IconButton size="small" onClick={handleNextWeek}>
                 <ChevronRight />
               </IconButton>
@@ -312,13 +373,14 @@ export default function ScheduleTab({
         </Box>
       </Box>
 
+      {/* --- TABLE CONTENT (GIỮ NGUYÊN) --- */}
       <TableContainer
         component={Box}
         sx={{
           border: "1px solid #e0e0e0",
           borderRadius: "8px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-          bgcolor: "white",
+
           overflowX: "auto",
         }}
       >

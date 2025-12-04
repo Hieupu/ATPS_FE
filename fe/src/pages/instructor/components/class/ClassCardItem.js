@@ -126,13 +126,13 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
         )}
         <Chip
           label={
-            cls.classStatus === "APPROVED" || cls.classStatus === "ACTIVE"
-              ? "Đang hoạt động"
-              : cls.classStatus === "PENDING" || cls.classStatus === "WAITING"
-              ? "Chờ khai giảng"
-              : cls.classStatus === "CLOSE" || cls.classStatus === "COMPLETED"
+            ["APPROVED", "ACTIVE"].includes(cls.classStatus)
+              ? "Đang diễn ra"
+              : ["PENDING", "WAITING", "ONGOING"].includes(cls.classStatus)
+              ? "Sắp khai giảng"
+              : cls.classStatus === "CLOSE"
               ? "Đã kết thúc"
-              : cls.classStatus === "CANCEL" || cls.classStatus === "CANCELLED"
+              : cls.classStatus === "CANCEL"
               ? "Đã hủy"
               : cls.classStatus
           }
@@ -141,17 +141,15 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             position: "absolute",
             top: 10,
             right: 50,
-            bgcolor:
-              cls.classStatus === "ACTIVE" || cls.classStatus === "APPROVED"
-                ? "#10b981"
-                : cls.classStatus === "PENDING" || cls.classStatus === "WAITING"
-                ? "#f59e0b"
-                : cls.classStatus === "CLOSE" || cls.classStatus === "COMPLETED"
-                ? "#6366f1"
-                : cls.classStatus === "CANCEL" ||
-                  cls.classStatus === "CANCELLED"
-                ? "#ef4444"
-                : "#94a3b8",
+            bgcolor: ["APPROVED", "ACTIVE"].includes(cls.classStatus)
+              ? "#10b981" // Xanh lá
+              : ["PENDING", "WAITING", "ONGOING"].includes(cls.classStatus)
+              ? "#f59e0b" // Cam
+              : cls.classStatus === "CLOSE"
+              ? "#6366f1" // Tím
+              : cls.classStatus === "CANCEL"
+              ? "#ef4444" // Đỏ
+              : "#94a3b8", // Mặc định
             color: "white",
             fontWeight: 700,
             fontSize: "10px",

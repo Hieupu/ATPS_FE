@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -9,299 +9,499 @@ import {
   Paper,
   Typography,
   Box,
-  CircularProgress,
-  Chip,
   LinearProgress,
   Tooltip,
+  Avatar,
+  Stack,
+  ToggleButton,
+  ToggleButtonGroup,
+  Chip,
 } from "@mui/material";
 import {
-  Email,
-  Phone,
-  Warning,
+  EmailOutlined,
+  PhoneOutlined,
+  ViewList,
+  GridOn,
   CheckCircle,
-  Person,
-  School, // Icon cho tiến độ
+  Cancel,
+  RemoveCircleOutline,
+  BadgeOutlined,
 } from "@mui/icons-material";
 
-// Component hiển thị vòng tròn phần trăm (Giữ nguyên vì đang đẹp)
-function CircularProgressWithLabel({ value, color }) {
-  return (
-    <Box sx={{ position: "relative", display: "inline-flex" }}>
-      <CircularProgress
-        variant="determinate"
-        value={100}
-        size={45}
-        thickness={5}
-        sx={{ color: (theme) => theme.palette.grey[200] }}
-      />
-      <CircularProgress
-        variant="determinate"
-        value={value}
-        color={color}
-        size={45}
-        thickness={5}
-        sx={{
-          position: "absolute",
-          left: 0,
-          [`& .MuiCircularProgress-circle`]: { strokeLinecap: "round" },
-        }}
-      />
-      <Box
-        sx={{
-          top: 0,
-          left: 0,
-          bottom: 0,
-          right: 0,
-          position: "absolute",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Typography
-          variant="caption"
-          component="div"
-          fontWeight="bold"
-          color="text.secondary"
-        >
-          {`${Math.round(value)}%`}
-        </Typography>
-      </Box>
-    </Box>
-  );
-}
+// --- Helper: Format ngày gọn ---
+const formatDateCompact = (dateString) => {
+  if (!dateString) return "";
+  const parts = dateString.split("-");
+  if (parts.length === 3) return `${parts[2]}/${parts[1]}`;
+  return dateString;
+};
+
+// --- Component Icon trạng thái (Matrix) ---
+const StatusCell = ({ isPresent }) => {
+  if (isPresent === true)
+    return <CheckCircle sx={{ color: "#4caf50", fontSize: 20 }} />;
+  if (isPresent === false)
+    return <Cancel sx={{ color: "#ef5350", fontSize: 20 }} />;
+  return <RemoveCircleOutline sx={{ color: "#e0e0e0", fontSize: 18 }} />;
+};
 
 export default function StudentsTab({ students = [] }) {
   const studentList = Array.isArray(students) ? students : [];
+  const [viewMode, setViewMode] = useState("info"); // 'info' | 'matrix'
 
-  const getAttendanceColor = (rate) => {
-    if (rate >= 80) return "success";
-    if (rate >= 50) return "warning";
-    return "error";
+  // Lấy danh sách cột buổi học từ học viên đầu tiên
+  const sessionColumns = useMemo(() => {
+    if (studentList.length > 0 && studentList[0].Attendance?.History) {
+      return studentList[0].Attendance.History;
+    }
+    return [];
+  }, [studentList]);
+
+  // --- STYLE CHO CỘT GHIM (STICKY) ---
+  const stickyLeftStyle = {
+    position: "sticky",
+    left: 0,
+    zIndex: 3,
+    bgcolor: "#fff",
+    borderRight: "1px solid #e0e0e0",
+    boxShadow: "4px 0 8px -2px rgba(0,0,0,0.05)",
+  };
+
+  const stickyRightStyle = {
+    position: "sticky",
+    right: 0,
+    zIndex: 3,
+    bgcolor: "#fff",
+    borderLeft: "1px solid #e0e0e0",
+    boxShadow: "-4px 0 8px -2px rgba(0,0,0,0.05)",
   };
 
   if (studentList.length === 0) {
     return (
-      <Box textAlign="center" py={8} bgcolor="white" borderRadius={2}>
+      <Box
+        textAlign="center"
+        py={8}
+        bgcolor="white"
+        borderRadius={3}
+        border="1px dashed #ccc"
+      >
         <Typography variant="h6" color="text.secondary">
-          Chưa có học viên nào trong lớp
+          Chưa có dữ liệu học viên
         </Typography>
       </Box>
     );
   }
 
   return (
-    <TableContainer
-      component={Paper}
-      elevation={0}
-      sx={{ border: "1px solid #e0e0e0", borderRadius: 2 }}
-    >
-      <Table sx={{ minWidth: 800 }}>
-        <TableHead>
-          <TableRow sx={{ bgcolor: "#f5f5f5" }}>
-            <TableCell sx={{ fontWeight: 700, width: "50px" }}>STT</TableCell>
-            <TableCell sx={{ fontWeight: 700, width: "30%" }}>
-              Thông tin học viên
-            </TableCell>
-            <TableCell sx={{ fontWeight: 700 }}>Liên hệ</TableCell>
-            {/* THÊM: Cột tiến độ khóa học */}
-            <TableCell
-              sx={{ fontWeight: 700, width: "15%", textAlign: "center" }}
-            >
-              Tiến độ khóa
-            </TableCell>
-            <TableCell
-              sx={{ fontWeight: 700, width: "20%", textAlign: "center" }}
-            >
-              Chuyên cần
-            </TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {studentList.map((s, index) => {
-            const contact = s.Contact || {};
+    <Box sx={{ width: "100%", pb: 2 }}>
+      {" "}
+      {/* Thêm padding bottom cho container ngoài */}
+      {/* --- TOOLBAR --- */}
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
+        <Typography variant="subtitle1" fontWeight={700} color="text.secondary">
+          {viewMode === "info"
+            ? `Danh sách lớp (${studentList.length})`
+            : "Bảng theo dõi điểm danh"}
+        </Typography>
+        <ToggleButtonGroup
+          value={viewMode}
+          exclusive
+          onChange={(e, newMode) => newMode && setViewMode(newMode)}
+          size="small"
+          sx={{ bgcolor: "white", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" }}
+        >
+          <ToggleButton value="info" sx={{ px: 2, textTransform: "none" }}>
+            <ViewList fontSize="small" sx={{ mr: 1 }} /> Chi tiết
+          </ToggleButton>
+          <ToggleButton value="matrix" sx={{ px: 2, textTransform: "none" }}>
+            <GridOn fontSize="small" sx={{ mr: 1 }} /> Tổng quan
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+      {/* --- TABLE CONTAINER (Đã fix lỗi mất sinh viên cuối) --- */}
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          border: "1px solid #e0e0e0",
+          borderRadius: 3,
+          boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
 
-            // Map dữ liệu mới từ Backend
-            const att = s.Attendance || {
-              Rate: 100,
-              Absent: 0,
-              Present: 0,
-              TotalOccurred: 0,
-              TotalCurriculum: 0,
-              Progress: 0,
-            };
+          // --- FIX QUAN TRỌNG TẠI ĐÂY ---
+          width: "100%",
+          overflow: "auto", // Cho phép scroll cả ngang và dọc (hiện thanh cuộn)
 
-            const colorStatus = getAttendanceColor(att.Rate);
+          // Tính chiều cao động: 100vh (chiều cao màn hình) trừ đi khoảng 220px (Header + Tabs + Margin)
+          // Điều này giúp bảng luôn nằm gọn trong màn hình và scroll nội bộ bên trong
+          maxHeight: "calc(100vh - 220px)",
+        }}
+      >
+        <Table
+          stickyHeader
+          sx={{ minWidth: viewMode === "info" ? 900 : "max-content" }}
+        >
+          <TableHead>
+            {/* ====== HEADER: INFO VIEW ====== */}
+            {viewMode === "info" && (
+              <TableRow
+                sx={{ bgcolor: "#fafafa", borderBottom: "2px solid #eee" }}
+              >
+                <TableCell
+                  sx={{ fontWeight: 700, color: "#666", py: 2, width: "50px" }}
+                >
+                  STT
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 700, color: "#666", width: "40%", py: 2 }}
+                >
+                  HỌC VIÊN
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 700, color: "#666", width: "30%", py: 2 }}
+                >
+                  LIÊN HỆ
+                </TableCell>
+                <TableCell
+                  sx={{ fontWeight: 700, color: "#666", width: "25%", py: 2 }}
+                >
+                  TIẾN ĐỘ KHÓA
+                </TableCell>
+              </TableRow>
+            )}
 
-            return (
-              <TableRow key={s.LearnerID} hover>
-                <TableCell>{index + 1}</TableCell>
-
-                {/* --- Cột 1: Thông tin học viên --- */}
-                <TableCell>
-                  <Box display="flex" alignItems="flex-start" gap={2}>
-                    {s.ProfilePicture ? (
-                      <Box
-                        component="img"
-                        src={s.ProfilePicture}
-                        alt={s.FullName}
-                        sx={{
-                          width: 50,
-                          height: 66, // 3:4 ratio nhỏ hơn chút cho gọn
-                          objectFit: "cover",
-                          borderRadius: 1,
-                          border: "1px solid #eee",
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          width: 50,
-                          height: 66,
-                          bgcolor: "#e3f2fd",
-                          color: "#1976d2",
-                          borderRadius: 1,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontWeight: "bold",
-                          fontSize: "20px",
-                          border: "1px solid #bbdefb",
-                        }}
-                      >
-                        {s.FullName?.charAt(0)?.toUpperCase()}
-                      </Box>
-                    )}
-                    <Box pt={0.5}>
-                      <Typography variant="subtitle2" fontWeight={700}>
-                        {s.FullName}
-                      </Typography>
-                      {/* ID ẩn */}
-                    </Box>
+            {/* ====== HEADER: MATRIX VIEW ====== */}
+            {viewMode === "matrix" && (
+              <TableRow>
+                <TableCell
+                  sx={{
+                    ...stickyLeftStyle,
+                    zIndex: 4,
+                    bgcolor: "#f8f9fa",
+                    minWidth: 240,
+                    py: 1.5,
+                  }}
+                >
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <BadgeOutlined sx={{ fontSize: 18, color: "#666" }} />
+                    <Typography
+                      variant="subtitle2"
+                      fontWeight={700}
+                      color="#444"
+                    >
+                      HỌC VIÊN
+                    </Typography>
                   </Box>
                 </TableCell>
 
-                {/* --- Cột 2: Liên hệ --- */}
-                <TableCell>
-                  <Box display="flex" flexDirection="column" gap={0.5}>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Email sx={{ fontSize: 16, color: "text.secondary" }} />
-                      <Typography variant="body2" fontSize={13}>
-                        {contact.Email || "—"}
-                      </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1}>
-                      <Phone sx={{ fontSize: 16, color: "text.secondary" }} />
-                      <Typography variant="body2" fontSize={13}>
-                        {contact.Phone || (
-                          <span style={{ color: "#aaa", fontStyle: "italic" }}>
-                            Chưa có
-                          </span>
-                        )}
-                      </Typography>
-                    </Box>
-                  </Box>
-                </TableCell>
-
-                {/* --- Cột 3 (MỚI): Tiến độ khóa học --- */}
-                <TableCell align="center">
-                  <Box width="100%" px={1}>
+                {sessionColumns.map((session, idx) => (
+                  <TableCell
+                    key={session.SessionID || idx}
+                    align="center"
+                    sx={{
+                      bgcolor: "#f8f9fa",
+                      color: "#666",
+                      minWidth: 70,
+                      px: 0.5,
+                      borderBottom: "1px solid #e0e0e0",
+                      borderRight: "1px dashed #e0e0e0",
+                    }}
+                  >
                     <Box
                       display="flex"
-                      justifyContent="space-between"
-                      mb={0.5}
+                      flexDirection="column"
                       alignItems="center"
                     >
                       <Typography
                         variant="caption"
-                        fontWeight="bold"
-                        color="primary.main"
+                        fontWeight={700}
+                        color="#888"
+                        sx={{ fontSize: "10px" }}
                       >
-                        {att.Progress}%
+                        B.{idx + 1}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {att.Present}/{att.TotalCurriculum} buổi
-                      </Typography>
-                    </Box>
-                    <Tooltip
-                      title={`Đã tham gia ${att.Present} trên tổng ${att.TotalCurriculum} buổi dự kiến`}
-                    >
-                      <LinearProgress
-                        variant="determinate"
-                        value={att.Progress}
-                        sx={{
-                          height: 6,
-                          borderRadius: 5,
-                          bgcolor: "#eee",
-                          "& .MuiLinearProgress-bar": { borderRadius: 5 },
-                        }}
-                      />
-                    </Tooltip>
-                  </Box>
-                </TableCell>
-
-                {/* --- Cột 4: Chuyên cần (Dựa trên số buổi ĐÃ HỌC) --- */}
-                <TableCell align="center">
-                  <Box
-                    display="flex"
-                    alignItems="center"
-                    justifyContent="center"
-                    gap={1.5}
-                  >
-                    <CircularProgressWithLabel
-                      value={att.Rate}
-                      color={colorStatus}
-                    />
-
-                    <Box
-                      display="flex"
-                      flexDirection="column"
-                      alignItems="flex-start"
-                    >
-                      {att.Absent > 0 ? (
-                        <Chip
-                          icon={<Warning style={{ fontSize: 12 }} />}
-                          label={`Vắng: ${att.Absent}`}
-                          size="small"
-                          color="error" // Luôn đỏ nếu vắng để chú ý
-                          variant="outlined"
-                          sx={{
-                            height: 20,
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            mb: 0.5,
-                          }}
-                        />
-                      ) : (
-                        <Chip
-                          icon={<CheckCircle style={{ fontSize: 12 }} />}
-                          label="Đầy đủ"
-                          size="small"
-                          color="success"
-                          variant="outlined"
-                          sx={{
-                            height: 20,
-                            fontSize: "11px",
-                            fontWeight: 600,
-                            mb: 0.5,
-                          }}
-                        />
-                      )}
                       <Typography
                         variant="caption"
-                        color="text.secondary"
+                        fontWeight={600}
+                        color="#333"
                         sx={{ fontSize: "11px" }}
                       >
-                        (Trên {att.TotalOccurred} buổi)
+                        {formatDateCompact(session.Date)}
                       </Typography>
                     </Box>
-                  </Box>
+                  </TableCell>
+                ))}
+
+                <TableCell
+                  align="center"
+                  sx={{
+                    ...stickyRightStyle,
+                    zIndex: 4,
+                    bgcolor: "#f8f9fa",
+                    minWidth: 100,
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight={700} color="#444">
+                    TỔNG
+                  </Typography>
                 </TableCell>
               </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
-    </TableContainer>
+            )}
+          </TableHead>
+
+          <TableBody>
+            {studentList.map((s, index) => {
+              const contact = s.Contact || {};
+              const att = s.Attendance || {
+                Progress: 0,
+                Present: 0,
+                TotalCurriculum: 0,
+                Rate: 0,
+                History: [],
+              };
+
+              // ====== BODY: INFO VIEW ======
+              if (viewMode === "info") {
+                return (
+                  <TableRow
+                    key={s.LearnerID || index}
+                    sx={{ "&:last-child td, &:last-child th": { border: 0 } }}
+                  >
+                    <TableCell sx={{ color: "#888", fontWeight: 500 }}>
+                      {index + 1}
+                    </TableCell>
+                    <TableCell>
+                      <Box display="flex" alignItems="center" gap={3}>
+                        <Avatar
+                          src={s.ProfilePicture}
+                          alt={s.FullName}
+                          variant="rounded"
+                          sx={{
+                            width: 90,
+                            height: 120,
+                            borderRadius: 2,
+                            bgcolor: s.ProfilePicture
+                              ? "transparent"
+                              : "#e3f2fd",
+                            color: "#1565c0",
+                            fontWeight: "bold",
+                            fontSize: "28px",
+                            border: "1px solid #f0f0f0",
+                            objectFit: "cover",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+                          }}
+                        >
+                          {s.FullName?.charAt(0)?.toUpperCase()}
+                        </Avatar>
+                        <Box>
+                          <Typography
+                            variant="h6"
+                            fontWeight={700}
+                            sx={{ color: "#2c3e50" }}
+                          >
+                            {s.FullName}
+                          </Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Stack spacing={1.5}>
+                        <Box display="flex" alignItems="center" gap={1.5}>
+                          <Box
+                            sx={{
+                              p: 0.5,
+                              borderRadius: "50%",
+                              bgcolor: "#f5f5f5",
+                              display: "flex",
+                            }}
+                          >
+                            <EmailOutlined
+                              sx={{ fontSize: 18, color: "#555" }}
+                            />
+                          </Box>
+                          <Typography
+                            variant="body2"
+                            color="text.primary"
+                            fontSize={14}
+                          >
+                            {contact.Email || "—"}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center" gap={1.5}>
+                          <Box
+                            sx={{
+                              p: 0.5,
+                              borderRadius: "50%",
+                              bgcolor: "#f5f5f5",
+                              display: "flex",
+                            }}
+                          >
+                            <PhoneOutlined
+                              sx={{ fontSize: 18, color: "#555" }}
+                            />
+                          </Box>
+                          <Typography
+                            variant="body2"
+                            color="text.primary"
+                            fontSize={14}
+                          >
+                            {contact.Phone || (
+                              <span
+                                style={{ color: "#aaa", fontStyle: "italic" }}
+                              >
+                                Chưa cập nhật
+                              </span>
+                            )}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Box width="100%" pr={2}>
+                        <Box
+                          display="flex"
+                          justifyContent="space-between"
+                          alignItems="center"
+                          mb={1}
+                        >
+                          <Typography
+                            variant="caption"
+                            fontWeight="bold"
+                            color="text.secondary"
+                          >
+                            Đã học
+                          </Typography>
+                          <Typography
+                            variant="caption"
+                            fontWeight="bold"
+                            color="primary.main"
+                          >
+                            {att.Present}/{att.TotalCurriculum} buổi
+                          </Typography>
+                        </Box>
+                        <Tooltip title={`Tiến độ: ${att.Progress}% toàn khóa`}>
+                          <LinearProgress
+                            variant="determinate"
+                            value={att.Progress}
+                            sx={{
+                              height: 10,
+                              borderRadius: 5,
+                              bgcolor: "#f0f0f0",
+                              "& .MuiLinearProgress-bar": {
+                                borderRadius: 5,
+                                bgcolor: "primary.main",
+                              },
+                            }}
+                          />
+                        </Tooltip>
+                        <Typography
+                          variant="caption"
+                          color="text.disabled"
+                          sx={{ mt: 0.5, display: "block", textAlign: "right" }}
+                        >
+                          {att.Progress}% hoàn thành
+                        </Typography>
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+
+              // ====== BODY: MATRIX VIEW ======
+              return (
+                <TableRow key={s.LearnerID || index} hover>
+                  <TableCell sx={{ ...stickyLeftStyle, py: 1 }}>
+                    <Box display="flex" alignItems="center" gap={1.5}>
+                      <Avatar
+                        src={s.ProfilePicture}
+                        variant="rounded"
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 1,
+                          border: "1px solid #eee",
+                        }}
+                      >
+                        {s.FullName?.charAt(0)}
+                      </Avatar>
+                      <Box>
+                        <Typography
+                          variant="body2"
+                          fontWeight={600}
+                          color="#333"
+                          noWrap
+                          sx={{ maxWidth: 160 }}
+                        >
+                          {s.FullName}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </TableCell>
+
+                  {sessionColumns.map((colSession) => {
+                    const studentSession = att.History?.find(
+                      (h) => h.SessionID === colSession.SessionID
+                    );
+                    return (
+                      <TableCell
+                        key={colSession.SessionID}
+                        align="center"
+                        sx={{ borderRight: "1px dashed #eee", p: 0.5 }}
+                      >
+                        <StatusCell
+                          isPresent={
+                            studentSession ? studentSession.IsPresent : null
+                          }
+                        />
+                      </TableCell>
+                    );
+                  })}
+
+                  <TableCell align="center" sx={{ ...stickyRightStyle }}>
+                    <Box
+                      sx={{
+                        display: "inline-flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        fontWeight: "bold",
+                        fontSize: "12px",
+                        border: `2px solid ${
+                          att.Rate >= 80
+                            ? "#4caf50"
+                            : att.Rate >= 50
+                            ? "#ff9800"
+                            : "#ef5350"
+                        }`,
+                        color:
+                          att.Rate >= 80
+                            ? "#2e7d32"
+                            : att.Rate >= 50
+                            ? "#e65100"
+                            : "#c62828",
+                        bgcolor:
+                          att.Rate >= 80
+                            ? "#e8f5e9"
+                            : att.Rate >= 50
+                            ? "#fff3e0"
+                            : "#ffebee",
+                      }}
+                    >
+                      {att.Rate}%
+                    </Box>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
   );
 }
