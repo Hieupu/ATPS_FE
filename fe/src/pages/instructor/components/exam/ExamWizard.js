@@ -634,10 +634,10 @@ const ExamWizard = ({ open, onClose, onSave, courses, mode = "create", initialDa
                                                                 const classId = cls.ClassID || cls.id || cls._id;
                                                                 const className = cls.Name || cls.ClassName || cls.name || `Lớp ${classId}`;
                                                                 return (
-                                                                    <Box 
+                                                                    <Box
                                                                         key={classId}
-                                                                        sx={{ 
-                                                                            display: 'flex', 
+                                                                        sx={{
+                                                                            display: 'flex',
                                                                             alignItems: 'center',
                                                                             gap: 1
                                                                         }}
@@ -651,8 +651,8 @@ const ExamWizard = ({ open, onClose, onSave, courses, mode = "create", initialDa
                                                                                 flexShrink: 0
                                                                             }}
                                                                         />
-                                                                        <Typography 
-                                                                            variant="body2" 
+                                                                        <Typography
+                                                                            variant="body2"
                                                                             color="text.primary"
                                                                         >
                                                                             {className}
@@ -778,8 +778,16 @@ const ExamWizard = ({ open, onClose, onSave, courses, mode = "create", initialDa
                                                                     >
 
                                                                         <Typography variant="body2" fontWeight={500} flex={1}>
-                                                                            {child.title || child.type}
+                                                                            {(() => {
+                                                                                const indexLabel = `Phần ${child.orderIndex + 1}`;
+                                                                                let pureTitle = child.title ?? "";
+                                                                                const match = pureTitle.match(/^Phần\s+\d+\s*:\s*(.*)$/i);
+                                                                                if (match) pureTitle = match[1];
+
+                                                                                return pureTitle ? `${indexLabel}: ${pureTitle}` : indexLabel;
+                                                                            })()}
                                                                         </Typography>
+
                                                                         <Chip
                                                                             label={`${child.questions?.length || 0} câu`}
                                                                             size="small"

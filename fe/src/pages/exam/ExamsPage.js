@@ -11,12 +11,18 @@ import {
   Chip,
   Alert,
   CircularProgress,
+  Button,
 } from '@mui/material';
-import { Quiz, AccessTime, EmojiEvents } from '@mui/icons-material';
+import { Quiz, AccessTime, EmojiEvents, CheckCircle } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '../../components/Header/AppHeader';
-import { getMyEnrolledCourses } from '../../apiServices/courseService';
-import { getExamsByCourseApi, getMyLatestExamResultApi } from '../../apiServices/examService';
+import { 
+  getAllExamsApi,
+  EXAM_STATUS_LABELS,
+  EXAM_STATUS_COLORS,
+  TAB_FILTERS,
+  formatScore
+} from '../../apiServices/learnerExamService';
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
@@ -30,140 +36,192 @@ const TabPanel = ({ children, value, index, ...other }) => (
   </div>
 );
 
-const ExamCard = ({ exam, course, latestResult, onStartExam }) => {
+const ExamCard = ({ exam, onStartExam, onViewResult }) => {
   const navigate = useNavigate();
 
   const formatDateTime = (dateTimeString) => {
-    return new Date(dateTimeString).toLocaleString('vi-VN');
+    if (!dateTimeString) return 'N/A';
+    return new Date(dateTimeString).toLocaleString('vi-VN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const getExamStatus = (exam) => {
-    const now = new Date();
-    const startTime = new Date(exam.StartTime);
-    const endTime = new Date(exam.EndTime);
-
-    if (now < startTime) {
-      return { status: 'upcoming', color: 'warning', label: 'Sắp diễn ra' };
-    } else if (now >= startTime && now <= endTime) {
-      return { status: 'active', color: 'success', label: 'Đang mở' };
-    } else {
-      return { status: 'closed', color: 'error', label: 'Đã kết thúc' };
+  const handleCourseClick = () => {
+    if (exam.courseId) {
+      navigate(`/my-courses/${exam.courseId}`);
     }
   };
 
-  const statusInfo = getExamStatus(exam);
-
-  const handleCourseClick = () => {
-    navigate(`/my-courses/${course.CourseID}`);
-  };
+  // Determine button action
+  const canTakeExam = exam.availabilityStatus === 'available' && !exam.isSubmitted;
+  const canViewResult = exam.isSubmitted;
 
   return (
-    <Card sx={{ mb: 2, transition: 'transform 0.2s', '&:hover': { transform: 'translateY(-2px)' } }}>
+    <Card 
+      sx={{ 
+        mb: 2, 
+        transition: 'all 0.3s ease',
+        '&:hover': { 
+          transform: 'translateY(-4px)',
+          boxShadow: 6
+        } 
+      }}
+    >
       <CardContent>
         {/* Course Info */}
-        <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1, cursor: 'pointer' }} onClick={handleCourseClick}>
+        <Box 
+          sx={{ 
+            mb: 2, 
+            p: 2, 
+            bgcolor: 'primary.50', 
+            borderRadius: 1, 
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            '&:hover': {
+              bgcolor: 'primary.100'
+            }
+          }} 
+          onClick={handleCourseClick}
+        >
           <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
-            {course.Title}
+            📚 {exam.courseName || 'Khóa học'}
           </Typography>
+          {exam.className && (
+            <Typography variant="caption" color="text.secondary">
+              Lớp: {exam.className}
+            </Typography>
+          )}
         </Box>
 
+        {/* Exam Title & Status */}
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
           <Box sx={{ flex: 1 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Quiz sx={{ color: 'primary.main' }} />
               <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {exam.Title}
+                {exam.title}
               </Typography>
-              <Chip 
-                label={statusInfo.label} 
-                color={statusInfo.color} 
-                size="small" 
-              />
             </Box>
             
             <Typography variant="body2" color="text.secondary" paragraph>
-              {exam.Description}
+              {exam.description || 'Không có mô tả'}
             </Typography>
+          </Box>
 
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
-                <Typography variant="body2">
-                  {formatDateTime(exam.StartTime)} - {formatDateTime(exam.EndTime)}
-                </Typography>
-              </Box>
-              {exam.Duration && (
-                <Typography variant="body2" color="text.secondary">
-                  Thời gian: {exam.Duration} phút
+          <Chip 
+            label={EXAM_STATUS_LABELS[exam.availabilityStatus] || exam.availabilityStatus} 
+            color={EXAM_STATUS_COLORS[exam.availabilityStatus] || 'default'} 
+            size="small"
+            sx={{ ml: 2 }}
+          />
+        </Box>
+
+        {/* Time Info */}
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary">
+              Bắt đầu: {formatDateTime(exam.classStartTime || exam.startTime)}
+            </Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
+            <Typography variant="body2" color="text.secondary">
+              Kết thúc: {formatDateTime(exam.classEndTime || exam.endTime)}
+            </Typography>
+          </Box>
+        </Box>
+
+        {/* Result Display (if submitted) */}
+        {exam.isSubmitted && exam.score !== null && exam.score !== undefined && (
+          <Box sx={{ 
+            p: 2, 
+            bgcolor: exam.score >= 50 ? 'success.light' : 'error.light',
+            borderRadius: 1, 
+            mb: 2,
+            border: '1px solid',
+            borderColor: exam.score >= 50 ? 'success.main' : 'error.main'
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <EmojiEvents sx={{ color: exam.score >= 50 ? 'success.main' : 'error.main' }} />
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                Kết quả
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Typography variant="h6" sx={{ fontWeight: 600 }}>
+                {formatScore(exam.score)}
+              </Typography>
+              <Chip 
+                icon={<CheckCircle />}
+                label={exam.score >= 50 ? 'Đạt' : 'Chưa đạt'} 
+                color={exam.score >= 50 ? 'success' : 'error'}
+                size="small"
+              />
+              {exam.submissionDate && (
+                <Typography variant="caption" color="text.secondary">
+                  Nộp lúc: {formatDateTime(exam.submissionDate)}
                 </Typography>
               )}
             </Box>
           </Box>
-        </Box>
-
-        {/* Latest Result */}
-        {latestResult && (
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: 'success.light', 
-            borderRadius: 1, 
-            mb: 2,
-            border: '1px solid',
-            borderColor: 'success.main'
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <EmojiEvents sx={{ color: 'success.main' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600, color: 'success.dark' }}>
-                Kết quả gần nhất
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Typography variant="h6" sx={{ color: 'success.dark', fontWeight: 600 }}>
-                {latestResult.Score ?? latestResult.score}%
-              </Typography>
-              <Typography variant="body2" sx={{ color: 'success.dark', flex: 1 }}>
-                {latestResult.Feedback ?? latestResult.feedback}
-              </Typography>
-              <Chip 
-                label={ 
-                  (latestResult.Score ?? latestResult.score) >= 50 ? 'Đạt' : 'Chưa đạt' 
-                } 
-                color={ (latestResult.Score ?? latestResult.score) >= 50 ? 'success' : 'error' }
-                size="small"
-              />
-            </Box>
-          </Box>
         )}
 
-        {/* Action Button */}
+        {/* Action Buttons */}
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Box
-            component="button"
-            onClick={() => onStartExam(exam, course)}
-            disabled={statusInfo.status === 'closed' && !latestResult}
-            sx={{
-              flex: 1,
-              backgroundColor: latestResult ? 'secondary.main' : 'primary.main',
-              color: 'white',
-              border: 'none',
-              padding: '10px 16px',
-              borderRadius: 1,
-              cursor: statusInfo.status === 'closed' && !latestResult ? 'not-allowed' : 'pointer',
-              opacity: statusInfo.status === 'closed' && !latestResult ? 0.6 : 1,
-              fontWeight: 600,
-              fontSize: '0.875rem',
-              '&:hover': {
-                backgroundColor: latestResult ? 'secondary.dark' : 'primary.dark',
-              },
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 1
-            }}
-          >
-            <Quiz />
-            {latestResult ? 'Làm lại bài thi' : 'Bắt đầu thi'}
-          </Box>
+          {canTakeExam && (
+            <Button
+              variant="contained"
+              color="primary"
+              fullWidth
+              startIcon={<Quiz />}
+              onClick={() => onStartExam(exam)}
+              sx={{ fontWeight: 600 }}
+            >
+              Bắt đầu làm bài
+            </Button>
+          )}
+
+          {canViewResult && (
+            <Button
+              variant="contained"
+              color="secondary"
+              fullWidth
+              startIcon={<EmojiEvents />}
+              onClick={() => onViewResult(exam)}
+              sx={{ fontWeight: 600 }}
+            >
+              Xem kết quả
+            </Button>
+          )}
+
+          {exam.availabilityStatus === 'not_started' && (
+            <Button
+              variant="outlined"
+              color="warning"
+              fullWidth
+              disabled
+              sx={{ fontWeight: 600 }}
+            >
+              Chưa đến giờ thi
+            </Button>
+          )}
+
+          {exam.availabilityStatus === 'expired' && !exam.isSubmitted && (
+            <Button
+              variant="outlined"
+              color="error"
+              fullWidth
+              disabled
+              sx={{ fontWeight: 600 }}
+            >
+              Đã hết hạn
+            </Button>
+          )}
         </Box>
       </CardContent>
     </Card>
@@ -171,63 +229,30 @@ const ExamCard = ({ exam, course, latestResult, onStartExam }) => {
 };
 
 const ExamsPage = () => {
-  const [courses, setCourses] = useState([]);
-  const [allExams, setAllExams] = useState([]);
+  const navigate = useNavigate();
+  const [exams, setExams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tabValue, setTabValue] = useState(0);
 
   useEffect(() => {
-    fetchExamsData();
-  }, []);
+    fetchExams();
+  }, [tabValue]);
 
-  const fetchExamsData = async () => {
+  const fetchExams = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Lấy danh sách khóa học đã đăng ký
-      const enrolledCoursesResponse = await getMyEnrolledCourses();
-      const enrolledCourses = enrolledCoursesResponse.data || enrolledCoursesResponse.items || [];
+      // Get current tab filter
+      const currentFilter = TAB_FILTERS[tabValue]?.value || 'all';
       
-      if (!Array.isArray(enrolledCourses)) {
-        throw new Error('Dữ liệu khóa học không hợp lệ');
-      }
-
-      setCourses(enrolledCourses);
-
-      // Lấy tất cả exam từ các khóa học
-      const examsWithCourses = [];
-      const examResultsMap = {};
-
-      for (const course of enrolledCourses) {
-        try {
-          const examsData = await getExamsByCourseApi(course.CourseID);
-          const exams = examsData.exams || examsData || [];
-
-          // Lấy kết quả mới nhất cho từng exam
-          for (const exam of exams) {
-            try {
-              const result = await getMyLatestExamResultApi(exam.ExamID);
-              examResultsMap[exam.ExamID] = result.result || null;
-            } catch (err) {
-              examResultsMap[exam.ExamID] = null;
-            }
-
-            examsWithCourses.push({
-              ...exam,
-              course: course,
-              latestResult: examResultsMap[exam.ExamID]
-            });
-          }
-        } catch (err) {
-          console.error(`Error fetching exams for course ${course.CourseID}:`, err);
-        }
-      }
-
-      setAllExams(examsWithCourses);
+      // Fetch exams with filter
+      const examsData = await getAllExamsApi(currentFilter);
+      
+      setExams(examsData);
     } catch (err) {
-      console.error('Error fetching exams data:', err);
+      console.error('Error fetching exams:', err);
       setError(err.message || 'Không thể tải danh sách bài kiểm tra');
     } finally {
       setLoading(false);
@@ -238,31 +263,31 @@ const ExamsPage = () => {
     setTabValue(newValue);
   };
 
-  const handleStartExam = (exam, course) => {
-    // Điều hướng đến trang làm bài thi
-    window.open(`/exam/${exam.ExamID}`, '_blank');
-    // Hoặc: navigate(`/exam/${exam.ExamID}`);
+  const handleStartExam = (exam) => {
+    // Navigate to exam taking page
+    navigate(`/exam/${exam.examId}/take`);
   };
 
-  // Phân loại exam
-  const activeExams = allExams.filter(exam => {
-    const now = new Date();
-    const startTime = new Date(exam.StartTime);
-    const endTime = new Date(exam.EndTime);
-    return now >= startTime && now <= endTime;
-  });
+  const handleViewResult = (exam) => {
+    // Navigate to result page
+    navigate(`/exam/${exam.examId}/result`);
+  };
 
-  const upcomingExams = allExams.filter(exam => {
-    const now = new Date();
-    const startTime = new Date(exam.StartTime);
-    return now < startTime;
-  });
+  // Calculate counts for each tab
+  const getCounts = () => {
+    const counts = {
+      all: exams.length,
+      ongoing: 0,
+      upcoming: 0,
+      completed: 0
+    };
 
-  const completedExams = allExams.filter(exam => {
-    const now = new Date();
-    const endTime = new Date(exam.EndTime);
-    return now > endTime || exam.latestResult;
-  });
+    // Note: Backend already filters by tab, so we just show the count
+    // If you want to show total counts, you need to fetch all exams separately
+    return counts;
+  };
+
+  const counts = getCounts();
 
   if (loading) {
     return (
@@ -291,7 +316,7 @@ const ExamsPage = () => {
         </Box>
 
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
             {error}
           </Alert>
         )}
@@ -303,103 +328,47 @@ const ExamsPage = () => {
               value={tabValue}
               onChange={handleTabChange}
               aria-label="exam tabs"
+              variant="fullWidth"
               sx={{
                 borderBottom: 1,
                 borderColor: 'divider',
-                px: 2
+                '& .MuiTab-root': {
+                  fontWeight: 600
+                }
               }}
             >
-              <Tab 
-                label={`Tất cả (${allExams.length})`}
-                id="exam-tab-0"
-              />
-              <Tab 
-                label={`Đang mở (${activeExams.length})`}
-                id="exam-tab-1"
-              />
-              <Tab 
-                label={`Sắp diễn ra (${upcomingExams.length})`}
-                id="exam-tab-2"
-              />
-              <Tab 
-                label={`Đã hoàn thành (${completedExams.length})`}
-                id="exam-tab-3"
-              />
+              {TAB_FILTERS.map((filter, index) => (
+                <Tab 
+                  key={filter.value}
+                  label={`${filter.label} (${exams.length})`}
+                  id={`exam-tab-${index}`}
+                />
+              ))}
             </Tabs>
 
             {/* Tab Panels */}
-            <Box sx={{ p: 3 }}>
-              <TabPanel value={tabValue} index={0}>
-                {allExams.length === 0 ? (
-                  <Alert severity="info">
-                    Bạn chưa có bài kiểm tra nào từ các khóa học đã đăng ký.
-                  </Alert>
-                ) : (
-                  allExams.map(exam => (
-                    <ExamCard
-                      key={`${exam.ExamID}-${exam.course.CourseID}`}
-                      exam={exam}
-                      course={exam.course}
-                      latestResult={exam.latestResult}
-                      onStartExam={handleStartExam}
-                    />
-                  ))
-                )}
-              </TabPanel>
-
-              <TabPanel value={tabValue} index={1}>
-                {activeExams.length === 0 ? (
-                  <Alert severity="info">
-                    Hiện không có bài kiểm tra nào đang mở.
-                  </Alert>
-                ) : (
-                  activeExams.map(exam => (
-                    <ExamCard
-                      key={`${exam.ExamID}-${exam.course.CourseID}`}
-                      exam={exam}
-                      course={exam.course}
-                      latestResult={exam.latestResult}
-                      onStartExam={handleStartExam}
-                    />
-                  ))
-                )}
-              </TabPanel>
-
-              <TabPanel value={tabValue} index={2}>
-                {upcomingExams.length === 0 ? (
-                  <Alert severity="info">
-                    Không có bài kiểm tra sắp diễn ra.
-                  </Alert>
-                ) : (
-                  upcomingExams.map(exam => (
-                    <ExamCard
-                      key={`${exam.ExamID}-${exam.course.CourseID}`}
-                      exam={exam}
-                      course={exam.course}
-                      latestResult={exam.latestResult}
-                      onStartExam={handleStartExam}
-                    />
-                  ))
-                )}
-              </TabPanel>
-
-              <TabPanel value={tabValue} index={3}>
-                {completedExams.length === 0 ? (
-                  <Alert severity="info">
-                    Bạn chưa hoàn thành bài kiểm tra nào.
-                  </Alert>
-                ) : (
-                  completedExams.map(exam => (
-                    <ExamCard
-                      key={`${exam.ExamID}-${exam.course.CourseID}`}
-                      exam={exam}
-                      course={exam.course}
-                      latestResult={exam.latestResult}
-                      onStartExam={handleStartExam}
-                    />
-                  ))
-                )}
-              </TabPanel>
+            <Box sx={{ p: 3, minHeight: 400 }}>
+              {TAB_FILTERS.map((filter, index) => (
+                <TabPanel key={filter.value} value={tabValue} index={index}>
+                  {exams.length === 0 ? (
+                    <Alert severity="info">
+                      {filter.value === 'all' && 'Bạn chưa có bài kiểm tra nào từ các khóa học đã đăng ký.'}
+                      {filter.value === 'ongoing' && 'Hiện không có bài kiểm tra nào đang mở.'}
+                      {filter.value === 'upcoming' && 'Không có bài kiểm tra sắp diễn ra.'}
+                      {filter.value === 'completed' && 'Bạn chưa hoàn thành bài kiểm tra nào.'}
+                    </Alert>
+                  ) : (
+                    exams.map(exam => (
+                      <ExamCard
+                        key={exam.examId}
+                        exam={exam}
+                        onStartExam={handleStartExam}
+                        onViewResult={handleViewResult}
+                      />
+                    ))
+                  )}
+                </TabPanel>
+              ))}
             </Box>
           </CardContent>
         </Card>

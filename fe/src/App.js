@@ -54,6 +54,8 @@ import MaterialsPage from "./pages/materials/MaterialsPage";
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
 import ExamsPage from "./pages/exam/ExamsPage";
+import ExamTakingPage from "./pages/exam/ExamTakingPage";      
+import ExamResultPage from "./pages/exam/ExamResultPage";   
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
@@ -90,6 +92,8 @@ function AppRoutes() {
 
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
+      <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
+      <Route path="/exam/:examId/result" element={<ExamResultPage />} />
 
       {/* Learner Routes */}
       <Route path="/schedule" element={<SchedulePage />} />

@@ -354,8 +354,17 @@ const SortableChildSection = ({
                         </Box>
 
                         <Typography fontWeight={600}>
-                            {child.title || `Phần ${childIndex + 1}`}
+                            {(() => {
+                                const indexLabel = `Phần ${child.orderIndex + 1}`;
+                                let pureTitle = child.title ?? "";
+                                const match = pureTitle.match(/^Phần\s+\d+\s*:\s*(.*)$/i);
+                                if (match) {
+                                    pureTitle = match[1];
+                                }
+                                return pureTitle ? `${indexLabel}: ${pureTitle}` : indexLabel;
+                            })()}
                         </Typography>
+
                         <Chip label={`${questions.length} câu hỏi`} size="small" color="info" />
                         <Box sx={{ flexGrow: 1 }} />
                         <Tooltip title="Sửa">
@@ -549,24 +558,11 @@ const Step2Content = ({ sections, setSections, onError }) => {
         }
 
         const reorderedChildren = arrayMove(children, oldIndex, newIndex);
-        const childrenWithNewOrder = reorderedChildren.map((child, index) => {
-            let newTitle = child.title;
-            if (newTitle && newTitle.includes(':')) {
-                const parts = newTitle.split(':');
-                const subtitle = parts.slice(1).join(':').trim();
-                newTitle = `Phần ${index + 1}: ${subtitle}`;
-            } else if (newTitle && newTitle.startsWith('Phần ')) {
-                newTitle = `Phần ${index + 1}`;
-            } else {
-                newTitle = newTitle ? `Phần ${index + 1}: ${newTitle}` : `Phần ${index + 1}`;
-            }
 
-            return {
-                ...child,
-                orderIndex: index,
-                title: newTitle
-            };
-        });
+        const childrenWithNewOrder = reorderedChildren.map((child, index) => ({
+            ...child,
+            orderIndex: index
+        }));
 
         const otherSections = sections.filter((s) =>
             !(s.parentSectionId === parentId)
@@ -620,13 +616,9 @@ const Step2Content = ({ sections, setSections, onError }) => {
                 title = sectionData.title?.trim() || sectionData.type;
             }
             if (currentParentId) {
-                const siblingCount = getChildSections(currentParentId).length;
-                const partNumber = `Phần ${siblingCount + 1}`;
-
-                title = sectionData.title?.trim()
-                    ? `${partNumber}: ${sectionData.title.trim()}`
-                    : partNumber;
+                title = sectionData.title?.trim() || "";
             }
+
 
             const newSection = {
                 id: `section-${Date.now()}`,
