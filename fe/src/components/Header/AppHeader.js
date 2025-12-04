@@ -99,6 +99,7 @@ const AppHeader = () => {
 
   const handleLogout = () => {
     logout(); // Sử dụng logout từ AuthContext
+    localStorage.removeItem(`zoomScheduleData`);
     navigate("/auth/login");
   };
 
@@ -454,7 +455,6 @@ const AppHeader = () => {
                 </Button>
               ))}
 
-              {/* ✅ Nếu chưa login */}
               {!user ? (
                 <>
                   <Button
@@ -472,7 +472,7 @@ const AppHeader = () => {
                     }}
                     onClick={() => navigate("/auth/login")}
                   >
-                    Login
+                    Đăng nhập
                   </Button>
                   <Button
                     variant="contained"
@@ -488,7 +488,7 @@ const AppHeader = () => {
                     }}
                     onClick={() => navigate("/auth/register")}
                   >
-                    Register
+                    Đăng ký
                   </Button>
                 </>
               ) : (
@@ -737,7 +737,7 @@ const AppHeader = () => {
                       }}
                     >
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
-                      Profile
+                      Hồ sơ cá nhân
                     </MenuItem>
 
                     {/* Menu items theo role */}
@@ -757,7 +757,7 @@ const AppHeader = () => {
                       }}
                     >
                       <Logout sx={{ mr: 1, color: "#dc2626" }} />
-                      Logout
+                      Đăng xuất
                     </MenuItem>
                   </Menu>
                 </>
@@ -794,7 +794,7 @@ const AppHeader = () => {
                     sx={{ mb: 1 }}
                     onClick={() => navigate("/auth/login")}
                   >
-                    Login
+                    Đăng nhập
                   </Button>
                 </ListItem>
                 <ListItem>
@@ -804,7 +804,7 @@ const AppHeader = () => {
                     color="primary"
                     onClick={() => navigate("/auth/register")}
                   >
-                    Register
+                    Đăng ký
                   </Button>
                 </ListItem>
               </>
@@ -816,7 +816,7 @@ const AppHeader = () => {
                   color="primary"
                   onClick={handleLogout}
                 >
-                  Logout
+                  Đăng xuất
                 </Button>
               </ListItem>
             )}

@@ -1,9 +1,13 @@
 import React, { useState, useMemo, useEffect } from "react";
+import axios from "axios";
+import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedWeek, setSelectedWeek] = useState(null);
+  const user = useAuth();
 
   const timeSlots = [
     { label: "Ca 1", start: "08:00", end: "10:00" },
@@ -155,16 +159,62 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     }
   };
 
-  const handleJoinZoom = (schedule) => {
-    sessionStorage.setItem('zoomScheduleData', JSON.stringify({
-      schedule: schedule,
-      timestamp: new Date().getTime()
-    }));
+  const handleJoinZoom = async (schedule) => {
+  if (!schedule) {
+    alert("Không tìm thấy thông tin buổi học.");
+    return;
+  }
 
-    setTimeout(() => {
-      window.open(`/zoom/${schedule.ZoomID}/${schedule.Zoompass}`, '_blank');
-    }, 100);
-  };
+  const start = new Date(`${schedule.Date}T${schedule.StartTime}`);
+  const now = new Date();
+
+  const isWithin10MinBefore = now >= new Date(start.getTime() - 10 * 60 * 1000);
+
+  const userId = user?.user?.id;
+  const role = user?.user?.role;
+
+  if (!userId) {
+    toast.warn("Không xác định được người dùng.");
+    return;
+  }
+  if (role !== "instructor" && role !== "learner") {
+    toast.warn("Bạn không có quyền truy cập vào buổi học này.");
+    return;
+  }
+  if (role === "learner" && !isWithin10MinBefore) {
+    toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+    return;
+  }
+
+  localStorage.setItem('zoomScheduleData', JSON.stringify({
+    schedule: schedule,
+    timestamp: Date.now(),
+    userId: userId,
+    userRole: role,
+    userName: user.user.username,
+    email: user.user.email,
+  }));
+  try {
+    await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
+      sessionId: schedule.SessionID,
+      accId: userId,
+      userName: user.user.username,
+      startTime: schedule.StartTime,
+      endTime: schedule.EndTime,
+      date: schedule.Date,
+    });
+
+    window.open(
+      `/zoom?zoomId=${schedule.ZoomID}&pass=${schedule.Zoompass}`,
+      "_blank"
+    );
+
+  } catch (err) {
+    console.error("Join Zoom API failed:", err);
+    alert("Không thể kết nối đến server. Vui lòng thử lại.");
+  }
+};
+
 
   const renderScheduleCard = (schedule, slot, idx) => (
     <div

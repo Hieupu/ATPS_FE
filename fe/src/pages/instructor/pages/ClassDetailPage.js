@@ -71,7 +71,6 @@ export default function ClassDetailPage() {
     const fetchSchedule = async () => {
       try {
         const res = await apiClient.get(`/classes/${classId}/schedule`);
-        console.log("DỮ LIỆU MỚI TỪ SERVER:", res.data.Sessions);
         setSessions(res.data.Sessions || []);
       } catch (err) {
         console.error("Lỗi tải lịch học:", err);
@@ -133,6 +132,46 @@ export default function ClassDetailPage() {
     if (classData) setLoading(false);
   }, [classData]);
 
+  //load zoom
+  const handleStartZoom = () => {
+    if (!classData || !classData.zoomMeetingId) {
+      alert("Chưa có thông tin phòng Zoom cho lớp học này!");
+      return;
+    }
+
+    const rawUser = localStorage.getItem("user");
+    const currentUser = rawUser ? JSON.parse(rawUser) : {};
+
+    const zoomPayload = {
+      schedule: {
+        ZoomID: classData.zoomMeetingId,
+        Zoompass: classData.zoomPassword,
+        ClassName: classData.className,
+        CourseTitle: classData.course?.title,
+
+        Date: new Date().toISOString().split("T")[0],
+        StartTime: new Date().toTimeString().split(" ")[0],
+      },
+
+      userId: currentUser.id,
+      userName: currentUser.username || currentUser.fullname || "Giảng viên",
+      email: currentUser.email,
+      userRole: currentUser.role || "instructor",
+
+      timestamp: new Date().getTime(),
+    };
+
+    localStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+
+    setTimeout(() => {
+      let url = `/zoom/${classData.zoomMeetingId}`;
+      if (classData.zoomPassword) {
+        url += `/${classData.zoomPassword}`;
+      }
+      window.open(url, "_blank");
+    }, 100);
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 4, textAlign: "center" }}>
@@ -158,7 +197,9 @@ export default function ClassDetailPage() {
       onBack={() => navigate(-1)}
     >
       {/* Tab 0: Tổng quan */}
-      {activeTab === 0 && <OverviewTab classData={classData} />}
+      {activeTab === 0 && (
+        <OverviewTab classData={classData} onStartZoom={handleStartZoom} />
+      )}
 
       {/* Tab 1: Học viên */}
       {activeTab === 1 && <StudentsTab students={students} />}
@@ -173,6 +214,7 @@ export default function ClassDetailPage() {
           onOpenAttendance={openAttendanceModal}
           onSaveAttendance={saveAttendance}
           onCloseAttendance={closeAttendanceModal}
+          onStartZoom={handleStartZoom}
         />
       )}
     </ClassDetailLayout>
