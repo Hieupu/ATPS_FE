@@ -357,7 +357,7 @@ export const dayOfWeekToDay = (dayOfWeek) => {
  */
 export const getDayFromDate = (dateStr) => {
   if (!dateStr) return null;
-  
+
   // Parse date string YYYY-MM-DD để tránh timezone issues
   // new Date("YYYY-MM-DD") có thể bị ảnh hưởng bởi timezone
   const parts = dateStr.split("-");
@@ -367,16 +367,16 @@ export const getDayFromDate = (dateStr) => {
     if (isNaN(date.getTime())) return null;
     return dayOfWeekToDay(date.getDay());
   }
-  
+
   // Tạo Date với UTC để tránh timezone issues
   // new Date(year, monthIndex, day) - monthIndex bắt đầu từ 0
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10) - 1; // monthIndex từ 0-11
   const day = parseInt(parts[2], 10);
-  
+
   const date = new Date(year, month, day);
   if (isNaN(date.getTime())) return null;
-  
+
   return dayOfWeekToDay(date.getDay());
 };
 
@@ -391,6 +391,27 @@ export const validateDateDayMatch = (dateStr, timeslot) => {
   const dateDay = getDayFromDate(dateStr);
   const timeslotDay = timeslot.Day || timeslot.day;
   return dateDay === timeslotDay;
+};
+
+/**
+ * Lấy thứ trong tuần từ Date string (trả về số 0-6)
+ * @param {string} dateStr - Ngày (format: YYYY-MM-DD)
+ * @returns {number|null} - Thứ trong tuần (0-6) hoặc null
+ */
+export const getDayOfWeek = (dateStr) => {
+  if (!dateStr) return null;
+  const parts = dateStr.split("-");
+  if (parts.length !== 3) {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return null;
+    return date.getDay();
+  }
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
+  if (isNaN(date.getTime())) return null;
+  return date.getDay();
 };
 
 /**

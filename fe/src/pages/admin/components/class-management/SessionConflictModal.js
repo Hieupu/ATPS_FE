@@ -49,9 +49,9 @@ const SessionConflictModal = ({
       <DialogContent dividers>
         <Box sx={{ mb: 2 }}>
           <Typography variant="body1" sx={{ mb: 1.5 }}>
-            Đã tạo thành công{" "}
-            <strong>{createdCount}</strong>/<strong>{totalCount}</strong>{" "}
-            buổi học. Các buổi bên dưới bị trùng lịch hoặc giảng viên bận.
+            Đã tạo thành công <strong>{createdCount}</strong>/
+            <strong>{totalCount}</strong> buổi học. Các buổi bên dưới bị trùng
+            lịch hoặc giảng viên bận.
           </Typography>
           <Chip
             label={`${conflicts.length} buổi bị xung đột`}
@@ -79,25 +79,55 @@ const SessionConflictModal = ({
                 primary={
                   <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                     Buổi {conflict.sessionIndex}:{" "}
-                    {conflict.conflictInfo?.sessionTitle || "Chưa đặt tên"}
+                    {conflict.conflictInfo?.sessionTitle ||
+                      conflict.sessionData?.Title ||
+                      "Chưa đặt tên"}
                   </Typography>
                 }
                 secondary={
-                  <Box sx={{ mt: 0.5 }}>
+                  <Box sx={{ mt: 0.5 }} component="div">
                     <Typography variant="body2" sx={{ color: "#475569" }}>
-                      Ngày: {conflict.conflictInfo?.date || "N/A"} | Giờ:{" "}
-                      {conflict.conflictInfo?.startTime || "??"} -{" "}
-                      {conflict.conflictInfo?.endTime || "??"}
+                      Ngày:{" "}
+                      {conflict.conflictInfo?.date ||
+                        conflict.sessionData?.Date ||
+                        "N/A"}{" "}
+                      | Giờ:{" "}
+                      {conflict.conflictInfo?.startTime
+                        ? `${conflict.conflictInfo.startTime} - ${
+                            conflict.conflictInfo.endTime || "??"
+                          }`
+                        : conflict.sessionData?.TimeslotStart
+                        ? `${conflict.sessionData.TimeslotStart} - ${
+                            conflict.sessionData.TimeslotEnd || "??"
+                          }`
+                        : "?? - ??"}
                     </Typography>
                     <Typography
                       variant="body2"
                       sx={{ color: "#991b1b", mt: 0.5 }}
                     >
                       {conflict.conflictInfo?.message ||
+                        conflict.error ||
                         "Giảng viên trùng lịch"}
                     </Typography>
+                    {conflict.conflictType && (
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#64748b", mt: 0.5, display: "block" }}
+                      >
+                        Loại xung đột:{" "}
+                        {conflict.conflictType === "date_day_mismatch"
+                          ? "Ngày không khớp với ca học"
+                          : conflict.conflictType === "instructor_leave"
+                          ? "Giảng viên nghỉ phép"
+                          : conflict.conflictType === "session_conflict"
+                          ? "Trùng lịch dạy"
+                          : conflict.conflictType || "Không xác định"}
+                      </Typography>
+                    )}
                   </Box>
                 }
+                secondaryTypographyProps={{ component: "div" }}
               />
             </ListItem>
           ))}
@@ -111,9 +141,7 @@ const SessionConflictModal = ({
           onClick={onSuggest}
           variant="contained"
           disabled={loadingSuggestions}
-          startIcon={
-            loadingSuggestions ? <CircularProgress size={18} /> : null
-          }
+          startIcon={loadingSuggestions ? <CircularProgress size={18} /> : null}
           sx={{ backgroundColor: "#2563eb" }}
         >
           {loadingSuggestions ? "Đang gợi ý..." : "Gợi ý buổi học bù"}
@@ -124,4 +152,3 @@ const SessionConflictModal = ({
 };
 
 export default SessionConflictModal;
-

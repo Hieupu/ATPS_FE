@@ -1,35 +1,32 @@
 /**
- * Class Status Constants - Database Version 5
- * 
- * Trạng thái Quản trị (Admin & Giảng viên):
+ * Class Status Constants - Database Version 5 (Updated)
+ *
+ * Trạng thái Quản trị (Admin):
  * - DRAFT: Nháp (admin tạo lớp)
- * - WAITING: Admin gửi lớp cho instructor (chờ instructor xem xét)
- * - PENDING: Instructor gửi lại cho admin (chờ admin duyệt)
- * - APPROVED: Đã duyệt
- * 
+ * - APPROVED: Đã duyệt (tạo nháp rồi approve)
+ *
  * Trạng thái Công khai (Public & Học viên):
- * - ACTIVE: Đang tuyển sinh (thay thế OPEN)
+ * - ACTIVE: Đang tuyển sinh (tự động chuyển từ APPROVED khi đủ điều kiện)
  * - ON_GOING: Đang diễn ra
- * 
+ *
  * Trạng thái Kết thúc:
- * - CLOSE: Đã kết thúc (thay thế CLOSED)
- * - CANCEL: Đã hủy (thay thế CANCELLED)
+ * - CLOSE: Đã kết thúc
+ * - CANCEL: Đã hủy
+ *
+ * Lưu ý: Đã loại bỏ WAITING và PENDING vì admin đã chọn course từ bước 1
  */
 
 export const CLASS_STATUS = {
   // Trạng thái Quản trị
   DRAFT: "DRAFT",
-  WAITING: "WAITING",
-  PENDING: "PENDING",
-  PENDING_APPROVAL: "PENDING", // Alias cho PENDING (backward compatibility)
   APPROVED: "APPROVED",
-  
+
   // Trạng thái Công khai
   ACTIVE: "ACTIVE",
   OPEN: "ACTIVE", // Alias cho ACTIVE (backward compatibility)
   PUBLISHED: "ACTIVE", // Alias cho ACTIVE (backward compatibility)
   ON_GOING: "ON_GOING",
-  
+
   // Trạng thái Kết thúc
   CLOSE: "CLOSE",
   CLOSED: "CLOSE", // Alias cho CLOSE (backward compatibility)
@@ -44,8 +41,6 @@ export const CLASS_STATUS = {
  */
 export const CLASS_STATUS_LABELS = {
   [CLASS_STATUS.DRAFT]: "Nháp",
-  [CLASS_STATUS.WAITING]: "Chờ giảng viên",
-  [CLASS_STATUS.PENDING]: "Chờ duyệt",
   [CLASS_STATUS.APPROVED]: "Đã duyệt",
   [CLASS_STATUS.ACTIVE]: "Đang tuyển sinh",
   [CLASS_STATUS.ON_GOING]: "Đang diễn ra",
@@ -61,16 +56,6 @@ export const CLASS_STATUS_COLORS = {
     color: "#f59e0b",
     bgColor: "#fffbeb",
     label: "Nháp",
-  },
-  [CLASS_STATUS.WAITING]: {
-    color: "#06b6d4",
-    bgColor: "#f0fdfa",
-    label: "Chờ giảng viên",
-  },
-  [CLASS_STATUS.PENDING]: {
-    color: "#3b82f6",
-    bgColor: "#eff6ff",
-    label: "Chờ duyệt",
   },
   [CLASS_STATUS.APPROVED]: {
     color: "#10b981",
@@ -105,7 +90,7 @@ export const CLASS_STATUS_COLORS = {
 export const getStatusInfo = (status) => {
   // Normalize status (hỗ trợ alias)
   const normalizedStatus = normalizeStatus(status);
-  
+
   return (
     CLASS_STATUS_COLORS[normalizedStatus] || {
       color: "#6b7280",
@@ -120,43 +105,44 @@ export const getStatusInfo = (status) => {
  */
 export const normalizeStatus = (status) => {
   if (!status) return null;
-  
+
   // Chuyển về uppercase để so sánh
   const upperStatus = String(status).toUpperCase().trim();
-  
+
   // Map alias về status chính
   const aliasMap = {
-    "PENDING_APPROVAL": CLASS_STATUS.PENDING,
-    "PUBLISHED": CLASS_STATUS.ACTIVE,
-    "OPEN": CLASS_STATUS.ACTIVE,
-    "DONE": CLASS_STATUS.CLOSE,
-    "COMPLETED": CLASS_STATUS.CLOSE,
-    "CLOSED": CLASS_STATUS.CLOSE,
-    "CANCEL": CLASS_STATUS.CANCEL,
-    "CANCELLED": CLASS_STATUS.CANCEL,
+    PUBLISHED: CLASS_STATUS.ACTIVE,
+    OPEN: CLASS_STATUS.ACTIVE,
+    DONE: CLASS_STATUS.CLOSE,
+    COMPLETED: CLASS_STATUS.CLOSE,
+    CLOSED: CLASS_STATUS.CLOSE,
+    CANCEL: CLASS_STATUS.CANCEL,
+    CANCELLED: CLASS_STATUS.CANCEL,
+    // Hỗ trợ backward compatibility cho WAITING và PENDING (chuyển về DRAFT hoặc APPROVED)
+    WAITING: CLASS_STATUS.DRAFT,
+    PENDING: CLASS_STATUS.DRAFT,
+    PENDING_APPROVAL: CLASS_STATUS.DRAFT,
   };
-  
+
   // Kiểm tra trong aliasMap trước
   if (aliasMap[upperStatus]) {
     return aliasMap[upperStatus];
   }
-  
+
   // Nếu là một trong các status chính, trả về trực tiếp
   const validStatuses = [
     CLASS_STATUS.DRAFT,
-    CLASS_STATUS.WAITING,
-    CLASS_STATUS.PENDING,
     CLASS_STATUS.APPROVED,
     CLASS_STATUS.ACTIVE,
     CLASS_STATUS.ON_GOING,
     CLASS_STATUS.CLOSE,
     CLASS_STATUS.CANCEL,
   ];
-  
+
   if (validStatuses.includes(upperStatus)) {
     return upperStatus;
   }
-  
+
   // Fallback: trả về status gốc (uppercase)
   return upperStatus;
 };
@@ -166,28 +152,17 @@ export const normalizeStatus = (status) => {
  */
 export const isAdminStatus = (status) => {
   const normalized = normalizeStatus(status);
-  return [
-    CLASS_STATUS.DRAFT,
-    CLASS_STATUS.WAITING,
-    CLASS_STATUS.PENDING,
-    CLASS_STATUS.APPROVED,
-  ].includes(normalized);
+  return [CLASS_STATUS.DRAFT, CLASS_STATUS.APPROVED].includes(normalized);
 };
 
 export const isPublicStatus = (status) => {
   const normalized = normalizeStatus(status);
-  return [
-    CLASS_STATUS.ACTIVE,
-    CLASS_STATUS.ON_GOING,
-  ].includes(normalized);
+  return [CLASS_STATUS.ACTIVE, CLASS_STATUS.ON_GOING].includes(normalized);
 };
 
 export const isEndStatus = (status) => {
   const normalized = normalizeStatus(status);
-  return [
-    CLASS_STATUS.CLOSE,
-    CLASS_STATUS.CANCEL,
-  ].includes(normalized);
+  return [CLASS_STATUS.CLOSE, CLASS_STATUS.CANCEL].includes(normalized);
 };
 
 /**
@@ -196,42 +171,20 @@ export const isEndStatus = (status) => {
 export const canTransitionTo = (currentStatus, targetStatus) => {
   const current = normalizeStatus(currentStatus);
   const target = normalizeStatus(targetStatus);
-  
+
   // Không thể chuyển từ trạng thái kết thúc
   if (isEndStatus(current)) {
     return false;
   }
-  
+
   // Flow chuyển đổi hợp lệ
   const validTransitions = {
-    [CLASS_STATUS.DRAFT]: [
-      CLASS_STATUS.WAITING,
-      CLASS_STATUS.CANCEL,
-    ],
-    [CLASS_STATUS.WAITING]: [
-      CLASS_STATUS.PENDING,
-      CLASS_STATUS.DRAFT, // Instructor từ chối, trả về DRAFT
-      CLASS_STATUS.CANCEL,
-    ],
-    [CLASS_STATUS.PENDING]: [
-      CLASS_STATUS.APPROVED,
-      CLASS_STATUS.DRAFT, // Admin từ chối, trả về DRAFT
-      CLASS_STATUS.CANCEL,
-    ],
-    [CLASS_STATUS.APPROVED]: [
-      CLASS_STATUS.ACTIVE,
-      CLASS_STATUS.CANCEL,
-    ],
-    [CLASS_STATUS.ACTIVE]: [
-      CLASS_STATUS.ON_GOING,
-      CLASS_STATUS.CANCEL,
-    ],
-    [CLASS_STATUS.ON_GOING]: [
-      CLASS_STATUS.CLOSE,
-      CLASS_STATUS.CANCEL,
-    ],
+    [CLASS_STATUS.DRAFT]: [CLASS_STATUS.APPROVED, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.APPROVED]: [CLASS_STATUS.ACTIVE, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.ACTIVE]: [CLASS_STATUS.ON_GOING, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.ON_GOING]: [CLASS_STATUS.CLOSE, CLASS_STATUS.CANCEL],
   };
-  
+
   return validTransitions[current]?.includes(target) || false;
 };
 
@@ -246,4 +199,3 @@ export default {
   isEndStatus,
   canTransitionTo,
 };
-

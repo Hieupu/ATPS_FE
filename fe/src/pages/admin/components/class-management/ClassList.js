@@ -18,12 +18,16 @@ import {
   CheckCircle,
   Send,
   Publish,
+  ArrowBack,
+  Cancel,
 } from "@mui/icons-material";
 import {
   CLASS_STATUS,
   getStatusInfo,
   normalizeStatus,
 } from "../../../../constants/classStatus";
+import CancelClassDialog from "./CancelClassDialog";
+import classService from "../../../../apiServices/classService";
 import "./ClassList.css";
 
 const ClassList = ({
@@ -32,13 +36,16 @@ const ClassList = ({
   instructors = [], // Thêm instructors để lấy thông tin giảng viên
   onEdit,
   onManageStudents,
-  onSubmitForApproval,
-  onReview,
+  onApprove, // Handler để duyệt class (DRAFT -> APPROVED)
   onPublish,
+  onChangeStatus, // Handler để chuyển trạng thái class
 }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
+  const [classToCancel, setClassToCancel] = useState(null);
 
   const handleMenuOpen = (event, classItem) => {
     setAnchorEl(event.currentTarget);
@@ -52,7 +59,26 @@ const ClassList = ({
 
   const handleEdit = () => {
     if (selectedClass) {
-      onEdit(selectedClass);
+      const classId = selectedClass.ClassID || selectedClass.id;
+      const status = normalizeStatus(
+        selectedClass.Status || selectedClass.status
+      );
+      // Chỉ cho phép chỉnh sửa khi status là DRAFT, còn lại chỉ xem
+      if (status === CLASS_STATUS.DRAFT) {
+        // Cho phép chỉnh sửa - gọi onEdit hoặc navigate
+        if (onEdit) {
+          onEdit(selectedClass);
+        } else {
+          navigate(`/admin/classes/edit/${classId}`, {
+            state: { classData: selectedClass },
+          });
+        }
+      } else {
+        // Chỉ xem - navigate với readonly
+        navigate(`/admin/classes/edit/${classId}`, {
+          state: { readonly: true, classData: selectedClass },
+        });
+      }
     }
     handleMenuClose();
   };
@@ -62,6 +88,62 @@ const ClassList = ({
       onManageStudents(selectedClass);
     }
     handleMenuClose();
+  };
+
+  const handleCancelClass = (classItem) => {
+    setClassToCancel(classItem);
+    setCancelDialogOpen(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    if (!classToCancel) return;
+
+    const classId = classToCancel.ClassID || classToCancel.id;
+    if (!classId) {
+      alert("Không tìm thấy ID lớp học");
+      return;
+    }
+
+    setCancelLoading(true);
+    try {
+      const result = await classService.cancelClass(classId);
+
+      // Hiển thị thông báo thành công
+      const deletedSessions = result?.data?.deletedSessions || 0;
+      const refundRequests = result?.data?.refundRequests || 0;
+      const message =
+        result?.message ||
+        `Hủy lớp thành công. Đã xóa ${deletedSessions} buổi học và tạo ${refundRequests} yêu cầu hoàn tiền.`;
+
+      alert(message);
+
+      // Gọi onChangeStatus để refresh danh sách nếu có
+      if (onChangeStatus) {
+        onChangeStatus(classId, "CANCEL");
+      } else {
+        // Nếu không có onChangeStatus, reload trang
+        window.location.reload();
+      }
+
+      setCancelDialogOpen(false);
+      setClassToCancel(null);
+    } catch (error) {
+      console.error("Error canceling class:", error);
+      const errorMessage =
+        error?.message ||
+        error?.response?.data?.message ||
+        "Có lỗi xảy ra khi hủy lớp học";
+      alert(`Lỗi: ${errorMessage}`);
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
+  const handleCloseCancelDialog = () => {
+    if (!cancelLoading) {
+      setCancelDialogOpen(false);
+      setClassToCancel(null);
+    }
   };
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat("vi-VN", {
@@ -94,15 +176,15 @@ const ClassList = ({
 
   const getStatusLabel = (status) => {
     if (!status) return "Unknown";
-    
+
     const normalized = normalizeStatus(status);
     const statusInfo = getStatusInfo(normalized);
-    
+
     // Nếu có label từ constants, dùng nó
     if (statusInfo && statusInfo.label) {
       return statusInfo.label;
     }
-    
+
     // Fallback cho các status cũ (backward compatibility)
     const statusMap = {
       DRAFT: "Nháp",
@@ -134,8 +216,8 @@ const ClassList = ({
             const className = classItem.Name || classItem.title;
             const classStatus = classItem.Status || classItem.status;
 
-            // Lấy Fee: từ class trước, nếu không có thì lấy từ course
-            const classFee = classItem.Fee || classItem.tuitionFee;
+            // Lấy Fee: từ class trước, nếu không có thì miễn phí
+            const classFee = classItem.Fee || 0;
             const courseId = classItem.CourseID || classItem.courseId;
             const course = courses.find(
               (c) => (c.CourseID || c.id) === courseId
@@ -143,27 +225,31 @@ const ClassList = ({
             const displayFee = classFee || course?.Fee || course?.fee || null;
 
             // Lấy thông tin giảng viên
-            const instructorId = classItem.InstructorID || classItem.instructorId;
+            const instructorId =
+              classItem.InstructorID || classItem.instructorId;
             let instructor = classItem.Instructor;
-            
+
             // Nếu không có Instructor object, tìm từ instructors list
-            if (!instructor && instructorId && instructors && instructors.length > 0) {
+            if (
+              !instructor &&
+              instructorId &&
+              instructors &&
+              instructors.length > 0
+            ) {
               // Thử tìm với cả string và number (tránh type mismatch)
-              instructor = instructors.find(
-                (inst) => {
-                  const instId = inst.InstructorID || inst.id;
-                  // So sánh với nhiều cách để tránh type mismatch
-                  return (
-                    instId === instructorId ||
-                    instId === parseInt(instructorId) ||
-                    parseInt(instId) === instructorId ||
-                    String(instId) === String(instructorId) ||
-                    Number(instId) === Number(instructorId)
-                  );
-                }
-              );
+              instructor = instructors.find((inst) => {
+                const instId = inst.InstructorID || inst.id;
+                // So sánh với nhiều cách để tránh type mismatch
+                return (
+                  instId === instructorId ||
+                  instId === parseInt(instructorId) ||
+                  parseInt(instId) === instructorId ||
+                  String(instId) === String(instructorId) ||
+                  Number(instId) === Number(instructorId)
+                );
+              });
             }
-            
+
             // Fallback nếu vẫn không tìm thấy
             if (!instructor) {
               // Thử lấy từ các trường khác có thể có
@@ -176,7 +262,11 @@ const ClassList = ({
                 console.warn(
                   `Class ${classId} (${className}) has InstructorID ${instructorId} but instructor not found.`,
                   `Available instructors: ${instructors?.length || 0}`,
-                  `Instructor IDs in list: ${instructors?.map(i => i.InstructorID || i.id).join(', ') || 'none'}`
+                  `Instructor IDs in list: ${
+                    instructors
+                      ?.map((i) => i.InstructorID || i.id)
+                      .join(", ") || "none"
+                  }`
                 );
                 instructor = {
                   FullName: "Chưa phân công",
@@ -247,17 +337,28 @@ const ClassList = ({
                         <AccessTime sx={{ fontSize: 16 }} /> Số buổi học:
                       </span>
                       <span className="info-value">
-                        {classItem.Numofsession ||
-                        classItem.ExpectedSessions ||
-                        classItem.expectedSessions ||
-                        classItem.numofsession
-                          ? `${
-                              classItem.Numofsession ||
-                              classItem.numofsession ||
-                              classItem.ExpectedSessions ||
-                              classItem.expectedSessions
-                            } buổi`
-                          : ""}
+                        {(() => {
+                          const totalSessions =
+                            classItem.Numofsession ||
+                            classItem.numofsession ||
+                            classItem.ExpectedSessions ||
+                            classItem.expectedSessions ||
+                            0;
+                          // Lấy số buổi đã tạo (sessions đã có)
+                          // Sessions được load trong ClassesPage và gán vào classItem.Sessions
+                          const createdSessions = Array.isArray(
+                            classItem.Sessions
+                          )
+                            ? classItem.Sessions.length
+                            : Array.isArray(classItem.sessions)
+                            ? classItem.sessions.length
+                            : classItem.createdSessions ||
+                              classItem.sessionCount ||
+                              0;
+                          return totalSessions > 0
+                            ? `${createdSessions}/${totalSessions}`
+                            : "";
+                        })()}
                       </span>
                     </div>
 
@@ -332,9 +433,10 @@ const ClassList = ({
                       </span>
                       <span className="info-value">
                         {classItem.OpendatePlan ||
-                        classItem.StartDate ||
-                        classItem.startDate ||
-                        classItem.opendatePlan || ""}
+                          classItem.StartDate ||
+                          classItem.startDate ||
+                          classItem.opendatePlan ||
+                          ""}
                       </span>
                     </div>
 
@@ -369,9 +471,10 @@ const ClassList = ({
                       </span>
                       <span className="info-value">
                         {classItem.EnddatePlan ||
-                        classItem.EndDate ||
-                        classItem.endDate ||
-                        classItem.enddatePlan || ""}
+                          classItem.EndDate ||
+                          classItem.endDate ||
+                          classItem.enddatePlan ||
+                          ""}
                       </span>
                     </div>
 
@@ -461,48 +564,57 @@ const ClassList = ({
 
                 <div className="class-actions">
                   {/* Workflow Actions based on status */}
-                  {normalizeStatus(classStatus) === CLASS_STATUS.DRAFT && onSubmitForApproval && (
-                    <button
-                      className="btn btn-primary btn-sm"
-                      onClick={() => onSubmitForApproval(classId)}
-                      title="Gửi cho giảng viên chuẩn bị"
-                    >
-                      <Send sx={{ fontSize: 14, mr: 0.5 }} />
-                      Gửi giảng viên
-                    </button>
-                  )}
-
-                  {normalizeStatus(classStatus) === CLASS_STATUS.PENDING_APPROVAL && onReview && (
-                    <>
+                  {normalizeStatus(classStatus) === CLASS_STATUS.DRAFT &&
+                    onApprove && (
                       <button
                         className="btn btn-success btn-sm"
-                        onClick={() => onReview(classId, "APPROVE")}
-                        title="Chấp thuận"
+                        onClick={() => onApprove(classId)}
+                        title="Duyệt lớp học"
                       >
                         <CheckCircle sx={{ fontSize: 14, mr: 0.5 }} />
                         Duyệt
                       </button>
+                    )}
+
+                  {(normalizeStatus(classStatus) === CLASS_STATUS.APPROVED ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE) &&
+                    onChangeStatus && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => onChangeStatus(classId, "DRAFT")}
+                        title="Chuyển sang trạng thái Nháp"
+                      >
+                        <ArrowBack sx={{ fontSize: 14, mr: 0.5 }} />
+                        Chỉnh sửa
+                      </button>
+                    )}
+
+                  {normalizeStatus(classStatus) === CLASS_STATUS.APPROVED &&
+                    onPublish && (
+                      <button
+                        className="btn btn-purple btn-sm"
+                        onClick={() => onPublish(classId)}
+                        title="Xuất bản"
+                      >
+                        <Publish sx={{ fontSize: 14, mr: 0.5 }} />
+                        Xuất bản
+                      </button>
+                    )}
+
+                  {(normalizeStatus(classStatus) === CLASS_STATUS.ON_GOING ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.APPROVED) &&
+                    !(normalizeStatus(classStatus) === CLASS_STATUS.CANCEL) && (
                       <button
                         className="btn btn-danger btn-sm"
-                        onClick={() => onReview(classId, "REJECT")}
-                        title="Từ chối"
+                        onClick={() => handleCancelClass(classItem)}
+                        title="Hủy lớp học"
+                        disabled={cancelLoading}
                       >
-                        <Delete sx={{ fontSize: 14, mr: 0.5 }} />
-                        Từ chối
+                        <Cancel sx={{ fontSize: 14, mr: 0.5 }} />
+                        Hủy lớp
                       </button>
-                    </>
-                  )}
-
-                  {normalizeStatus(classStatus) === CLASS_STATUS.APPROVED && onPublish && (
-                    <button
-                      className="btn btn-purple btn-sm"
-                      onClick={() => onPublish(classId)}
-                      title="Xuất bản"
-                    >
-                      <Publish sx={{ fontSize: 14, mr: 0.5 }} />
-                      Xuất bản
-                    </button>
-                  )}
+                    )}
 
                   {/* Lịch button - always visible */}
                   <button
@@ -535,13 +647,33 @@ const ClassList = ({
           },
         }}
       >
-        <MenuItem onClick={handleEdit}>
-          <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Chỉnh sửa
-        </MenuItem>
-        <MenuItem onClick={handleManageStudents}>
-          <People sx={{ fontSize: 18, mr: 1.5 }} /> Quản lý học viên
-        </MenuItem>
+        {selectedClass && [
+          /* Chỉ hiển thị "Chỉnh sửa" khi status là DRAFT */
+          normalizeStatus(selectedClass.Status || selectedClass.status) ===
+          CLASS_STATUS.DRAFT ? (
+            <MenuItem key="edit" onClick={handleEdit}>
+              <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Chỉnh sửa
+            </MenuItem>
+          ) : (
+            /* Hiển thị "Xem" cho các status khác */
+            <MenuItem key="view" onClick={handleEdit}>
+              <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Xem
+            </MenuItem>
+          ),
+          <MenuItem key="manage-students" onClick={handleManageStudents}>
+            <People sx={{ fontSize: 18, mr: 1.5 }} /> Quản lý học viên
+          </MenuItem>,
+        ]}
       </Menu>
+
+      {/* Cancel Class Dialog */}
+      <CancelClassDialog
+        open={cancelDialogOpen}
+        onClose={handleCloseCancelDialog}
+        onConfirm={handleConfirmCancel}
+        classInfo={classToCancel}
+        loading={cancelLoading}
+      />
     </div>
   );
 };

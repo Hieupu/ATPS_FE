@@ -11,15 +11,22 @@ import ClassesPage from "./pages/admin/pages/ClassesPage";
 import CreateClassPage from "./pages/admin/pages/CreateClassPage";
 import InstructorsPage from "./pages/admin/pages/InstructorsPage";
 import LearnersPage from "./pages/admin/pages/LearnersPage";
+import StaffPage from "./pages/admin/pages/StaffPage";
+import AdminsPage from "./pages/admin/pages/AdminsPage";
 import AdminReportsPage from "./pages/admin/pages/ReportsPage";
 import RevenueReportsPage from "./pages/admin/pages/RevenueReportsPage";
 import LearnerReportsPage from "./pages/admin/pages/LearnerReportsPage";
 import ClassReportsPage from "./pages/admin/pages/ClassReportsPage";
 import StaffReportsPage from "./pages/admin/pages/StaffReportsPage";
 import SchedulePage from "./pages/admin/pages/SchedulePage";
+import InstructorLeavePage from "./pages/admin/pages/InstructorLeavePage";
+import InstructorSchedulePage from "./pages/admin/pages/InstructorSchedulePage";
+import TimeslotManagerPage from "./pages/admin/pages/TimeslotManagerPage";
 import NewsPage from "./pages/admin/pages/NewsPage";
 import AdminCoursesPage from "./pages/admin/pages/CoursesPage";
 import RefundPage from "./pages/admin/pages/RefundPage";
+import PromotionsPage from "./pages/admin/pages/PromotionsPage";
+import EmailTemplatePage from "./pages/admin/pages/EmailTemplatePage";
 import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import LoginPage from "./pages/common/Login/LoginPage";
@@ -78,6 +85,7 @@ function App() {
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="classes" element={<ClassesPage />} />
             <Route path="classes/new" element={<CreateClassPage />} />
+            <Route path="classes/edit/:classId" element={<CreateClassPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
             <Route path="instructors" element={<InstructorsPage />} />
             <Route path="learners" element={<LearnersPage />} />
@@ -88,38 +96,41 @@ function App() {
               element={<SchedulePage />}
             />
             {/* Statistics Routes */}
-            <Route
-              path="statistics/revenue"
-              element={<RevenueReportsPage />}
-            />
+            <Route path="statistics/revenue" element={<RevenueReportsPage />} />
             <Route
               path="statistics/learners"
               element={<LearnerReportsPage />}
             />
-            <Route
-              path="statistics/classes"
-              element={<ClassReportsPage />}
-            />
+            <Route path="statistics/classes" element={<ClassReportsPage />} />
             <Route path="statistics/staff" element={<StaffReportsPage />} />
             {/* User Management Routes */}
             <Route path="users/learners" element={<LearnersPage />} />
             <Route path="users/instructors" element={<InstructorsPage />} />
-            <Route path="users/staff" element={<InstructorsPage />} />
-            <Route path="users/admins" element={<InstructorsPage />} />
+            <Route path="users/staff" element={<StaffPage />} />
+            <Route path="users/admins" element={<AdminsPage />} />
             <Route path="users/create" element={<InstructorsPage />} />
             {/* Class & Schedule Routes */}
             <Route path="schedule" element={<SchedulePage />} />
-            <Route path="instructor-calendar" element={<SchedulePage />} />
-            <Route path="instructor-leave" element={<SchedulePage />} />
+            <Route path="instructor-calendar" element={<InstructorSchedulePage />} />
+            <Route path="instructor-leave" element={<InstructorLeavePage />} />
             {/* Finance Routes */}
-            <Route path="finance/payment-history" element={<AdminReportsPage />} />
+            <Route
+              path="finance/payment-history"
+              element={<AdminReportsPage />}
+            />
             <Route path="finance/refunds" element={<RefundPage />} />
-            <Route path="finance/promotions" element={<AdminReportsPage />} />
+            <Route path="finance/promotions" element={<PromotionsPage />} />
             <Route path="finance/payroll" element={<AdminReportsPage />} />
             {/* System Routes */}
-            <Route path="system/payment-gateways" element={<AdminReportsPage />} />
-            <Route path="system/notification-templates" element={<AdminReportsPage />} />
-            <Route path="system/timeslots" element={<SchedulePage />} />
+            <Route
+              path="system/payment-gateways"
+              element={<AdminReportsPage />}
+            />
+            <Route
+              path="system/notification-templates"
+              element={<EmailTemplatePage />}
+            />
+            <Route path="system/timeslots" element={<TimeslotManagerPage />} />
           </Route>
           {/* Instructor Routes */}
           {/* <Route element={<RequireAuth allowedRoles={["instructor"]} />}> */}

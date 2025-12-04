@@ -18,7 +18,6 @@ import {
   DialogActions,
   TextareaAutosize,
   Menu,
-  MenuItem,
   Paper,
   CircularProgress,
   Alert,
@@ -29,6 +28,11 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Select,
+  FormControl,
+  MenuItem,
+  InputLabel,
+  Snackbar,
 } from "@mui/material";
 import {
   Search,
@@ -40,6 +44,7 @@ import {
   Visibility,
   Edit,
   Delete,
+  ArrowDropDown,
 } from "@mui/icons-material";
 import refundService from "../../../apiServices/refundService";
 import "./style.css";
@@ -50,13 +55,21 @@ export default function RefundPage() {
   const [selectedRefund, setSelectedRefund] = useState(null);
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
   const [openRejectDialog, setOpenRejectDialog] = useState(false);
+  const [openStatusDialog, setOpenStatusDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [newStatus, setNewStatus] = useState("");
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success", // success, error, warning, info
+  });
 
   useEffect(() => {
     loadRefunds();
@@ -69,8 +82,9 @@ export default function RefundPage() {
 
       let status = null;
       if (tabValue === 1) status = "pending";
-      else if (tabValue === 2) status = "completed";
-      else if (tabValue === 3) status = "rejected";
+      else if (tabValue === 2) status = "approved";
+      else if (tabValue === 3) status = "completed";
+      else if (tabValue === 4) status = "rejected";
 
       const params = {
         page,
@@ -82,12 +96,24 @@ export default function RefundPage() {
       const response = await refundService.getAllRefunds(params);
       setRefunds(response.data?.data || response.data || []);
       setTotalPages(
-        response.data?.pagination?.totalPages || response.pagination?.totalPages || 1
+        response.data?.pagination?.totalPages ||
+          response.pagination?.totalPages ||
+          1
       );
+      setError(null);
     } catch (error) {
       console.error("Error loading refunds:", error);
-      setError("Không thể tải danh sách yêu cầu hoàn tiền");
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể tải danh sách yêu cầu hoàn tiền";
+      setError(errorMessage);
       setRefunds([]);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
@@ -108,23 +134,130 @@ export default function RefundPage() {
       await refundService.approveRefund(refund.RefundID);
       handleMenuClose();
       loadRefunds();
+      setError(null);
+      setSnackbar({
+        open: true,
+        message: "Duyệt yêu cầu hoàn tiền thành công",
+        severity: "success",
+      });
     } catch (error) {
       console.error("Error approving refund:", error);
-      setError(error.message || "Không thể duyệt yêu cầu hoàn tiền");
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể duyệt yêu cầu hoàn tiền";
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
     }
   };
 
   const handleReject = async () => {
     try {
-      await refundService.rejectRefund(selectedRefund.RefundID, rejectionReason);
+      await refundService.rejectRefund(
+        selectedRefund.RefundID,
+        rejectionReason
+      );
       setOpenRejectDialog(false);
       setRejectionReason("");
       handleMenuClose();
       loadRefunds();
+      setError(null);
+      setSnackbar({
+        open: true,
+        message: "Từ chối yêu cầu hoàn tiền thành công",
+        severity: "success",
+      });
     } catch (error) {
       console.error("Error rejecting refund:", error);
-      setError(error.message || "Không thể từ chối yêu cầu hoàn tiền");
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể từ chối yêu cầu hoàn tiền";
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
     }
+  };
+
+  const handleComplete = async (refund) => {
+    try {
+      await refundService.completeRefund(refund.RefundID);
+      handleMenuClose();
+      loadRefunds();
+      setError(null);
+      setSnackbar({
+        open: true,
+        message: "Hoàn tiền thành công",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("Error completing refund:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể hoàn tiền";
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    }
+  };
+
+  const handleUpdateStatus = async () => {
+    if (!selectedRefund || !newStatus) return;
+
+    try {
+      setUpdatingStatus(true);
+      await refundService.updateRefund(selectedRefund.RefundID, {
+        Status: newStatus,
+      });
+      setOpenStatusDialog(false);
+      setNewStatus("");
+      handleMenuClose();
+      loadRefunds();
+      setError(null);
+      setSnackbar({
+        open: true,
+        message: "Cập nhật trạng thái thành công",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể cập nhật trạng thái";
+      setError(errorMessage);
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const handleCloseSnackbar = (event, reason) => {
+    if (reason === "clickaway") {
+      return;
+    }
+    setSnackbar({ ...snackbar, open: false });
+  };
+
+  const handleStatusChangeClick = (refund) => {
+    setSelectedRefund(refund);
+    setNewStatus(refund.Status || "");
+    setOpenStatusDialog(true);
   };
 
   const formatCurrency = (amount) => {
@@ -147,6 +280,8 @@ export default function RefundPage() {
     switch (status?.toLowerCase()) {
       case "completed":
         return { bg: "#dcfce7", color: "#16a34a" };
+      case "approved":
+        return { bg: "#dbeafe", color: "#2563eb" };
       case "pending":
         return { bg: "#e0e7ff", color: "#6366f1" };
       case "rejected":
@@ -160,6 +295,8 @@ export default function RefundPage() {
     switch (status?.toLowerCase()) {
       case "completed":
         return "Đã hoàn tiền";
+      case "approved":
+        return "Đã duyệt";
       case "pending":
         return "Chờ xử lý";
       case "rejected":
@@ -173,6 +310,8 @@ export default function RefundPage() {
     switch (status?.toLowerCase()) {
       case "completed":
         return <CheckCircle sx={{ fontSize: 16 }} />;
+      case "approved":
+        return <CheckCircle sx={{ fontSize: 16 }} />;
       case "pending":
         return <HourglassEmpty sx={{ fontSize: 16 }} />;
       case "rejected":
@@ -183,15 +322,31 @@ export default function RefundPage() {
   };
 
   const displayRefunds = refunds;
-  const pendingCount = refunds.filter((r) => r.Status?.toLowerCase() === "pending").length;
-  const completedCount = refunds.filter((r) => r.Status?.toLowerCase() === "completed").length;
-  const rejectedCount = refunds.filter((r) => r.Status?.toLowerCase() === "rejected").length;
+  const pendingCount = refunds.filter(
+    (r) => r.Status?.toLowerCase() === "pending"
+  ).length;
+  const approvedCount = refunds.filter(
+    (r) => r.Status?.toLowerCase() === "approved"
+  ).length;
+  const completedCount = refunds.filter(
+    (r) => r.Status?.toLowerCase() === "completed"
+  ).length;
+  const rejectedCount = refunds.filter(
+    (r) => r.Status?.toLowerCase() === "rejected"
+  ).length;
 
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
               Xử lý Hoàn tiền
@@ -260,6 +415,7 @@ export default function RefundPage() {
         >
           <Tab label={`Tất cả (${refunds.length})`} />
           <Tab label={`Chờ xử lý (${pendingCount})`} />
+          <Tab label={`Đã duyệt (${approvedCount})`} />
           <Tab label={`Đã hoàn tiền (${completedCount})`} />
           <Tab label={`Đã từ chối (${rejectedCount})`} />
         </Tabs>
@@ -279,14 +435,19 @@ export default function RefundPage() {
             backgroundColor: "#fff",
           }}
         >
-          <AccountBalanceWallet sx={{ fontSize: 64, color: "#cbd5e0", mb: 2 }} />
+          <AccountBalanceWallet
+            sx={{ fontSize: 64, color: "#cbd5e0", mb: 2 }}
+          />
           <Typography variant="h6" sx={{ mb: 1, color: "#64748b" }}>
             Không có yêu cầu hoàn tiền nào
           </Typography>
         </Paper>
       ) : (
         <>
-          <TableContainer component={Paper} sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+          <TableContainer
+            component={Paper}
+            sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+          >
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f8fafc" }}>
@@ -347,13 +508,15 @@ export default function RefundPage() {
                       />
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: "flex", gap: 1 }}>
+                      <Box
+                        sx={{ display: "flex", gap: 1, alignItems: "center" }}
+                      >
                         {refund.Status?.toLowerCase() === "pending" && (
                           <>
                             <Button
                               variant="contained"
                               size="small"
-                              startIcon={<CheckCircle />}
+                              
                               onClick={() => handleApprove(refund)}
                               sx={{
                                 textTransform: "none",
@@ -368,7 +531,7 @@ export default function RefundPage() {
                             <Button
                               variant="outlined"
                               size="small"
-                              startIcon={<Cancel />}
+                              
                               onClick={() => {
                                 setSelectedRefund(refund);
                                 setOpenRejectDialog(true);
@@ -383,10 +546,44 @@ export default function RefundPage() {
                                 },
                               }}
                             >
-                              Từ chối
+                              Hủy
                             </Button>
                           </>
                         )}
+                        {refund.Status?.toLowerCase() === "approved" && (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            
+                            onClick={() => handleComplete(refund)}
+                            sx={{
+                              textTransform: "none",
+                              backgroundColor: "#2563eb",
+                              "&:hover": {
+                                backgroundColor: "#1d4ed8",
+                              },
+                            }}
+                          >
+                            Hoàn tiền
+                          </Button>
+                        )}
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          
+                          onClick={() => handleStatusChangeClick(refund)}
+                          sx={{
+                            textTransform: "none",
+                            borderColor: "#6366f1",
+                            color: "#6366f1",
+                            "&:hover": {
+                              borderColor: "#4f46e5",
+                              backgroundColor: "#eef2ff",
+                            },
+                          }}
+                        >
+                          Sửa
+                        </Button>
                         <IconButton
                           size="small"
                           onClick={(e) => {
@@ -433,10 +630,14 @@ export default function RefundPage() {
           sx: { borderRadius: 3 },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Chi tiết yêu cầu hoàn tiền</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Chi tiết yêu cầu hoàn tiền
+        </DialogTitle>
         <DialogContent>
           {selectedRefund && (
-            <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+            <Box
+              sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}
+            >
               <Box>
                 <Typography variant="body2" sx={{ color: "#64748b", mb: 0.5 }}>
                   Mã yêu cầu
@@ -468,8 +669,13 @@ export default function RefundPage() {
                 <Typography variant="body2" sx={{ color: "#64748b", mb: 0.5 }}>
                   Số tiền
                 </Typography>
-                <Typography variant="body1" sx={{ fontWeight: 600, color: "#ef4444" }}>
-                  {formatCurrency(selectedRefund.PaymentAmount || selectedRefund.ClassFee)}
+                <Typography
+                  variant="body1"
+                  sx={{ fontWeight: 600, color: "#ef4444" }}
+                >
+                  {formatCurrency(
+                    selectedRefund.PaymentAmount || selectedRefund.ClassFee
+                  )}
                 </Typography>
               </Box>
               <Box>
@@ -536,7 +742,9 @@ export default function RefundPage() {
           sx: { borderRadius: 3 },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Từ chối yêu cầu hoàn tiền</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Từ chối yêu cầu hoàn tiền
+        </DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 2 }}>
             <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
@@ -583,8 +791,101 @@ export default function RefundPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Update Status Dialog */}
+      <Dialog
+        open={openStatusDialog}
+        onClose={() => {
+          if (!updatingStatus) {
+            setOpenStatusDialog(false);
+            setNewStatus("");
+          }
+        }}
+        PaperProps={{
+          sx: { borderRadius: 3 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Cập nhật trạng thái</DialogTitle>
+        <DialogContent>
+          <Box sx={{ pt: 2, minWidth: 300 }}>
+            {selectedRefund && (
+              <>
+                <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
+                  Mã yêu cầu: #{selectedRefund.RefundID}
+                </Typography>
+                <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
+                  Học viên: {selectedRefund.LearnerName || "N/A"}
+                </Typography>
+                <FormControl fullWidth sx={{ mt: 2 }}>
+                  <InputLabel>Trạng thái</InputLabel>
+                  <Select
+                    value={newStatus}
+                    onChange={(e) => setNewStatus(e.target.value)}
+                    label="Trạng thái"
+                    disabled={updatingStatus}
+                  >
+                    <MenuItem value="pending">Chờ xử lý</MenuItem>
+                    <MenuItem value="approved">Đã duyệt</MenuItem>
+                    <MenuItem value="completed">Đã hoàn tiền</MenuItem>
+                    <MenuItem value="rejected">Đã từ chối</MenuItem>
+                  </Select>
+                </FormControl>
+                <Typography
+                  variant="caption"
+                  sx={{ mt: 2, color: "#64748b", display: "block" }}
+                >
+                  Trạng thái hiện tại: {getStatusLabel(selectedRefund.Status)}
+                </Typography>
+              </>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 2.5 }}>
+          <Button
+            onClick={() => {
+              setOpenStatusDialog(false);
+              setNewStatus("");
+            }}
+            disabled={updatingStatus}
+            sx={{ textTransform: "none", color: "#64748b" }}
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleUpdateStatus}
+            disabled={
+              !newStatus ||
+              updatingStatus ||
+              newStatus === selectedRefund?.Status
+            }
+            startIcon={updatingStatus ? <CircularProgress size={16} /> : null}
+            sx={{
+              textTransform: "none",
+              backgroundColor: "#6366f1",
+              "&:hover": { backgroundColor: "#4f46e5" },
+            }}
+          >
+            {updatingStatus ? "Đang cập nhật..." : "Cập nhật"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Snackbar Notification */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
-
-

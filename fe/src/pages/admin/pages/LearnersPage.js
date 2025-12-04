@@ -37,33 +37,40 @@ import {
   CheckCircle,
   Cancel,
   Class,
-  Book,
   Schedule,
   Phone,
   EmojiEvents,
   TrendingUp,
   Edit,
   Visibility,
-  Delete,
   MoreVert,
 } from "@mui/icons-material";
 import "./style.css";
 import learnerService from "../../../apiServices/learnerService";
 import accountService from "../../../apiServices/accountService";
+import uploadService from "../../../apiServices/uploadService";
+
+// Helper function - dùng chung cho cả LearnersPage và LearnerForm
+const normalizeStatusValue = (status) => {
+  const lower = (status || "active").toLowerCase();
+  if (lower === "banned" || lower === "inactive") return "banned";
+  return lower;
+};
 
 const LearnersPage = () => {
   const [learners, setLearners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [statusInput, setStatusInput] = useState("all");
   const [showLearnerForm, setShowLearnerForm] = useState(false);
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
   const [showClassesDialog, setShowClassesDialog] = useState(false);
-  const [showCoursesDialog, setShowCoursesDialog] = useState(false);
   const [learnerClasses, setLearnerClasses] = useState([]);
-  const [learnerCourses, setLearnerCourses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
 
   useEffect(() => {
     loadLearners();
@@ -76,21 +83,24 @@ const LearnersPage = () => {
       const learnersList = await learnerService.getAllLearners();
       console.log("Đã tải danh sách học viên từ DB:", learnersList.length);
       console.log("Sample learner data:", learnersList[0]);
+      console.log("Sample AccountStatus:", learnersList[0]?.AccountStatus);
 
-      // Map Status từ account nếu có - có thể Status nằm ở account.Status hoặc trực tiếp là Status
-      const mappedLearners = learnersList.map((learner) => ({
-        ...learner,
-        // Status có thể từ account table qua JOIN, hoặc có thể là account.Status
-        Status:
-          learner.Status ||
-          learner.account?.Status ||
-          learner.AccountStatus ||
-          "active",
-        // Đảm bảo Email và Phone có sẵn
-        Email: learner.Email || learner.account?.Email || "",
-        Phone: learner.Phone || learner.account?.Phone || "",
-      }));
+      // Map Status từ account - backend trả về AccountStatus từ JOIN với account table
+      const mappedLearners = learnersList.map((learner) => {
+        const mappedStatus =
+          learner.AccountStatus || learner.Status || "active";
+        return {
+          ...learner,
+          // AccountStatus là trường từ account table qua JOIN
+          Status: mappedStatus,
+          // Đảm bảo Email và Phone có sẵn
+          Email: learner.Email || learner.account?.Email || "",
+          Phone: learner.Phone || learner.account?.Phone || "",
+        };
+      });
 
+      console.log("Mapped learners sample:", mappedLearners[0]);
+      console.log("Mapped Status:", mappedLearners[0]?.Status);
       setLearners(mappedLearners);
     } catch (error) {
       console.error("Lỗi khi tải danh sách học viên:", error);
@@ -112,52 +122,76 @@ const LearnersPage = () => {
     setShowLearnerForm(true);
   };
 
-  const handleDeleteLearner = async (learnerId) => {
-    const confirmed = window.confirm("Bạn có chắc muốn xóa học viên này?");
-    if (confirmed) {
-      try {
-        await learnerService.deleteLearner(learnerId);
-        // Reload danh sách sau khi xóa
-        await loadLearners();
-        alert("Xóa học viên thành công!");
-      } catch (error) {
-        console.error("Lỗi khi xóa học viên:", error);
-        alert("Không thể xóa học viên!");
-      }
-    }
-  };
-
   const handleViewClasses = async (learner) => {
     try {
       setSelectedLearner(learner);
+      setLoadingClasses(true);
+      setShowClassesDialog(true);
+
       // Gọi API để lấy danh sách lớp học của học viên
       const data = await learnerService.getLearnerWithClasses(
         learner.LearnerID
       );
-      // Backend trả về enrollments trong data
-      const classes =
-        data?.enrollments || data?.classes || data?.data?.enrollments || [];
-      setLearnerClasses(classes);
-      setShowClassesDialog(true);
+
+      console.log("[LearnersPage] getLearnerWithClasses response:", data);
+
+      // Backend trả về: { success: true, data: { ...learner, enrollments: [...] } }
+      // Hoặc có thể là: { ...learner, enrollments: [...] }
+      let enrollments = [];
+      if (data?.data?.enrollments) {
+        enrollments = data.data.enrollments;
+      } else if (data?.enrollments) {
+        enrollments = data.enrollments;
+      } else if (data?.classes) {
+        enrollments = data.classes;
+      } else if (Array.isArray(data)) {
+        enrollments = data;
+      } else if (data?.data && Array.isArray(data.data)) {
+        enrollments = data.data;
+      }
+
+      console.log("[LearnersPage] Parsed enrollments:", enrollments);
+
+      // Map dữ liệu từ enrollments để hiển thị thông tin lớp học
+      // Backend enrollmentRepository.findByLearnerId trả về:
+      // - e.* (tất cả trường từ enrollment)
+      // - ClassName, ClassID, ClassStatus, OpendatePlan, Numofsession
+      // - InstructorName
+      // - CourseTitle, CourseDescription, etc.
+      const mappedClasses = enrollments.map((enrollment) => {
+        return {
+          ClassID: enrollment.ClassID || "N/A",
+          Name: enrollment.ClassName || enrollment.Name || "N/A",
+          Instructor:
+            enrollment.InstructorName || enrollment.Instructor || "N/A",
+          Status: enrollment.ClassStatus || enrollment.Status || "N/A",
+          Progress: enrollment.Progress || 0,
+          ExpectedSessions:
+            enrollment.Numofsession || enrollment.ExpectedSessions || 0,
+          StartDate:
+            enrollment.OpendatePlan ||
+            enrollment.Opendate ||
+            enrollment.StartDate ||
+            "N/A",
+          EnrollmentDate: enrollment.EnrollmentDate || "N/A",
+          OrderCode: enrollment.OrderCode || "N/A",
+          CourseTitle: enrollment.CourseTitle || "N/A",
+          ClassFee: enrollment.ClassFee || 0,
+        };
+      });
+
+      setLearnerClasses(mappedClasses);
     } catch (error) {
       console.error("Lỗi khi tải danh sách lớp học:", error);
+      console.error("Error details:", error.response?.data || error.message);
       setLearnerClasses([]);
-      alert("Không thể tải danh sách lớp học từ database!");
-    }
-  };
-
-  const handleViewCourses = async (learner) => {
-    try {
-      setSelectedLearner(learner);
-      // Gọi API để lấy danh sách khóa học của học viên
-      // Có thể cần gọi API riêng hoặc từ enrollment data
-      // Tạm thời để trống, cần API endpoint phù hợp
-      setLearnerCourses([]);
-      setShowCoursesDialog(true);
-    } catch (error) {
-      console.error("Lỗi khi tải danh sách khóa học:", error);
-      setLearnerCourses([]);
-      alert("Không thể tải danh sách khóa học từ database!");
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Không thể tải danh sách lớp học từ database!"
+      );
+    } finally {
+      setLoadingClasses(false);
     }
   };
 
@@ -196,8 +230,13 @@ const LearnersPage = () => {
         const newStatus = formData.Status || "active";
         // Normalize status để so sánh (active vs ACTIVE)
         const normalizedCurrentStatus = currentStatus.toLowerCase();
+        const sanitizedCurrentStatus =
+          normalizedCurrentStatus === "inactive" ||
+          normalizedCurrentStatus === "banned"
+            ? "banned"
+            : normalizedCurrentStatus;
         const normalizedNewStatus = newStatus.toLowerCase();
-        if (normalizedNewStatus !== normalizedCurrentStatus) {
+        if (normalizedNewStatus !== sanitizedCurrentStatus) {
           accountData.Status = formData.Status;
         } else if (Object.keys(accountData).length === 0) {
           // Nếu không có field nào thay đổi nhưng Status vẫn cần được gửi để đảm bảo
@@ -330,31 +369,26 @@ const LearnersPage = () => {
   };
 
   const filteredLearners = learners.filter((learner) => {
-    const name = learner.FullName.toLowerCase();
-    const email = learner.Email.toLowerCase();
+    const name = learner.FullName?.toLowerCase() || "";
+    const email = learner.Email?.toLowerCase() || "";
     const search = searchTerm.toLowerCase();
 
     const matchesSearch = name.includes(search) || email.includes(search);
+    // Status đã được map từ AccountStatus trong loadLearners
+    const statusValue = normalizeStatusValue(learner.Status);
     const matchesStatus =
-      statusFilter === "all" ||
-      learner.Status === statusFilter ||
-      (statusFilter === "active" &&
-        (learner.Status === "active" || learner.Status === "ACTIVE")) ||
-      (statusFilter === "inactive" &&
-        (learner.Status === "inactive" || learner.Status === "INACTIVE"));
+      statusFilter === "all" || statusValue === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   const stats = {
     total: learners.length,
-    active: learners.filter(
-      (l) => l.Status === "active" || l.Status === "ACTIVE"
-    ).length,
-    inactive: learners.filter(
-      (l) => l.Status === "inactive" || l.Status === "INACTIVE"
-    ).length,
-    // totalEnrolled, totalCompleted: computed từ enrollment, không có trong DB nên xóa
+    // Status đã được map từ AccountStatus trong loadLearners
+    active: learners.filter((l) => normalizeStatusValue(l.Status) === "active")
+      .length,
+    banned: learners.filter((l) => normalizeStatusValue(l.Status) === "banned")
+      .length,
   };
 
   const statCards = [
@@ -373,8 +407,8 @@ const LearnersPage = () => {
       bgColor: "#f0fdf4",
     },
     {
-      label: "Không hoạt động",
-      value: stats.inactive || 0,
+      label: "Bị khóa",
+      value: stats.banned || 0,
       icon: <Cancel sx={{ fontSize: 32 }} />,
       color: "#ef4444",
       bgColor: "#fef2f2",
@@ -415,30 +449,12 @@ const LearnersPage = () => {
         >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              Learner Management
+              Quản lý học
             </Typography>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Manage learner information and learning progress
+              Quản lý thông tin học viên
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAddLearner}
-            sx={{
-              backgroundColor: "#667eea",
-              textTransform: "none",
-              px: 3,
-              py: 1.5,
-              borderRadius: 2,
-              fontWeight: 600,
-              "&:hover": {
-                backgroundColor: "#5568d3",
-              },
-            }}
-          >
-            Add Learner
-          </Button>
         </Box>
 
         {/* Stats */}
@@ -491,12 +507,19 @@ const LearnersPage = () => {
         </Grid>
 
         {/* Search and Filter */}
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: { xs: "stretch", md: "center" },
+          }}
+        >
           <TextField
-            placeholder="Search learners..."
+            placeholder="Tra cứu học viên..."
             size="small"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             sx={{
               flex: 1,
               maxWidth: 400,
@@ -516,19 +539,45 @@ const LearnersPage = () => {
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Status</InputLabel>
             <Select
-              value={statusFilter}
+              value={statusInput}
               label="Status"
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => setStatusInput(e.target.value)}
               sx={{
                 borderRadius: 2,
                 backgroundColor: "#fff",
               }}
             >
-              <MenuItem value="all">All Status</MenuItem>
-              <MenuItem value="active">Active</MenuItem>
-              <MenuItem value="inactive">Inactive</MenuItem>
+              <MenuItem value="all">Tất cả</MenuItem>
+              <MenuItem value="active">Hoạt động</MenuItem>
+              <MenuItem value="banned">Bị khóa</MenuItem>
             </Select>
           </FormControl>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => {
+                setSearchTerm(searchInput.trim());
+                setStatusFilter(statusInput);
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              Lọc
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setSearchInput("");
+                setStatusInput("all");
+                setSearchTerm("");
+                setStatusFilter("all");
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              Xóa lọc
+            </Button>
+          </Stack>
         </Box>
       </Box>
 
@@ -637,25 +686,23 @@ const LearnersPage = () => {
                   <TableCell>{learner.Job || "N/A"}</TableCell>
                   <TableCell>{learner.Address || "N/A"}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={
-                        learner.Status === "active" ||
-                        learner.Status === "ACTIVE"
-                          ? "Hoạt động"
-                          : "Không hoạt động"
-                      }
-                      size="small"
-                      sx={{
-                        backgroundColor:
-                          learner.Status === "active" ||
-                          learner.Status === "ACTIVE"
-                            ? "#10b981"
-                            : "#94a3b8",
-                        color: "white",
-                        fontWeight: 600,
-                        fontSize: "11px",
-                      }}
-                    />
+                    {(() => {
+                      // Status đã được map từ AccountStatus trong loadLearners
+                      const statusValue = normalizeStatusValue(learner.Status);
+                      const isActive = statusValue === "active";
+                      return (
+                        <Chip
+                          label={isActive ? "Hoạt động" : "Bị khóa"}
+                          size="small"
+                          sx={{
+                            backgroundColor: isActive ? "#10b981" : "#ef4444",
+                            color: "white",
+                            fontWeight: 600,
+                            fontSize: "11px",
+                          }}
+                        />
+                      );
+                    })()}
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
@@ -708,29 +755,6 @@ const LearnersPage = () => {
           <Class sx={{ fontSize: 18, mr: 1.5 }} />
           Lớp học
         </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (selectedRow) {
-              handleViewCourses(selectedRow);
-            }
-            setAnchorEl(null);
-          }}
-        >
-          <Book sx={{ fontSize: 18, mr: 1.5 }} />
-          Khóa học
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (selectedRow) {
-              handleDeleteLearner(selectedRow.LearnerID);
-            }
-            setAnchorEl(null);
-          }}
-          sx={{ color: "error.main" }}
-        >
-          <Delete sx={{ fontSize: 18, mr: 1.5 }} />
-          Xóa
-        </MenuItem>
       </Menu>
 
       {/* Classes Dialog */}
@@ -759,7 +783,11 @@ const LearnersPage = () => {
           </Box>
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
-          {learnerClasses.length === 0 ? (
+          {loadingClasses ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : learnerClasses.length === 0 ? (
             <Box sx={{ textAlign: "center", py: 4 }}>
               <Class sx={{ fontSize: 64, color: "#94a3b8", mb: 2 }} />
               <Typography variant="body1" sx={{ color: "#64748b" }}>
@@ -868,141 +896,6 @@ const LearnersPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Courses Dialog */}
-      <Dialog
-        open={showCoursesDialog}
-        onClose={() => setShowCoursesDialog(false)}
-        maxWidth="md"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <Book sx={{ color: "#667eea" }} />
-            <Box>
-              <Typography variant="h6">Khóa học đang tham gia</Typography>
-              <Typography variant="body2" sx={{ color: "#64748b" }}>
-                {selectedLearner?.FullName} - Tổng: {learnerCourses.length} khóa
-                học
-              </Typography>
-            </Box>
-          </Box>
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          {learnerCourses.length === 0 ? (
-            <Box sx={{ textAlign: "center", py: 4 }}>
-              <Book sx={{ fontSize: 64, color: "#94a3b8", mb: 2 }} />
-              <Typography variant="body1" sx={{ color: "#64748b" }}>
-                Học viên này chưa tham gia khóa học nào
-              </Typography>
-            </Box>
-          ) : (
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ backgroundColor: "#f8fafc" }}>
-                    <TableCell sx={{ fontWeight: 700 }}>Tên khóa học</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Mô tả</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>
-                      Thời lượng (tuần)
-                    </TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Học phí</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Trạng thái</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Tiến độ</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Ngày đăng ký</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {learnerCourses.map((course) => (
-                    <TableRow key={course.CourseID}>
-                      <TableCell sx={{ fontWeight: 600 }}>
-                        {course.Title}
-                      </TableCell>
-                      <TableCell>{course.Description}</TableCell>
-                      <TableCell>{course.Duration} tuần</TableCell>
-                      <TableCell>
-                        {course.Fee
-                          ? new Intl.NumberFormat("vi-VN", {
-                              style: "currency",
-                              currency: "VND",
-                            }).format(course.Fee)
-                          : "Miễn phí"}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={
-                            course.Status === "active"
-                              ? "Hoạt động"
-                              : "Không hoạt động"
-                          }
-                          size="small"
-                          sx={{
-                            backgroundColor:
-                              course.Status === "active"
-                                ? "#10b981"
-                                : "#94a3b8",
-                            color: "white",
-                            fontWeight: 600,
-                            fontSize: "11px",
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Box
-                            sx={{
-                              width: 80,
-                              height: 8,
-                              backgroundColor: "#e2e8f0",
-                              borderRadius: 1,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: `${course.Progress || 0}%`,
-                                height: "100%",
-                                backgroundColor: "#667eea",
-                              }}
-                            />
-                          </Box>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "#64748b" }}
-                          >
-                            {course.Progress || 0}%
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>{course.EnrolledDate}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
-          <Button
-            onClick={() => setShowCoursesDialog(false)}
-            sx={{
-              textTransform: "none",
-              color: "#64748b",
-            }}
-          >
-            Đóng
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Learner Form Modal */}
       {showLearnerForm && (
         <LearnerForm
@@ -1033,6 +926,10 @@ const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
 
   useEffect(() => {
     if (learnerData) {
+      // Status đã được map từ AccountStatus trong loadLearners
+      const normalizedStatus = normalizeStatusValue(learnerData.Status);
+      console.log("[LearnerForm] learnerData.Status:", learnerData.Status);
+      console.log("[LearnerForm] normalizedStatus:", normalizedStatus);
       setFormData({
         FullName: learnerData.FullName || "",
         Email: learnerData.Email || "",
@@ -1042,7 +939,7 @@ const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
         Address: learnerData.Address || "",
         DateOfBirth: learnerData.DateOfBirth || "",
         ProfilePicture: learnerData.ProfilePicture || "",
-        Status: learnerData.Status || "active",
+        Status: normalizedStatus === "banned" ? "banned" : "active",
       });
     } else {
       // Reset form when creating new
@@ -1232,16 +1129,72 @@ const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="ProfilePicture">Ảnh đại diện (URL)</label>
-              <input
-                type="text"
-                id="ProfilePicture"
-                value={formData.ProfilePicture || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, ProfilePicture: e.target.value })
-                }
-                placeholder="https://example.com/avatar.jpg"
-              />
+              <label htmlFor="ProfilePicture">Ảnh đại diện</label>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {formData.ProfilePicture && (
+                  <div style={{ marginBottom: "10px" }}>
+                    <img
+                      src={formData.ProfilePicture}
+                      alt="Avatar preview"
+                      style={{
+                        width: "150px",
+                        height: "150px",
+                        objectFit: "cover",
+                        borderRadius: "8px",
+                        border: "1px solid #ddd",
+                      }}
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="learnerAvatarFile"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      const loadingMsg = document.createElement("div");
+                      loadingMsg.textContent = "Đang tải ảnh lên...";
+                      loadingMsg.style.cssText =
+                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
+                      document.body.appendChild(loadingMsg);
+
+                      try {
+                        const result = await uploadService.uploadAvatar(file);
+                        setFormData({
+                          ...formData,
+                          ProfilePicture: result.url || result.data?.url,
+                        });
+                        document.body.removeChild(loadingMsg);
+                        alert("Tải ảnh thành công!");
+                      } catch (error) {
+                        if (document.body.contains(loadingMsg)) {
+                          document.body.removeChild(loadingMsg);
+                        }
+                        alert(
+                          error?.message || "Lỗi khi tải ảnh. Vui lòng thử lại."
+                        );
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  component="label"
+                  htmlFor="learnerAvatarFile"
+                  size="small"
+                  fullWidth
+                >
+                  Chọn ảnh đại diện
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -1255,8 +1208,6 @@ const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
               }
             >
               <option value="active">Hoạt động</option>
-              <option value="inactive">Không hoạt động</option>
-              <option value="pending">Chờ kích hoạt</option>
               <option value="banned">Bị khóa</option>
             </select>
           </div>

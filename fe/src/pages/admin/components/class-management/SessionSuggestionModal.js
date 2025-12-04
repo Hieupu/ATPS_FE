@@ -77,6 +77,7 @@ const SessionSuggestionModal = ({
                 <ListItemText
                   primary={
                     <Box
+                      component="div"
                       sx={{
                         display: "flex",
                         justifyContent: "space-between",
@@ -86,7 +87,9 @@ const SessionSuggestionModal = ({
                     >
                       <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                         Buổi {conflict.sessionIndex}:{" "}
-                        {conflict.conflictInfo?.sessionTitle || "Chưa đặt tên"}
+                        {conflict.conflictInfo?.sessionTitle ||
+                          conflict.sessionData?.Title ||
+                          "Chưa đặt tên"}
                       </Typography>
                       <Chip
                         label={
@@ -100,11 +103,18 @@ const SessionSuggestionModal = ({
                     </Box>
                   }
                   secondary={
-                    <Box sx={{ mt: 0.5 }}>
+                    <Box sx={{ mt: 0.5 }} component="div">
                       <Typography variant="body2" sx={{ color: "#475569" }}>
-                        Buổi gốc: {conflict.conflictInfo?.date || "N/A"} |{" "}
-                        {conflict.conflictInfo?.startTime || "??"} -{" "}
-                        {conflict.conflictInfo?.endTime || "??"}
+                        Buổi gốc:{" "}
+                        {conflict.conflictInfo?.date ||
+                          conflict.sessionData?.Date ||
+                          "N/A"}{" "}
+                        |{" "}
+                        {conflict.conflictInfo?.startTime
+                          ? `${conflict.conflictInfo.startTime} - ${conflict.conflictInfo.endTime || "??"}`
+                          : conflict.sessionData?.TimeslotStart
+                          ? `${conflict.sessionData.TimeslotStart} - ${conflict.sessionData.TimeslotEnd || "??"}`
+                          : "?? - ??"}
                       </Typography>
                       {suggestion ? (
                         <Typography
@@ -126,6 +136,7 @@ const SessionSuggestionModal = ({
                       )}
                     </Box>
                   }
+                  secondaryTypographyProps={{ component: "div" }}
                 />
               </ListItem>
             );

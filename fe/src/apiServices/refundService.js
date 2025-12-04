@@ -13,7 +13,9 @@ const refundService = {
       if (status) queryParams.append("status", status);
       if (search) queryParams.append("search", search);
 
-      const response = await apiClient.get(`/refunds?${queryParams.toString()}`);
+      const response = await apiClient.get(
+        `/refunds?${queryParams.toString()}`
+      );
       return response.data;
     } catch (error) {
       console.error("Get all refunds error:", error);
@@ -72,7 +74,9 @@ const refundService = {
       return response.data;
     } catch (error) {
       console.error("Get refunds by status error:", error);
-      throw error.response?.data || { message: "Failed to get refunds by status" };
+      throw (
+        error.response?.data || { message: "Failed to get refunds by status" }
+      );
     }
   },
 
@@ -99,8 +103,17 @@ const refundService = {
       throw error.response?.data || { message: "Failed to reject refund" };
     }
   },
+
+  // Hoàn tiền (approved -> completed)
+  completeRefund: async (refundId) => {
+    try {
+      const response = await apiClient.post(`/refunds/${refundId}/complete`);
+      return response.data;
+    } catch (error) {
+      console.error("Complete refund error:", error);
+      throw error.response?.data || { message: "Failed to complete refund" };
+    }
+  },
 };
 
 export default refundService;
-
-

@@ -69,6 +69,7 @@ const ClassesPage = () => {
   const [dateFilterType, setDateFilterType] = useState("opendate"); // "opendate" or "daterange"
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
+  const [openingSoonDays, setOpeningSoonDays] = useState(5); // Số ngày cho "Sắp tới hạn mở lớp" (mặc định 5 ngày)
 
   // Load data
   useEffect(() => {
@@ -86,13 +87,13 @@ const ClassesPage = () => {
         instructorsData,
         learnersData,
         coursesData,
-        timeslotsData,
+        timeslotResponse,
       ] = await Promise.all([
         classService.getAllClasses(),
         classService.getAllInstructors(),
         classService.getAllLearners(),
         classService.getAllCourses(),
-        classService.getAllTimeslots(),
+        classService.getAllTimeslots({ limit: 500 }),
       ]);
 
       // Đảm bảo dữ liệu là array
@@ -121,7 +122,9 @@ const ClassesPage = () => {
       }
 
       // Cảnh báo nếu không có timeslots (có thể do backend lỗi)
-      const timeslotsArray = Array.isArray(timeslotsData) ? timeslotsData : [];
+      const timeslotsArray = Array.isArray(timeslotResponse?.data)
+        ? timeslotResponse.data
+        : [];
       if (timeslotsArray.length === 0) {
         console.warn("Không tải được danh sách ca học. Có thể do:");
         console.warn("1. Backend chưa hỗ trợ trường 'Day' mới trong timeslot");
@@ -230,7 +233,7 @@ const ClassesPage = () => {
       setInstructors(Array.isArray(instructorsData) ? instructorsData : []);
       setLearners(Array.isArray(learnersData) ? learnersData : []);
       setCourses(Array.isArray(coursesData) ? coursesData : []);
-      setTimeslots(Array.isArray(timeslotsData) ? timeslotsData : []);
+      setTimeslots(timeslotsArray);
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
       console.error("Error details:", error.response?.data || error.message);
@@ -253,9 +256,17 @@ const ClassesPage = () => {
   };
 
   const handleEditClass = (classItem) => {
-    setSelectedClass(classItem);
-    setShowClassForm(true);
-    setShowClassWizard(false);
+    const status = normalizeStatus(classItem.Status || classItem.status);
+    // Chỉ cho phép chỉnh sửa khi status là DRAFT, còn lại chỉ xem
+    if (status === CLASS_STATUS.DRAFT) {
+      // Cho phép chỉnh sửa - navigate đến edit page
+      navigate(`/admin/classes/edit/${classItem.ClassID || classItem.id}`);
+    } else {
+      // Chỉ xem - navigate đến edit page với mode readonly
+      navigate(`/admin/classes/edit/${classItem.ClassID || classItem.id}`, {
+        state: { readonly: true },
+      });
+    }
   };
 
   const handleManageStudents = (classItem) => {
@@ -442,22 +453,6 @@ const ClassesPage = () => {
     }
   };
 
-  const handleSubmitForApproval = async (classId) => {
-    const confirmed = window.confirm(
-      " Bạn có chắc muốn gửi lớp học cho giảng viên chuẩn bị?"
-    );
-    if (confirmed) {
-      try {
-        await classService.submitForApproval(classId);
-        alert(" Đã gửi lớp học cho giảng viên chuẩn bị!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi gửi lớp:", error);
-        alert(" Không thể gửi lớp học. Vui lòng thử lại!");
-      }
-    }
-  };
-
   const handleReviewClass = async (classId, action) => {
     if (action === "REJECT") {
       const feedback = window.prompt("Nhập lý do từ chối:");
@@ -486,6 +481,49 @@ const ClassesPage = () => {
           console.error("Lỗi khi chấp thuận lớp:", error);
           alert(" Không thể chấp thuận lớp học. Vui lòng thử lại!");
         }
+      }
+    }
+  };
+
+  const handleApproveClass = async (classId) => {
+    const confirmed = window.confirm(
+      "✅ Bạn có chắc muốn duyệt lớp học này? Lớp sẽ chuyển sang trạng thái 'Đã duyệt'."
+    );
+    if (confirmed) {
+      try {
+        await classService.approveClass(classId);
+        alert(" Đã duyệt lớp học thành công!");
+        await loadData();
+      } catch (error) {
+        console.error("Lỗi khi duyệt lớp:", error);
+        alert(" Không thể duyệt lớp học. Vui lòng thử lại!");
+      }
+    }
+  };
+
+  const handleChangeStatus = async (classId, newStatus) => {
+    let confirmMessage = "";
+    let successMessage = "";
+
+    if (newStatus === "DRAFT") {
+      confirmMessage =
+        "⚠️ Bạn có chắc muốn chuyển lớp học này về trạng thái 'Nháp'?";
+      successMessage = "Đã chuyển lớp học về trạng thái 'Nháp' thành công!";
+    } else if (newStatus === "CANCEL") {
+      confirmMessage = "⚠️ Bạn có chắc muốn hủy lớp học này?";
+      successMessage = "Đã hủy lớp học thành công!";
+    }
+
+    const confirmed = window.confirm(confirmMessage);
+    if (confirmed) {
+      try {
+        // Dùng updateClass để cập nhật Status
+        await classService.updateClass(classId, { Status: newStatus });
+        alert(` ${successMessage}`);
+        await loadData();
+      } catch (error) {
+        console.error(`Lỗi khi chuyển trạng thái lớp:`, error);
+        alert(" Không thể chuyển trạng thái lớp học. Vui lòng thử lại!");
       }
     }
   };
@@ -607,27 +645,46 @@ const ClassesPage = () => {
     return true;
   });
 
-  // Helper function: Check if class is opening soon (within 5 days)
-  // Chỉ lấy các lớp có status ACTIVE (đang tuyển sinh)
-  const isOpeningSoon = (classItem) => {
-    // Chỉ lấy lớp có status ACTIVE
+  // Helper function: Check if class is opening soon (within specified days)
+  // Theo schema dbver6.md:
+  // - Status phải là 'APPROVED' hoặc 'ACTIVE' (đã được duyệt, sắp mở)
+  // - OpendatePlan sắp đến (trong vòng X ngày từ hôm nay)
+  // - Opendate chưa được set (NULL) - nghĩa là chưa mở lớp thực tế
+  const isOpeningSoon = (classItem, days = openingSoonDays) => {
     const status = normalizeStatus(classItem.Status || classItem.status);
-    if (status !== CLASS_STATUS.ACTIVE) return false;
 
-    const opendatePlan = classItem.OpendatePlan;
+    // Chỉ lấy lớp có status APPROVED hoặc ACTIVE (đã được duyệt, sắp mở)
+    if (status !== CLASS_STATUS.APPROVED && status !== CLASS_STATUS.ACTIVE) {
+      return false;
+    }
+
+    // OpendatePlan là bắt buộc (NOT NULL trong schema)
+    const opendatePlan = classItem.OpendatePlan || classItem.OpendatePlan;
     if (!opendatePlan) return false;
 
+    // Opendate chưa được set (NULL) - nghĩa là chưa mở lớp thực tế
+    const opendate = classItem.Opendate || classItem.Opendate;
+    if (opendate) {
+      // Nếu đã có Opendate (đã mở lớp) thì không tính là "sắp tới hạn"
+      return false;
+    }
+
+    // Tính số ngày từ hôm nay đến OpendatePlan
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const opendate = new Date(opendatePlan);
-    opendate.setHours(0, 0, 0, 0);
+    const opendatePlanDate = new Date(opendatePlan);
+    opendatePlanDate.setHours(0, 0, 0, 0);
 
     // Calculate days difference
-    const daysDiff = Math.ceil((opendate - today) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.ceil(
+      (opendatePlanDate - today) / (1000 * 60 * 60 * 24)
+    );
 
-    // Return true if opendate is within 5 days (0 to 5 days from today)
-    return daysDiff >= 0 && daysDiff <= 5;
+    // Return true if opendatePlan is within specified days (0 to days from today)
+    // daysDiff >= 0: OpendatePlan chưa qua (hoặc là hôm nay)
+    // daysDiff <= days: OpendatePlan trong vòng X ngày tới
+    return daysDiff >= 0 && daysDiff <= days;
   };
 
   // Filter by status tab
@@ -635,43 +692,34 @@ const ClassesPage = () => {
     switch (tabValue) {
       case 0: // All
         return searchFilteredClasses;
-      case 1: // DRAFT
+      case 1: // Opening Soon - di chuyển lên trên (sau tab "Tất cả")
+        return searchFilteredClasses.filter((c) =>
+          isOpeningSoon(c, openingSoonDays)
+        );
+      case 2: // DRAFT
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.DRAFT
         );
-      case 2: // WAITING
-        return searchFilteredClasses.filter(
-          (c) =>
-            normalizeStatus(c.Status || c.status) === CLASS_STATUS.WAITING
-        );
-      case 3: // PENDING
-        return searchFilteredClasses.filter(
-          (c) =>
-            normalizeStatus(c.Status || c.status) === CLASS_STATUS.PENDING
-        );
-      case 4: // APPROVED
+      case 3: // APPROVED
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.APPROVED
         );
-      case 5: // ACTIVE
+      case 4: // ACTIVE
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.ACTIVE
         );
-      case 6: // ON_GOING
+      case 5: // ON_GOING
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.ON_GOING
         );
-      case 7: // CLOSE
+      case 6: // CLOSE
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.CLOSE
         );
-      case 8: // CANCEL
+      case 7: // CANCEL
         return searchFilteredClasses.filter(
-          (c) =>
-            normalizeStatus(c.Status || c.status) === CLASS_STATUS.CANCEL
+          (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.CANCEL
         );
-      case 9: // Opening Soon (within 5 days)
-        return searchFilteredClasses.filter((c) => isOpeningSoon(c));
       default:
         return searchFilteredClasses;
     }
@@ -684,12 +732,6 @@ const ClassesPage = () => {
     total: classes.length,
     draft: classes.filter(
       (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.DRAFT
-    ).length,
-    waiting: classes.filter(
-      (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.WAITING
-    ).length,
-    pending: classes.filter(
-      (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.PENDING
     ).length,
     approved: classes.filter(
       (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.APPROVED
@@ -722,20 +764,6 @@ const ClassesPage = () => {
       icon: <EditNote sx={{ fontSize: 32 }} />,
       color: "#f59e0b",
       bgColor: "#fffbeb",
-    },
-    {
-      label: "Chờ giảng viên",
-      value: stats.waiting,
-      icon: <HourglassEmpty sx={{ fontSize: 32 }} />,
-      color: "#06b6d4",
-      bgColor: "#f0fdfa",
-    },
-    {
-      label: "Chờ duyệt",
-      value: stats.pending,
-      icon: <HourglassEmpty sx={{ fontSize: 32 }} />,
-      color: "#3b82f6",
-      bgColor: "#eff6ff",
     },
     {
       label: "Đã duyệt",
@@ -788,15 +816,14 @@ const ClassesPage = () => {
         >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              Class Management
+              Quản lý lớp học
             </Typography>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Manage classes, schedules, and students
+              Quản lý lớp học, lịch lớp học
             </Typography>
           </Box>
           <Button
             variant="contained"
-            startIcon={<Add />}
             onClick={handleAddClass}
             sx={{
               backgroundColor: "#667eea",
@@ -810,7 +837,7 @@ const ClassesPage = () => {
               },
             }}
           >
-            Create New Class
+            Tạo lớp
           </Button>
         </Box>
 
@@ -1091,28 +1118,19 @@ const ClassesPage = () => {
         >
           <Tab label={`Tất cả (${searchFilteredClasses.length})`} />
           <Tab
+            label={`Sắp tới hạn mở lớp (${
+              searchFilteredClasses.filter((c) =>
+                isOpeningSoon(c, openingSoonDays)
+              ).length
+            })`}
+            icon={<Event sx={{ fontSize: 18 }} />}
+            iconPosition="start"
+          />
+          <Tab
             label={`Nháp (${
               searchFilteredClasses.filter(
                 (c) =>
                   normalizeStatus(c.Status || c.status) === CLASS_STATUS.DRAFT
-              ).length
-            })`}
-          />
-          <Tab
-            label={`Chờ giảng viên (${
-              searchFilteredClasses.filter(
-                (c) =>
-                  normalizeStatus(c.Status || c.status) ===
-                  CLASS_STATUS.WAITING
-              ).length
-            })`}
-          />
-          <Tab
-            label={`Chờ duyệt (${
-              searchFilteredClasses.filter(
-                (c) =>
-                  normalizeStatus(c.Status || c.status) ===
-                  CLASS_STATUS.PENDING
               ).length
             })`}
           />
@@ -1154,19 +1172,56 @@ const ClassesPage = () => {
             label={`Đã hủy (${
               searchFilteredClasses.filter(
                 (c) =>
-                  normalizeStatus(c.Status || c.status) ===
-                  CLASS_STATUS.CANCEL
+                  normalizeStatus(c.Status || c.status) === CLASS_STATUS.CANCEL
               ).length
             })`}
           />
-          <Tab
-            label={`Sắp tới hạn mở lớp (${
-              searchFilteredClasses.filter((c) => isOpeningSoon(c)).length
-            })`}
-            icon={<Event sx={{ fontSize: 18 }} />}
-            iconPosition="start"
-          />
         </Tabs>
+
+        {/* Filter options cho "Sắp tới hạn mở lớp" */}
+        {tabValue === 1 && (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              px: 2,
+              py: 1.5,
+              backgroundColor: "#f8fafc",
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            <Typography
+              variant="body2"
+              sx={{ color: "#64748b", fontWeight: 500 }}
+            >
+              Ngày đến hạn:
+            </Typography>
+            <FormControl component="fieldset" size="small">
+              <RadioGroup
+                row
+                value={openingSoonDays.toString()}
+                onChange={(e) => setOpeningSoonDays(parseInt(e.target.value))}
+              >
+                <FormControlLabel
+                  value="3"
+                  control={<Radio size="small" />}
+                  label="3 ngày"
+                />
+                <FormControlLabel
+                  value="5"
+                  control={<Radio size="small" />}
+                  label="5 ngày"
+                />
+                <FormControlLabel
+                  value="10"
+                  control={<Radio size="small" />}
+                  label="10 ngày"
+                />
+              </RadioGroup>
+            </FormControl>
+          </Box>
+        )}
       </Box>
 
       {/* Class List */}
@@ -1201,9 +1256,9 @@ const ClassesPage = () => {
             instructors={instructors}
             onEdit={handleEditClass}
             onManageStudents={handleManageStudents}
-            onSubmitForApproval={handleSubmitForApproval}
-            onReview={handleReviewClass}
+            onApprove={handleApproveClass}
             onPublish={handlePublishClass}
+            onChangeStatus={handleChangeStatus}
           />
         </Box>
       )}

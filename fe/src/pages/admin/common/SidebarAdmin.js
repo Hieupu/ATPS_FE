@@ -11,7 +11,6 @@ import {
   LocalOffer as LocalOfferIcon,
   AccountBalanceWallet as AccountBalanceWalletIcon,
   Receipt as ReceiptIcon,
-  CalendarToday as CalendarTodayIcon,
   EventBusy as EventBusyIcon,
   Settings as SettingsIcon,
   Payment as PaymentIcon,
@@ -97,10 +96,23 @@ const menuItems = [
         path: "/admin/users/learners",
       },
       {
-        id: "instructors",
+        id: "instructor-management",
         label: "Quản lý giảng viên",
         icon: <PeopleIcon />,
-        path: "/admin/users/instructors",
+        children: [
+          {
+            id: "instructor-accounts",
+            label: "Quản lý tài khoản giảng viên",
+            icon: <PeopleIcon />,
+            path: "/admin/users/instructors",
+          },
+          {
+            id: "instructor-leave",
+            label: "Quản lý lịch nghỉ và tự chọn",
+            icon: <EventBusyIcon />,
+            path: "/admin/instructor-leave",
+          },
+        ],
       },
       {
         id: "staff",
@@ -127,18 +139,6 @@ const menuItems = [
         label: "Quản lý lớp học",
         icon: <ClassIcon />,
         path: "/admin/classes",
-      },
-      {
-        id: "instructor-calendar",
-        label: "Lịch giảng viên",
-        icon: <CalendarTodayIcon />,
-        path: "/admin/instructor-calendar",
-      },
-      {
-        id: "instructor-leave",
-        label: "Lịch nghỉ giảng viên",
-        icon: <EventBusyIcon />,
-        path: "/admin/instructor-leave",
       },
     ],
   },
@@ -212,21 +212,34 @@ const menuItems = [
 export function SidebarAdmin() {
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [expandedSubMenus, setExpandedSubMenus] = useState({});
 
   // Auto-expand menu if child is active
   useEffect(() => {
     const activeMenus = {};
+    const activeSubMenus = {};
+
     menuItems.forEach((item) => {
       if (item.type === "dropdown" && item.children) {
-        const hasActiveChild = item.children.some(
-          (child) => location.pathname === child.path
-        );
+        const hasActiveChild = item.children.some((child) => {
+          if (child.children && child.children.length > 0) {
+            const hasActiveGrandchild = child.children.some(
+              (grandchild) => location.pathname === grandchild.path
+            );
+            if (hasActiveGrandchild) {
+              activeSubMenus[child.id] = true;
+            }
+            return hasActiveGrandchild;
+          }
+          return location.pathname === child.path;
+        });
         if (hasActiveChild) {
           activeMenus[item.id] = true;
         }
       }
     });
     setExpandedMenus(activeMenus);
+    setExpandedSubMenus((prev) => ({ ...prev, ...activeSubMenus }));
   }, [location.pathname]);
 
   const toggleMenu = (menuId, e) => {
@@ -237,9 +250,23 @@ export function SidebarAdmin() {
     }));
   };
 
+  const toggleSubMenu = (menuId, e) => {
+    e?.stopPropagation();
+    setExpandedSubMenus((prev) => ({
+      ...prev,
+      [menuId]: !prev[menuId],
+    }));
+  };
+
   const handleChildClick = () => {
-    // Đóng dropdown khi click vào child item
-    // Không cần làm gì vì NavLink sẽ tự động navigate
+    // giữ nguyên behaviour cũ cho các child item tiêu chuẩn
+  };
+
+  const handleGrandchildClick = (subMenuId) => {
+    setExpandedSubMenus((prev) => ({
+      ...prev,
+      [subMenuId]: false,
+    }));
   };
 
   const isMenuActive = (item) => {
@@ -247,7 +274,14 @@ export function SidebarAdmin() {
       return location.pathname === item.path;
     }
     if (item.type === "dropdown" && item.children) {
-      return item.children.some((child) => location.pathname === child.path);
+      return item.children.some((child) => {
+        if (child.children && child.children.length > 0) {
+          return child.children.some(
+            (grandchild) => location.pathname === grandchild.path
+          );
+        }
+        return location.pathname === child.path;
+      });
     }
     return false;
   };
@@ -305,19 +339,65 @@ export function SidebarAdmin() {
                 </div>
                 {isExpanded && item.children && (
                   <div className="sidebar-dropdown-children">
-                    {item.children.map((child) => (
-                      <NavLink
-                        key={child.id}
-                        to={child.path}
-                        onClick={handleChildClick}
-                        className={({ isActive }) =>
-                          `sidebar-link-child ${isActive ? "active" : ""}`
-                        }
-                      >
-                        {child.icon}
-                        {child.label}
-                      </NavLink>
-                    ))}
+                    {item.children.map((child) => {
+                      if (child.children && child.children.length > 0) {
+                        const isSubExpanded = !!expandedSubMenus[child.id];
+                        return (
+                          <div key={child.id} className="sidebar-subdropdown">
+                            <div
+                              className={`sidebar-link-child subdropdown-trigger ${
+                                isSubExpanded ? "expanded" : ""
+                              }`}
+                              onClick={(e) => toggleSubMenu(child.id, e)}
+                            >
+                              {child.icon}
+                              <span style={{ flex: 1 }}>{child.label}</span>
+                              {isSubExpanded ? (
+                                <ExpandLessIcon sx={{ fontSize: 16 }} />
+                              ) : (
+                                <ExpandMoreIcon sx={{ fontSize: 16 }} />
+                              )}
+                            </div>
+                            {isSubExpanded && (
+                              <div className="sidebar-subdropdown-children">
+                                {child.children.map((grandchild) => (
+                                  <NavLink
+                                    key={grandchild.id}
+                                    to={grandchild.path}
+                                    onClick={() =>
+                                      handleGrandchildClick(child.id)
+                                    }
+                                    className={({ isActive }) =>
+                                      `sidebar-link-child ${
+                                        isActive ? "active" : ""
+                                      }`
+                                    }
+                                    style={{ marginLeft: 16 }}
+                                  >
+                                    {grandchild.icon}
+                                    {grandchild.label}
+                                  </NavLink>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <NavLink
+                          key={child.id}
+                          to={child.path}
+                          onClick={handleChildClick}
+                          className={({ isActive }) =>
+                            `sidebar-link-child ${isActive ? "active" : ""}`
+                          }
+                        >
+                          {child.icon}
+                          {child.label}
+                        </NavLink>
+                      );
+                    })}
                   </div>
                 )}
               </div>

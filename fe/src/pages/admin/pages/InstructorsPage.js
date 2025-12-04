@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -47,9 +48,10 @@ import {
   Group,
   Edit,
   Visibility,
-  Delete,
   Book,
   MoreVert,
+  CalendarToday,
+  EventBusy,
 } from "@mui/icons-material";
 import "../pages/style.css";
 import instructorService from "../../../apiServices/instructorService";
@@ -57,10 +59,13 @@ import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
 
 const InstructorsPage = () => {
+  const navigate = useNavigate();
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [statusInput, setStatusInput] = useState("all");
   const [showInstructorForm, setShowInstructorForm] = useState(false);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -117,56 +122,89 @@ const InstructorsPage = () => {
     setShowInstructorForm(true);
   };
 
-  const handleDeleteInstructor = async (instructorId) => {
-    const confirmed = window.confirm("Bạn có chắc muốn xóa giảng viên này?");
-    if (confirmed) {
-      try {
-        await instructorService.deleteInstructor(instructorId);
-        // Reload danh sách sau khi xóa
-        await loadInstructors();
-        alert("Xóa giảng viên thành công!");
-      } catch (error) {
-        console.error("Lỗi khi xóa giảng viên:", error);
-        alert("Không thể xóa giảng viên!");
-      }
-    }
-  };
-
   const handleViewClasses = async (instructor) => {
     try {
       setSelectedInstructor(instructor);
-      // Gọi API để lấy danh sách lớp học của giảng viên
-      // getInstructorWithCourses trả về courses, nhưng có thể có classes trong đó
-      const data = await instructorService.getInstructorWithCourses(
+      // Gọi API để lấy danh sách lớp học của giảng viên từ database
+      const classes = await classService.getClassesByInstructorId(
         instructor.InstructorID
       );
-      // Backend có thể trả về courses hoặc classes trong data
-      const classes =
-        data?.classes || data?.courses || data?.data?.classes || [];
-      setInstructorClasses(classes);
+
+      // Map dữ liệu từ database theo schema dbver6.md
+      const mappedClasses = Array.isArray(classes)
+        ? classes.map((classItem) => ({
+            ClassID: classItem.ClassID || classItem.id,
+            Name: classItem.Name || classItem.ClassName || "N/A",
+            Status: classItem.Status || classItem.status || "N/A",
+            Fee: classItem.Fee || classItem.ClassFee || 0,
+            Maxstudent: classItem.Maxstudent || classItem.MaxLearners || 0,
+            Numofsession:
+              classItem.Numofsession || classItem.ExpectedSessions || 0,
+            OpendatePlan:
+              classItem.OpendatePlan || classItem.StartDate || "N/A",
+            EnddatePlan: classItem.EnddatePlan || classItem.EndDate || "N/A",
+            CourseID: classItem.CourseID || null,
+            CourseTitle:
+              classItem.CourseTitle || classItem.Course?.Title || "N/A",
+            // Tính số học viên đã đăng ký từ enrollments nếu có
+            EnrolledStudents:
+              classItem.enrolledStudents?.length ||
+              classItem.EnrolledStudents ||
+              0,
+          }))
+        : [];
+
+      setInstructorClasses(mappedClasses);
       setShowClassesDialog(true);
     } catch (error) {
       console.error("Lỗi khi tải danh sách lớp học:", error);
       setInstructorClasses([]);
-      alert("Không thể tải danh sách lớp học từ database!");
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Không thể tải danh sách lớp học từ database!"
+      );
     }
   };
 
   const handleViewCourses = async (instructor) => {
     try {
       setSelectedInstructor(instructor);
-      // Gọi API để lấy danh sách khóa học của giảng viên
+      // Gọi API để lấy danh sách khóa học của giảng viên từ database
       const data = await instructorService.getInstructorWithCourses(
         instructor.InstructorID
       );
-      // Backend trả về courses trong data
+
+      // Backend trả về courses trong data theo schema dbver6.md
       const courses = data?.courses || data?.data?.courses || [];
-      setInstructorCourses(courses);
+
+      // Map dữ liệu từ database theo schema dbver6.md
+      const mappedCourses = Array.isArray(courses)
+        ? courses.map((course) => ({
+            CourseID: course.CourseID || course.id,
+            Title: course.Title || course.title || "N/A",
+            Description: course.Description || course.description || "",
+            Duration: course.Duration || course.duration || 0,
+            Fee: course.Fee || course.fee || 0,
+            Status: course.Status || course.status || "DRAFT",
+            Level: course.Level || course.level || "BEGINNER",
+            Code: course.Code || course.code || "",
+            Image: course.Image || course.image || "",
+            Objectives: course.Objectives || course.objectives || "",
+            Requirements: course.Requirements || course.requirements || "",
+          }))
+        : [];
+
+      setInstructorCourses(mappedCourses);
       setShowCoursesDialog(true);
     } catch (error) {
       console.error("Lỗi khi tải danh sách khóa học:", error);
       setInstructorCourses([]);
-      alert("Không thể tải danh sách khóa học từ database!");
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Không thể tải danh sách khóa học từ database!"
+      );
     }
   };
 
@@ -351,20 +389,20 @@ const InstructorsPage = () => {
   };
 
   const filteredInstructors = instructors.filter((instructor) => {
-    const name = instructor.FullName.toLowerCase();
-    const email = instructor.Email.toLowerCase();
-    const major = instructor.Major.toLowerCase();
+    const name = instructor.FullName?.toLowerCase() || "";
+    const email = instructor.Email?.toLowerCase() || "";
+    const major = instructor.Major?.toLowerCase() || "";
     const search = searchTerm.toLowerCase();
 
     const matchesSearch =
       name.includes(search) || email.includes(search) || major.includes(search);
+    const statusValue = (
+      instructor.Status ||
+      instructor.AccountStatus ||
+      "active"
+    ).toLowerCase();
     const matchesStatus =
-      statusFilter === "all" ||
-      instructor.Status === statusFilter ||
-      (statusFilter === "active" &&
-        (instructor.Status === "active" || instructor.Status === "ACTIVE")) ||
-      (statusFilter === "inactive" &&
-        (instructor.Status === "inactive" || instructor.Status === "INACTIVE"));
+      statusFilter === "all" || statusValue === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
@@ -372,10 +410,10 @@ const InstructorsPage = () => {
   const stats = {
     total: instructors.length,
     active: instructors.filter(
-      (i) => i.Status === "active" || i.Status === "ACTIVE"
+      (i) => (i.Status || i.AccountStatus || "").toLowerCase() === "active"
     ).length,
     inactive: instructors.filter(
-      (i) => i.Status === "inactive" || i.Status === "INACTIVE"
+      (i) => (i.Status || i.AccountStatus || "").toLowerCase() === "inactive"
     ).length,
     // totalStudents: computed từ enrollment, không có trong DB nên xóa
   };
@@ -514,12 +552,19 @@ const InstructorsPage = () => {
         </Grid>
 
         {/* Search and Filter */}
-        <Box sx={{ display: "flex", gap: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            flexWrap: "wrap",
+            alignItems: { xs: "stretch", lg: "center" },
+          }}
+        >
           <TextField
             placeholder="Tìm kiếm giảng viên..."
             size="small"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             sx={{
               flex: 1,
               maxWidth: 400,
@@ -539,9 +584,9 @@ const InstructorsPage = () => {
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Trạng thái</InputLabel>
             <Select
-              value={statusFilter}
+              value={statusInput}
               label="Trạng thái"
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => setStatusInput(e.target.value)}
               sx={{
                 borderRadius: 2,
                 backgroundColor: "#fff",
@@ -552,6 +597,32 @@ const InstructorsPage = () => {
               <MenuItem value="inactive">Không hoạt động</MenuItem>
             </Select>
           </FormControl>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={() => {
+                setSearchTerm(searchInput.trim());
+                setStatusFilter(statusInput);
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              Áp dụng
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => {
+                setSearchInput("");
+                setStatusInput("all");
+                setSearchTerm("");
+                setStatusFilter("all");
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              Xóa lọc
+            </Button>
+          </Stack>
         </Box>
       </Box>
 
@@ -660,25 +731,26 @@ const InstructorsPage = () => {
                   <TableCell>{instructor.Major || "N/A"}</TableCell>
                   <TableCell>{instructor.Job || "N/A"}</TableCell>
                   <TableCell>
-                    <Chip
-                      label={
-                        instructor.Status === "active" ||
-                        instructor.Status === "ACTIVE"
-                          ? "Hoạt động"
-                          : "Không hoạt động"
-                      }
-                      size="small"
-                      sx={{
-                        backgroundColor:
-                          instructor.Status === "active" ||
-                          instructor.Status === "ACTIVE"
-                            ? "#10b981"
-                            : "#94a3b8",
-                        color: "white",
-                        fontWeight: 600,
-                        fontSize: "11px",
-                      }}
-                    />
+                    {(() => {
+                      const statusValue = (
+                        instructor.Status ||
+                        instructor.AccountStatus ||
+                        "active"
+                      ).toLowerCase();
+                      const isActive = statusValue === "active";
+                      return (
+                        <Chip
+                          label={isActive ? "Hoạt động" : "Không hoạt động"}
+                          size="small"
+                          sx={{
+                            backgroundColor: isActive ? "#10b981" : "#94a3b8",
+                            color: "white",
+                            fontWeight: 600,
+                            fontSize: "11px",
+                          }}
+                        />
+                      );
+                    })()}
                   </TableCell>
                   <TableCell align="right">
                     <IconButton
@@ -744,15 +816,33 @@ const InstructorsPage = () => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            if (selectedRow) {
-              handleDeleteInstructor(selectedRow.InstructorID);
+            if (selectedRow?.InstructorID) {
+              const params = new URLSearchParams({
+                instructorId: selectedRow.InstructorID,
+                instructorName: selectedRow.FullName || "",
+              });
+              navigate(`/admin/instructor-calendar?${params.toString()}`);
             }
             setAnchorEl(null);
           }}
-          sx={{ color: "error.main" }}
         >
-          <Delete sx={{ fontSize: 18, mr: 1.5 }} />
-          Xóa
+          <CalendarToday sx={{ fontSize: 18, mr: 1.5 }} />
+          Xem lịch giảng
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (selectedRow?.InstructorID) {
+              const params = new URLSearchParams({
+                instructorId: selectedRow.InstructorID,
+                instructorName: selectedRow.FullName || "",
+              });
+              navigate(`/admin/instructor-leave?${params.toString()}`);
+            }
+            setAnchorEl(null);
+          }}
+        >
+          <EventBusy sx={{ fontSize: 18, mr: 1.5 }} />
+          Quản lý lịch nghỉ
         </MenuItem>
       </Menu>
 
@@ -848,12 +938,10 @@ const InstructorsPage = () => {
                       </TableCell>
                       <TableCell>
                         {classItem.EnrolledStudents || 0}/
-                        {classItem.MaxLearners || 0}
+                        {classItem.Maxstudent || 0}
                       </TableCell>
-                      <TableCell>
-                        {classItem.ExpectedSessions || 0} buổi
-                      </TableCell>
-                      <TableCell>{classItem.StartDate}</TableCell>
+                      <TableCell>{classItem.Numofsession || 0} buổi</TableCell>
+                      <TableCell>{classItem.OpendatePlan || "N/A"}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -862,6 +950,28 @@ const InstructorsPage = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (selectedInstructor?.InstructorID) {
+                navigate(
+                  `/admin/classes?instructorId=${selectedInstructor.InstructorID}`
+                );
+              }
+            }}
+            sx={{
+              textTransform: "none",
+              borderColor: "#667eea",
+              color: "#667eea",
+              "&:hover": {
+                borderColor: "#5568d3",
+                backgroundColor: "#f0f4ff",
+              },
+            }}
+          >
+            Xem tất cả lớp học
+          </Button>
+          <Box sx={{ flex: 1 }} />
           <Button
             onClick={() => setShowClassesDialog(false)}
             sx={{
@@ -929,7 +1039,7 @@ const InstructorsPage = () => {
                         {course.Title}
                       </TableCell>
                       <TableCell>{course.Description}</TableCell>
-                      <TableCell>{course.Duration} tuần</TableCell>
+                      <TableCell>{course.Duration || 0} tuần</TableCell>
                       <TableCell>
                         {course.Fee
                           ? new Intl.NumberFormat("vi-VN", {
@@ -941,15 +1051,27 @@ const InstructorsPage = () => {
                       <TableCell>
                         <Chip
                           label={
-                            course.Status === "active"
-                              ? "Hoạt động"
-                              : "Không hoạt động"
+                            course.Status === "PUBLISHED"
+                              ? "Đã xuất bản"
+                              : course.Status === "APPROVED"
+                              ? "Đã duyệt"
+                              : course.Status === "IN_REVIEW"
+                              ? "Chờ duyệt"
+                              : course.Status === "DRAFT"
+                              ? "Nháp"
+                              : course.Status === "DELETED"
+                              ? "Đã xóa"
+                              : course.Status || "N/A"
                           }
                           size="small"
                           sx={{
                             backgroundColor:
-                              course.Status === "active"
+                              course.Status === "PUBLISHED"
                                 ? "#10b981"
+                                : course.Status === "APPROVED"
+                                ? "#06b6d4"
+                                : course.Status === "IN_REVIEW"
+                                ? "#f59e0b"
                                 : "#94a3b8",
                             color: "white",
                             fontWeight: 600,
@@ -965,6 +1087,28 @@ const InstructorsPage = () => {
           )}
         </DialogContent>
         <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              if (selectedInstructor?.InstructorID) {
+                navigate(
+                  `/admin/courses?instructorId=${selectedInstructor.InstructorID}`
+                );
+              }
+            }}
+            sx={{
+              textTransform: "none",
+              borderColor: "#667eea",
+              color: "#667eea",
+              "&:hover": {
+                borderColor: "#5568d3",
+                backgroundColor: "#f0f4ff",
+              },
+            }}
+          >
+            Xem tất cả khóa học
+          </Button>
+          <Box sx={{ flex: 1 }} />
           <Button
             onClick={() => setShowCoursesDialog(false)}
             sx={{
@@ -1260,29 +1404,145 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
 
           <div className="form-row">
             <div className="form-group">
-              <label htmlFor="ProfilePicture">Ảnh đại diện (URL)</label>
-              <input
-                type="text"
-                id="ProfilePicture"
-                value={formData.ProfilePicture || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, ProfilePicture: e.target.value })
-                }
-                placeholder="https://example.com/avatar.jpg"
-              />
+              <label htmlFor="ProfilePicture">Ảnh đại diện</label>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {formData.ProfilePicture && (
+                  <div style={{ marginBottom: "10px" }}>
+                    <img
+                      src={formData.ProfilePicture}
+                      alt="Avatar preview"
+                      style={{
+                        width: "150px",
+                        height: "150px",
+                        objectFit: "cover",
+                        borderRadius: "8px",
+                        border: "1px solid #ddd",
+                      }}
+                    />
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="avatarFile"
+                  accept="image/*"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      // Hiển thị loading
+                      const loadingMsg = document.createElement("div");
+                      loadingMsg.textContent = "Đang tải ảnh lên...";
+                      loadingMsg.style.cssText =
+                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
+                      document.body.appendChild(loadingMsg);
+
+                      try {
+                        const result = await instructorService.uploadAvatar(
+                          file
+                        );
+                        setFormData({
+                          ...formData,
+                          ProfilePicture: result.url || result.data?.url,
+                        });
+                        document.body.removeChild(loadingMsg);
+                        alert("Tải ảnh thành công!");
+                      } catch (error) {
+                        if (document.body.contains(loadingMsg)) {
+                          document.body.removeChild(loadingMsg);
+                        }
+                        alert(
+                          error?.message || "Lỗi khi tải ảnh. Vui lòng thử lại."
+                        );
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  component="label"
+                  htmlFor="avatarFile"
+                  size="small"
+                  fullWidth
+                >
+                  Chọn ảnh đại diện
+                </Button>
+              </div>
             </div>
 
             <div className="form-group">
-              <label htmlFor="CV">CV (URL)</label>
-              <input
-                type="text"
-                id="CV"
-                value={formData.CV || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, CV: e.target.value })
-                }
-                placeholder="https://example.com/cv.pdf"
-              />
+              <label htmlFor="CV">CV</label>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                {formData.CV && (
+                  <div style={{ marginBottom: "10px" }}>
+                    <Typography variant="body2" color="text.secondary">
+                      CV đã tải:{" "}
+                      <a
+                        href={formData.CV}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#1976d2" }}
+                      >
+                        Xem CV
+                      </a>
+                    </Typography>
+                  </div>
+                )}
+                <input
+                  type="file"
+                  id="cvFile"
+                  accept=".pdf,.doc,.docx,image/*"
+                  style={{ display: "none" }}
+                  onChange={async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      // Hiển thị loading
+                      const loadingMsg = document.createElement("div");
+                      loadingMsg.textContent = "Đang tải CV lên...";
+                      loadingMsg.style.cssText =
+                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
+                      document.body.appendChild(loadingMsg);
+
+                      try {
+                        const result = await instructorService.uploadCV(file);
+                        setFormData({
+                          ...formData,
+                          CV: result.url || result.data?.url,
+                        });
+                        document.body.removeChild(loadingMsg);
+                        alert("Tải CV thành công!");
+                      } catch (error) {
+                        if (document.body.contains(loadingMsg)) {
+                          document.body.removeChild(loadingMsg);
+                        }
+                        alert(
+                          error?.message || "Lỗi khi tải CV. Vui lòng thử lại."
+                        );
+                      }
+                    }
+                  }}
+                />
+                <Button
+                  variant="outlined"
+                  component="label"
+                  htmlFor="cvFile"
+                  size="small"
+                  fullWidth
+                >
+                  Chọn CV
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -1297,8 +1557,6 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
             >
               <option value="active">Hoạt động</option>
               <option value="inactive">Không hoạt động</option>
-              <option value="pending">Chờ kích hoạt</option>
-              <option value="banned">Bị khóa</option>
             </select>
           </div>
 

@@ -15,166 +15,159 @@ import {
   LinearProgress,
   Menu,
   MenuItem,
+  Paper,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  CircularProgress,
+  Snackbar,
+  Alert,
+  Autocomplete,
 } from "@mui/material";
 import {
-  Add,
   Search,
   FilterList,
   MoreVert,
   People,
   Schedule,
   PlayCircle,
-  Edit,
   Delete,
   Visibility,
   CheckCircle,
   HourglassEmpty,
-  ContentCopy,
+  Class,
 } from "@mui/icons-material";
-import { getCoursesApi } from "../../../apiServices/courseService";
+import {
+  getCoursesForAdmin,
+  updateCourseStatus,
+  getCourseClasses,
+  checkCourseInUse,
+} from "../../../apiServices/courseService";
+import instructorService from "../../../apiServices/instructorService";
 import "./style.css";
 
 export default function CoursesPage() {
   const [tabValue, setTabValue] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [showClassesDialog, setShowClassesDialog] = useState(false);
+  const [courseClasses, setCourseClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+  const [instructors, setInstructors] = useState([]);
+  const [selectedInstructor, setSelectedInstructor] = useState(null);
+  const [appliedInstructor, setAppliedInstructor] = useState(null);
 
   useEffect(() => {
     loadCourses();
+    loadInstructors();
   }, []);
+
+  const loadInstructors = async () => {
+    try {
+      const data = await instructorService.getAllInstructors();
+      setInstructors(data || []);
+    } catch (error) {
+      console.error("Unable to load instructors", error);
+    }
+  };
 
   const loadCourses = async () => {
     try {
       setLoading(true);
-      const data = await getCoursesApi();
-      setCourses(data?.courses || data || []);
+      // Admin chỉ lấy IN_REVIEW, APPROVED, PUBLISHED
+      const data = await getCoursesForAdmin();
+      const coursesData = Array.isArray(data) ? data : [];
+
+      // Filter thêm ở frontend để đảm bảo (backend đã filter nhưng double-check)
+      const allowedStatuses = ["IN_REVIEW", "APPROVED", "PUBLISHED"];
+      const filtered = coursesData.filter((c) => {
+        const status = (c.Status || c.status || "").toUpperCase();
+        return allowedStatuses.includes(status);
+      });
+
+      setCourses(filtered);
     } catch (error) {
       console.error("Error loading courses:", error);
       setCourses([]);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể tải danh sách khóa học",
+        severity: "error",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Sample courses if no data
-  const sampleCourses = [
-    {
-      id: 1,
-      title: "Advanced Web Development",
-      description: "Master modern web technologies including React, Node.js, and more",
-      thumbnail: "#667eea",
-      students: 145,
-      lessons: 24,
-      duration: "12 weeks",
-      progress: 78,
-      status: "active",
-      category: "Programming",
-    },
-    {
-      id: 2,
-      title: "Data Structures & Algorithms",
-      description: "Deep dive into computer science fundamentals",
-      thumbnail: "#10b981",
-      students: 198,
-      lessons: 32,
-      duration: "16 weeks",
-      progress: 92,
-      status: "active",
-      category: "Computer Science",
-    },
-    {
-      id: 3,
-      title: "Mobile App Development",
-      description: "Build native and cross-platform mobile applications",
-      thumbnail: "#f59e0b",
-      students: 87,
-      lessons: 18,
-      duration: "10 weeks",
-      progress: 45,
-      status: "active",
-      category: "Mobile",
-    },
-    {
-      id: 4,
-      title: "Machine Learning Basics",
-      description: "Introduction to ML algorithms and practical applications",
-      thumbnail: "#8b5cf6",
-      students: 234,
-      lessons: 28,
-      duration: "14 weeks",
-      progress: 65,
-      status: "active",
-      category: "AI & ML",
-    },
-    {
-      id: 5,
-      title: "UI/UX Design Fundamentals",
-      description: "Learn design principles and create amazing user experiences",
-      thumbnail: "#ec4899",
-      students: 156,
-      lessons: 20,
-      duration: "8 weeks",
-      progress: 100,
-      status: "completed",
-      category: "Design",
-    },
-    {
-      id: 6,
-      title: "Database Management Systems",
-      description: "Master SQL, NoSQL, and database design patterns",
-      thumbnail: "#06b6d4",
-      students: 0,
-      lessons: 25,
-      duration: "12 weeks",
-      progress: 35,
-      status: "draft",
-      category: "Database",
-    },
-  ];
+  const displayCourses = courses;
 
-  const displayCourses = courses.length > 0 ? courses : sampleCourses;
+  // Helper để lấy status (hỗ trợ cả PascalCase và camelCase từ backend)
+  const getStatus = (course) =>
+    (course.Status || course.status || "").toUpperCase();
 
   // Filter courses by tab
   const getFilteredCourses = () => {
     let filtered = displayCourses;
 
-    // Apply search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase();
+    // Apply search filter (chỉ áp dụng khi có appliedSearchQuery)
+    if (appliedSearchQuery.trim()) {
+      const query = appliedSearchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
-          c.title?.toLowerCase().includes(query) ||
-          c.description?.toLowerCase().includes(query) ||
-          c.category?.toLowerCase().includes(query)
+          (c.Title || c.title || "").toLowerCase().includes(query) ||
+          (c.Description || c.description || "")
+            .toLowerCase()
+            .includes(query) ||
+          (c.Category || c.category || "").toLowerCase().includes(query)
       );
     }
 
+    // Apply instructor filter (chỉ áp dụng khi có appliedInstructor)
+    if (appliedInstructor) {
+      const instructorId =
+        appliedInstructor.InstructorID || appliedInstructor.instructorId;
+      filtered = filtered.filter((c) => {
+        const courseInstructorId =
+          c.InstructorID ||
+          c.instructorId ||
+          c.Instructor?.InstructorID ||
+          c.instructor?.InstructorID;
+        return courseInstructorId === instructorId;
+      });
+    }
+
     // Apply tab filter
+    // Tab 0: Tất cả (đã filter IN_REVIEW, APPROVED, PUBLISHED ở loadCourses)
+    // Tab 1: Đã duyệt (APPROVED, PUBLISHED)
+    // Tab 2: Chờ duyệt (IN_REVIEW)
     switch (tabValue) {
       case 0:
-        return filtered;
+        return filtered; // Tất cả (đã filter ở loadCourses)
       case 1:
         return filtered.filter(
-          (c) =>
-            c.status?.toUpperCase() === "ACTIVE" ||
-            c.status?.toUpperCase() === "APPROVED" ||
-            c.status?.toUpperCase() === "PUBLISHED"
+          (c) => getStatus(c) === "APPROVED" || getStatus(c) === "PUBLISHED"
         );
       case 2:
-        return filtered.filter((c) => c.status?.toUpperCase() === "COMPLETED");
-      case 3:
-        return filtered.filter((c) => c.status?.toUpperCase() === "IN_REVIEW");
-      case 4:
-        return filtered.filter((c) => c.status?.toUpperCase() === "DRAFT");
+        return filtered.filter((c) => getStatus(c) === "IN_REVIEW");
       default:
         return filtered;
     }
@@ -226,68 +219,165 @@ export default function CoursesPage() {
   const handlePreview = (course) => {
     // TODO: Implement preview functionality
     console.log("Preview course:", course);
-    alert("Chức năng preview sẽ được triển khai sau");
+    setSnackbar({
+      open: true,
+      message: "Chức năng preview sẽ được triển khai sau",
+      severity: "info",
+    });
   };
 
   const handleApprove = async (course, action) => {
     try {
-      // TODO: Call API to approve/reject course
-      console.log(`${action} course:`, course);
-      alert(`Chức năng ${action === "APPROVE" ? "duyệt" : "từ chối"} sẽ được triển khai sau`);
+      const currentStatus = getStatus(course);
+      let newStatus;
+      let actionType;
+
+      if (action === "APPROVE") {
+        // IN_REVIEW → APPROVED
+        newStatus = "APPROVED";
+        actionType = "approve";
+      } else if (action === "REJECT") {
+        // IN_REVIEW → DRAFT
+        newStatus = "DRAFT";
+        actionType = "reject";
+      } else {
+        throw new Error("Action không hợp lệ");
+      }
+
+      await updateCourseStatus(
+        course.CourseID || course.courseId,
+        newStatus,
+        actionType
+      );
+      setSnackbar({
+        open: true,
+        message:
+          action === "APPROVE"
+            ? "Duyệt khóa học thành công"
+            : "Từ chối khóa học thành công",
+        severity: "success",
+      });
+      loadCourses();
     } catch (error) {
       console.error("Error approving course:", error);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể cập nhật trạng thái",
+        severity: "error",
+      });
     }
   };
 
-  const activeCount = displayCourses.filter(
-    (c) => c.status?.toUpperCase() === "ACTIVE" || c.status?.toUpperCase() === "APPROVED" || c.status?.toUpperCase() === "PUBLISHED"
+  const handleStatusChange = async (course, newStatus, action = null) => {
+    try {
+      const currentStatus = getStatus(course);
+
+      // Nếu chuyển từ PUBLISHED, kiểm tra lớp học đang sử dụng
+      if (currentStatus === "PUBLISHED" && newStatus !== "PUBLISHED") {
+        const checkResult = await checkCourseInUse(
+          course.CourseID || course.courseId
+        );
+        if (checkResult.inUse) {
+          const classNames = checkResult.classes
+            .map((c) => c.Name || `ClassID: ${c.ClassID}`)
+            .join(", ");
+          setSnackbar({
+            open: true,
+            message: `Không thể chuyển trạng thái. Khóa học đang được sử dụng bởi ${checkResult.classes.length} lớp học: ${classNames}`,
+            severity: "error",
+          });
+          return;
+        }
+      }
+
+      await updateCourseStatus(
+        course.CourseID || course.courseId,
+        newStatus,
+        action
+      );
+      setSnackbar({
+        open: true,
+        message: "Cập nhật trạng thái thành công",
+        severity: "success",
+      });
+      loadCourses();
+    } catch (error) {
+      console.error("Error updating course status:", error);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể cập nhật trạng thái",
+        severity: "error",
+      });
+    }
+  };
+
+  const handleViewClasses = async (course) => {
+    try {
+      setLoadingClasses(true);
+      setShowClassesDialog(true);
+      const data = await getCourseClasses(course.CourseID || course.courseId);
+      setCourseClasses(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Error loading classes:", error);
+      setCourseClasses([]);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể tải danh sách lớp học",
+        severity: "error",
+      });
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  const approvedCount = displayCourses.filter(
+    (c) => getStatus(c) === "APPROVED" || getStatus(c) === "PUBLISHED"
   ).length;
-  const completedCount = displayCourses.filter((c) => c.status?.toUpperCase() === "COMPLETED").length;
-  const draftCount = displayCourses.filter((c) => c.status?.toUpperCase() === "DRAFT").length;
-  const inReviewCount = displayCourses.filter((c) => c.status?.toUpperCase() === "IN_REVIEW").length;
+  const inReviewCount = displayCourses.filter(
+    (c) => getStatus(c) === "IN_REVIEW"
+  ).length;
 
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 3,
+          }}
+        >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              Course Management
+              Quản lý khóa học
             </Typography>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Manage and track all courses in the system
+              Quản lý, theo dõi khóa học trong hệ thống
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => setOpenDialog(true)}
-            sx={{
-              backgroundColor: "#667eea",
-              textTransform: "none",
-              px: 3,
-              py: 1.5,
-              borderRadius: 2,
-              fontWeight: 600,
-              "&:hover": {
-                backgroundColor: "#5568d3",
-              },
-            }}
-          >
-            Create New Course
-          </Button>
         </Box>
 
         {/* Search & Filter */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3 }}>
+        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
           <TextField
-            placeholder="Search courses..."
+            placeholder="Tra cứu theo tên khóa học..."
             size="small"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             sx={{
               flex: 1,
+              minWidth: 250,
               "& .MuiOutlinedInput-root": {
                 borderRadius: 2,
                 backgroundColor: "#fff",
@@ -301,9 +391,44 @@ export default function CoursesPage() {
               ),
             }}
           />
+          <Autocomplete
+            options={instructors}
+            getOptionLabel={(option) =>
+              `${option.FullName || option.fullName || ""} - ${
+                option.Major || option.major || ""
+              }`
+            }
+            value={selectedInstructor}
+            onChange={(event, newValue) => {
+              setSelectedInstructor(newValue);
+            }}
+            size="small"
+            sx={{
+              minWidth: 250,
+              "& .MuiOutlinedInput-root": {
+                borderRadius: 2,
+                backgroundColor: "#fff",
+              },
+            }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                placeholder="Chọn giảng viên..."
+                label="Giảng viên"
+              />
+            )}
+            isOptionEqualToValue={(option, value) =>
+              option.InstructorID === value?.InstructorID
+            }
+          />
           <Button
             variant="outlined"
             startIcon={<FilterList />}
+            onClick={() => {
+              // Áp dụng filter khi nhấn nút "Lọc"
+              setAppliedSearchQuery(searchQuery);
+              setAppliedInstructor(selectedInstructor);
+            }}
             sx={{
               borderRadius: 2,
               textTransform: "none",
@@ -315,8 +440,27 @@ export default function CoursesPage() {
               },
             }}
           >
-            Filter
+            Lọc
           </Button>
+          {(appliedInstructor || appliedSearchQuery.trim()) && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => {
+                // Xóa cả input và applied filter
+                setSelectedInstructor(null);
+                setSearchQuery("");
+                setAppliedInstructor(null);
+                setAppliedSearchQuery("");
+              }}
+              sx={{
+                borderRadius: 2,
+                textTransform: "none",
+              }}
+            >
+              Xóa lọc
+            </Button>
+          )}
         </Box>
 
         {/* Tabs */}
@@ -339,10 +483,8 @@ export default function CoursesPage() {
           }}
         >
           <Tab label={`Tất cả (${displayCourses.length})`} />
-          <Tab label={`Đã duyệt (${activeCount})`} />
-          <Tab label={`Hoàn thành (${completedCount})`} />
+          <Tab label={`Đã duyệt (${approvedCount})`} />
           <Tab label={`Chờ duyệt (${inReviewCount})`} />
-          <Tab label={`Nháp (${draftCount})`} />
         </Tabs>
       </Box>
 
@@ -364,29 +506,27 @@ export default function CoursesPage() {
             No courses found
           </Typography>
           <Typography variant="body2" sx={{ color: "#94a3b8", mb: 3 }}>
-            {searchQuery ? "Try adjusting your search" : "Create your first course to get started"}
+            {searchQuery
+              ? "Thử điều chỉnh từ khóa tìm kiếm"
+              : "Chưa có khóa học nào"}
           </Typography>
-          {!searchQuery && (
-            <Button
-              variant="contained"
-              startIcon={<Add />}
-              onClick={() => setOpenDialog(true)}
-              sx={{
-                backgroundColor: "#667eea",
-                textTransform: "none",
-                "&:hover": {
-                  backgroundColor: "#5568d3",
-                },
-              }}
-            >
-              Create Course
-            </Button>
-          )}
         </Paper>
       ) : (
         <Grid container spacing={3}>
-          {getFilteredCourses().map((course) => (
-            <Grid item xs={12} sm={6} md={4} lg={3} key={course.id || course.courseId}>
+          {getFilteredCourses().map((course, index) => (
+            <Grid
+              item
+              xs={12}
+              sm={6}
+              md={4}
+              lg={3}
+              key={
+                course.CourseID ||
+                course.courseId ||
+                course.id ||
+                `course-${index}`
+              }
+            >
               <Card
                 sx={{
                   borderRadius: 3,
@@ -402,14 +542,18 @@ export default function CoursesPage() {
                 <Box
                   sx={{
                     height: 160,
-                    background: `linear-gradient(135deg, ${course.thumbnail || "#667eea"} 0%, ${course.thumbnail || "#667eea"}dd 100%)`,
+                    background: `linear-gradient(135deg, ${
+                      course.thumbnail || "#667eea"
+                    } 0%, ${course.thumbnail || "#667eea"}dd 100%)`,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     position: "relative",
                   }}
                 >
-                  <PlayCircle sx={{ fontSize: 64, color: "white", opacity: 0.9 }} />
+                  <PlayCircle
+                    sx={{ fontSize: 64, color: "white", opacity: 0.9 }}
+                  />
                   <IconButton
                     sx={{
                       position: "absolute",
@@ -427,31 +571,43 @@ export default function CoursesPage() {
 
                 <CardContent>
                   {/* Status & Category */}
-                  <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      mb: 2,
+                    }}
+                  >
                     <Chip
                       label={
-                        course.status?.toUpperCase() === "IN_REVIEW"
+                        getStatus(course) === "IN_REVIEW"
                           ? "Chờ duyệt"
-                          : course.status?.toUpperCase() === "DRAFT"
+                          : getStatus(course) === "DRAFT"
                           ? "Nháp"
-                          : course.status?.toUpperCase() === "APPROVED"
+                          : getStatus(course) === "APPROVED"
                           ? "Đã duyệt"
-                          : course.status?.toUpperCase() === "PUBLISHED"
+                          : getStatus(course) === "PUBLISHED"
                           ? "Đã xuất bản"
-                          : course.status || "active"
+                          : getStatus(course) === "DELETED"
+                          ? "Đã xóa"
+                          : course.Status || course.status || "active"
                       }
                       size="small"
-                      icon={getStatusIcon(course.status)}
+                      icon={getStatusIcon(course.Status || course.status)}
                       sx={{
-                        backgroundColor: getStatusColor(course.status || "active").bg,
-                        color: getStatusColor(course.status || "active").color,
+                        backgroundColor: getStatusColor(
+                          course.Status || course.status || "active"
+                        ).bg,
+                        color: getStatusColor(
+                          course.Status || course.status || "active"
+                        ).color,
                         fontWeight: 600,
                         textTransform: "capitalize",
                         height: 26,
                       }}
                     />
                     <Chip
-                      label={course.category || "General"}
+                      label={course.Category || course.category || "General"}
                       size="small"
                       sx={{
                         backgroundColor: "#f1f5f9",
@@ -464,8 +620,15 @@ export default function CoursesPage() {
                   </Box>
 
                   {/* Title */}
-                  <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, fontSize: "16px" }}>
-                    {course.title || course.name || "Untitled Course"}
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 700, mb: 1, fontSize: "16px" }}
+                  >
+                    {course.Title ||
+                      course.title ||
+                      course.Name ||
+                      course.name ||
+                      "Untitled Course"}
                   </Typography>
 
                   {/* Description */}
@@ -482,35 +645,72 @@ export default function CoursesPage() {
                       minHeight: "42px",
                     }}
                   >
-                    {course.description || "No description available"}
+                    {course.Description ||
+                      course.description ||
+                      "No description available"}
                   </Typography>
 
                   {/* Stats */}
                   <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
                       <People sx={{ fontSize: 16, color: "#64748b" }} />
                       <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        {course.students || 0} students
+                        {course.Students ||
+                          course.students ||
+                          course.enrollmentCount ||
+                          0}{" "}
+                        học viên
                       </Typography>
                     </Box>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
                       <Schedule sx={{ fontSize: 16, color: "#64748b" }} />
                       <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        {course.lessons || 0} lessons
+                        {course.Duration || course.duration || 0} giờ
                       </Typography>
                     </Box>
                   </Box>
 
+                  {/* Fee */}
+                  {(course.Fee || course.fee) && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{ fontWeight: 600, color: "#667eea" }}
+                      >
+                        {new Intl.NumberFormat("vi-VN", {
+                          style: "currency",
+                          currency: "VND",
+                        }).format(course.Fee || course.fee)}
+                      </Typography>
+                    </Box>
+                  )}
+
                   {/* Progress */}
                   {course.progress !== undefined &&
-                    course.status?.toUpperCase() !== "DRAFT" &&
-                    course.status?.toUpperCase() !== "IN_REVIEW" && (
+                    getStatus(course) !== "DRAFT" &&
+                    getStatus(course) !== "IN_REVIEW" && (
                       <Box sx={{ mb: 2 }}>
-                        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
-                          <Typography variant="caption" sx={{ color: "#64748b" }}>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            mb: 0.5,
+                          }}
+                        >
+                          <Typography
+                            variant="caption"
+                            sx={{ color: "#64748b" }}
+                          >
                             Progress
                           </Typography>
-                          <Typography variant="caption" sx={{ fontWeight: 600 }}>
+                          <Typography
+                            variant="caption"
+                            sx={{ fontWeight: 600 }}
+                          >
                             {course.progress}%
                           </Typography>
                         </Box>
@@ -530,65 +730,111 @@ export default function CoursesPage() {
                       </Box>
                     )}
 
-                  {/* Action Buttons for Pending Approval Courses */}
-                  {(course.status?.toUpperCase() === "IN_REVIEW" ||
-                    course.status?.toUpperCase() === "DRAFT") && (
+                  {/* Action Buttons for IN_REVIEW Courses */}
+                  {getStatus(course) === "IN_REVIEW" && (
+                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<CheckCircle />}
+                        onClick={() => handleApprove(course, "APPROVE")}
+                        sx={{
+                          flex: 1,
+                          textTransform: "none",
+                          backgroundColor: "#10b981",
+                          "&:hover": {
+                            backgroundColor: "#059669",
+                          },
+                        }}
+                      >
+                        Duyệt
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Delete />}
+                        onClick={() => handleApprove(course, "REJECT")}
+                        sx={{
+                          textTransform: "none",
+                          borderColor: "#ef4444",
+                          color: "#ef4444",
+                          "&:hover": {
+                            borderColor: "#dc2626",
+                            backgroundColor: "#fef2f2",
+                          },
+                        }}
+                      >
+                        Từ chối
+                      </Button>
+                    </Box>
+                  )}
+
+                  {/* Action Buttons for APPROVED Courses */}
+                  {getStatus(course) === "APPROVED" && (
+                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
+                      <Button
+                        variant="contained"
+                        size="small"
+                        startIcon={<CheckCircle />}
+                        onClick={() =>
+                          handleStatusChange(course, "PUBLISHED", "publish")
+                        }
+                        sx={{
+                          flex: 1,
+                          textTransform: "none",
+                          backgroundColor: "#667eea",
+                          "&:hover": {
+                            backgroundColor: "#5568d3",
+                          },
+                        }}
+                      >
+                        Công khai
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<Delete />}
+                        onClick={() =>
+                          handleStatusChange(course, "DRAFT", "revert")
+                        }
+                        sx={{
+                          textTransform: "none",
+                          borderColor: "#f59e0b",
+                          color: "#f59e0b",
+                          "&:hover": {
+                            borderColor: "#d97706",
+                            backgroundColor: "#fef3c7",
+                          },
+                        }}
+                      >
+                        Về nháp
+                      </Button>
+                    </Box>
+                  )}
+
+                  {/* Action Buttons for PUBLISHED Courses */}
+                  {getStatus(course) === "PUBLISHED" && (
                     <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
                       <Button
                         variant="outlined"
                         size="small"
-                        startIcon={<Visibility />}
-                        onClick={() => handlePreview(course)}
+                        startIcon={<CheckCircle />}
+                        onClick={() =>
+                          handleStatusChange(course, "APPROVED", "unpublish")
+                        }
                         sx={{
                           flex: 1,
                           textTransform: "none",
-                          borderColor: "#667eea",
-                          color: "#667eea",
+                          borderColor: "#06b6d4",
+                          color: "#06b6d4",
                           "&:hover": {
-                            borderColor: "#5568d3",
-                            backgroundColor: "#f0f4ff",
+                            borderColor: "#0891b2",
+                            backgroundColor: "#cffafe",
                           },
                         }}
                       >
-                        Preview
+                        Hủy công khai
                       </Button>
-                      {course.status?.toUpperCase() === "IN_REVIEW" && (
-                        <>
-                          <Button
-                            variant="contained"
-                            size="small"
-                            startIcon={<CheckCircle />}
-                            onClick={() => handleApprove(course, "APPROVE")}
-                            sx={{
-                              flex: 1,
-                              textTransform: "none",
-                              backgroundColor: "#10b981",
-                              "&:hover": {
-                                backgroundColor: "#059669",
-                              },
-                            }}
-                          >
-                            Duyệt
-                          </Button>
-                          <Button
-                            variant="outlined"
-                            size="small"
-                            startIcon={<Delete />}
-                            onClick={() => handleApprove(course, "REJECT")}
-                            sx={{
-                              textTransform: "none",
-                              borderColor: "#ef4444",
-                              color: "#ef4444",
-                              "&:hover": {
-                                borderColor: "#dc2626",
-                                backgroundColor: "#fef2f2",
-                              },
-                            }}
-                          >
-                            Từ chối
-                          </Button>
-                        </>
-                      )}
                     </Box>
                   )}
                 </CardContent>
@@ -611,80 +857,157 @@ export default function CoursesPage() {
           },
         }}
       >
-        <MenuItem onClick={handleMenuClose}>
+        <MenuItem
+          onClick={() => {
+            handlePreview(selectedCourse);
+            handleMenuClose();
+          }}
+        >
           <Visibility sx={{ fontSize: 18, mr: 1.5 }} />
-          View Details
+          Xem chi tiết
         </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <Edit sx={{ fontSize: 18, mr: 1.5 }} />
-          Edit Course
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose}>
-          <ContentCopy sx={{ fontSize: 18, mr: 1.5 }} />
-          Duplicate
-        </MenuItem>
-        <MenuItem onClick={handleMenuClose} sx={{ color: "error.main" }}>
-          <Delete sx={{ fontSize: 18, mr: 1.5 }} />
-          Delete
+        <MenuItem
+          onClick={() => {
+            if (selectedCourse) {
+              handleViewClasses(selectedCourse);
+            }
+            handleMenuClose();
+          }}
+        >
+          <Class sx={{ fontSize: 18, mr: 1.5 }} />
+          Xem lớp học
         </MenuItem>
       </Menu>
 
-      {/* Create Course Dialog */}
+      {/* Classes Dialog */}
       <Dialog
-        open={openDialog}
-        onClose={() => setOpenDialog(false)}
-        maxWidth="sm"
+        open={showClassesDialog}
+        onClose={() => setShowClassesDialog(false)}
+        maxWidth="md"
         fullWidth
         PaperProps={{
-          sx: { borderRadius: 3 },
+          sx: {
+            borderRadius: 3,
+          },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Create New Course</DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="Course Title"
-              fullWidth
-              placeholder="Enter course title"
-            />
-            <TextField
-              label="Description"
-              fullWidth
-              multiline
-              rows={3}
-              placeholder="Enter course description"
-            />
-            <TextField
-              label="Category"
-              fullWidth
-              placeholder="e.g., Programming, Design"
-            />
-            <TextField
-              label="Duration"
-              fullWidth
-              placeholder="e.g., 12 weeks"
-            />
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+            <Class sx={{ color: "#667eea" }} />
+            <Box>
+              <Typography variant="h6">Lớp học liên quan</Typography>
+              <Typography variant="body2" sx={{ color: "#64748b" }}>
+                {selectedCourse?.Title || selectedCourse?.title || "N/A"} -
+                Tổng: {courseClasses.length} lớp
+              </Typography>
+            </Box>
           </Box>
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {loadingClasses ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : courseClasses.length === 0 ? (
+            <Box sx={{ textAlign: "center", py: 4 }}>
+              <Class sx={{ fontSize: 64, color: "#94a3b8", mb: 2 }} />
+              <Typography variant="body1" sx={{ color: "#64748b" }}>
+                Khóa học này chưa có lớp học nào
+              </Typography>
+            </Box>
+          ) : (
+            <TableContainer>
+              <Table>
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: "#f8fafc" }}>
+                    <TableCell sx={{ fontWeight: 700 }}>Tên lớp</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Giảng viên</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Trạng thái</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Số buổi</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Ngày bắt đầu</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {courseClasses.map((classItem) => (
+                    <TableRow key={classItem.ClassID}>
+                      <TableCell sx={{ fontWeight: 600 }}>
+                        {classItem.Name || "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {classItem.instructorName ||
+                          classItem.InstructorName ||
+                          "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={
+                            classItem.Status === "DRAFT"
+                              ? "Nháp"
+                              : classItem.Status === "PENDING_APPROVAL"
+                              ? "Chờ duyệt"
+                              : classItem.Status === "APPROVED"
+                              ? "Đã duyệt"
+                              : classItem.Status === "PUBLISHED"
+                              ? "Đã xuất bản"
+                              : classItem.Status || "N/A"
+                          }
+                          size="small"
+                          sx={{
+                            backgroundColor:
+                              classItem.Status === "PUBLISHED"
+                                ? "#10b981"
+                                : classItem.Status === "APPROVED"
+                                ? "#06b6d4"
+                                : classItem.Status === "PENDING_APPROVAL"
+                                ? "#f59e0b"
+                                : "#94a3b8",
+                            color: "white",
+                            fontWeight: 600,
+                            fontSize: "11px",
+                          }}
+                        />
+                      </TableCell>
+                      <TableCell>{classItem.Numofsession || 0} buổi</TableCell>
+                      <TableCell>
+                        {classItem.OpendatePlan || classItem.Opendate || "N/A"}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
           <Button
-            onClick={() => setOpenDialog(false)}
-            sx={{ textTransform: "none", color: "#64748b" }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
+            onClick={() => setShowClassesDialog(false)}
             sx={{
               textTransform: "none",
-              backgroundColor: "#667eea",
-              "&:hover": { backgroundColor: "#5568d3" },
+              color: "#64748b",
             }}
           >
-            Create Course
+            Đóng
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          sx={{ width: "100%" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

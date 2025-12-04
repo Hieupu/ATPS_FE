@@ -118,9 +118,14 @@ const SchedulePage = () => {
     try {
       setLoading(true);
 
-      // Load timeslots từ database
-      const timeslotsData = await classService.getAllTimeslots();
-      setTimeslots(Array.isArray(timeslotsData) ? timeslotsData : []);
+      // Load timeslots từ database (lấy tối đa 500 ca mỗi lần)
+      const timeslotResponse = await classService.getAllTimeslots({
+        limit: 500,
+      });
+      const timeslotsData = Array.isArray(timeslotResponse?.data)
+        ? timeslotResponse.data
+        : [];
+      setTimeslots(timeslotsData);
 
       const classData = await classService.getClassById(courseId);
       setCourse(classData);
@@ -1645,10 +1650,10 @@ const SchedulePage = () => {
         >
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              Schedule Management
+              Quản lý lịch học lớp
             </Typography>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Class: <strong>{course.title || course.Name}</strong>
+              Lớp: <strong>{course.title || course.Name}</strong>
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 2 }}>
@@ -1673,7 +1678,6 @@ const SchedulePage = () => {
             </Button>
             <Button
               variant="contained"
-              startIcon={<Add />}
               onClick={() => setShowBulkModal(true)}
               sx={{
                 backgroundColor: "#10b981",
@@ -1684,7 +1688,7 @@ const SchedulePage = () => {
                 },
               }}
             >
-              Bulk Add
+              Thêm lịch hàng loạt
             </Button>
             <Button
               variant="outlined"
@@ -1701,7 +1705,7 @@ const SchedulePage = () => {
                 },
               }}
             >
-              Back
+              Trở về
             </Button>
           </Box>
         </Box>
