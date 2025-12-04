@@ -30,7 +30,6 @@ import {
 const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
-  console.log(assignment, "assignment in AssignmentItem");
 
   const typeInfo = getTypeColor("assignment");
   const hasSubmission = assignment.Submission;
@@ -300,7 +299,6 @@ const AssignmentActions = ({
           </Typography>
         )}
 
-        {/* Nhóm 2 nút: Làm lại và Xem kết quả */}
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
             size="small"

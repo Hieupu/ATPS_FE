@@ -68,7 +68,7 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
       setLoading(true);
       setError(null);
       const response = await getAssignmentQuestionsApi(assignment.AssignmentID);
-      console.log("câu hỏi assignment:", response);
+
       setAssignmentData(response);
     } catch (err) {
       setError(err.message || "Không thể tải bài tập");
@@ -114,7 +114,6 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
   ]); // Chỉ chạy khi MaxDuration thay đổi
 
   const handleAnswerChange = useCallback((questionId, answer) => {
-    console.log("đáp án thay đổi:", questionId, answer);
     setAnswers((prev) => ({
       ...prev,
       [questionId]: answer,
@@ -122,7 +121,6 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
   }, []);
 
   const handleFileChange = useCallback((fileType, file, duration = null) => {
-    console.log("File changed:", fileType, file, duration);
     setFiles((prev) => ({
       ...prev,
       [fileType]: file,
@@ -136,15 +134,6 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
     const type = assignmentData.assignment.Type;
     const totalQuestions = assignmentData.questions?.length || 0;
     const answeredQuestions = Object.keys(answersRef.current).length;
-
-    console.log(
-      "Validation - Type:",
-      type,
-      "Total questions:",
-      totalQuestions,
-      "Answered:",
-      answeredQuestions
-    );
 
     if (totalQuestions > 0 && answeredQuestions < totalQuestions) {
       return `Bạn mới trả lời ${answeredQuestions}/${totalQuestions} câu hỏi. Bạn có chắc muốn nộp bài?`;
@@ -163,10 +152,6 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
   }, [assignmentData]);
 
   const handleSubmit = useCallback(async () => {
-    console.log("Starting submission...");
-    console.log("Current answers:", answersRef.current);
-    console.log("Current files:", filesRef.current);
-
     const validationError = validateSubmission();
     if (validationError) {
       if (
@@ -202,14 +187,11 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
           filesRef.current.durationSec || timeSpentRef.current;
       }
 
-      console.log("Submitting data:", submissionData);
-
       const response = await submitAssignmentApi(
         assignment.AssignmentID,
         submissionData
       );
 
-      console.log("Submission successful:", response);
       alert("Nộp bài thành công!");
       onSubmitSuccess?.();
       onClose();

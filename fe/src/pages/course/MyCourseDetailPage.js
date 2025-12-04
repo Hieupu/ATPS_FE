@@ -44,6 +44,8 @@ const MyCourseDetailPage = () => {
       setError(null);
 
       const courseData = await getCourseByIdApi(id);
+      console.log(courseData);
+
       setCourse(courseData);
 
       const enrolledCourses = await getMyEnrolledCourses();
@@ -102,103 +104,97 @@ const MyCourseDetailPage = () => {
     <Box sx={{ minHeight: "100vh", bgcolor: "#fff" }}>
       <AppHeader />
 
-      <Container maxWidth="xl" sx={{ mt: 4 }}>
-        <Grid container spacing={0}>
-          <Grid
-            item
-            xs={12}
-            md={3}
+      <Box sx={{ display: "flex", mt: 4 }}>
+        {/* Sidebar bên trái - không nằm trong Container */}
+        <Box
+          sx={{
+            width: { xs: "100%", md: "380px" },
+            flexShrink: 0,
+            borderRight: { md: "1px solid #e0e0e0" },
+            minHeight: { md: "80vh" },
+            pr: { md: 3 },
+            pl: { md: 4 },
+            position: { md: "sticky" },
+            top: { md: "100px" },
+            alignSelf: "flex-start",
+            height: "fit-content",
+          }}
+        >
+          <Box sx={{ mb: 4, px: 2 }}>
+            <Breadcrumbs
+              separator={<NavigateNextIcon fontSize="small" />}
+              aria-label="breadcrumb"
+              sx={{ mb: 2 }}
+            >
+              <Link
+                component={RouterLink}
+                underline="hover"
+                color="inherit"
+                to="/my-courses"
+                sx={{ display: "flex", alignItems: "center" }}
+              >
+                Khóa Học Của Tôi
+              </Link>
+              <Typography sx={{ color: "text.primary", fontWeight: 500 }}>
+                Chi Tiết
+              </Typography>
+            </Breadcrumbs>
+
+            <Typography
+              variant="h6"
+              component="h1"
+              sx={{ fontWeight: 700, mb: 1, lineHeight: 1.3 }}
+            >
+              {course.Title}
+            </Typography>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ fontSize: "0.85rem" }}
+            >
+              {course.Description}
+            </Typography>
+          </Box>
+
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            orientation="vertical"
+            TabIndicatorProps={{ sx: { display: "none" } }}
             sx={{
-              borderRight: { md: "1px solid #e0e0e0" },
-              minHeight: { md: "80vh" },
-              pr: { md: 2 },
+              "& .MuiTab-root": {
+                alignItems: "flex-start",
+                textTransform: "none",
+                textAlign: "left",
+                fontSize: "0.95rem",
+                fontWeight: 500,
+                color: "#444",
+                minHeight: "48px",
+                padding: "12px 20px",
+                borderLeft: "4px solid transparent",
+                transition: "all 0.2s",
+                "&:hover": {
+                  bgcolor: "#f5f7f8",
+                },
+                "&.Mui-selected": {
+                  color: "#0056d2",
+                  fontWeight: 700,
+                  borderLeftColor: "#0056d2",
+                  bgcolor: "#f5f7f8",
+                },
+              },
             }}
           >
-            <Box sx={{ mb: 4, px: 2 }}>
-              <Breadcrumbs
-                separator={<NavigateNextIcon fontSize="small" />}
-                aria-label="breadcrumb"
-                sx={{ mb: 2 }}
-              >
-                <Link
-                  component={RouterLink}
-                  underline="hover"
-                  color="inherit"
-                  to="/my-courses"
-                  sx={{ display: "flex", alignItems: "center" }}
-                >
-                  Khóa Học Của Tôi
-                </Link>
-                <Typography sx={{ color: "text.primary", fontWeight: 500 }}>
-                  Khóa Học Chi Tiết
-                </Typography>
-              </Breadcrumbs>
+            <Tab label="Tài liệu khóa học" />
+            <Tab label="Lớp học của tôi" />
+            <Tab label="Lộ trình" />
+            <Tab label="Điểm số" />
+          </Tabs>
+        </Box>
 
-              <Typography
-                variant="h6"
-                component="h1"
-                sx={{ fontWeight: 700, mb: 1, lineHeight: 1.3 }}
-              >
-                {course.Title}
-              </Typography>
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                sx={{ fontSize: "0.85rem" }}
-              >
-                {course.Description}
-              </Typography>
-            </Box>
-
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              orientation="vertical"
-              TabIndicatorProps={{ sx: { display: "none" } }}
-              sx={{
-                "& .MuiTab-root": {
-                  alignItems: "flex-start",
-                  textTransform: "none",
-                  textAlign: "left",
-                  fontSize: "0.95rem",
-                  fontWeight: 500,
-                  color: "#444",
-                  minHeight: "48px",
-                  padding: "12px 20px",
-                  borderLeft: "4px solid transparent",
-                  transition: "all 0.2s",
-                  "&:hover": {
-                    bgcolor: "#f5f7f8",
-                  },
-                  "&.Mui-selected": {
-                    color: "#0056d2",
-                    fontWeight: 700,
-                    borderLeftColor: "#0056d2",
-                    bgcolor: "#f5f7f8",
-                  },
-                },
-              }}
-            >
-              <Tab label="Tài liệu khóa học" />
-              <Tab label="Lớp học của tôi" />
-              <Tab label="Lộ trình" />
-              <Tab label="Điểm số" />
-            </Tabs>
-          </Grid>
-
-          <Grid item xs={12} md={9} sx={{ pl: { md: 4 } }}>
-            <Box sx={{ mb: 2, py: 1, borderBottom: "1px solid #eee" }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {tabValue === 0
-                  ? "Tài liệu"
-                  : tabValue === 1
-                  ? "Danh sách lớp"
-                  : tabValue === 2
-                  ? "Lộ trình học tập"
-                  : "Bảng điểm"}
-              </Typography>
-            </Box>
-
+        {/* Nội dung bên phải - nằm trong Container */}
+        <Box sx={{ flex: 1, minWidth: 0, pl: { md: 4 } }}>
+          <Container maxWidth="xl">
             <TabPanel value={tabValue} index={0}>
               <CourseMaterials
                 courseId={course.CourseID}
@@ -213,6 +209,7 @@ const MyCourseDetailPage = () => {
             <TabPanel value={tabValue} index={2}>
               <CourseCurriculum
                 courseId={course.CourseID}
+                courseData={course}
                 isEnrolled={isEnrolled}
               />
             </TabPanel>
@@ -222,9 +219,9 @@ const MyCourseDetailPage = () => {
                 Nội dung bảng điểm sẽ hiển thị tại đây.
               </Typography>
             </TabPanel>
-          </Grid>
-        </Grid>
-      </Container>
+          </Container>
+        </Box>
+      </Box>
     </Box>
   );
 };
