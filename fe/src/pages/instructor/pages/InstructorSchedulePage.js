@@ -145,20 +145,42 @@ export default function InstructorSchedulePage() {
     if (!session) return;
     console.log("Start Zoom với session:", session);
 
+    const rawUser = localStorage.getItem("user");
+    const currentUser = rawUser ? JSON.parse(rawUser) : {};
+
+    const zoomId = session.ZoomID || session.zoomID || session.zoomId;
+    const zoomPass =
+      session.ZoomPass || session.zoomPass || session.zoom_pass || "";
+    const className =
+      session.className || session.ClassName || session.title || "Lớp học";
+
+    if (!zoomId) {
+      alert("Lỗi: Không tìm thấy Zoom ID trong buổi học này.");
+      return;
+    }
+
     const zoomPayload = {
       schedule: {
-        ZoomID: session.ZoomID,
-        Zoompass: session.ZoomPass,
-        ClassName: session.className,
+        ZoomID: zoomId,
+        Zoompass: zoomPass,
+        ClassName: className,
+        Date: session.Date || session.date,
+        StartTime: session.StartTime || session.startTime,
       },
-      userRole: "instructor",
+
+      userId: currentUser.id,
+      userRole: currentUser.role || "instructor",
+      userName: currentUser.username || currentUser.fullname || "Giảng viên",
+      email: currentUser.email,
       timestamp: new Date().getTime(),
     };
 
-    sessionStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
+    localStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
 
     setTimeout(() => {
-      window.open("/zoom", "_blank");
+      let url = `/zoom/${zoomId}`;
+      if (zoomPass) url += `/${zoomPass}`;
+      window.open(url, "_blank");
     }, 100);
   };
 

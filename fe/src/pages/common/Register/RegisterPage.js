@@ -113,11 +113,6 @@ const RegisterPage = () => {
     >
       <Container maxWidth="sm">
         <Paper elevation={8} sx={{ p: 4, borderRadius: 3, backgroundColor: "white" }}>
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-            <Avatar sx={{ width: 80, height: 80, backgroundColor: "primary.light" }}>
-              <AccountCircle sx={{ fontSize: 48, color: "primary.main" }} />
-            </Avatar>
-          </Box>
           <Box sx={{ textAlign: "center", mb: 3 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
               Đăng kí tài khoản
