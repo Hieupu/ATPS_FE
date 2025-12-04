@@ -12,6 +12,8 @@ import {
 } from "@mui/material";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 import AvailabilityTab from "../components/class/tabs/AvailabilityTab";
+import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 const BASE_URL = "http://localhost:9999/api/instructor";
 const apiClient = axios.create({
@@ -29,7 +31,7 @@ apiClient.interceptors.request.use((config) => {
 export default function InstructorSchedulePage() {
   const navigate = useNavigate();
   const [tabIndex, setTabIndex] = useState(0);
-
+  const user = useAuth();
   const [sessions, setSessions] = useState([]);
   const [attendanceSheet, setAttendanceSheet] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -145,8 +147,25 @@ export default function InstructorSchedulePage() {
     if (!session) return;
     console.log("Start Zoom với session:", session);
 
+    const start = new Date(`${session.date}T${session.startTime}`);
+    const now = new Date();
+    const isWithin15MinBefore = now >= new Date(start.getTime() - 15 * 60 * 1000);
     const rawUser = localStorage.getItem("user");
     const currentUser = rawUser ? JSON.parse(rawUser) : {};
+    const userId = user?.user?.id;
+    const role = user?.user?.role;
+    if (!userId) {
+        toast.warn("Không xác định được người dùng.");
+        return;
+      }
+      if (role !== "instructor" && role !== "learner") {
+        toast.warn("Bạn không có quyền truy cập vào buổi học này.");
+        return;
+      }
+      if (role === "instructor" && !isWithin15MinBefore) {
+        toast.warn("Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu.");
+        return;
+      }
 
     const zoomId = session.ZoomID || session.zoomID || session.zoomId;
     const zoomPass =

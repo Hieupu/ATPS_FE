@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -166,26 +167,21 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const start = new Date(`${schedule.Date}T${schedule.StartTime}`);
   const now = new Date();
 
-  const isWithin15MinBefore = now >= new Date(start.getTime() - 15 * 60 * 1000);
   const isWithin10MinBefore = now >= new Date(start.getTime() - 10 * 60 * 1000);
 
   const userId = user?.user?.id;
   const role = user?.user?.role;
 
   if (!userId) {
-    alert("Không xác định được người dùng.");
+    toast.warn("Không xác định được người dùng.");
     return;
   }
   if (role !== "instructor" && role !== "learner") {
-    alert("Bạn không có quyền truy cập vào buổi học này.");
-    return;
-  }
-  if (role === "instructor" && !isWithin15MinBefore) {
-    alert("Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu.");
+    toast.warn("Bạn không có quyền truy cập vào buổi học này.");
     return;
   }
   if (role === "learner" && !isWithin10MinBefore) {
-    alert("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+    toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
     return;
   }
 
