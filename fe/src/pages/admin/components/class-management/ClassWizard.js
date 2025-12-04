@@ -5318,7 +5318,7 @@ const ClassWizard = ({
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gridTemplateColumns: "repeat(6, 1fr)",
                       gap: "12px",
                       marginBottom: "12px",
                     }}
@@ -5330,19 +5330,29 @@ const ClassWizard = ({
                         label: "8:00 - 10:00",
                       },
                       {
-                        start: "10:00:00",
-                        end: "12:00:00",
-                        label: "10:00 - 12:00",
+                        start: "10:20:00",
+                        end: "12:20:00",
+                        label: "10:20 - 12:20",
                       },
                       {
-                        start: "14:00:00",
-                        end: "16:00:00",
-                        label: "14:00 - 16:00",
+                        start: "13:00:00",
+                        end: "15:00:00",
+                        label: "13:00 - 15:00",
                       },
                       {
-                        start: "18:00:00",
-                        end: "20:00:00",
-                        label: "18:00 - 20:00",
+                        start: "15:20:00",
+                        end: "17:20:00",
+                        label: "15:20 - 17:20",
+                      },
+                      {
+                        start: "17:40:00",
+                        end: "19:40:00",
+                        label:"17:40 - 19:40",                      
+                      },    
+{
+                        start: "20:00:00",
+                        end: "22:00:00",
+                        label:"20:00 - 22:00",                      
                       },
                     ].map((timeSlot) => {
                       // Tìm timeslot trong DB có StartTime-EndTime tương ứng
