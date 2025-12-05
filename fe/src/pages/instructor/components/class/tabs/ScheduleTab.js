@@ -139,11 +139,19 @@ export default function ScheduleTab({
   };
 
   const renderSessionCard = (session, idx) => {
+    // 1. Chuẩn hóa ngày hiện tại
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+
     const sessionDate = new Date(session.date);
     sessionDate.setHours(0, 0, 0, 0);
-    const isPast = sessionDate.getTime() < today.getTime();
+
+    const isFuture = sessionDate.getTime() > today.getTime();
+
+    const diffTime = today.getTime() - sessionDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    const isExpired = diffDays > 2;
 
     return (
       <Box
@@ -209,7 +217,9 @@ export default function ScheduleTab({
             {session.startTimeFormatted} - {session.endTimeFormatted}
           </Typography>
 
-          {!isPast && onStartZoom && (
+          {/* Nút Zoom: Ẩn nếu đã qua ngày (isPast cũ) hoặc dùng logic isExpired tùy bạn. 
+              Thường thì quá ngày học rồi thì ẩn nút Zoom luôn là đúng */}
+          {diffDays <= 0 && onStartZoom && (
             <Button
               onClick={() => onStartZoom(session)}
               fullWidth
@@ -231,21 +241,32 @@ export default function ScheduleTab({
             </Button>
           )}
 
-          {!isPast && session.totalStudents > 0 && (
+          {/* Nút Điểm danh */}
+          {/* LOGIC MỚI: Chỉ hiện khi chưa quá hạn (!isExpired) */}
+          {!isExpired && session.totalStudents > 0 && (
             <Button
               onClick={() => onOpenAttendance(session)}
               fullWidth
+              disabled={isFuture} // Vẫn hiện nhưng không bấm được nếu là tương lai
               size="small"
               sx={{
                 padding: "2px 8px",
-                bgcolor: session.isFullyMarked ? "#4caf50" : "#1976d2",
+                bgcolor: isFuture
+                  ? "#9e9e9e"
+                  : session.isFullyMarked
+                  ? "#4caf50"
+                  : "#1976d2",
                 color: "white",
                 fontSize: "0.7rem",
                 fontWeight: 500,
                 textTransform: "none",
                 minWidth: "unset",
                 "&:hover": {
-                  bgcolor: session.isFullyMarked ? "#388e3c" : "#1565c0",
+                  bgcolor: isFuture
+                    ? "#9e9e9e"
+                    : session.isFullyMarked
+                    ? "#388e3c"
+                    : "#1565c0",
                 },
               }}
               startIcon={
@@ -256,8 +277,26 @@ export default function ScheduleTab({
                 )
               }
             >
-              {session.isFullyMarked ? "Cập nhật" : "Điểm danh"}
+              {isFuture
+                ? "Điểm danh"
+                : session.isFullyMarked
+                ? "Cập nhật"
+                : "Điểm danh"}
             </Button>
+          )}
+
+          {/* (Optional) Nếu muốn báo cho user biết là đã hết hạn điểm danh thì mở dòng này */}
+          {isExpired && (
+            <Typography
+              sx={{
+                fontSize: "0.7rem",
+                color: "grey.500",
+                textAlign: "center",
+                fontStyle: "italic",
+              }}
+            >
+              Đã khóa sổ
+            </Typography>
           )}
         </Box>
       </Box>
