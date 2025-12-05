@@ -23,6 +23,19 @@ const AttendanceTable = ({
   onFilterChange, 
   isPast = false 
 }) => {
+  // Hàm lọc dữ liệu theo trạng thái
+  const getFilteredAttendance = () => {
+    if (!attendance || !Array.isArray(attendance)) return [];
+    
+    if (filterStatus === "all") return attendance;
+    
+    return attendance.filter(item => {
+      const itemStatus = item.Status?.toLowerCase();
+      const filterStatusLower = filterStatus?.toLowerCase();
+      return itemStatus === filterStatusLower;
+    });
+  };
+
   const getStatusColor = (status) => {
     switch (status?.toLowerCase()) {
       case "present":
@@ -49,8 +62,11 @@ const AttendanceTable = ({
     }
   };
 
+  const filteredAttendance = getFilteredAttendance();
+
   return (
     <>
+         {isPast && (
       <Box sx={{ mb: 2 }}>
         <TextField
           select
@@ -65,8 +81,9 @@ const AttendanceTable = ({
           <MenuItem value="absent">Vắng mặt</MenuItem>
         </TextField>
       </Box>
+             )}
 
-      <TableContainer component={Paper}>
+      <TableContainer component={Paper} variant="outlined">
         <Table>
           <TableHead>
             <TableRow>
@@ -80,46 +97,56 @@ const AttendanceTable = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {attendance.map((item) => (
-              <TableRow key={item.AttendanceID} hover>
+            {filteredAttendance.map((item) => (
+              <TableRow key={item.AttendanceID || item.SessionID} hover>
                 <TableCell>
                   <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {new Date(item.SessionDate).toLocaleDateString("vi-VN")}
+                    {item.SessionDate ? new Date(item.SessionDate).toLocaleDateString("vi-VN") : "N/A"}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {item.DayOfWeek}
+                    {item.DayOfWeek || ""}
                   </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">{item.SessionTitle}</Typography>
+                  <Typography variant="body2">{item.SessionTitle || "Không có tiêu đề"}</Typography>
+                  {item.SessionDescription && (
+                    <Typography variant="caption" color="text.secondary" display="block">
+                      {item.SessionDescription}
+                    </Typography>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Box>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {item.CourseTitle}
+                        {item.CourseTitle || "Không xác định"}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {item.ClassName}
+                        {item.ClassName || ""}
                       </Typography>
                     </Box>
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Avatar src={item.InstructorAvatar} sx={{ width: 32, height: 32 }}>
+                    <Avatar 
+                      src={item.InstructorAvatar} 
+                      sx={{ width: 32, height: 32 }}
+                    >
                       <Person />
                     </Avatar>
-                    <Typography variant="body2">{item.InstructorName}</Typography>
+                    <Typography variant="body2">
+                      {item.InstructorName || "Không xác định"}
+                    </Typography>
                   </Box>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">{item.Time}</Typography>
+                  <Typography variant="body2">{item.Time || "N/A"}</Typography>
                 </TableCell>
                 <TableCell align="center">
                   <Chip
                     icon={getStatusIcon(item.Status)}
-                    label={item.StatusText}
+                    label={item.StatusText || item.Status || "Không xác định"}
                     color={getStatusColor(item.Status)}
                     size="small"
                   />
@@ -127,7 +154,7 @@ const AttendanceTable = ({
                 {isPast && (
                   <TableCell align="center">
                     <Chip
-                      label={`${item.TotalPresent}/${item.TotalLearners}`}
+                      label={`${item.TotalPresent || 0}/${item.TotalLearners || 0}`}
                       size="small"
                       variant="outlined"
                     />
@@ -139,9 +166,12 @@ const AttendanceTable = ({
         </Table>
       </TableContainer>
 
-      {attendance.length === 0 && (
+      {filteredAttendance.length === 0 && (
         <Alert severity="info" sx={{ mt: 2 }}>
-          Không có buổi học nào phù hợp với bộ lọc.
+          {attendance.length === 0 
+            ? "Không có dữ liệu điểm danh." 
+            : "Không có buổi học nào phù hợp với bộ lọc."
+          }
         </Alert>
       )}
     </>

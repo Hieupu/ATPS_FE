@@ -10,15 +10,16 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const user = useAuth();
 
   const timeSlots = [
-    { label: "Slot 1", start: "08:00", end: "10:00" },
-    { label: "Slot 2", start: "10:20", end: "12:20" },
-    { label: "Slot 3", start: "13:00", end: "15:00" },
-    { label: "Slot 4", start: "15:20", end: "17:20" },
-    { label: "Slot 5", start: "17:40", end: "19:40" },
-    { label: "Slot 6", start: "20:00", end: "22:00" }
+    { label: "Ca 1", start: "08:00", end: "10:00" },
+    { label: "Ca 2", start: "10:20", end: "12:20" },
+    { label: "Ca 3", start: "13:00", end: "15:00" },
+    { label: "Ca 4", start: "15:20", end: "17:20" },
+    { label: "Ca 5", start: "18:00", end: "20:00" },
+    { label: "Ca 6", start: "20:00", end: "22:00" }
   ];
   
-  const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+
 
   const getWeekStart = (date) => {
     const d = new Date(date);
@@ -54,7 +55,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
             weekStart: weekStart,
             weekEnd: weekEnd,
             weekNumber: getWeekNumber(weekStart),
-            label: `Week ${getWeekNumber(weekStart)} (${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1})`
+            label: `Tuần ${getWeekNumber(weekStart)} (${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1})`
           });
         }
       }
@@ -297,7 +298,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f57c00'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff9800'}
           >
-            📹 Join Zoom
+            Tham gia Zoom
           </button>
         )}
       </div>
@@ -322,7 +323,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
               minWidth: '50px',
               fontSize: '1.1rem'
             }}>
-              YEAR
+              NĂM
             </label>
             <select
               value={selectedYear}
@@ -351,7 +352,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
               minWidth: '60px',
               fontSize: '1.1rem'
             }}>
-              WEEK
+              TUẦN
             </label>
             <select
               value={selectedWeek || ''}

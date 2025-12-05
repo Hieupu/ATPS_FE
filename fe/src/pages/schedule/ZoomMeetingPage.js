@@ -61,15 +61,17 @@ const ZoomMeetingPage = () => {
 
         const { signature } = await getSignature(meetingNumber, role);
 
+        // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
+        // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
-            
 
+            // Join meeting
             ZoomMtg.join({
               signature: signature,
               meetingNumber: meetingNumber,

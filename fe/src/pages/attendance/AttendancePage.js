@@ -16,7 +16,6 @@ import {
 } from "../../apiServices/attendanceService";
 import { getLearnerIdFromAccount } from "../../utils/learnerUtils";
 import AppHeader from "../../components/Header/AppHeader";
-import AttendanceStats from "./components/AttendanceStats";
 import AttendanceTable from "./components/AttendanceTable";
 import PageHeader from "./components/PageHeader";
 import AttendanceByClass from "./components/AttendanceByClass";
@@ -61,6 +60,8 @@ const AttendancePage = () => {
         getLearnerAttendanceApi(learnerIdValue),
         getAttendanceStatsApi(learnerIdValue),
       ]);
+
+      console.log("attendanceData" , attendanceData)
 
       setAttendance(attendanceData.attendance || []);
       setStats(statsData);
@@ -145,7 +146,6 @@ const AttendancePage = () => {
       <PageHeader />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-        <AttendanceStats stats={stats} />
 
         <Paper sx={{ mb: 3 }}>
           <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
@@ -181,10 +181,15 @@ const AttendancePage = () => {
             isPast={true}
           />
         </TabPanel>
+<TabPanel value={tabValue} index={2}>
+  {learnerId && (
+    <AttendanceByClass
+      learnerId={learnerId}
+      attendance={filteredUpcoming}  
+    />
+  )}
+</TabPanel>
 
-        <TabPanel value={tabValue} index={2}>
-          {learnerId && <AttendanceByClass learnerId={learnerId} />}
-        </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
           {learnerId && <AttendanceCalendar learnerId={learnerId} />}

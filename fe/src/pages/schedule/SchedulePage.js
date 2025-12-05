@@ -97,24 +97,6 @@ const SchedulePage = () => {
       <ScheduleHeader />
       
       <Container maxWidth="xl" sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-          <ToggleButtonGroup
-            value={viewMode}
-            exclusive
-            onChange={handleViewModeChange}
-            aria-label="view mode"
-            size="small"
-          >
-            <ToggleButton value="calendar" aria-label="calendar view">
-              <CalendarMonth sx={{ mr: 1 }} />
-              Lịch tuần
-            </ToggleButton>
-            <ToggleButton value="list" aria-label="list view">
-              <ViewList sx={{ mr: 1 }} />
-              Danh sách
-            </ToggleButton>
-          </ToggleButtonGroup>
-        </Box>
 
         <Card>
           {viewMode === 'calendar' ? (
