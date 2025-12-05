@@ -10,7 +10,8 @@ const ZoomMeetingPage = () => {
   const zoomData = raw ? JSON.parse(raw) : null;
   const raw1 = localStorage.getItem("user");
   const user = raw1 ? JSON.parse(raw1) : null;
-  console.log("zoomData:", zoomData);
+  console.log("Zoom data:", zoomData);
+  
   // Lấy signature từ backend
   const getSignature = async (meetingNumber, role) => {
     try {
@@ -35,7 +36,7 @@ const ZoomMeetingPage = () => {
   // Khởi tạo và join meeting
   useEffect(() => {
     const userId = zoomData?.userId ?? 0;
-    if (!zoomData || !zoomData.schedule || userId === user.userId) {
+    if (!zoomData || !zoomData.schedule) {
       console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
       return;
     }
@@ -61,17 +62,15 @@ const ZoomMeetingPage = () => {
 
         const { signature } = await getSignature(meetingNumber, role);
 
-        // Khởi tạo Zoom SDK
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
-        // Khởi tạo meeting
         ZoomMtg.init({
           leaveUrl: "http://localhost:3000",
           success: (success) => {
             console.log("Init success:", success);
+            
 
-            // Join meeting
             ZoomMtg.join({
               signature: signature,
               meetingNumber: meetingNumber,

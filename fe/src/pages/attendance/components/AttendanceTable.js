@@ -93,7 +93,6 @@ const AttendanceTable = ({
               <TableCell>Giảng viên</TableCell>
               <TableCell>Thời gian</TableCell>
               <TableCell align="center">Trạng thái</TableCell>
-              {isPast && <TableCell align="center">Sĩ số</TableCell>}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -151,7 +150,7 @@ const AttendanceTable = ({
                     size="small"
                   />
                 </TableCell>
-                {isPast && (
+                {/* {isPast && (
                   <TableCell align="center">
                     <Chip
                       label={`${item.TotalPresent || 0}/${item.TotalLearners || 0}`}
@@ -159,7 +158,7 @@ const AttendanceTable = ({
                       variant="outlined"
                     />
                   </TableCell>
-                )}
+                )} */}
               </TableRow>
             ))}
           </TableBody>
