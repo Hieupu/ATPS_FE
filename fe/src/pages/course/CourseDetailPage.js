@@ -22,7 +22,7 @@ import CourseCurriculum from "./components/CourseCurriculum";
 import CourseMaterials from "./components/CourseMaterials";
 import InstructorInfo from "./components/InstructorInfo";
 import CourseReviews from "./components/CourseReviews";
-
+import { useNavigate } from "react-router-dom";
 // API imports
 import {
   getCourseByIdApi,
@@ -52,7 +52,7 @@ const CourseDetailPage = () => {
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
-
+  const navigate = useNavigate();
   // Format price
   const priceFormatter = useMemo(
     () =>
@@ -79,6 +79,7 @@ const CourseDetailPage = () => {
       setLoading(true);
       setError(null);
       const data = await getCourseByIdApi(id);
+      console.log("getCourseByIdApi", data);
       setCourse(data);
     } catch (error) {
       console.error("Error fetching course:", error);
@@ -142,7 +143,7 @@ const CourseDetailPage = () => {
       <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
         <AppHeader />
         <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress sx={{ color: "#dc2626" }} />
+          <CircularProgress sx={{ color: "#667eea" }} />
         </Box>
       </Box>
     );
@@ -186,21 +187,36 @@ const CourseDetailPage = () => {
       {/* Course Header */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+          background:
+            "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
           color: "white",
           py: 8,
           position: "relative",
           overflow: "hidden",
+          borderBottomLeftRadius: { xs: 40, md: 60 },
+          borderBottomRightRadius: { xs: 40, md: 60 },
+          boxShadow: "0 50px 100px rgba(102, 126, 234, 0.4)",
           "&::before": {
             content: '""',
             position: "absolute",
+            width: "100%",
+            height: "100%",
+            top: 0,
+            left: 0,
+            background:
+              "radial-gradient(circle at 15% 30%, rgba(255,255,255,0.25) 0%, transparent 60%)",
+            zIndex: 1,
+          },
+          "&::after": {
+            content: '""',
+            position: "absolute",
+            width: "100%",
+            height: "100%",
             top: 0,
             right: 0,
-            width: "40%",
-            height: "100%",
             background:
-              "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
-            pointerEvents: "none",
+              "radial-gradient(circle at 85% 70%, rgba(255,255,255,0.22) 0%, transparent 60%)",
+            zIndex: 1,
           },
         }}
       >
@@ -304,7 +320,7 @@ const CourseDetailPage = () => {
                 </Grid>
               </Grid>
 
-              <Box
+              <Card
                 sx={{
                   display: "flex",
                   alignItems: "center",
@@ -312,45 +328,74 @@ const CourseDetailPage = () => {
                   borderRadius: 4,
                   p: 3,
                   backdropFilter: "blur(12px)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  zIndex: 2,
+                  color: "white",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  "&:hover": {
+                    bgcolor: "rgba(255,255,255,0.25)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+                  },
+                  "&:active": {
+                    transform: "translateY(0)",
+                  },
                 }}
+                onClick={() => navigate(`/instructors/${course.InstructorID}`)}
               >
-                <Avatar
-                  src={course.InstructorAvatar}
+                <CardContent
                   sx={{
-                    width: 84,
-                    height: 84,
-                    mr: 3,
-                    border: "4px solid rgba(255,255,255,0.35)",
-                    fontSize: "2rem",
+                    display: "flex",
+                    alignItems: "center",
+                    width: "100%",
+                    p: "0 !important",
+                    "&:last-child": { pb: 0 },
                   }}
-                  alt={course.InstructorName}
                 >
-                  {course.InstructorName?.charAt(0)}
-                </Avatar>
-
-                <Box>
-                  <Typography
-                    variant="body1"
-                    sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+                  <Avatar
+                    src={course.InstructorAvatar}
+                    sx={{
+                      width: 84,
+                      height: 84,
+                      mr: 3,
+                      border: "4px solid rgba(255,255,255,0.35)",
+                      fontSize: "2rem",
+                    }}
+                    alt={course.InstructorName}
                   >
-                    Giảng viên
-                  </Typography>
+                    {course.InstructorName?.charAt(0)}
+                  </Avatar>
 
-                  <Typography
-                    variant="h5"
-                    sx={{ fontWeight: 700, mb: 0.8, fontSize: "1.8rem" }}
-                  >
-                    {course.InstructorName}
-                  </Typography>
+                  <Box>
+                    <Typography
+                      variant="body1"
+                      sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+                    >
+                      Giảng viên
+                    </Typography>
 
-                  <Typography
-                    variant="body1"
-                    sx={{ opacity: 0.9, fontSize: "1.1rem" }}
-                  >
-                    {course.InstructorJob} • {course.InstructorMajor}
-                  </Typography>
-                </Box>
-              </Box>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        mb: 0.8,
+                        fontSize: "1.8rem",
+                      }}
+                    >
+                      {course.InstructorName}
+                    </Typography>
+
+                    <Typography
+                      variant="body1"
+                      sx={{ opacity: 0.9, fontSize: "1.1rem" }}
+                    >
+                      {course.InstructorJob} • {course.InstructorMajor}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
             </Grid>
 
             <Grid item xs={12} md={4}>
@@ -366,7 +411,7 @@ const CourseDetailPage = () => {
                 <Box
                   sx={{
                     background:
-                      "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                     color: "white",
                     p: 3,
                     textAlign: "center",
@@ -400,9 +445,9 @@ const CourseDetailPage = () => {
                         display: "flex",
                         alignItems: "center",
                         p: 2,
-                        bgcolor: "#fef2f2",
+                        bgcolor: "#f8fafc",
                         borderRadius: 2,
-                        borderLeft: "4px solid #dc2626",
+                        borderLeft: "4px solid #667eea",
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
@@ -423,9 +468,9 @@ const CourseDetailPage = () => {
                         display: "flex",
                         alignItems: "center",
                         p: 2,
-                        bgcolor: "#fef2f2",
+                        bgcolor: "#f8fafc",
                         borderRadius: 2,
-                        borderLeft: "4px solid #dc2626",
+                        borderLeft: "4px solid #667eea",
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
@@ -446,9 +491,9 @@ const CourseDetailPage = () => {
                         display: "flex",
                         alignItems: "center",
                         p: 2,
-                        bgcolor: "#fef2f2",
+                        bgcolor: "#f8fafc",
                         borderRadius: 2,
-                        borderLeft: "4px solid #dc2626",
+                        borderLeft: "4px solid #667eea",
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
@@ -469,9 +514,9 @@ const CourseDetailPage = () => {
                         display: "flex",
                         alignItems: "center",
                         p: 2,
-                        bgcolor: "#fef2f2",
+                        bgcolor: "#f8fafc",
                         borderRadius: 2,
-                        borderLeft: "4px solid #dc2626",
+                        borderLeft: "4px solid #667eea",
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
@@ -509,11 +554,11 @@ const CourseDetailPage = () => {
                 minHeight: 64,
                 color: "#6b7280",
                 "&.Mui-selected": {
-                  color: "#dc2626",
+                  color: "#667eea",
                 },
               },
               "& .MuiTabs-indicator": {
-                backgroundColor: "#dc2626",
+                backgroundColor: "#667eea",
                 height: 3,
                 borderRadius: "3px 3px 0 0",
               },

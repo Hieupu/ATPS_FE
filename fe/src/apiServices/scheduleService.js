@@ -204,3 +204,31 @@ export const checkScheduleConflictApi = async (classId) => {
     throw error.response?.data || { message: "Failed to check schedule conflict" };
   }
 };
+
+export const getInstructorTimeslotsFromTodayApi = async (instructorId) => {
+  try {
+    const token = localStorage.getItem("token");
+    
+    const response = await apiClient.get(
+      `/schedule/instructor/${instructorId}/timeslots-from-today`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching instructor timeslots from today:', error);
+    
+    // Custom error handling
+    if (error.response?.data?.message) {
+      throw new Error(error.response.data.message);
+    } else if (error.message) {
+      throw new Error(error.message);
+    } else {
+      throw new Error('Failed to fetch instructor timeslots');
+    }
+  }
+};

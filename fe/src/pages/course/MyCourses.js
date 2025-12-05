@@ -504,8 +504,7 @@ const MyCourses = () => {
             gap: 2,
           }}
         >
-          {/* Hero Icon */}
-          <Box
+          {/* <Box
             sx={{
               width: 70,
               height: 70,
@@ -522,7 +521,7 @@ const MyCourses = () => {
             }}
           >
             📚
-          </Box>
+          </Box> */}
 
           {/* Title */}
           <Typography
@@ -539,24 +538,6 @@ const MyCourses = () => {
             }}
           >
             Khóa Học Của Tôi
-          </Typography>
-
-          {/* Subtitle */}
-          <Typography
-            variant="h6"
-            sx={{
-              textAlign: "center",
-              opacity: 0.92,
-              maxWidth: 700,
-              mx: "auto",
-              fontWeight: 300,
-              lineHeight: 1.7,
-              fontSize: { xs: "0.9rem", md: "1rem" },
-              fontFamily: "'Inter', 'Segoe UI', sans-serif",
-              letterSpacing: "0.2px",
-            }}
-          >
-            Tiếp tục hành trình học tập của bạn và đạt được mục tiêu
           </Typography>
         </Container>
       </Box>
