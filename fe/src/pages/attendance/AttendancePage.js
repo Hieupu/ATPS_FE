@@ -185,7 +185,7 @@ const AttendancePage = () => {
   {learnerId && (
     <AttendanceByClass
       learnerId={learnerId}
-      attendance={filteredUpcoming}  
+      attendance={attendance}  
     />
   )}
 </TabPanel>
