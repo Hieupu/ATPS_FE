@@ -134,7 +134,7 @@ const PopularClassesSection = ({
                           }} 
                         />
                         {/* HOT BADGE */}
-                        <Box sx={{ 
+                        {/* <Box sx={{ 
                           position: 'absolute', 
                           top: 12, 
                           right: 12,
@@ -150,7 +150,7 @@ const PopularClassesSection = ({
                               objectFit: 'contain' 
                             }} 
                           />
-                        </Box>
+                        </Box> */}
                       </Box>
                     )}
                     
@@ -200,20 +200,7 @@ const PopularClassesSection = ({
                             {classItem.CourseTitle || 'Khóa học'}
                           </Typography>
                           
-                          <Chip
-                            icon={<People sx={{ fontSize: 14 }} />}
-                            label={`Còn ${remainingSlots}`}
-                            size="small"
-                            color="primary"
-                            variant="filled"
-                            sx={{ 
-                              fontWeight: 600, 
-                              flexShrink: 0,
-                              backgroundColor: remainingSlots < 5 ? '#ff4757' : '#2ecc71',
-                              color: 'white',
-                              fontSize: '0.75rem'
-                            }}
-                          />
+                         
                         </Box>
                       </Box>
 

@@ -138,7 +138,7 @@ const ScheduleHeader = () => {
         }}
       >
         {/* Hero Icon */}
-        <Box
+        {/* <Box
           sx={{
             width: 70,
             height: 70,
@@ -155,7 +155,7 @@ const ScheduleHeader = () => {
           }}
         >
           📅
-        </Box>
+        </Box> */}
 
         {/* Title */}
         <Typography

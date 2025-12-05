@@ -665,7 +665,7 @@ useEffect(() => {
           </Typography>
 
           {/* Subtitle */}
-          <Typography
+          {/* <Typography
             variant="h6"
             sx={{
               textAlign: "center",
@@ -681,10 +681,10 @@ useEffect(() => {
             }}
           >
             Khám phá những giảng viên giàu kinh nghiệm và chuyên môn sâu
-          </Typography>
+          </Typography> */}
 
           {/* CTA Button */}
-          <Button
+          {/* <Button
             variant="contained"
             size="medium"
             endIcon={<RocketLaunchRounded />}
@@ -715,7 +715,7 @@ useEffect(() => {
             }}
           >
             Khám Phá Ngay
-          </Button>
+          </Button> */}
         </Container>
       </Box>
 

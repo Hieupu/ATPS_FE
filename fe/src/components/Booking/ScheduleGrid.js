@@ -140,7 +140,7 @@ const ScheduleGrid = ({
       
       setConflictAlert({
         severity: "error",
-        message: `Bạn đã giữ slot này quá nhiều lần (${recentHistory.length} lần trong 5 phút). Bạn bị tạm khóa trong 10 phút.`
+        message: `Bạn đã giữ slot này quá nhiều lần (${recentHistory.length} lần trong 15 phút). Bạn bị tạm khóa trong 10 phút.`
       });
       
       return true; // Spam detected
@@ -417,7 +417,7 @@ const ScheduleGrid = ({
         if (recentCount >= 3) {
           setConflictAlert({
             severity: "warning",
-            message: `Cảnh báo: Bạn đã giữ slot này ${recentCount} lần. Nếu giữ quá 5 lần trong 5 phút, bạn sẽ bị khóa 10 phút.`
+            message: `Cảnh báo: Bạn đã giữ slot này ${recentCount} lần. Nếu giữ quá 5 lần trong 15 phút, bạn sẽ bị khóa 10 phút.`
           });
         }
       } else {

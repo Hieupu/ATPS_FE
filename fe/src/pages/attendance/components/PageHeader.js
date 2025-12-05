@@ -139,7 +139,7 @@ const PageHeader = () => {
         }}
       >
         {/* Hero Icon */}
-        <Box
+        {/* <Box
           sx={{
             width: 70,
             height: 70,
@@ -156,7 +156,7 @@ const PageHeader = () => {
           }}
         >
           ✅
-        </Box>
+        </Box> */}
 
         {/* Title */}
         <Typography
@@ -175,7 +175,7 @@ const PageHeader = () => {
           Điểm danh
         </Typography>
 
-        {/* Subtitle */}
+        {/* Subtitle
         <Typography
           variant="h6"
           sx={{
@@ -191,7 +191,7 @@ const PageHeader = () => {
           }}
         >
           Theo dõi chi tiết tình hình tham gia học tập của bạn
-        </Typography>
+        </Typography> */}
       </Container>
     </Box>
   );

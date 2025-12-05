@@ -152,7 +152,7 @@ const AttendanceByClass = ({ learnerId, attendance }) => {
                       {cls.CourseTitle}
                     </Typography>
                   </Box>
-                  <Chip
+                  {/* <Chip
                     label={cls.grade}
                     color={
                       cls.grade === "A"
@@ -164,7 +164,7 @@ const AttendanceByClass = ({ learnerId, attendance }) => {
                         : "error"
                     }
                     sx={{ fontWeight: 700, fontSize: "1rem" }}
-                  />
+                  /> */}
                 </Box>
 
                 <Box sx={{ mb: 2 }}>
