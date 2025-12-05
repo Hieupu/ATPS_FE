@@ -15,7 +15,6 @@ import {
   Stack,
   ToggleButton,
   ToggleButtonGroup,
-  Chip,
 } from "@mui/material";
 import {
   EmailOutlined,
@@ -28,7 +27,6 @@ import {
   BadgeOutlined,
 } from "@mui/icons-material";
 
-// --- Helper: Format ngày gọn ---
 const formatDateCompact = (dateString) => {
   if (!dateString) return "";
   const parts = dateString.split("-");
@@ -36,7 +34,6 @@ const formatDateCompact = (dateString) => {
   return dateString;
 };
 
-// --- Component Icon trạng thái (Matrix) ---
 const StatusCell = ({ isPresent }) => {
   if (isPresent === true)
     return <CheckCircle sx={{ color: "#4caf50", fontSize: 20 }} />;
@@ -47,9 +44,8 @@ const StatusCell = ({ isPresent }) => {
 
 export default function StudentsTab({ students = [] }) {
   const studentList = Array.isArray(students) ? students : [];
-  const [viewMode, setViewMode] = useState("info"); // 'info' | 'matrix'
+  const [viewMode, setViewMode] = useState("info");
 
-  // Lấy danh sách cột buổi học từ học viên đầu tiên
   const sessionColumns = useMemo(() => {
     if (studentList.length > 0 && studentList[0].Attendance?.History) {
       return studentList[0].Attendance.History;
@@ -57,7 +53,6 @@ export default function StudentsTab({ students = [] }) {
     return [];
   }, [studentList]);
 
-  // --- STYLE CHO CỘT GHIM (STICKY) ---
   const stickyLeftStyle = {
     position: "sticky",
     left: 0,
@@ -93,10 +88,7 @@ export default function StudentsTab({ students = [] }) {
   }
 
   return (
-    <Box sx={{ width: "100%", pb: 2 }}>
-      {" "}
-      {/* Thêm padding bottom cho container ngoài */}
-      {/* --- TOOLBAR --- */}
+    <Box sx={{ width: "100%", maxWidth: "100%", pb: 2 }}>
       <Box
         display="flex"
         justifyContent="space-between"
@@ -123,7 +115,6 @@ export default function StudentsTab({ students = [] }) {
           </ToggleButton>
         </ToggleButtonGroup>
       </Box>
-      {/* --- TABLE CONTAINER (Đã fix lỗi mất sinh viên cuối) --- */}
       <TableContainer
         component={Paper}
         elevation={0}
@@ -131,13 +122,9 @@ export default function StudentsTab({ students = [] }) {
           border: "1px solid #e0e0e0",
           borderRadius: 3,
           boxShadow: "0 4px 20px rgba(0,0,0,0.05)",
-
-          // --- FIX QUAN TRỌNG TẠI ĐÂY ---
           width: "100%",
-          overflow: "auto", // Cho phép scroll cả ngang và dọc (hiện thanh cuộn)
-
-          // Tính chiều cao động: 100vh (chiều cao màn hình) trừ đi khoảng 220px (Header + Tabs + Margin)
-          // Điều này giúp bảng luôn nằm gọn trong màn hình và scroll nội bộ bên trong
+          maxWidth: "100%",
+          overflow: "auto",
           maxHeight: "calc(100vh - 220px)",
         }}
       >
@@ -146,7 +133,6 @@ export default function StudentsTab({ students = [] }) {
           sx={{ minWidth: viewMode === "info" ? 900 : "max-content" }}
         >
           <TableHead>
-            {/* ====== HEADER: INFO VIEW ====== */}
             {viewMode === "info" && (
               <TableRow
                 sx={{ bgcolor: "#fafafa", borderBottom: "2px solid #eee" }}
@@ -174,7 +160,6 @@ export default function StudentsTab({ students = [] }) {
               </TableRow>
             )}
 
-            {/* ====== HEADER: MATRIX VIEW ====== */}
             {viewMode === "matrix" && (
               <TableRow>
                 <TableCell
@@ -264,7 +249,6 @@ export default function StudentsTab({ students = [] }) {
                 History: [],
               };
 
-              // ====== BODY: INFO VIEW ======
               if (viewMode === "info") {
                 return (
                   <TableRow
@@ -281,8 +265,8 @@ export default function StudentsTab({ students = [] }) {
                           alt={s.FullName}
                           variant="rounded"
                           sx={{
-                            width: 90,
-                            height: 120,
+                            width: 60,
+                            height: 80,
                             borderRadius: 2,
                             bgcolor: s.ProfilePicture
                               ? "transparent"
@@ -299,7 +283,7 @@ export default function StudentsTab({ students = [] }) {
                         </Avatar>
                         <Box>
                           <Typography
-                            variant="h6"
+                            variant="h7"
                             fontWeight={700}
                             sx={{ color: "#2c3e50" }}
                           >
@@ -411,7 +395,6 @@ export default function StudentsTab({ students = [] }) {
                 );
               }
 
-              // ====== BODY: MATRIX VIEW ======
               return (
                 <TableRow key={s.LearnerID || index} hover>
                   <TableCell sx={{ ...stickyLeftStyle, py: 1 }}>
