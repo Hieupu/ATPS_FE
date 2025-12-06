@@ -153,9 +153,9 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
   const getAttendanceLabel = (status) => {
     const s = (status || "").toLowerCase();
     switch (s) {
-      case 'present': return 'Attended';
-      case 'absent': return 'Absent';
-      default: return 'Not yet';
+      case 'present': return 'Có mặt';
+      case 'absent': return 'Vắng';
+      default: return 'Chưa điểm danh';
     }
   };
 

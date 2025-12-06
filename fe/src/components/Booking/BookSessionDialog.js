@@ -709,7 +709,7 @@ const BookSessionDialog = ({
             ? "Đang đăng ký..."
             : successMessage
             ? "Đã đăng ký"
-            : "Submit"}
+            : "Đặt lịch học"}
         </Button>
       </DialogActions>
     </Dialog>
