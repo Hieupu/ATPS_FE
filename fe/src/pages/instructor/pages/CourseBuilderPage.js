@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import axios from "axios";
 import CourseBuilderLayout from "../components/course/CourseBuilderLayout";
 
-const BASE_URL = "https://atps-be.onrender.com/api/instructor/courses";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/instructor`;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -288,16 +288,16 @@ export default function CourseBuilderPage() {
       }));
 
       for (const l of newOrderedLessons) {
-        const formData = new FormData();
-        formData.append("OrderIndex", l.OrderIndex);
-        await apiClient.put(
-          `/units/${unitId}/lessons/${l.LessonID}`,
-          formData,
-          { headers: { "Content-Type": "multipart/form-data" } }
-        );
+        await apiClient.put(`/units/${unitId}/lessons/${l.LessonID}`, {
+          OrderIndex: l.OrderIndex,
+        });
       }
+
+      console.log("Cập nhật thứ tự thành công cho Unit:", unitId);
     } catch (err) {
       console.error("Reorder lessons failed:", err);
+
+      fetchLessonsForUnit(unitId);
     }
   };
 

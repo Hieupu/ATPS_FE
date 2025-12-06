@@ -7,43 +7,43 @@ const timeslots = {
   2: { start: "10:20", end: "12:20", day: "Monday", dayVi: "Thứ 2" },
   3: { start: "13:00", end: "15:00", day: "Monday", dayVi: "Thứ 2" },
   4: { start: "15:20", end: "17:20", day: "Monday", dayVi: "Thứ 2" },
-  5: { start: "17:40", end: "19:40", day: "Monday", dayVi: "Thứ 2" },
+  5: { start: "18:00", end: "20:00", day: "Monday", dayVi: "Thứ 2" },
   6: { start: "20:00", end: "22:00", day: "Monday", dayVi: "Thứ 2" },
   7: { start: "08:00", end: "10:00", day: "Tuesday", dayVi: "Thứ 3" },
   8: { start: "10:20", end: "12:20", day: "Tuesday", dayVi: "Thứ 3" },
   9: { start: "13:00", end: "15:00", day: "Tuesday", dayVi: "Thứ 3" },
   10: { start: "15:20", end: "17:20", day: "Tuesday", dayVi: "Thứ 3" },
-  11: { start: "17:40", end: "19:40", day: "Tuesday", dayVi: "Thứ 3" },
+  11: { start: "18:00", end: "20:00", day: "Tuesday", dayVi: "Thứ 3" },
   12: { start: "20:00", end: "22:00", day: "Tuesday", dayVi: "Thứ 3" },
   13: { start: "08:00", end: "10:00", day: "Wednesday", dayVi: "Thứ 4" },
   14: { start: "10:20", end: "12:20", day: "Wednesday", dayVi: "Thứ 4" },
   15: { start: "13:00", end: "15:00", day: "Wednesday", dayVi: "Thứ 4" },
   16: { start: "15:20", end: "17:20", day: "Wednesday", dayVi: "Thứ 4" },
-  17: { start: "17:40", end: "19:40", day: "Wednesday", dayVi: "Thứ 4" },
+  17: { start: "18:00", end: "20:00", day: "Wednesday", dayVi: "Thứ 4" },
   18: { start: "20:00", end: "22:00", day: "Wednesday", dayVi: "Thứ 4" },
   19: { start: "08:00", end: "10:00", day: "Thursday", dayVi: "Thứ 5" },
   20: { start: "10:20", end: "12:20", day: "Thursday", dayVi: "Thứ 5" },
   21: { start: "13:00", end: "15:00", day: "Thursday", dayVi: "Thứ 5" },
   22: { start: "15:20", end: "17:20", day: "Thursday", dayVi: "Thứ 5" },
-  23: { start: "17:40", end: "19:40", day: "Thursday", dayVi: "Thứ 5" },
+  23: { start: "18:00", end: "20:00", day: "Thursday", dayVi: "Thứ 5" },
   24: { start: "20:00", end: "22:00", day: "Thursday", dayVi: "Thứ 5" },
   25: { start: "08:00", end: "10:00", day: "Friday", dayVi: "Thứ 6" },
   26: { start: "10:20", end: "12:20", day: "Friday", dayVi: "Thứ 6" },
   27: { start: "13:00", end: "15:00", day: "Friday", dayVi: "Thứ 6" },
   28: { start: "15:20", end: "17:20", day: "Friday", dayVi: "Thứ 6" },
-  29: { start: "17:40", end: "19:40", day: "Friday", dayVi: "Thứ 6" },
+  29: { start: "18:00", end: "20:00", day: "Friday", dayVi: "Thứ 6" },
   30: { start: "20:00", end: "22:00", day: "Friday", dayVi: "Thứ 6" },
   31: { start: "08:00", end: "10:00", day: "Saturday", dayVi: "Thứ 7" },
   32: { start: "10:20", end: "12:20", day: "Saturday", dayVi: "Thứ 7" },
   33: { start: "13:00", end: "15:00", day: "Saturday", dayVi: "Thứ 7" },
   34: { start: "15:20", end: "17:20", day: "Saturday", dayVi: "Thứ 7" },
-  35: { start: "17:40", end: "19:40", day: "Saturday", dayVi: "Thứ 7" },
+  35: { start: "18:00", end: "20:00", day: "Saturday", dayVi: "Thứ 7" },
   36: { start: "20:00", end: "22:00", day: "Saturday", dayVi: "Thứ 7" },
   37: { start: "08:00", end: "10:00", day: "Sunday", dayVi: "Chủ nhật" },
   38: { start: "10:20", end: "12:20", day: "Sunday", dayVi: "Chủ nhật" },
   39: { start: "13:00", end: "15:00", day: "Sunday", dayVi: "Chủ nhật" },
   40: { start: "15:20", end: "17:20", day: "Sunday", dayVi: "Chủ nhật" },
-  41: { start: "17:40", end: "19:40", day: "Sunday", dayVi: "Chủ nhật" },
+  41: { start: "18:00", end: "20:00", day: "Sunday", dayVi: "Chủ nhật" },
   42: { start: "20:00", end: "22:00", day: "Sunday", dayVi: "Chủ nhật" }
 };
 
@@ -69,23 +69,36 @@ const PriceSummary = ({
   selectedSlots,
 }) => {
   // Hàm tính ngày bắt đầu và kết thúc với lịch cố định
-  const calculateCourseDates = () => {
-    if (!selectedSlots || selectedSlots.length === 0 || !requiredNumberOfSessions) return null;
-    
-    const startDate = new Date(Math.min(...selectedSlots.map(slot => new Date(slot.Date))));
+ const calculateCourseDates = () => {
+  if (!selectedSlots || selectedSlots.length === 0 || !requiredNumberOfSessions) return null;
+  
+  // Lấy tất cả các ngày từ selectedSlots
+  const allDates = selectedSlots.map(slot => new Date(slot.Date));
+  
+  // Ngày bắt đầu là ngày sớm nhất
+  const startDate = new Date(Math.min(...allDates));
+  
+  // Ngày kết thúc là ngày muộn nhất trong tuần đầu tiên
+  const endDate = new Date(Math.max(...allDates));
+  
+  // Nếu số buổi lớn hơn số slot đã chọn, cần tính thêm các tuần tiếp theo
+  if (requiredNumberOfSessions > selectedSlots.length) {
     const sessionsPerWeek = selectedSlots.length;
-    const totalWeeksNeeded = Math.ceil(requiredNumberOfSessions / sessionsPerWeek);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + ((totalWeeksNeeded - 1) * 7));
-    
-    return { 
-      startDate, 
-      endDate, 
-      totalSessions: requiredNumberOfSessions,
-      sessionsPerWeek,
-      totalWeeks: totalWeeksNeeded
-    };
+    const additionalWeeksNeeded = Math.ceil((requiredNumberOfSessions - sessionsPerWeek) / sessionsPerWeek);
+    endDate.setDate(endDate.getDate() + (additionalWeeksNeeded * 7));
+  }
+  
+  const sessionsPerWeek = selectedSlots.length;
+  const totalWeeksNeeded = Math.ceil(requiredNumberOfSessions / sessionsPerWeek);
+  
+  return { 
+    startDate, 
+    endDate, 
+    totalSessions: requiredNumberOfSessions,
+    sessionsPerWeek,
+    totalWeeks: totalWeeksNeeded
   };
+};
 
   // Hàm định dạng ngày
   const formatDate = (date) => {

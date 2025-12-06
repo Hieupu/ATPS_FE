@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CoursesLayout from "../components/course/CoursesLayout";
 
-const BASE_URL = "https://atps-be.onrender.com/api/instructor/courses";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/instructor`;
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -29,6 +29,7 @@ export default function CoursesPage() {
     try {
       setLoading(true);
       const res = await apiClient.get("/courses");
+
       setCourses(res.data || []);
     } catch (err) {
       console.error("Failed to load courses:", err);

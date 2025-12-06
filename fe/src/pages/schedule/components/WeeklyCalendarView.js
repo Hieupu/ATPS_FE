@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 
 const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -9,15 +10,16 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const user = useAuth();
 
   const timeSlots = [
-    { label: "Slot 1", start: "08:00", end: "10:00" },
-    { label: "Slot 2", start: "10:20", end: "12:20" },
-    { label: "Slot 3", start: "13:00", end: "15:00" },
-    { label: "Slot 4", start: "15:20", end: "17:20" },
-    { label: "Slot 5", start: "17:40", end: "19:40" },
-    { label: "Slot 6", start: "20:00", end: "22:00" }
+    { label: "Ca 1", start: "08:00", end: "10:00" },
+    { label: "Ca 2", start: "10:20", end: "12:20" },
+    { label: "Ca 3", start: "13:00", end: "15:00" },
+    { label: "Ca 4", start: "15:20", end: "17:20" },
+    { label: "Ca 5", start: "18:00", end: "20:00" },
+    { label: "Ca 6", start: "20:00", end: "22:00" }
   ];
   
-  const daysOfWeek = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
+const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu", "Thứ Bảy", "Chủ Nhật"];
+
 
   const getWeekStart = (date) => {
     const d = new Date(date);
@@ -53,7 +55,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
             weekStart: weekStart,
             weekEnd: weekEnd,
             weekNumber: getWeekNumber(weekStart),
-            label: `Week ${getWeekNumber(weekStart)} (${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1})`
+            label: `Tuần ${getWeekNumber(weekStart)} (${weekStart.getDate()}/${weekStart.getMonth() + 1} - ${weekEnd.getDate()}/${weekEnd.getMonth() + 1})`
           });
         }
       }
@@ -151,9 +153,9 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const getAttendanceLabel = (status) => {
     const s = (status || "").toLowerCase();
     switch (s) {
-      case 'present': return 'Attended';
-      case 'absent': return 'Absent';
-      default: return 'Not yet';
+      case 'present': return 'Có mặt';
+      case 'absent': return 'Vắng';
+      default: return 'Chưa điểm danh';
     }
   };
 
@@ -166,26 +168,21 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
   const start = new Date(`${schedule.Date}T${schedule.StartTime}`);
   const now = new Date();
 
-  const isWithin15MinBefore = now >= new Date(start.getTime() - 15 * 60 * 1000);
   const isWithin10MinBefore = now >= new Date(start.getTime() - 10 * 60 * 1000);
 
   const userId = user?.user?.id;
   const role = user?.user?.role;
 
   if (!userId) {
-    alert("Không xác định được người dùng.");
+    toast.warn("Không xác định được người dùng.");
     return;
   }
   if (role !== "instructor" && role !== "learner") {
-    alert("Bạn không có quyền truy cập vào buổi học này.");
-    return;
-  }
-  if (role === "instructor" && !isWithin15MinBefore) {
-    alert("Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu.");
+    toast.warn("Bạn không có quyền truy cập vào buổi học này.");
     return;
   }
   if (role === "learner" && !isWithin10MinBefore) {
-    alert("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+    toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
     return;
   }
 
@@ -208,7 +205,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
     });
 
     window.open(
-      `/zoom?zoomId=${schedule.ZoomID}&pass=${schedule.Zoompass}`,
+      `/zoom?zoomId=${schedule.ZoomID}`,
       "_blank"
     );
 
@@ -301,7 +298,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
             onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f57c00'}
             onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#ff9800'}
           >
-            📹 Join Zoom
+            Tham gia Zoom
           </button>
         )}
       </div>
@@ -326,7 +323,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
               minWidth: '50px',
               fontSize: '1.1rem'
             }}>
-              YEAR
+              NĂM
             </label>
             <select
               value={selectedYear}
@@ -355,7 +352,7 @@ const WeeklyCalendarView = ({ schedules, attendanceData, canJoinZoom }) => {
               minWidth: '60px',
               fontSize: '1.1rem'
             }}>
-              WEEK
+              TUẦN
             </label>
             <select
               value={selectedWeek || ''}

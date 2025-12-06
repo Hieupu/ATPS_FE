@@ -25,6 +25,7 @@ import CoursesPage from "./pages/course/CoursesPage";
 import CourseDetailPage from "./pages/course/CourseDetailPage";
 import MyCourses from "./pages/course/MyCourses";
 import MyCourseDetailPage from "./pages/course/MyCourseDetailPage";
+import ClassSchedulePage from "./pages/course/ClassSchedulePage";
 
 import PaymentSuccessPage from "./pages/payment/PaymentSuccessPage";
 import PaymentFailedPage from "./pages/payment/PaymentFailedPage";
@@ -82,6 +83,7 @@ function AppRoutes() {
       <Route path="/courses/:id" element={<CourseDetailPage />} />
       <Route path="/my-courses" element={<MyCourses />} />
       <Route path="/my-courses/:id" element={<MyCourseDetailPage />} />
+         <Route path="/openingCeremony" element={<ClassSchedulePage />} />
 
       <Route path="/payment-success" element={<PaymentSuccessPage />} />
       <Route path="/payment-failed" element={<PaymentFailedPage />} />
@@ -95,7 +97,7 @@ function AppRoutes() {
       <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
       <Route path="/exam/:examId/result" element={<ExamResultPage />} />
 
-      {/* Learner Routes */}
+      {/* Learner Routes */} 
       <Route path="/schedule" element={<SchedulePage />} />
       <Route path="/reschedule-requests" element={<RescheduleRequestsPage />} />
       <Route path="/attendance" element={<AttendancePage />} />
