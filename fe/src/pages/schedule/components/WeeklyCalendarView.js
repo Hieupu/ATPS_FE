@@ -205,7 +205,7 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     });
 
     window.open(
-      `/zoom?zoomId=${schedule.ZoomID}&pass=${schedule.Zoompass}`,
+      `/zoom?zoomId=${schedule.ZoomID}`,
       "_blank"
     );
 
