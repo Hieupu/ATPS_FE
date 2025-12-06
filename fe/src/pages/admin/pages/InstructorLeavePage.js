@@ -53,18 +53,11 @@ const STATUS_OPTIONS = [
 const PAGE_SIZE = 10;
 
 const InstructorLeavePage = () => {
-  const [searchParams] = useSearchParams();
-  const initialInstructor = searchParams.get("instructorId") || "";
-
   const [filters, setFilters] = useState({
-    instructorId: initialInstructor,
-    status: "all",
     startDate: "",
     endDate: "",
   });
   const [appliedFilters, setAppliedFilters] = useState({
-    instructorId: initialInstructor,
-    status: "all",
     startDate: "",
     endDate: "",
   });
@@ -82,54 +75,25 @@ const InstructorLeavePage = () => {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogLoading, setDialogLoading] = useState(false);
-  const [selectedFilterInstructor, setSelectedFilterInstructor] =
-    useState(null);
-  const [selectedDialogInstructor, setSelectedDialogInstructor] =
-    useState(null);
   const [dialogForm, setDialogForm] = useState({
-    instructorId: initialInstructor,
     startDate: "",
     endDate: "",
-    blockEntireDay: false,
+    blockEntireDay: true,
     timeslotIds: [],
-    status: "OTHER",
     note: "",
   });
-  const [applyToAllInstructors, setApplyToAllInstructors] = useState(false);
   const [syncDialogOpen, setSyncDialogOpen] = useState(false);
   const [syncLoading, setSyncLoading] = useState(false);
-  const [syncTarget, setSyncTarget] = useState("selected");
+  const [syncTarget] = useState("all");
 
   useEffect(() => {
-    loadInstructors();
     loadTimeslots();
   }, []);
-
-  useEffect(() => {
-    // Set selectedFilterInstructor khi có initialInstructor
-    if (initialInstructor && instructors.length > 0) {
-      const instructor = instructors.find(
-        (ins) => ins.InstructorID === parseInt(initialInstructor)
-      );
-      if (instructor) {
-        setSelectedFilterInstructor(instructor);
-      }
-    }
-  }, [initialInstructor, instructors]);
 
   useEffect(() => {
     fetchLeaves(page);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appliedFilters, page]);
-
-  const loadInstructors = async () => {
-    try {
-      const data = await instructorService.getAllInstructors();
-      setInstructors(data || []);
-    } catch (error) {
-      console.error("Unable to load instructors", error);
-    }
-  };
 
   const loadTimeslots = async () => {
     try {
@@ -148,13 +112,8 @@ const InstructorLeavePage = () => {
       const params = {
         page: pageToLoad,
         limit: PAGE_SIZE,
+        Status: "HOLIDAY", // Chỉ lấy HOLIDAY
       };
-      if (appliedFilters.instructorId) {
-        params.InstructorID = appliedFilters.instructorId;
-      }
-      if (appliedFilters.status !== "all") {
-        params.Status = appliedFilters.status;
-      }
       if (appliedFilters.startDate) {
         params.StartDate = appliedFilters.startDate;
       }
@@ -190,8 +149,6 @@ const InstructorLeavePage = () => {
 
   const handleClearFilters = () => {
     const clearedFilters = {
-      instructorId: "",
-      status: "all",
       startDate: "",
       endDate: "",
     };
@@ -200,15 +157,22 @@ const InstructorLeavePage = () => {
     setPage(1);
   };
 
-  const handleDelete = async (leaveId) => {
-    if (!window.confirm("Bạn chắc chắn muốn xóa lịch nghỉ này?")) return;
+  const handleDelete = async (date) => {
+    if (
+      !window.confirm(
+        `Bạn chắc chắn muốn xóa lịch nghỉ của ngày ${dayjs(date).format(
+          "DD/MM/YYYY"
+        )} cho tất cả giảng viên?`
+      )
+    )
+      return;
     try {
-      console.log("[InstructorLeavePage] Deleting leave:", leaveId);
-      await classService.deleteInstructorLeave(leaveId);
-      alert("Đã xóa lịch nghỉ");
+      console.log("[InstructorLeavePage] Deleting leaves for date:", date);
+      const result = await classService.deleteLeavesByDate(date, "HOLIDAY");
+      alert(result?.message || `Đã xóa ${result?.deleted || 0} lịch nghỉ`);
       fetchLeaves(page);
     } catch (error) {
-      console.error("Delete leave failed", error);
+      console.error("Delete leaves failed", error);
       alert(error?.message || "Không thể xóa lịch nghỉ");
     }
   };
@@ -280,57 +244,36 @@ const InstructorLeavePage = () => {
   }, [dialogForm.startDate, timeslots, daysInRange]);
 
   const handleDialogOpen = () => {
-    const initialInstructorObj = filters.instructorId
-      ? instructors.find(
-          (ins) => ins.InstructorID === parseInt(filters.instructorId)
-        )
-      : null;
-    setSelectedDialogInstructor(initialInstructorObj);
-    setApplyToAllInstructors(false);
-    setDialogForm((prev) => ({
-      instructorId: filters.instructorId || prev.instructorId || "",
+    setDialogForm({
       startDate: "",
       endDate: "",
-      blockEntireDay: false,
+      blockEntireDay: true,
       timeslotIds: [],
-      status: "OTHER",
       note: "",
-    }));
+    });
     setDialogOpen(true);
   };
 
   const handleSyncHoliday = async () => {
     setSyncLoading(true);
     try {
-      if (syncTarget === "selected" && appliedFilters.instructorId) {
-        // Đồng bộ cho giảng viên đã chọn
-        const result = await classService.syncHolidayForInstructor(
-          appliedFilters.instructorId
-        );
-        alert(
-          `Đã đồng bộ ${
-            result.data?.added || result.added || 0
-          } ngày nghỉ cho giảng viên này`
-        );
-      } else if (syncTarget === "all") {
-        // Đồng bộ cho tất cả giảng viên
-        const instructorsList = await instructorService.getAllInstructors();
-        let totalAdded = 0;
-        for (const instructor of instructorsList) {
-          try {
-            const result = await classService.syncHolidayForInstructor(
-              instructor.InstructorID
-            );
-            totalAdded += result.data?.added || result.added || 0;
-          } catch (error) {
-            console.error(
-              `Error syncing for instructor ${instructor.InstructorID}:`,
-              error
-            );
-          }
+      // Luôn đồng bộ cho tất cả giảng viên
+      const instructorsList = await instructorService.getAllInstructors();
+      let totalAdded = 0;
+      for (const instructor of instructorsList) {
+        try {
+          const result = await classService.syncHolidayForInstructor(
+            instructor.InstructorID
+          );
+          totalAdded += result.data?.added || result.added || 0;
+        } catch (error) {
+          console.error(
+            `Error syncing for instructor ${instructor.InstructorID}:`,
+            error
+          );
         }
-        alert(`Đã đồng bộ ${totalAdded} ngày nghỉ cho tất cả giảng viên`);
       }
+      alert(`Đã đồng bộ ${totalAdded} ngày nghỉ cho tất cả giảng viên`);
       fetchLeaves(page);
     } catch (error) {
       console.error("Error syncing holiday:", error);
@@ -346,106 +289,18 @@ const InstructorLeavePage = () => {
   };
 
   const handleDialogSubmit = async () => {
-    if (applyToAllInstructors) {
-      // Thêm cho tất cả giảng viên với Status = HOLIDAY
-      if (!dialogForm.startDate) {
-        alert("Vui lòng chọn ngày nghỉ bắt đầu");
-        return;
-      }
-      if (!dialogForm.blockEntireDay && dialogForm.timeslotIds.length === 0) {
-        alert("Vui lòng chọn ít nhất 1 ca học");
-        return;
-      }
-
-      try {
-        setDialogLoading(true);
-        const startDate = dayjs(dialogForm.startDate);
-        const endDate = dialogForm.endDate
-          ? dayjs(dialogForm.endDate)
-          : startDate;
-
-        if (endDate.isBefore(startDate)) {
-          alert("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
-          setDialogLoading(false);
-          return;
-        }
-
-        const daysDiff = endDate.diff(startDate, "day") + 1;
-        let successCount = 0;
-        let errorCount = 0;
-
-        for (let i = 0; i < daysDiff; i++) {
-          const currentDate = startDate.add(i, "day").format("YYYY-MM-DD");
-          try {
-            await classService.addHolidayForAllInstructors({
-              Date: currentDate,
-              Status: "HOLIDAY",
-              Note: dialogForm.note,
-              blockEntireDay: dialogForm.blockEntireDay,
-              TimeslotID: dialogForm.blockEntireDay
-                ? null
-                : dialogForm.timeslotIds.length > 0
-                ? parseInt(dialogForm.timeslotIds[0], 10)
-                : null,
-              TimeslotIDs: dialogForm.blockEntireDay
-                ? null
-                : dialogForm.timeslotIds.map((id) => parseInt(id, 10)),
-            });
-            successCount++;
-          } catch (error) {
-            errorCount++;
-            console.error(
-              `Error adding holiday for all instructors on ${currentDate}:`,
-              error
-            );
-          }
-        }
-
-        if (errorCount > 0) {
-          alert(
-            `Đã thêm ${successCount} ngày nghỉ. Có ${errorCount} ngày lỗi.`
-          );
-        } else {
-          alert(
-            `Đã thêm ${successCount} ngày nghỉ cho tất cả giảng viên thành công`
-          );
-        }
-
-        setDialogOpen(false);
-        fetchLeaves(page);
-      } catch (error) {
-        console.error("Add holiday for all instructors failed", error);
-        alert(
-          error?.message || "Không thể thêm lịch nghỉ cho tất cả giảng viên"
-        );
-      } finally {
-        setDialogLoading(false);
-      }
-      return;
-    }
-
-    // Logic cũ: thêm cho một giảng viên
-    if (!dialogForm.instructorId) {
-      alert("Vui lòng chọn giảng viên");
-      return;
-    }
+    // Luôn áp dụng cho tất cả giảng viên với Status = HOLIDAY
     if (!dialogForm.startDate) {
       alert("Vui lòng chọn ngày nghỉ bắt đầu");
-      return;
-    }
-    if (!dialogForm.blockEntireDay && dialogForm.timeslotIds.length === 0) {
-      alert("Vui lòng chọn ít nhất 1 ca học");
       return;
     }
 
     try {
       setDialogLoading(true);
-
-      // Xác định date range
       const startDate = dayjs(dialogForm.startDate);
       const endDate = dialogForm.endDate
         ? dayjs(dialogForm.endDate)
-        : startDate; // Nếu không có endDate, chỉ thêm 1 ngày
+        : startDate;
 
       if (endDate.isBefore(startDate)) {
         alert("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
@@ -453,72 +308,44 @@ const InstructorLeavePage = () => {
         return;
       }
 
-      // Tính số ngày cần thêm
       const daysDiff = endDate.diff(startDate, "day") + 1;
-
-      // Gọi API cho từng ngày trong range
       let successCount = 0;
       let errorCount = 0;
-      const errors = [];
 
       for (let i = 0; i < daysDiff; i++) {
         const currentDate = startDate.add(i, "day").format("YYYY-MM-DD");
-        if (dialogForm.blockEntireDay) {
-          try {
-            await classService.addBulkInstructorLeave({
-              InstructorID: dialogForm.instructorId,
-              Date: currentDate,
-              Status: dialogForm.status,
-              Note: dialogForm.note,
-              blockEntireDay: true,
-              TimeslotID: null,
-            });
-            successCount++;
-          } catch (error) {
-            errorCount++;
-            errors.push(
-              `${currentDate}: ${error?.message || "Lỗi không xác định"}`
-            );
-          }
-        } else {
-          for (const timeslotId of dialogForm.timeslotIds) {
-            try {
-              await classService.addBulkInstructorLeave({
-                InstructorID: dialogForm.instructorId,
-                Date: currentDate,
-                Status: dialogForm.status,
-                Note: dialogForm.note,
-                blockEntireDay: false,
-                TimeslotID: parseInt(timeslotId, 10),
-              });
-              successCount++;
-            } catch (error) {
-              errorCount++;
-              errors.push(
-                `${currentDate} - Ca ${timeslotId}: ${
-                  error?.message || "Lỗi không xác định"
-                }`
-              );
-            }
-          }
+        try {
+          await classService.addHolidayForAllInstructors({
+            Date: currentDate,
+            Status: "HOLIDAY",
+            Note: dialogForm.note,
+            blockEntireDay: true, // Luôn chặn toàn bộ ngày
+            TimeslotID: null,
+            TimeslotIDs: null,
+          });
+          successCount++;
+        } catch (error) {
+          errorCount++;
+          console.error(
+            `Error adding holiday for all instructors on ${currentDate}:`,
+            error
+          );
         }
       }
 
       if (errorCount > 0) {
-        alert(
-          `Đã thêm ${successCount} ngày nghỉ. Có ${errorCount} ngày lỗi:\n${errors.join(
-            "\n"
-          )}`
-        );
+        alert(`Đã thêm ${successCount} ngày nghỉ. Có ${errorCount} ngày lỗi.`);
       } else {
-        alert(`Đã thêm ${successCount} ngày nghỉ thành công`);
+        alert(
+          `Đã thêm ${successCount} ngày nghỉ cho tất cả giảng viên thành công`
+        );
       }
 
       setDialogOpen(false);
       fetchLeaves(page);
     } catch (error) {
-      console.error("Add leave failed", error);
-      alert(error?.message || "Không thể thêm lịch nghỉ");
+      console.error("Add holiday for all instructors failed", error);
+      alert(error?.message || "Không thể thêm lịch nghỉ cho tất cả giảng viên");
     } finally {
       setDialogLoading(false);
     }
@@ -585,51 +412,6 @@ const InstructorLeavePage = () => {
           spacing={2}
           alignItems={{ xs: "stretch", md: "center" }}
         >
-          <Autocomplete
-            options={instructors}
-            getOptionLabel={(option) =>
-              `${option.FullName || option.fullName || ""} - ${
-                option.Major || option.major || ""
-              }`
-            }
-            value={selectedFilterInstructor}
-            onChange={(event, newValue) => {
-              setSelectedFilterInstructor(newValue);
-              handleFilterChange(
-                "instructorId",
-                newValue ? newValue.InstructorID : ""
-              );
-            }}
-            size="small"
-            sx={{ minWidth: 250 }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Giảng viên"
-                placeholder="Tìm và chọn giảng viên..."
-              />
-            )}
-            isOptionEqualToValue={(option, value) =>
-              option.InstructorID === value?.InstructorID
-            }
-          />
-
-          <TextField
-            select
-            label="Trạng thái"
-            value={filters.status}
-            onChange={(e) => handleFilterChange("status", e.target.value)}
-            size="small"
-            sx={{ minWidth: 160 }}
-          >
-            <MenuItem value="all">Tất cả</MenuItem>
-            {STATUS_OPTIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </TextField>
-
           <TextField
             label="Từ ngày"
             type="date"
@@ -684,8 +466,6 @@ const InstructorLeavePage = () => {
                   <TableRow sx={{ backgroundColor: "#f8fafc" }}>
                     <TableCell>Ngày</TableCell>
                     <TableCell>Thứ</TableCell>
-                    <TableCell>Ca học</TableCell>
-                    <TableCell>Giảng viên</TableCell>
                     <TableCell>Trạng thái</TableCell>
                     <TableCell>Ghi chú</TableCell>
                     <TableCell align="right">Thao tác</TableCell>
@@ -694,7 +474,7 @@ const InstructorLeavePage = () => {
                 <TableBody>
                   {leaves.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
+                      <TableCell colSpan={5} align="center" sx={{ py: 6 }}>
                         <Typography color="text.secondary">
                           Chưa có lịch nghỉ nào
                         </Typography>
@@ -702,25 +482,11 @@ const InstructorLeavePage = () => {
                     </TableRow>
                   ) : (
                     leaves.map((leave) => (
-                      <TableRow key={leave.InstructortimeslotID}>
+                      <TableRow key={leave.Date}>
                         <TableCell>
                           {dayjs(leave.Date).format("DD/MM/YYYY")}
                         </TableCell>
-                        <TableCell>
-                          {leave.Day || getDayFromDate(leave.Date)}
-                        </TableCell>
-                        <TableCell>
-                          {leave.StartTime && leave.EndTime
-                            ? `${leave.StartTime} - ${leave.EndTime}`
-                            : "Toàn ngày"}
-                        </TableCell>
-                        <TableCell>
-                          {
-                            instructors.find(
-                              (ins) => ins.InstructorID === leave.InstructorID
-                            )?.FullName
-                          }
-                        </TableCell>
+                        <TableCell>{getDayFromDate(leave.Date)}</TableCell>
                         <TableCell>{renderStatusChip(leave.Status)}</TableCell>
                         <TableCell>
                           {leave.Note || (
@@ -730,12 +496,10 @@ const InstructorLeavePage = () => {
                           )}
                         </TableCell>
                         <TableCell align="right">
-                          <Tooltip title="Xóa">
+                          <Tooltip title="Xóa lịch nghỉ của ngày này cho tất cả giảng viên">
                             <IconButton
                               color="error"
-                              onClick={() =>
-                                handleDelete(leave.InstructortimeslotID)
-                              }
+                              onClick={() => handleDelete(leave.Date)}
                             >
                               <Delete fontSize="small" />
                             </IconButton>
@@ -788,44 +552,15 @@ const InstructorLeavePage = () => {
         </DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
           <Stack spacing={2}>
-            {!applyToAllInstructors && (
-              <Autocomplete
-                options={instructors}
-                getOptionLabel={(option) =>
-                  `${option.FullName || option.fullName || ""} - ${
-                    option.Major || option.major || ""
-                  }`
-                }
-                value={selectedDialogInstructor}
-                onChange={(event, newValue) => {
-                  setSelectedDialogInstructor(newValue);
-                  setDialogForm((prev) => ({
-                    ...prev,
-                    instructorId: newValue ? newValue.InstructorID : "",
-                  }));
-                }}
-                fullWidth
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Giảng viên"
-                    placeholder="Tìm và chọn giảng viên..."
-                  />
-                )}
-                isOptionEqualToValue={(option, value) =>
-                  option.InstructorID === value?.InstructorID
-                }
-              />
-            )}
-            {applyToAllInstructors && (
-              <TextField
-                label="Giảng viên"
-                value="Tất cả giảng viên"
-                disabled
-                fullWidth
-                helperText="Lịch nghỉ sẽ được thêm cho tất cả giảng viên với Status: HOLIDAY"
-              />
-            )}
+            {/* Trường Giảng viên đã bị ẩn - luôn áp dụng cho tất cả giảng viên */}
+            <TextField
+              label="Giảng viên"
+              value="Tất cả giảng viên"
+              disabled
+              fullWidth
+              helperText="Lịch nghỉ sẽ được thêm cho tất cả giảng viên với Status: HOLIDAY"
+              sx={{ display: "none" }}
+            />
             <TextField
               label="Từ ngày"
               type="date"
@@ -862,22 +597,17 @@ const InstructorLeavePage = () => {
               }}
               helperText="Để trống nếu chỉ thêm 1 ngày"
             />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={dialogForm.blockEntireDay}
-                  onChange={(e) =>
-                    setDialogForm((prev) => ({
-                      ...prev,
-                      blockEntireDay: e.target.checked,
-                      timeslotIds: [],
-                    }))
-                  }
-                />
-              }
+            {/* Trường Chặn toàn bộ ngày đã bị ẩn - luôn chặn toàn bộ ngày */}
+            <TextField
               label="Chặn toàn bộ ngày"
+              value="Có"
+              disabled
+              fullWidth
+              helperText="Lịch nghỉ sẽ chặn toàn bộ ngày cho tất cả giảng viên"
+              sx={{ display: "none" }}
             />
-            {!dialogForm.blockEntireDay && (
+            {/* Phần chọn ca học đã bị bỏ - chỉ chặn toàn bộ ngày */}
+            {false && (
               <Box>
                 <Typography
                   variant="subtitle2"
@@ -1115,43 +845,15 @@ const InstructorLeavePage = () => {
                 )}
               </Box>
             )}
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={applyToAllInstructors}
-                  onChange={(e) => {
-                    setApplyToAllInstructors(e.target.checked);
-                    if (e.target.checked) {
-                      setDialogForm((prev) => ({
-                        ...prev,
-                        status: "HOLIDAY",
-                        instructorId: "",
-                      }));
-                      setSelectedDialogInstructor(null);
-                    }
-                  }}
-                />
-              }
-              label="Áp dụng cho tất cả giảng viên (Status: HOLIDAY)"
-            />
+            {/* Trạng thái luôn là HOLIDAY - không cho phép thay đổi - đã bị ẩn */}
             <TextField
-              select
               label="Trạng thái"
-              value={dialogForm.status}
-              disabled={applyToAllInstructors}
-              onChange={(e) =>
-                setDialogForm((prev) => ({
-                  ...prev,
-                  status: e.target.value,
-                }))
-              }
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
+              value="HOLIDAY"
+              disabled
+              fullWidth
+              helperText="Lịch nghỉ luôn có trạng thái HOLIDAY"
+              sx={{ display: "none" }}
+            />
             <TextField
               label="Ghi chú"
               multiline
@@ -1187,21 +889,9 @@ const InstructorLeavePage = () => {
       >
         <DialogTitle>Cập nhật lịch nghỉ HOLIDAY</DialogTitle>
         <DialogContent sx={{ pt: 2 }}>
-          <FormControl component="fieldset" fullWidth>
-            <RadioGroup
-              value={syncTarget}
-              onChange={(e) => setSyncTarget(e.target.value)}
-            >
-              <FormControlLabel
-                value="all"
-                control={<Radio />}
-                label="Đồng bộ cho tất cả giảng viên"
-              />
-            </RadioGroup>
-          </FormControl>
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary">
             Hệ thống sẽ lấy tất cả các ngày nghỉ HOLIDAY hiện có và thêm vào cho
-            giảng viên (chỉ thêm những ngày chưa có).
+            tất cả giảng viên (chỉ thêm những ngày chưa có).
           </Typography>
         </DialogContent>
         <DialogActions>
@@ -1209,10 +899,7 @@ const InstructorLeavePage = () => {
           <Button
             variant="contained"
             onClick={handleSyncHoliday}
-            disabled={
-              syncLoading ||
-              (syncTarget === "selected" && !appliedFilters.instructorId)
-            }
+            disabled={syncLoading}
           >
             {syncLoading ? "Đang cập nhật..." : "Cập nhật"}
           </Button>

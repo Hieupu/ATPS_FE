@@ -44,7 +44,9 @@ apiClient.interceptors.response.use(
         case 403:
           // COMMENTED FOR TESTING - Permission check
           // console.error("Forbidden - Bạn không có quyền truy cập");
-          console.warn("403 Forbidden - Không có quyền truy cập (đã comment để test)");
+          console.warn(
+            "403 Forbidden - Không có quyền truy cập (đã comment để test)"
+          );
           break;
         case 404:
           console.error("Not Found - Không tìm thấy tài nguyên");

@@ -125,14 +125,37 @@ export default function PromotionsPage() {
       }
 
       const response = await promotionService.getPromotions(params);
+      console.log("[PromotionsPage] API response:", response);
+
+      // Backend trả về: { success: true, data: [...], pagination: {...} }
+      // promotionService.getPromotions() trả về response.data (axios wrap)
+      // Nên response = { success: true, data: [...], pagination: {...} }
+
+      // Kiểm tra response format
+      if (!response) {
+        throw new Error("Không nhận được response từ server");
+      }
+
+      // Lấy items từ response
       const items = response?.data || response?.items || [];
-      const paginationInfo =
-        response?.pagination || response?.data?.pagination || {};
+      const paginationInfo = response?.pagination || {};
+
+      console.log("[PromotionsPage] Parsed items count:", items?.length || 0);
+      console.log("[PromotionsPage] Parsed pagination:", paginationInfo);
+
+      // Đảm bảo items là array
+      if (!Array.isArray(items)) {
+        console.error("[PromotionsPage] Items is not an array:", items);
+        throw new Error("Dữ liệu không đúng định dạng");
+      }
 
       setPromotions(items);
       setPagination({
-        total: paginationInfo.total || items.length,
-        totalPages: paginationInfo.totalPages || 1,
+        total: paginationInfo.total || items.length || 0,
+        totalPages:
+          paginationInfo.totalPages ||
+          Math.ceil((items.length || 0) / limit) ||
+          1,
       });
     } catch (error) {
       console.error("Lỗi tải promotions:", error);
@@ -220,10 +243,45 @@ export default function PromotionsPage() {
   };
 
   const handleInputChange = (field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: value,
-    }));
+    setFormData((prev) => {
+      const updated = {
+        ...prev,
+        [field]: value,
+      };
+
+      // Clear error khi user thay đổi giá trị
+      if (errors[field]) {
+        setErrors((prevErrors) => {
+          const newErrors = { ...prevErrors };
+          delete newErrors[field];
+          return newErrors;
+        });
+      }
+
+      // Validate real-time cho ngày
+      if (field === "StartDate" || field === "EndDate") {
+        const newErrors = { ...errors };
+
+        // Clear error của field đang thay đổi
+        delete newErrors[field];
+
+        // Validate lại nếu cả 2 ngày đều có giá trị
+        if (updated.StartDate && updated.EndDate) {
+          const startDate = dayjs(updated.StartDate);
+          const endDate = dayjs(updated.EndDate);
+
+          if (endDate.isBefore(startDate, "day")) {
+            newErrors.EndDate = "Ngày kết thúc phải sau ngày bắt đầu";
+          } else {
+            delete newErrors.EndDate;
+          }
+        }
+
+        setErrors(newErrors);
+      }
+
+      return updated;
+    });
   };
 
   const validateForm = () => {
@@ -246,13 +304,28 @@ export default function PromotionsPage() {
       }
     }
 
-    if (!formData.StartDate) newErrors.StartDate = "Vui lòng chọn ngày bắt đầu";
+    if (!formData.StartDate) {
+      newErrors.StartDate = "Vui lòng chọn ngày bắt đầu";
+    }
 
-    if (
-      formData.EndDate &&
-      dayjs(formData.EndDate).isBefore(dayjs(formData.StartDate))
-    ) {
-      newErrors.EndDate = "Ngày kết thúc phải sau ngày bắt đầu";
+    // Validate ngày kết thúc phải sau hoặc bằng ngày bắt đầu
+    if (formData.EndDate) {
+      if (!formData.StartDate) {
+        newErrors.EndDate = "Vui lòng chọn ngày bắt đầu trước";
+      } else {
+        const startDate = dayjs(formData.StartDate);
+        const endDate = dayjs(formData.EndDate);
+
+        // Ngày kết thúc phải sau hoặc bằng ngày bắt đầu
+        if (endDate.isBefore(startDate, "day")) {
+          newErrors.EndDate = "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu";
+        }
+        // Cho phép cùng ngày (promotion có hiệu lực trong 1 ngày)
+        // Nếu muốn bắt buộc sau ngày bắt đầu, thay dòng trên bằng:
+        // if (endDate.isBefore(startDate, "day") || endDate.isSame(startDate, "day")) {
+        //   newErrors.EndDate = "Ngày kết thúc phải sau ngày bắt đầu";
+        // }
+      }
     }
 
     setErrors(newErrors);
@@ -264,19 +337,19 @@ export default function PromotionsPage() {
 
     try {
       setActionLoading(true);
-      const payload = {
-        Code: formData.Code.trim().toUpperCase(),
-        Discount: Number(formData.Discount),
-        StartDate: formData.StartDate,
-        EndDate: formData.EndDate || null,
-        Status: formData.Status,
-        CreateBy: user?.AccID || user?.accId || null,
-      };
-
       if (editingPromotion) {
+        // Khi update, không gửi CreateBy (giữ nguyên giá trị cũ)
+        const updatePayload = {
+          Code: formData.Code.trim().toUpperCase(),
+          Discount: Number(formData.Discount),
+          StartDate: formData.StartDate,
+          EndDate: formData.EndDate || null,
+          Status: formData.Status,
+        };
+
         await promotionService.updatePromotion(
           editingPromotion.PromotionID,
-          payload
+          updatePayload
         );
         setToast({
           open: true,
@@ -284,7 +357,17 @@ export default function PromotionsPage() {
           message: "Cập nhật promotion thành công",
         });
       } else {
-        await promotionService.createPromotion(payload);
+        // Khi tạo mới, gửi CreateBy
+        const createPayload = {
+          Code: formData.Code.trim().toUpperCase(),
+          Discount: Number(formData.Discount),
+          StartDate: formData.StartDate,
+          EndDate: formData.EndDate || null,
+          Status: formData.Status,
+          CreateBy: user?.AccID || user?.accId || null,
+        };
+
+        await promotionService.createPromotion(createPayload);
         setToast({
           open: true,
           severity: "success",
@@ -733,6 +816,9 @@ export default function PromotionsPage() {
                 InputLabelProps={{ shrink: true }}
                 error={!!errors.StartDate}
                 helperText={errors.StartDate}
+                inputProps={{
+                  max: formData.EndDate || undefined, // Không cho chọn sau ngày kết thúc nếu đã có
+                }}
               />
               <TextField
                 label="Ngày kết thúc (tuỳ chọn)"
@@ -742,7 +828,12 @@ export default function PromotionsPage() {
                 onChange={(e) => handleInputChange("EndDate", e.target.value)}
                 InputLabelProps={{ shrink: true }}
                 error={!!errors.EndDate}
-                helperText={errors.EndDate}
+                helperText={
+                  errors.EndDate || "Để trống nếu không giới hạn thời gian"
+                }
+                inputProps={{
+                  min: formData.StartDate || undefined, // Không cho chọn trước ngày bắt đầu
+                }}
               />
             </Stack>
             <TextField

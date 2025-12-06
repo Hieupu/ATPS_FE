@@ -5,13 +5,13 @@ import TimeslotDeleteModal from "../components/timeslot-management/TimeslotDelet
 import "./style.css";
 
 const DAY_OPTIONS = [
-  { label: "Chủ nhật", value: "CN" },
-  { label: "Thứ hai", value: "T2" },
-  { label: "Thứ ba", value: "T3" },
-  { label: "Thứ tư", value: "T4" },
-  { label: "Thứ năm", value: "T5" },
-  { label: "Thứ sáu", value: "T6" },
-  { label: "Thứ bảy", value: "T7" },
+  { label: "Chủ nhật", value: "Sunday" },
+  { label: "Thứ hai", value: "Monday" },
+  { label: "Thứ ba", value: "Tuesday" },
+  { label: "Thứ tư", value: "Wednesday" },
+  { label: "Thứ năm", value: "Thursday" },
+  { label: "Thứ sáu", value: "Friday" },
+  { label: "Thứ bảy", value: "Saturday" },
 ];
 const DAY_ORDER = DAY_OPTIONS.map((day) => day.value);
 const DAY_LABEL_MAP = DAY_OPTIONS.reduce((acc, item) => {
@@ -39,7 +39,11 @@ const formatTimeForInput = (value) => {
   return normalized ? normalized.slice(0, 5) : "";
 };
 const getDayOrderIndex = (day) => {
-  const index = DAY_ORDER.indexOf(day?.toUpperCase());
+  // Normalize day name: capitalize first letter, lowercase the rest
+  const normalizedDay = day
+    ? day.charAt(0).toUpperCase() + day.slice(1).toLowerCase()
+    : "";
+  const index = DAY_ORDER.indexOf(normalizedDay);
   return index === -1 ? DAY_ORDER.length + 1 : index;
 };
 
@@ -107,12 +111,22 @@ const TimeslotManagerPage = () => {
       const list = Array.isArray(result?.data) ? result.data : [];
 
       setTimeslots(
-        list.map((slot) => ({
-          ...slot,
-          Day: (slot.Day || slot.day || "").toUpperCase(),
-          StartTime: normalizeTime(slot.StartTime || slot.startTime || ""),
-          EndTime: normalizeTime(slot.EndTime || slot.endTime || ""),
-        }))
+        list.map((slot) => {
+          // Normalize Day: capitalize first letter, lowercase the rest
+          const dayValue = slot.Day || slot.day || "";
+          const normalizedDay =
+            dayValue && dayValue.length > 0
+              ? dayValue.charAt(0).toUpperCase() +
+                dayValue.slice(1).toLowerCase()
+              : "";
+
+          return {
+            ...slot,
+            Day: normalizedDay,
+            StartTime: normalizeTime(slot.StartTime || slot.startTime || ""),
+            EndTime: normalizeTime(slot.EndTime || slot.endTime || ""),
+          };
+        })
       );
       setTablePage(1);
       setPageError("");
@@ -137,7 +151,16 @@ const TimeslotManagerPage = () => {
     const keyword = filters.keyword.trim().toLowerCase();
     return timeslots
       .filter((slot) => {
-        if (filters.day && slot.Day !== filters.day) return false;
+        // Normalize filter day for comparison
+        const filterDay = filters.day
+          ? filters.day.charAt(0).toUpperCase() +
+            filters.day.slice(1).toLowerCase()
+          : "";
+        const slotDay = slot.Day
+          ? slot.Day.charAt(0).toUpperCase() + slot.Day.slice(1).toLowerCase()
+          : "";
+
+        if (filters.day && slotDay !== filterDay) return false;
         if (!keyword) return true;
         return (
           slot.Day.toLowerCase().includes(keyword) ||

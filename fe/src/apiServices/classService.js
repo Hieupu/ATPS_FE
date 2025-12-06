@@ -1060,6 +1060,22 @@ const classService = {
     }
   },
 
+  // Xóa tất cả lịch nghỉ của một ngày
+  deleteLeavesByDate: async (date, status = "HOLIDAY") => {
+    try {
+      console.log("[classService] deleteLeavesByDate date:", date, "status:", status);
+      const response = await apiClient.delete(
+        `/classes/instructor/leave/date/${date}?status=${status}`
+      );
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Delete leaves by date error:", error);
+      throw (
+        error.response?.data || { message: "Failed to delete leaves by date" }
+      );
+    }
+  },
+
   // Kiểm tra cảnh báo xung đột tương lai
   checkFutureConflicts: async (instructorId, date, timeslotId, status) => {
     try {

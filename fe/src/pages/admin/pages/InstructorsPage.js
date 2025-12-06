@@ -32,6 +32,8 @@ import {
   DialogActions,
   Tabs,
   Tab,
+  Pagination,
+  Divider,
 } from "@mui/material";
 import {
   Add,
@@ -48,6 +50,7 @@ import {
   Group,
   Edit,
   Visibility,
+  VisibilityOff,
   Book,
   MoreVert,
   CalendarToday,
@@ -64,8 +67,10 @@ const AdminInstructorsPage = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
   const [searchInput, setSearchInput] = useState("");
   const [statusInput, setStatusInput] = useState("all");
+  const [typeInput, setTypeInput] = useState("all");
   const [showInstructorForm, setShowInstructorForm] = useState(false);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
@@ -74,6 +79,8 @@ const AdminInstructorsPage = () => {
   const [showCoursesDialog, setShowCoursesDialog] = useState(false);
   const [instructorClasses, setInstructorClasses] = useState([]);
   const [instructorCourses, setInstructorCourses] = useState([]);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   useEffect(() => {
     loadInstructors();
@@ -86,21 +93,39 @@ const AdminInstructorsPage = () => {
       // Format: { success: true, data: [...] }
       const instructorsList = await instructorService.getAllInstructorsAdmin();
       console.log("Đã tải danh sách giảng viên từ DB:", instructorsList.length);
-      console.log("Sample instructor data:", instructorsList[0]);
+      console.log(
+        "Sample instructor data (raw):",
+        JSON.stringify(instructorsList[0], null, 2)
+      );
+      console.log("Sample instructor Status:", instructorsList[0]?.Status);
+      console.log("Sample instructor Gender:", instructorsList[0]?.Gender);
 
-      // Map Status từ account nếu có - có thể Status nằm ở account.Status hoặc trực tiếp là Status
-      const mappedInstructors = instructorsList.map((instructor) => ({
-        ...instructor,
-        // Status có thể từ account table qua JOIN, hoặc có thể là account.Status
-        Status:
-          instructor.Status ||
-          instructor.account?.Status ||
-          instructor.AccountStatus ||
-          "active",
-        // Đảm bảo Email và Phone có sẵn
-        Email: instructor.Email || instructor.account?.Email || "",
-        Phone: instructor.Phone || instructor.account?.Phone || "",
-      }));
+      // Map Status và Gender từ account (đã được SELECT trong query và map trong repository)
+      // Repository đã map AccountStatus -> Status và AccountGender -> Gender
+      const mappedInstructors = instructorsList.map((instructor) => {
+        const mapped = {
+          ...instructor,
+          // Status từ account table (đã được map trong repository từ AccountStatus)
+          // Chỉ fallback nếu thực sự null/undefined/empty
+          Status:
+            instructor.Status && instructor.Status.trim()
+              ? instructor.Status.trim()
+              : "active",
+          // Gender từ account table (đã được map trong repository từ AccountGender)
+          // Chỉ fallback nếu thực sự null/undefined/empty
+          Gender:
+            instructor.Gender && instructor.Gender.trim()
+              ? instructor.Gender.trim()
+              : "other",
+          // Đảm bảo Email và Phone có sẵn
+          Email: instructor.Email || instructor.account?.Email || "",
+          Phone: instructor.Phone || instructor.account?.Phone || "",
+        };
+        console.log(
+          `Instructor ${mapped.InstructorID}: Status="${mapped.Status}", Gender="${mapped.Gender}"`
+        );
+        return mapped;
+      });
 
       setInstructors(mappedInstructors);
     } catch (error) {
@@ -363,14 +388,17 @@ const AdminInstructorsPage = () => {
           Address: formData.Address || null,
           DateOfBirth: formData.DateOfBirth || null,
           ProfilePicture: formData.ProfilePicture || null,
+          CV: formData.CV || null, // Thêm CV
           InstructorFee: formData.InstructorFee
             ? parseFloat(formData.InstructorFee)
             : null,
+          Type: formData.Type || "parttime",
           // Account fields để backend tạo account
           Email: formData.Email,
           Phone: formData.Phone || null,
           Password: formData.Password,
           Status: formData.Status || "active",
+          Gender: formData.Gender || "other",
         };
 
         await instructorService.createInstructor(instructorData);
@@ -381,10 +409,26 @@ const AdminInstructorsPage = () => {
       setShowInstructorForm(false);
     } catch (error) {
       console.error("Lỗi khi lưu giảng viên:", error);
-      const errorMessage =
-        error?.message ||
-        error.response?.data?.message ||
-        "Không thể lưu giảng viên!";
+
+      // Xử lý error response chi tiết hơn
+      let errorMessage = "Không thể lưu giảng viên!";
+
+      if (error.response?.data) {
+        const errorData = error.response.data;
+        if (errorData.errors && Array.isArray(errorData.errors)) {
+          // Nếu có nhiều lỗi validation
+          errorMessage = `Dữ liệu không hợp lệ:\n${errorData.errors.join(
+            "\n"
+          )}`;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+
       alert(errorMessage);
     }
   };
@@ -397,24 +441,38 @@ const AdminInstructorsPage = () => {
 
     const matchesSearch =
       name.includes(search) || email.includes(search) || major.includes(search);
-    const statusValue = (
-      instructor.Status ||
-      instructor.AccountStatus ||
-      "active"
-    ).toLowerCase();
+    const statusValue = (instructor.Status || "active").toLowerCase();
     const matchesStatus =
-      statusFilter === "all" || statusValue === statusFilter;
+      statusFilter === "all" || statusValue === statusFilter.toLowerCase();
 
-    return matchesSearch && matchesStatus;
+    const instructorType = instructor.Type || instructor.InstructorType || "";
+    const matchesType =
+      typeFilter === "all" || instructorType?.toLowerCase() === typeFilter;
+
+    return matchesSearch && matchesStatus && matchesType;
   });
+
+  // Phân trang
+  const paginatedInstructors = React.useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredInstructors.slice(startIndex, endIndex);
+  }, [filteredInstructors, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredInstructors.length / pageSize) || 1;
+
+  // Reset về trang 1 khi filter thay đổi
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter, typeFilter]);
 
   const stats = {
     total: instructors.length,
     active: instructors.filter(
-      (i) => (i.Status || i.AccountStatus || "").toLowerCase() === "active"
+      (i) => (i.Status || "").toLowerCase() === "active"
     ).length,
     inactive: instructors.filter(
-      (i) => (i.Status || i.AccountStatus || "").toLowerCase() === "inactive"
+      (i) => (i.Status || "").toLowerCase() === "inactive"
     ).length,
     // totalStudents: computed từ enrollment, không có trong DB nên xóa
   };
@@ -598,6 +656,22 @@ const AdminInstructorsPage = () => {
               <MenuItem value="inactive">Không hoạt động</MenuItem>
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>Loại giảng viên</InputLabel>
+            <Select
+              value={typeInput}
+              label="Loại giảng viên"
+              onChange={(e) => setTypeInput(e.target.value)}
+              sx={{
+                borderRadius: 2,
+                backgroundColor: "#fff",
+              }}
+            >
+              <MenuItem value="all">Tất cả</MenuItem>
+              <MenuItem value="fulltime">Full-time</MenuItem>
+              <MenuItem value="parttime">Part-time</MenuItem>
+            </Select>
+          </FormControl>
           <Stack direction="row" spacing={1}>
             <Button
               variant="contained"
@@ -605,6 +679,7 @@ const AdminInstructorsPage = () => {
               onClick={() => {
                 setSearchTerm(searchInput.trim());
                 setStatusFilter(statusInput);
+                setTypeFilter(typeInput);
               }}
               sx={{ textTransform: "none" }}
             >
@@ -616,8 +691,10 @@ const AdminInstructorsPage = () => {
               onClick={() => {
                 setSearchInput("");
                 setStatusInput("all");
+                setTypeInput("all");
                 setSearchTerm("");
                 setStatusFilter("all");
+                setTypeFilter("all");
               }}
               sx={{ textTransform: "none" }}
             >
@@ -698,7 +775,7 @@ const AdminInstructorsPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredInstructors.map((instructor) => (
+              {paginatedInstructors.map((instructor) => (
                 <TableRow
                   key={instructor.InstructorID}
                   sx={{
@@ -734,9 +811,7 @@ const AdminInstructorsPage = () => {
                   <TableCell>
                     {(() => {
                       const statusValue = (
-                        instructor.Status ||
-                        instructor.AccountStatus ||
-                        "active"
+                        instructor.Status || "active"
                       ).toLowerCase();
                       const isActive = statusValue === "active";
                       return (
@@ -768,6 +843,32 @@ const AdminInstructorsPage = () => {
               ))}
             </TableBody>
           </Table>
+          {filteredInstructors.length > 0 && (
+            <>
+              <Divider />
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 2,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Hiển thị {(page - 1) * pageSize + 1} -{" "}
+                  {Math.min(page * pageSize, filteredInstructors.length)} trong
+                  tổng số {filteredInstructors.length} giảng viên
+                </Typography>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, value) => setPage(value)}
+                  color="primary"
+                  shape="rounded"
+                />
+              </Box>
+            </>
+          )}
         </TableContainer>
       )}
 
@@ -832,13 +933,7 @@ const AdminInstructorsPage = () => {
         </MenuItem>
         <MenuItem
           onClick={() => {
-            if (selectedRow?.InstructorID) {
-              const params = new URLSearchParams({
-                instructorId: selectedRow.InstructorID,
-                instructorName: selectedRow.FullName || "",
-              });
-              navigate(`/admin/instructor-leave?${params.toString()}`);
-            }
+            navigate(`/admin/instructor-leave`);
             setAnchorEl(null);
           }}
         >
@@ -1149,9 +1244,12 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
     CV: "",
     InstructorFee: null,
     Status: "active",
+    Type: "parttime",
+    Gender: "other",
   });
 
   const [errors, setErrors] = useState({});
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (instructorData) {
@@ -1168,6 +1266,9 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
         CV: instructorData.CV || "",
         InstructorFee: instructorData.InstructorFee || null,
         Status: instructorData.Status || "active",
+        Type:
+          instructorData.Type || instructorData.InstructorType || "parttime",
+        Gender: instructorData.Gender || "other",
       });
     } else {
       // Reset form when creating new
@@ -1184,6 +1285,8 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
         CV: "",
         InstructorFee: null,
         Status: "active",
+        Type: "parttime",
+        Gender: "other",
       });
     }
   }, [instructorData]);
@@ -1210,10 +1313,23 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
 
     if (!formData.Phone.trim()) {
       newErrors.Phone = "Vui lòng nhập số điện thoại";
+    } else {
+      // Validate phone format (Vietnam: 10-11 digits, có thể bắt đầu bằng 0 hoặc +84)
+      const phoneRegex = /^(\+84|0)[1-9][0-9]{8,9}$/;
+      const cleanedPhone = formData.Phone.replace(/\s+/g, "");
+      if (!phoneRegex.test(cleanedPhone)) {
+        newErrors.Phone =
+          "Số điện thoại không hợp lệ (VD: 0123456789 hoặc +84123456789)";
+      }
     }
 
     if (!formData.Major.trim()) {
       newErrors.Major = "Vui lòng nhập chuyên môn";
+    }
+
+    // Validate Type
+    if (formData.Type && !["fulltime", "parttime"].includes(formData.Type)) {
+      newErrors.Type = "Loại giảng viên phải là fulltime hoặc parttime";
     }
 
     setErrors(newErrors);
@@ -1285,20 +1401,39 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
               <label htmlFor="Password">
                 Mật khẩu {!instructorData ? "*" : ""}
               </label>
-              <input
-                type="password"
-                id="Password"
-                value={formData.Password}
-                onChange={(e) =>
-                  setFormData({ ...formData, Password: e.target.value })
-                }
-                className={errors.Password ? "error" : ""}
-                placeholder={
-                  instructorData
-                    ? "Để trống nếu không đổi mật khẩu"
-                    : "Nhập mật khẩu (tối thiểu 6 ký tự)"
-                }
-              />
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  id="Password"
+                  value={formData.Password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, Password: e.target.value })
+                  }
+                  className={errors.Password ? "error" : ""}
+                  placeholder={
+                    instructorData
+                      ? "Để trống nếu không đổi mật khẩu"
+                      : "Nhập mật khẩu (tối thiểu 6 ký tự)"
+                  }
+                  style={{ paddingRight: "40px", width: "100%" }}
+                />
+                <IconButton
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    padding: "4px",
+                  }}
+                >
+                  {showPassword ? (
+                    <VisibilityOff fontSize="small" />
+                  ) : (
+                    <Visibility fontSize="small" />
+                  )}
+                </IconButton>
+              </div>
               {errors.Password && (
                 <span className="error-message">{errors.Password}</span>
               )}
@@ -1321,6 +1456,49 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
               {errors.Phone && (
                 <span className="error-message">{errors.Phone}</span>
               )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="Type">Loại giảng viên *</label>
+              <select
+                id="Type"
+                value={formData.Type}
+                onChange={(e) =>
+                  setFormData({ ...formData, Type: e.target.value })
+                }
+                className={errors.Type ? "error" : ""}
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              >
+                <option value="parttime">Part-time</option>
+                <option value="fulltime">Full-time</option>
+              </select>
+              {errors.Type && (
+                <span className="error-message">{errors.Type}</span>
+              )}
+            </div>
+            <div className="form-group">
+              <label htmlFor="Gender">Giới tính *</label>
+              <select
+                id="Gender"
+                value={formData.Gender}
+                onChange={(e) =>
+                  setFormData({ ...formData, Gender: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  borderRadius: "4px",
+                  border: "1px solid #ddd",
+                }}
+              >
+                <option value="male">Nam</option>
+                <option value="female">Nữ</option>
+                <option value="other">Khác</option>
+              </select>
             </div>
           </div>
 

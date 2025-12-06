@@ -21,6 +21,8 @@ import {
   DialogActions,
   Stack,
   MenuItem,
+  Pagination,
+  Divider,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -29,6 +31,7 @@ import {
 } from "@mui/icons-material";
 import uploadService from "../../../apiServices/uploadService";
 import accountService from "../../../apiServices/accountService";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const statusOptions = [
   { value: "active", label: "Hoạt động" },
@@ -53,12 +56,9 @@ const defaultForm = {
   Gender: "other",
 };
 
-const createUserManagementPage = ({
-  entityLabel,
-  entityLabelPlural,
-  api,
-}) => {
+const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
   const PageComponent = () => {
+    const { user } = useAuth();
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -69,6 +69,20 @@ const createUserManagementPage = ({
     const [selectedItem, setSelectedItem] = useState(null);
     const [formData, setFormData] = useState({ ...defaultForm });
     const [saving, setSaving] = useState(false);
+    const [page, setPage] = useState(1);
+    const [pageSize] = useState(10);
+
+    // Kiểm tra xem đang edit chính account của mình không
+    const isEditingSelf = useMemo(() => {
+      if (!selectedItem || !user) return false;
+      const currentUserAccID = user.AccID || user.accID || user.id;
+      const selectedItemAccID = selectedItem.AccID || selectedItem.accID;
+      return (
+        currentUserAccID &&
+        selectedItemAccID &&
+        currentUserAccID === selectedItemAccID
+      );
+    }, [selectedItem, user]);
 
     const loadItems = async () => {
       try {
@@ -95,13 +109,17 @@ const createUserManagementPage = ({
       const total = items.length;
       const active = items.filter((item) => {
         const statusValue = (
-          item.Status || item.AccountStatus || "active"
+          item.Status ||
+          item.AccountStatus ||
+          "active"
         ).toLowerCase();
         return statusValue === "active";
       }).length;
       const inactive = items.filter((item) => {
         const statusValue = (
-          item.Status || item.AccountStatus || "active"
+          item.Status ||
+          item.AccountStatus ||
+          "active"
         ).toLowerCase();
         return statusValue === "inactive";
       }).length;
@@ -117,8 +135,7 @@ const createUserManagementPage = ({
           item.Email?.toLowerCase().includes(search) ||
           item.Phone?.toLowerCase().includes(search);
 
-        const normalizedStatus =
-          item.Status || item.AccountStatus || "active";
+        const normalizedStatus = item.Status || item.AccountStatus || "active";
 
         const matchesStatus =
           statusFilter === "all" ||
@@ -127,6 +144,20 @@ const createUserManagementPage = ({
         return matchesSearch && matchesStatus;
       });
     }, [items, searchTerm, statusFilter]);
+
+    // Phân trang
+    const paginatedItems = useMemo(() => {
+      const startIndex = (page - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      return filteredItems.slice(startIndex, endIndex);
+    }, [filteredItems, page, pageSize]);
+
+    const totalPages = Math.ceil(filteredItems.length / pageSize) || 1;
+
+    // Reset về trang 1 khi filter thay đổi
+    useEffect(() => {
+      setPage(1);
+    }, [searchTerm, statusFilter]);
 
     const openModal = (item = null) => {
       setSelectedItem(item);
@@ -141,9 +172,7 @@ const createUserManagementPage = ({
             ? "inactive"
             : "active",
         Address: item?.Address || "",
-        DateOfBirth: item?.DateOfBirth
-          ? item.DateOfBirth.split("T")[0]
-          : "",
+        DateOfBirth: item?.DateOfBirth ? item.DateOfBirth.split("T")[0] : "",
         ProfilePicture: item?.ProfilePicture || "",
         Gender: item?.Gender || "other",
       });
@@ -208,10 +237,7 @@ const createUserManagementPage = ({
           // Update account info nếu có AccID
           if (selectedItem.AccID) {
             const accountPayload = {};
-            if (
-              formData.Email &&
-              formData.Email !== selectedItem.Email
-            ) {
+            if (formData.Email && formData.Email !== selectedItem.Email) {
               accountPayload.Email = formData.Email;
             }
             if (
@@ -220,13 +246,17 @@ const createUserManagementPage = ({
             ) {
               accountPayload.Phone = formData.Phone;
             }
-          const currentStatus = (
-            selectedItem.Status || selectedItem.AccountStatus || ""
-          ).toLowerCase();
-          if (
-            formData.Status &&
-            formData.Status !== currentStatus
-          ) {
+            const currentStatus = (
+              selectedItem.Status ||
+              selectedItem.AccountStatus ||
+              ""
+            ).toLowerCase();
+            // Không cho phép sửa Status của chính mình
+            if (
+              formData.Status &&
+              formData.Status !== currentStatus &&
+              !isEditingSelf
+            ) {
               accountPayload.Status = formData.Status;
             }
             if (formData.Password) {
@@ -397,42 +427,45 @@ const createUserManagementPage = ({
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredItems.length === 0 ? (
+                  {paginatedItems.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={5} align="center">
                         Không có dữ liệu
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredItems.map((item, index) => (
+                    paginatedItems.map((item, index) => (
                       <TableRow
-                        key={`${entityLabel}-${item.StaffID || item.AdminID || item.AccID || index}`}
+                        key={`${entityLabel}-${
+                          item.StaffID || item.AdminID || item.AccID || index
+                        }`}
                       >
                         <TableCell>{item.FullName}</TableCell>
                         <TableCell>{item.Email || "—"}</TableCell>
                         <TableCell>{item.Phone || "—"}</TableCell>
                         <TableCell>
                           <Chip
-                        label={
-                          (() => {
-                            const statusValue = (
-                              item.Status ||
-                              item.AccountStatus ||
-                              "active"
-                            ).toLowerCase();
-                            return (
-                              statusOptions.find(
-                                (opt) => opt.value === statusValue
-                              )?.label || "Không rõ"
-                            );
-                          })()
-                        }
-                        color={
-                          (item.Status || item.AccountStatus || "")
-                            .toLowerCase() === "active"
-                            ? "success"
-                            : "default"
-                        }
+                            label={(() => {
+                              const statusValue = (
+                                item.Status ||
+                                item.AccountStatus ||
+                                "active"
+                              ).toLowerCase();
+                              return (
+                                statusOptions.find(
+                                  (opt) => opt.value === statusValue
+                                )?.label || "Không rõ"
+                              );
+                            })()}
+                            color={
+                              (
+                                item.Status ||
+                                item.AccountStatus ||
+                                ""
+                              ).toLowerCase() === "active"
+                                ? "success"
+                                : "default"
+                            }
                             size="small"
                           />
                         </TableCell>
@@ -449,6 +482,32 @@ const createUserManagementPage = ({
                   )}
                 </TableBody>
               </Table>
+            )}
+            {filteredItems.length > 0 && (
+              <>
+                <Divider />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    p: 2,
+                  }}
+                >
+                  <Typography variant="body2" color="text.secondary">
+                    Hiển thị {(page - 1) * pageSize + 1} -{" "}
+                    {Math.min(page * pageSize, filteredItems.length)} trong tổng
+                    số {filteredItems.length} {entityLabelPlural.toLowerCase()}
+                  </Typography>
+                  <Pagination
+                    count={totalPages}
+                    page={page}
+                    onChange={(_, value) => setPage(value)}
+                    color="primary"
+                    shape="rounded"
+                  />
+                </Box>
+              </>
             )}
           </CardContent>
         </Card>
@@ -521,6 +580,12 @@ const createUserManagementPage = ({
                     setFormData({ ...formData, Status: e.target.value })
                   }
                   fullWidth
+                  disabled={isEditingSelf}
+                  helperText={
+                    isEditingSelf
+                      ? "Bạn không thể thay đổi trạng thái của chính mình"
+                      : ""
+                  }
                 >
                   {statusOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -620,4 +685,3 @@ const createUserManagementPage = ({
 };
 
 export default createUserManagementPage;
-

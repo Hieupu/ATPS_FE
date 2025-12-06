@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -19,6 +19,8 @@ import {
   Radio,
   FormControl,
   FormLabel,
+  Pagination,
+  Divider,
 } from "@mui/material";
 import {
   Add,
@@ -70,6 +72,10 @@ const ClassesPage = () => {
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [openingSoonDays, setOpeningSoonDays] = useState(5); // Số ngày cho "Sắp tới hạn mở lớp" (mặc định 5 ngày)
+
+  // Pagination
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   // Load data
   useEffect(() => {
@@ -727,6 +733,27 @@ const ClassesPage = () => {
 
   const filteredClasses = getFilteredClasses();
 
+  // Phân trang
+  const paginatedClasses = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredClasses.slice(startIndex, endIndex);
+  }, [filteredClasses, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredClasses.length / pageSize) || 1;
+
+  // Reset về trang 1 khi filter thay đổi
+  useEffect(() => {
+    setPage(1);
+  }, [
+    searchTerm,
+    tabValue,
+    dateFilterType,
+    startDateFilter,
+    endDateFilter,
+    openingSoonDays,
+  ]);
+
   // Statistics
   const stats = {
     total: classes.length,
@@ -1243,15 +1270,19 @@ const ClassesPage = () => {
         <Box>
           <Box sx={{ mb: 2, px: 1 }}>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Showing{" "}
+              Hiển thị{" "}
               <strong style={{ color: "#667eea" }}>
-                {filteredClasses.length}
+                {(page - 1) * pageSize + 1} -{" "}
+                {Math.min(page * pageSize, filteredClasses.length)}
               </strong>{" "}
-              of {classes.length} classes
+              trong tổng số {filteredClasses.length} lớp học
+              {filteredClasses.length !== classes.length && (
+                <span> (tổng {classes.length} lớp)</span>
+              )}
             </Typography>
           </Box>
           <ClassList
-            classes={filteredClasses}
+            classes={paginatedClasses}
             courses={courses}
             instructors={instructors}
             onEdit={handleEditClass}
@@ -1260,6 +1291,30 @@ const ClassesPage = () => {
             onPublish={handlePublishClass}
             onChangeStatus={handleChangeStatus}
           />
+          {filteredClasses.length > 0 && (
+            <>
+              <Divider sx={{ my: 2 }} />
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  py: 2,
+                }}
+              >
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, value) => setPage(value)}
+                  color="primary"
+                  shape="rounded"
+                  size="large"
+                  showFirstButton
+                  showLastButton
+                />
+              </Box>
+            </>
+          )}
         </Box>
       )}
 

@@ -29,6 +29,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  Pagination,
+  Divider,
 } from "@mui/material";
 import {
   Add,
@@ -71,6 +73,8 @@ const LearnersPage = () => {
   const [showClassesDialog, setShowClassesDialog] = useState(false);
   const [learnerClasses, setLearnerClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize] = useState(10);
 
   useEffect(() => {
     loadLearners();
@@ -382,6 +386,20 @@ const LearnersPage = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Phân trang
+  const paginatedLearners = React.useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    return filteredLearners.slice(startIndex, endIndex);
+  }, [filteredLearners, page, pageSize]);
+
+  const totalPages = Math.ceil(filteredLearners.length / pageSize) || 1;
+
+  // Reset về trang 1 khi filter thay đổi
+  React.useEffect(() => {
+    setPage(1);
+  }, [searchTerm, statusFilter]);
+
   const stats = {
     total: learners.length,
     // Status đã được map từ AccountStatus trong loadLearners
@@ -652,7 +670,7 @@ const LearnersPage = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredLearners.map((learner) => (
+              {paginatedLearners.map((learner) => (
                 <TableRow
                   key={learner.LearnerID}
                   sx={{
@@ -719,6 +737,32 @@ const LearnersPage = () => {
               ))}
             </TableBody>
           </Table>
+          {filteredLearners.length > 0 && (
+            <>
+              <Divider />
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  p: 2,
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Hiển thị {(page - 1) * pageSize + 1} -{" "}
+                  {Math.min(page * pageSize, filteredLearners.length)} trong
+                  tổng số {filteredLearners.length} học viên
+                </Typography>
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(_, value) => setPage(value)}
+                  color="primary"
+                  shape="rounded"
+                />
+              </Box>
+            </>
+          )}
         </TableContainer>
       )}
 
