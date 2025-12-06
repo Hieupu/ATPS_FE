@@ -50,33 +50,71 @@ const ScheduleGrid = ({
 
   // ⭐️ ANTI-SPAM: Theo dõi lịch sử reserve của từng slot
   const [slotReserveHistory, setSlotReserveHistory] = useState(() => {
-    // Load từ localStorage nếu có
     const saved = localStorage.getItem('slotReserveHistory');
-    return saved ? JSON.parse(saved) : {};
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        // Cleanup ngay khi load
+        const now = Date.now();
+        const fifteenMinutes = 15 * 60 * 1000;
+        const cleaned = {};
+        Object.keys(data).forEach(key => {
+          const history = data[key].filter(ts => now - ts < fifteenMinutes);
+          if (history.length > 0) cleaned[key] = history;
+        });
+        return cleaned;
+      } catch {
+        return {};
+      }
+    }
+    return {};
+  });
+
+  // ⭐️ ANTI-SPAM: Theo dõi tổng số clicks trong 1 phút
+  const [clickHistory, setClickHistory] = useState(() => {
+    const saved = localStorage.getItem('clickHistory');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        const now = Date.now();
+        // Chỉ giữ lại clicks trong 1 phút gần đây
+        return data.filter(ts => now - ts < 60000);
+      } catch {
+        return [];
+      }
+    }
+    return [];
   });
 
   // ⭐️ ANTI-SPAM: Trạng thái bị khóa (banned)
   const [isBanned, setIsBanned] = useState(false);
   const [banEndTime, setBanEndTime] = useState(null);
   const [banTimeRemaining, setBanTimeRemaining] = useState(0);
+  const [banReason, setBanReason] = useState('');
 
   // ⭐️ ANTI-SPAM: Check trạng thái ban khi component mount
   useEffect(() => {
     const checkBanStatus = () => {
       const banData = localStorage.getItem('slotReserveBan');
       if (banData) {
-        const { endTime } = JSON.parse(banData);
-        const now = Date.now();
-        
-        if (now < endTime) {
-          setIsBanned(true);
-          setBanEndTime(endTime);
-          setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
-        } else {
-          // Hết thời gian ban, xóa
+        try {
+          const { endTime, reason } = JSON.parse(banData);
+          const now = Date.now();
+          
+          if (now < endTime) {
+            setIsBanned(true);
+            setBanEndTime(endTime);
+            setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
+            setBanReason(reason || 'spam');
+          } else {
+            // Hết thời gian ban, xóa và reset
+            localStorage.removeItem('slotReserveBan');
+            setIsBanned(false);
+            setBanEndTime(null);
+            setBanReason('');
+          }
+        } catch {
           localStorage.removeItem('slotReserveBan');
-          setIsBanned(false);
-          setBanEndTime(null);
         }
       }
     };
@@ -88,31 +126,51 @@ const ScheduleGrid = ({
     return () => clearInterval(interval);
   }, []);
 
-  // ⭐️ ANTI-SPAM: Cleanup history cũ (sau 15 phút)
+  // ⭐️ ANTI-SPAM: Cleanup history - tối ưu hơn
   useEffect(() => {
     const cleanupHistory = () => {
       const now = Date.now();
       const fifteenMinutes = 15 * 60 * 1000;
+      const oneMinute = 60000;
       
+      // Cleanup slot reserve history
       setSlotReserveHistory(prev => {
+        let needUpdate = false;
         const cleaned = {};
+        
         Object.keys(prev).forEach(key => {
-          const history = prev[key].filter(timestamp => 
-            now - timestamp < fifteenMinutes
-          );
+          const history = prev[key].filter(ts => now - ts < fifteenMinutes);
           if (history.length > 0) {
             cleaned[key] = history;
+            if (history.length !== prev[key].length) needUpdate = true;
+          } else {
+            needUpdate = true;
           }
         });
         
-        // Save to localStorage
-        localStorage.setItem('slotReserveHistory', JSON.stringify(cleaned));
-        return cleaned;
+        if (needUpdate) {
+          localStorage.setItem('slotReserveHistory', JSON.stringify(cleaned));
+          return cleaned;
+        }
+        return prev;
+      });
+
+      // Cleanup click history
+      setClickHistory(prev => {
+        const cleaned = prev.filter(ts => now - ts < oneMinute);
+        if (cleaned.length !== prev.length) {
+          localStorage.setItem('clickHistory', JSON.stringify(cleaned));
+          return cleaned;
+        }
+        return prev;
       });
     };
 
-    // Cleanup mỗi phút
-    const interval = setInterval(cleanupHistory, 60000);
+    // Cleanup ngay lập tức khi mount
+    cleanupHistory();
+    
+    // Cleanup mỗi 10 giây (thay vì 1 phút để responsive hơn)
+    const interval = setInterval(cleanupHistory, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -120,37 +178,70 @@ const ScheduleGrid = ({
   const checkSpamBehavior = (slotKey) => {
     const now = Date.now();
     const fiveMinutes = 5 * 60 * 1000;
+    const oneMinute = 60000;
     
-    // Lấy lịch sử reserve của slot này trong 5 phút gần đây
-    const recentHistory = (slotReserveHistory[slotKey] || []).filter(
-      timestamp => now - timestamp < fiveMinutes
-    );
-    
-    // Nếu đã reserve cùng 1 slot >= 5 lần trong 5 phút
-    if (recentHistory.length >= 5) {
-      // Ban user trong 10 phút
+    // CHECK 1: Kiểm tra tổng số clicks trong 1 phút (giới hạn 20)
+    const recentClicks = clickHistory.filter(ts => now - ts < oneMinute);
+    if (recentClicks.length >= 20) {
       const banUntil = now + (10 * 60 * 1000);
-      localStorage.setItem('slotReserveBan', JSON.stringify({
+      const banData = {
         endTime: banUntil,
-        reason: 'spam_reserve'
-      }));
+        reason: 'too_many_clicks'
+      };
+      localStorage.setItem('slotReserveBan', JSON.stringify(banData));
       
       setIsBanned(true);
       setBanEndTime(banUntil);
+      setBanReason('too_many_clicks');
       
       setConflictAlert({
         severity: "error",
-        message: `Bạn đã giữ slot này quá nhiều lần (${recentHistory.length} lần trong 15 phút). Bạn bị tạm khóa trong 10 phút.`
+        message: `Bạn đã click quá nhiều (${recentClicks.length} lần trong 1 phút). Bạn bị tạm khóa 10 phút.`
       });
       
-      return true; // Spam detected
+      return true;
     }
     
-    return false; // OK
+    // CHECK 2: Kiểm tra reserve cùng 1 slot nhiều lần (giới hạn 5 lần/5 phút)
+    const recentSlotHistory = (slotReserveHistory[slotKey] || []).filter(
+      ts => now - ts < fiveMinutes
+    );
+    
+    if (recentSlotHistory.length >= 5) {
+      const banUntil = now + (10 * 60 * 1000);
+      const banData = {
+        endTime: banUntil,
+        reason: 'spam_reserve'
+      };
+      localStorage.setItem('slotReserveBan', JSON.stringify(banData));
+      
+      setIsBanned(true);
+      setBanEndTime(banUntil);
+      setBanReason('spam_reserve');
+      
+      setConflictAlert({
+        severity: "error",
+        message: `Bạn đã giữ slot này quá nhiều lần (${recentSlotHistory.length} lần trong 15 phút). Bạn bị tạm khóa 10 phút.`
+      });
+      
+      return true;
+    }
+    
+    return false;
   };
 
-  // ⭐️ ANTI-SPAM: Record reserve action
-  const recordReserveAction = (slotKey) => {
+  // ⭐️ ANTI-SPAM: Record click và reserve action
+  const recordClickAction = useCallback(() => {
+    const now = Date.now();
+    
+    setClickHistory(prev => {
+      const updated = [...prev, now];
+      localStorage.setItem('clickHistory', JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
+  const recordReserveAction = useCallback((slotKey) => {
     const now = Date.now();
     
     setSlotReserveHistory(prev => {
@@ -158,12 +249,10 @@ const ScheduleGrid = ({
         ...prev,
         [slotKey]: [...(prev[slotKey] || []), now]
       };
-      
-      // Save to localStorage
       localStorage.setItem('slotReserveHistory', JSON.stringify(updated));
       return updated;
     });
-  };
+  }, []);
 
   const checkReservedSlots = useCallback(async () => {
     if (!weeklySchedule || weeklySchedule.length === 0) return;
@@ -315,13 +404,19 @@ const ScheduleGrid = ({
   };
 
   const handleSlotClickWithConflictCheck = async (slot) => {
+    // ⭐️ ANTI-SPAM: Record click ngay lập tức
+    recordClickAction();
+
     // ⭐️ ANTI-SPAM: Check nếu user bị ban
     if (isBanned) {
       const minutes = Math.floor(banTimeRemaining / 60);
       const seconds = banTimeRemaining % 60;
+      const reasonText = banReason === 'too_many_clicks' 
+        ? 'click quá nhiều' 
+        : 'spam giữ slot';
       setConflictAlert({
         severity: "error",
-        message: `Bạn đã bị tạm khóa do spam. Vui lòng đợi ${minutes}:${seconds.toString().padStart(2, '0')}`
+        message: `Bạn đã bị tạm khóa do ${reasonText}. Vui lòng đợi ${minutes}:${seconds.toString().padStart(2, '0')}`
       });
       return;
     }
@@ -413,11 +508,20 @@ const ScheduleGrid = ({
         handleSlotClick(slot);
         
         // Hiển thị warning nếu gần đến giới hạn
-        const recentCount = (slotReserveHistory[slotKey] || []).length + 1;
-        if (recentCount >= 3) {
+        const now = Date.now();
+        const recentSlotCount = (slotReserveHistory[slotKey] || [])
+          .filter(ts => now - ts < 5 * 60 * 1000).length + 1;
+        const recentClickCount = clickHistory.filter(ts => now - ts < 60000).length;
+        
+        if (recentSlotCount >= 3) {
           setConflictAlert({
             severity: "warning",
-            message: `Cảnh báo: Bạn đã giữ slot này ${recentCount} lần. Nếu giữ quá 5 lần trong 15 phút, bạn sẽ bị khóa 10 phút.`
+            message: `⚠️ Bạn đã giữ slot này ${recentSlotCount} lần trong 15 phút. Giới hạn: 5 lần.`
+          });
+        } else if (recentClickCount >= 15) {
+          setConflictAlert({
+            severity: "warning",
+            message: `⚠️ Bạn đã click ${recentClickCount} lần trong 1 phút. Giới hạn: 20 lần.`
           });
         }
       } else {
@@ -513,10 +617,21 @@ const ScheduleGrid = ({
         Lịch học
       </Typography>
 
-      {/* ⭐️ ANTI-SPAM: Hiển thị thông báo ban */}
+      {/* ⭐️ ANTI-SPAM: Hiển thị thông báo ban với thông tin chi tiết */}
       {isBanned && (
         <Alert severity="error" sx={{ mb: 2 }}>
-          Bạn đã bị tạm khóa do spam. Thời gian còn lại: {Math.floor(banTimeRemaining / 60)}:{(banTimeRemaining % 60).toString().padStart(2, '0')}
+          <strong>Tài khoản tạm thời bị khóa</strong>
+          <br />
+          Lý do: {banReason === 'too_many_clicks' ? 'Click quá nhanh (>20 lần/phút)' : 'Giữ slot quá nhiều lần (>5 lần/15 phút)'}
+          <br />
+          Thời gian còn lại: <strong>{Math.floor(banTimeRemaining / 60)}:{(banTimeRemaining % 60).toString().padStart(2, '0')}</strong>
+        </Alert>
+      )}
+
+      {/* Hiển thị cảnh báo khi gần đạt giới hạn */}
+      {!isBanned && clickHistory.length > 15 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          ⚠️ Bạn đã click {clickHistory.filter(ts => Date.now() - ts < 60000).length}/20 lần trong phút này. Hãy chậm lại!
         </Alert>
       )}
 

@@ -245,7 +245,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
             <EventAvailable sx={{ fontSize: 18, color: '#667eea' }} />
             <Typography variant="body2" sx={{ color: '#666', fontSize: '0.9rem' }}>
-              Khai giảng: <strong style={{ color: '#667eea' }}>{formatDateWithDay(classItem.Opendate)}</strong>
+              Khai giảng: <strong style={{ color: '#667eea' }}>{formatDateWithDay(classItem.OpendatePlan)}</strong>
             </Typography>
           </Box>
 
