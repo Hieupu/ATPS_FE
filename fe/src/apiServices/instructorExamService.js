@@ -2,12 +2,10 @@ import apiClient from "./apiClient";
 
 // ==================== EXAM CRUD ====================
 
-// Lấy danh sách exams
 export const getExamsApi = async (filters = {}) => {
   try {
     const params = {};
     if (filters.status) params.status = filters.status;
-    if (filters.courseId) params.courseId = filters.courseId;
     
     const response = await apiClient.get("/instructor/exams", { params });
     return response.data.data || response.data || [];
@@ -17,7 +15,6 @@ export const getExamsApi = async (filters = {}) => {
   }
 };
 
-// Lấy chi tiết exam (UPDATED: getExamByIdApi)
 export const getExamByIdApi = async (examId) => {
   try {
     const response = await apiClient.get(`/instructor/exams/${examId}`);
@@ -28,10 +25,9 @@ export const getExamByIdApi = async (examId) => {
   }
 };
 
-// Alias for compatibility
+// Backwards-compatible alias: some pages import `getExamDetailApi`
 export const getExamDetailApi = getExamByIdApi;
 
-// Tạo exam mới
 export const createExamApi = async (examData) => {
   try {
     const response = await apiClient.post("/instructor/exams", examData);
@@ -42,7 +38,6 @@ export const createExamApi = async (examData) => {
   }
 };
 
-// Cập nhật exam
 export const updateExamApi = async (examId, examData) => {
   try {
     const response = await apiClient.put(`/instructor/exams/${examId}`, examData);
@@ -53,7 +48,6 @@ export const updateExamApi = async (examId, examData) => {
   }
 };
 
-// Xóa exam
 export const deleteExamApi = async (examId) => {
   try {
     const response = await apiClient.delete(`/instructor/exams/${examId}`);
@@ -64,7 +58,28 @@ export const deleteExamApi = async (examId) => {
   }
 };
 
-// Lưu trữ exam
+
+export const cloneExamApi = async (examId, newTitle) => {
+  try {
+    const response = await apiClient.post(`/instructor/exams/${examId}/clone`, { newTitle });
+    return response.data;
+  } catch (error) {
+    console.error("Clone exam error:", error);
+    throw error.response?.data || { message: "Không thể nhân bản bài thi" };
+  }
+};
+
+
+export const publishExamApi = async (examId) => {
+  try {
+    const response = await apiClient.post(`/instructor/exams/${examId}/publish`);
+    return response.data;
+  } catch (error) {
+    console.error("Publish exam error:", error);
+    throw error.response?.data || { message: "Không thể publish bài thi" };
+  }
+};
+
 export const archiveExamApi = async (examId) => {
   try {
     const response = await apiClient.post(`/instructor/exams/${examId}/archive`);
@@ -75,7 +90,16 @@ export const archiveExamApi = async (examId) => {
   }
 };
 
-// Lấy danh sách exam đã lưu trữ
+export const unarchiveExamApi = async (examId) => {
+  try {
+    const response = await apiClient.post(`/instructor/exams/${examId}/unarchive`);
+    return response.data;
+  } catch (error) {
+    console.error("Unarchive exam error:", error);
+    throw error.response?.data || { message: "Không thể khôi phục bài thi" };
+  }
+};
+
 export const getArchivedExamsApi = async () => {
   try {
     const response = await apiClient.get("/instructor/exams/archived");
@@ -83,19 +107,6 @@ export const getArchivedExamsApi = async () => {
   } catch (error) {
     console.error("Get archived exams error:", error);
     throw error.response?.data || { message: "Không thể tải danh sách bài thi đã lưu trữ" };
-  }
-};
-
-// ==================== CLASS MANAGEMENT ====================
-
-// Lấy danh sách lớp học theo khóa học
-export const getClassesByCourseApi = async (courseId) => {
-  try {
-    const response = await apiClient.get(`/instructor/courses/${courseId}/classes`);
-    return response.data.data || response.data || [];
-  } catch (error) {
-    console.error("Get classes by course error:", error);
-    throw error.response?.data || { message: "Không thể tải danh sách lớp học" };
   }
 };
 
@@ -115,10 +126,20 @@ export const getSectionsApi = async (examId, hierarchical = true) => {
 export const getSectionDetailApi = async (examId, sectionId) => {
   try {
     const response = await apiClient.get(`/instructor/exams/${examId}/sections/${sectionId}`);
-    return response.data.data || response.data;
+    return response.data.data || response.data || {};
   } catch (error) {
     console.error("Get section detail error:", error);
     throw error.response?.data || { message: "Không thể tải chi tiết phần thi" };
+  }
+};
+
+export const getClassesByCourseApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/instructor/courses/${courseId}/classes`);
+    return response.data.data || response.data || [];
+  } catch (error) {
+    console.error("Get classes by course error:", error);
+    throw error.response?.data || { message: "Không thể tải danh sách lớp học" };
   }
 };
 
@@ -133,9 +154,6 @@ export const createSectionApi = async (examId, sectionData) => {
   }
 };
 
-// Alias for compatibility
-export const createExamSectionApi = createSectionApi;
-
 export const updateSectionApi = async (examId, sectionId, sectionData) => {
   try {
     const response = await apiClient.put(`/instructor/exams/${examId}/sections/${sectionId}`, sectionData);
@@ -145,9 +163,6 @@ export const updateSectionApi = async (examId, sectionId, sectionData) => {
     throw error.response?.data || { message: "Không thể cập nhật phần thi" };
   }
 };
-
-// Alias for compatibility
-export const updateExamSectionApi = updateSectionApi;
 
 export const deleteSectionApi = async (examId, sectionId) => {
   try {
@@ -159,12 +174,32 @@ export const deleteSectionApi = async (examId, sectionId) => {
   }
 };
 
-// Alias for compatibility
-export const deleteExamSectionApi = deleteSectionApi;
+// Backwards-compatible aliases for section endpoints used across the UI
+export const createExamSectionApi = async (examId, sectionData) => {
+  return await createSectionApi(examId, sectionData);
+};
+
+export const updateExamSectionApi = async (examId, sectionId, sectionData) => {
+  return await updateSectionApi(examId, sectionId, sectionData);
+};
+
+export const deleteExamSectionApi = async (examId, sectionId) => {
+  return await deleteSectionApi(examId, sectionId);
+};
+
+ 
+export const reorderSectionsApi = async (examId, reorderData) => {
+  try {
+    const response = await apiClient.post(`/instructor/exams/${examId}/sections/reorder`, { reorderData });
+    return response.data;
+  } catch (error) {
+    console.error("Reorder sections error:", error);
+    throw error.response?.data || { message: "Không thể sắp xếp lại phần thi" };
+  }
+};
 
 // ==================== QUESTION BANK ====================
 
-// Lấy danh sách câu hỏi
 export const getQuestionsApi = async (filters = {}) => {
   try {
     const params = {};
@@ -180,21 +215,6 @@ export const getQuestionsApi = async (filters = {}) => {
   }
 };
 
-// Lấy chi tiết câu hỏi (CORRECTED: getQuestionByIdApi)
-export const getQuestionByIdApi = async (questionId) => {
-  try {
-    const response = await apiClient.get(`/instructor/questions/${questionId}`);
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Get question detail error:", error);
-    throw error.response?.data || { message: "Không thể tải chi tiết câu hỏi" };
-  }
-};
-
-// Alias for compatibility
-export const getQuestionDetailApi = getQuestionByIdApi;
-
-// Tạo câu hỏi mới
 export const createQuestionApi = async (questionData) => {
   try {
     const response = await apiClient.post("/instructor/questions", questionData);
@@ -205,7 +225,6 @@ export const createQuestionApi = async (questionData) => {
   }
 };
 
-// Cập nhật câu hỏi
 export const updateQuestionApi = async (questionId, questionData) => {
   try {
     const response = await apiClient.put(`/instructor/questions/${questionId}`, questionData);
@@ -216,7 +235,6 @@ export const updateQuestionApi = async (questionId, questionData) => {
   }
 };
 
-// Xóa câu hỏi
 export const deleteQuestionApi = async (questionId) => {
   try {
     const response = await apiClient.delete(`/instructor/questions/${questionId}`);
@@ -229,13 +247,41 @@ export const deleteQuestionApi = async (questionId) => {
 
 // ==================== SECTION-QUESTION MANAGEMENT ====================
 
-export const addQuestionsToSectionApi = async (examId, sectionId, questionIds) => {
+ 
+export const getQuestionsBySectionApi = async (sectionId) => {
   try {
-    const response = await apiClient.post(
-      `/instructor/exams/${examId}/sections/${sectionId}/questions`,
-      { questionIds }
-    );
+    const response = await apiClient.get(`/instructor/sections/${sectionId}/questions`);
+    return response.data.data || response.data || [];
+  } catch (error) {
+    console.error("Get questions by section error:", error);
+    throw error.response?.data || { message: "Không thể tải danh sách câu hỏi" };
+  }
+};
+
+ 
+export const addQuestionToSectionApi = async (sectionId, questionId) => {
+  try {
+    const response = await apiClient.post(`/instructor/sections/${sectionId}/questions`, { questionId });
     return response.data;
+  } catch (error) {
+    console.error("Add question to section error:", error);
+    throw error.response?.data || { message: "Không thể thêm câu hỏi vào phần thi" };
+  }
+};
+
+// Flexible: addQuestionsToSectionApi(examId, sectionId, questionIds[]) or addQuestionsToSectionApi(sectionId, questionId)
+export const addQuestionsToSectionApi = async (...args) => {
+  try {
+    if (args.length === 3) {
+      const [examId, sectionId, questionIds] = args;
+      const response = await apiClient.post(`/instructor/exams/${examId}/sections/${sectionId}/questions`, { questionIds });
+      return response.data;
+    } else if (args.length === 2) {
+      const [sectionId, questionId] = args;
+      return await addQuestionToSectionApi(sectionId, questionId);
+    } else {
+      throw new Error('Invalid arguments for addQuestionsToSectionApi');
+    }
   } catch (error) {
     console.error("Add questions to section error:", error);
     throw error.response?.data || { message: "Không thể thêm câu hỏi vào phần thi" };
@@ -243,91 +289,61 @@ export const addQuestionsToSectionApi = async (examId, sectionId, questionIds) =
 };
 
 
-export const removeQuestionFromSectionApi = async (examId, sectionId, questionId) => {
+// Flexible: removeQuestionFromSectionApi(examId, sectionId, questionId) or removeQuestionFromSectionApi(sectionId, examQuestionId)
+export const removeQuestionFromSectionApi = async (...args) => {
   try {
-    const response = await apiClient.delete(
-      `/instructor/exams/${examId}/sections/${sectionId}/questions/${questionId}`
-    );
-    return response.data;
+    if (args.length === 3) {
+      const [examId, sectionId, questionId] = args;
+      const response = await apiClient.delete(`/instructor/exams/${examId}/sections/${sectionId}/questions/${questionId}`);
+      return response.data;
+    } else if (args.length === 2) {
+      const [sectionId, examQuestionId] = args;
+      const response = await apiClient.delete(`/instructor/sections/${sectionId}/questions/${examQuestionId}`);
+      return response.data;
+    } else {
+      throw new Error('Invalid arguments for removeQuestionFromSectionApi');
+    }
   } catch (error) {
     console.error("Remove question from section error:", error);
     throw error.response?.data || { message: "Không thể xóa câu hỏi khỏi phần thi" };
   }
 };
 
-export const updateQuestionOrderApi = async (examId, sectionId, questionId, orderIndex) => {
+
+export const reorderQuestionsApi = async (sectionId, reorderData) => {
   try {
-    const response = await apiClient.put(
-      `/instructor/exams/${examId}/sections/${sectionId}/questions/${questionId}/order`,
-      { orderIndex }
-    );
+    const response = await apiClient.post(`/instructor/sections/${sectionId}/questions/reorder`, { reorderData });
     return response.data;
   } catch (error) {
-    console.error("Update question order error:", error);
-    throw error.response?.data || { message: "Không thể cập nhật thứ tự câu hỏi" };
+    console.error("Reorder questions error:", error);
+    throw error.response?.data || { message: "Không thể sắp xếp lại câu hỏi" };
   }
 };
 
-// ==================== GRADING ====================
+// ==================== EXCEL IMPORT ====================
 
-// Lấy danh sách kết quả thi
-export const getExamResultsApi = async (examId, classId) => {
+export const importQuestionsFromExcelApi = async (sectionId, file) => {
   try {
-    const response = await apiClient.get(`/instructor/exams/${examId}/classes/${classId}/results`);
-    return response.data;
-  } catch (error) {
-    console.error("Get exam results error:", error);
-    throw error.response?.data || { message: "Không thể tải kết quả thi" };
-  }
-};
-
-// Lấy bài thi của learner để chấm
-export const getLearnerSubmissionApi = async (examId, learnerId) => {
-  try {
-    const response = await apiClient.get(`/instructor/exams/${examId}/learners/${learnerId}/submission`);
-    return response.data.data || response.data;
-  } catch (error) {
-    console.error("Get learner submission error:", error);
-    throw error.response?.data || { message: "Không thể tải bài làm của học viên" };
-  }
-};
-
-// Chấm bài tự động
-export const autoGradeExamApi = async (examId, learnerId) => {
-  try {
-    const response = await apiClient.post(`/instructor/exams/${examId}/learners/${learnerId}/auto-grade`);
-    return response.data;
-  } catch (error) {
-    console.error("Auto grade exam error:", error);
-    throw error.response?.data || { message: "Không thể chấm bài tự động" };
-  }
-};
-
-// Chấm bài thủ công
-export const manualGradeExamApi = async (examId, learnerId, score, feedback) => {
-  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
     const response = await apiClient.post(
-      `/instructor/exams/${examId}/learners/${learnerId}/manual-grade`,
-      { score, feedback }
+      `/instructor/sections/${sectionId}/questions/import-excel`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
     );
     return response.data;
   } catch (error) {
-    console.error("Manual grade exam error:", error);
-    throw error.response?.data || { message: "Không thể chấm bài" };
-  }
-};
-// Khôi phục exam từ lưu trữ
-export const unarchiveExamApi = async (examId) => {
-  try {
-    const response = await apiClient.post(`/instructor/exams/${examId}/unarchive`);
-    return response.data;
-  } catch (error) {
-    console.error("Unarchive exam error:", error);
-    throw error.response?.data || { message: "Không thể khôi phục bài thi" };
+    console.error("Import questions from Excel error:", error);
+    throw error.response?.data || { message: "Không thể import câu hỏi từ Excel" };
   }
 };
 
-// ==================== VALIDATION HELPERS (FRONTEND) ====================
+// ==================== VALIDATION HELPERS ====================
 
 export const validateExamData = (data) => {
   const errors = {};
@@ -336,30 +352,11 @@ export const validateExamData = (data) => {
     errors.title = "Tiêu đề là bắt buộc";
   }
 
-  if (!data.courseId) {
-    errors.courseId = "Khóa học là bắt buộc";
-  }
-
   if (!data.description?.trim()) {
     errors.description = "Mô tả là bắt buộc";
   }
 
-  if (!data.startTime) {
-    errors.startTime = "Thời gian bắt đầu là bắt buộc";
-  }
-
-  if (!data.endTime) {
-    errors.endTime = "Thời gian kết thúc là bắt buộc";
-  }
-
-  if (data.startTime && data.endTime) {
-    const start = new Date(data.startTime);
-    const end = new Date(data.endTime);
-    if (end <= start) {
-      errors.endTime = "Thời gian kết thúc phải sau thời gian bắt đầu";
-    }
-  }
-
+  
   return {
     isValid: Object.keys(errors).length === 0,
     errors
@@ -376,12 +373,6 @@ export const validateSectionData = (data) => {
   } else if (!validSectionTypes.includes(data.type)) {
     errors.type = `Loại section không hợp lệ. Cho phép: ${validSectionTypes.join(", ")}`;
   }
-
-  if (data.orderIndex === undefined || data.orderIndex < 0) {
-    errors.orderIndex = "OrderIndex phải >= 0";
-  }
-
-  // parentSectionId là optional, không cần validate
 
   return {
     isValid: Object.keys(errors).length === 0,
@@ -443,6 +434,8 @@ export const validateQuestionData = (data) => {
   };
 };
 
+// ==================== HELPER FUNCTIONS ====================
+
 export const flattenSections = (sections) => {
   const result = [];
   
@@ -463,12 +456,10 @@ export const flattenSections = (sections) => {
   return result;
 };
 
-
 export const buildSectionHierarchy = (flatSections) => {
   const sectionMap = new Map();
   const rootSections = [];
   
-  // Create a map of all sections
   flatSections.forEach(section => {
     sectionMap.set(section.SectionId, {
       ...section,
@@ -476,7 +467,6 @@ export const buildSectionHierarchy = (flatSections) => {
     });
   });
   
-  // Build hierarchy
   flatSections.forEach(section => {
     const sectionNode = sectionMap.get(section.SectionId);
     
@@ -493,18 +483,15 @@ export const buildSectionHierarchy = (flatSections) => {
   return rootSections;
 };
 
-
 export const getAllQuestionIds = (sections) => {
   const questionIds = [];
   
   const extractIds = (sectionList) => {
     for (const section of sectionList) {
-      // Add questions from direct questions
       if (section.directQuestions && section.directQuestions.length > 0) {
         section.directQuestions.forEach(q => questionIds.push(q.QuestionID));
       }
       
-      // Add questions from child sections
       if (section.childSections && section.childSections.length > 0) {
         section.childSections.forEach(child => {
           if (child.questions && child.questions.length > 0) {
@@ -513,7 +500,6 @@ export const getAllQuestionIds = (sections) => {
         });
       }
       
-      // Recursively process child sections
       if (section.childSections && section.childSections.length > 0) {
         extractIds(section.childSections);
       }
@@ -521,37 +507,14 @@ export const getAllQuestionIds = (sections) => {
   };
   
   extractIds(sections);
-  return [...new Set(questionIds)]; // Remove duplicates
+  return [...new Set(questionIds)];
 };
-
 
 export const getTotalQuestions = (sections) => {
   return getAllQuestionIds(sections).length;
 };
 
-export const formatExamDataForApi = (formData) => {
-  return {
-    CourseID: formData.courseId,
-    Title: formData.title,
-    Description: formData.description,
-    StartTime: formData.startTime,
-    EndTime: formData.endTime,
-    Status: formData.status || 'Pending',
-    isRandomQuestion: formData.isRandomQuestion ? 1 : 0,
-    isRandomAnswer: formData.isRandomAnswer ? 1 : 0,
-    sections: formData.sections || [],
-    classIds: formData.classIds || []
-  };
-};
-
-export const formatSectionDataForApi = (formData) => {
-  return {
-    type: formData.type,
-    orderIndex: formData.orderIndex,
-    parentSectionId: formData.parentSectionId || null
-  };
-};
-
+// ==================== CONSTANTS ====================
 
 export const SECTION_TYPES = [
   { value: "Listening", label: "Listening" },
@@ -575,11 +538,8 @@ export const QUESTION_LEVELS = [
   { value: "Hard", label: "Hard" }
 ];
 
-
 export const EXAM_STATUSES = [
-  { value: "Pending", label: "Pending" },
-  { value: "Ongoing", label: "Ongoing" },
-  { value: "Completed", label: "Completed" },
-  { value: "Cancelled", label: "Cancelled" },
+  { value: "Draft", label: "Draft" },
+  { value: "Published", label: "Published" },
   { value: "Archived", label: "Archived" }
 ];
