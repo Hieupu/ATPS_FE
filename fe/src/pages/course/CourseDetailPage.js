@@ -94,6 +94,7 @@ const CourseDetailPage = () => {
     try {
       setLoadingClasses(true);
       const data = await getClassesByCourseApi(id);
+      console.log("getClassesByCourseApi" , data)
       setClasses(data.classes || []);
     } catch (error) {
       console.error("Error fetching classes:", error);

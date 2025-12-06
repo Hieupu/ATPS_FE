@@ -27,9 +27,47 @@ const TabPanel = ({ children, value, index }) => (
   </div>
 );
 
+// Hàm dịch trạng thái sang tiếng Việt
+const translateStatus = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'present':
+      return 'Có mặt';
+    case 'absent':
+      return 'Vắng';
+    case 'notyet':
+      return 'Chưa điểm danh';
+    default:
+      return status || 'Không xác định';
+  }
+};
+
+// Hàm sắp xếp dữ liệu theo ngày tăng dần (sớm nhất đến muộn nhất)
+const sortAttendanceByDate = (attendanceData) => {
+  return [...attendanceData].sort((a, b) => {
+    const dateA = new Date(a.SessionDate);
+    const dateB = new Date(b.SessionDate);
+    return dateA - dateB; // Sắp xếp tăng dần (sớm nhất trước)
+  });
+};
+
+// Hàm xử lý dữ liệu: sắp xếp và dịch trạng thái
+const processAttendanceData = (attendanceData) => {
+  if (!attendanceData || !Array.isArray(attendanceData)) return [];
+  
+  // Sắp xếp theo ngày tăng dần
+  const sortedData = sortAttendanceByDate(attendanceData);
+  
+  // Dịch trạng thái sang tiếng Việt
+  return sortedData.map(item => ({
+    ...item,
+    StatusText: translateStatus(item.Status)
+  }));
+};
+
 const AttendancePage = () => {
   const { user, isLearner } = useAuth();
   const [attendance, setAttendance] = useState([]);
+  const [processedAttendance, setProcessedAttendance] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -61,9 +99,15 @@ const AttendancePage = () => {
         getAttendanceStatsApi(learnerIdValue),
       ]);
 
-      console.log("attendanceData" , attendanceData)
+      console.log("attendanceData", attendanceData);
 
+      // Lưu dữ liệu gốc
       setAttendance(attendanceData.attendance || []);
+      
+      // Xử lý dữ liệu: sắp xếp và dịch
+      const processedData = processAttendanceData(attendanceData.attendance || []);
+      setProcessedAttendance(processedData);
+      
       setStats(statsData);
     } catch (err) {
       console.error("Error fetching attendance:", err);
@@ -89,6 +133,30 @@ const AttendancePage = () => {
   const handleFilterChange = (event) => {
     setFilterStatus(event.target.value);
   };
+
+  // Phân loại dữ liệu đã xử lý
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const upcomingAttendance = processedAttendance.filter((item) => {
+    const sessionDate = new Date(item.SessionDate);
+    sessionDate.setHours(0, 0, 0, 0);
+    return sessionDate >= today;
+  });
+
+  const pastAttendance = processedAttendance.filter((item) => {
+    const sessionDate = new Date(item.SessionDate);
+    sessionDate.setHours(0, 0, 0, 0);
+    return sessionDate < today;
+  });
+
+  const filteredUpcoming = upcomingAttendance.filter(
+    (item) => filterStatus === "all" || item.Status.toLowerCase() === filterStatus
+  );
+
+  const filteredPast = pastAttendance.filter(
+    (item) => filterStatus === "all" || item.Status.toLowerCase() === filterStatus
+  );
 
   if (loading) {
     return (
@@ -117,36 +185,12 @@ const AttendancePage = () => {
     );
   }
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const upcomingAttendance = attendance.filter((item) => {
-    const sessionDate = new Date(item.SessionDate);
-    sessionDate.setHours(0, 0, 0, 0);
-    return sessionDate >= today;
-  });
-
-  const pastAttendance = attendance.filter((item) => {
-    const sessionDate = new Date(item.SessionDate);
-    sessionDate.setHours(0, 0, 0, 0);
-    return sessionDate < today;
-  });
-
-  const filteredUpcoming = upcomingAttendance.filter(
-    (item) => filterStatus === "all" || item.Status.toLowerCase() === filterStatus
-  );
-
-  const filteredPast = pastAttendance.filter(
-    (item) => filterStatus === "all" || item.Status.toLowerCase() === filterStatus
-  );
-
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
       <AppHeader />
       <PageHeader />
 
       <Container maxWidth="lg" sx={{ py: 4 }}>
-
         <Paper sx={{ mb: 3 }}>
           <Tabs value={tabValue} onChange={handleTabChange} variant="fullWidth">
             <Tab
@@ -181,15 +225,15 @@ const AttendancePage = () => {
             isPast={true}
           />
         </TabPanel>
-<TabPanel value={tabValue} index={2}>
-  {learnerId && (
-    <AttendanceByClass
-      learnerId={learnerId}
-      attendance={attendance}  
-    />
-  )}
-</TabPanel>
 
+        <TabPanel value={tabValue} index={2}>
+          {learnerId && (
+            <AttendanceByClass
+              learnerId={learnerId}
+              attendance={processedAttendance} // Truyền dữ liệu đã xử lý
+            />
+          )}
+        </TabPanel>
 
         <TabPanel value={tabValue} index={3}>
           {learnerId && <AttendanceCalendar learnerId={learnerId} />}
