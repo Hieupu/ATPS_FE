@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
@@ -15,7 +15,7 @@ import AvailabilityTab from "../components/class/tabs/AvailabilityTab";
 import { useAuth } from "../../../contexts/AuthContext";
 import { toast } from "react-toastify";
 
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/instructor`;
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -32,6 +32,7 @@ export default function InstructorSchedulePage() {
   const navigate = useNavigate();
   const [tabIndex, setTabIndex] = useState(0);
   const user = useAuth();
+
   const [sessions, setSessions] = useState([]);
   const [attendanceSheet, setAttendanceSheet] = useState(null);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -43,20 +44,21 @@ export default function InstructorSchedulePage() {
   const [loadingAvailability, setLoadingAvailability] = useState(false);
   const [savingAvailability, setSavingAvailability] = useState(false);
 
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const res = await apiClient.get(`/schedule`);
-        setSessions(res.data.Sessions || []);
-        console.log(res.data.Sessions, " schedule data");
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoadingSchedule(false);
-      }
-    };
-    fetchSchedule();
+  const fetchSchedule = useCallback(async () => {
+    try {
+      const res = await apiClient.get(`/schedule`);
+      setSessions(res.data.Sessions || []);
+    } catch (err) {
+      console.error(err);
+      toast.error("Lỗi khi tải thời khóa biểu");
+    } finally {
+      setLoadingSchedule(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchSchedule();
+  }, [fetchSchedule]);
 
   const openAttendanceModal = async (session) => {
     setSelectedSession(session);
@@ -90,8 +92,7 @@ export default function InstructorSchedulePage() {
         updatedList
       );
       alert("Điểm danh thành công!");
-      const res = await apiClient.get(`/schedule`);
-      setSessions(res.data.Sessions || []);
+      await fetchSchedule();
       setSelectedSession(null);
       setAttendanceSheet(null);
     } catch (err) {
@@ -130,7 +131,6 @@ export default function InstructorSchedulePage() {
         slots,
       });
       toast.success("Lưu lịch rảnh thành công!");
-
       await handleFetchAvailability(startDate, endDate);
     } catch (err) {
       toast.error(err.response?.data?.message || "Lỗi khi lưu lịch rảnh.");
@@ -146,15 +146,28 @@ export default function InstructorSchedulePage() {
         slots,
       });
       toast.success(`Đã đăng ký thêm thành công ${slots.length} buổi!`);
-
       return true;
     } catch (err) {
       console.error(err);
-
       const message = err.response?.data?.message || "Lỗi khi đăng ký lịch";
       toast.error(message);
     } finally {
       setSavingAvailability(false);
+    }
+  };
+
+  const handleRequestChangeSchedule = async (payload) => {
+    try {
+      const res = await apiClient.post("/session/request-change", payload);
+      toast.success(res.data.message || "Gửi yêu cầu đổi lịch thành công!");
+      await fetchSchedule();
+      return true;
+    } catch (err) {
+      console.error("Change schedule error:", err);
+      const message =
+        err.response?.data?.message || "Lỗi khi gửi yêu cầu đổi lịch.";
+      toast.error(message);
+      return false;
     }
   };
 
@@ -164,27 +177,30 @@ export default function InstructorSchedulePage() {
 
   const handleStartZoom = (session) => {
     if (!session) return;
-    console.log("Start Zoom với session:", session);
-
     const start = new Date(`${session.date}T${session.startTime}`);
     const now = new Date();
-    const isWithin15MinBefore = now >= new Date(start.getTime() - 15 * 60 * 1000);
+    const isWithin15MinBefore =
+      now >= new Date(start.getTime() - 15 * 60 * 1000);
+
     const rawUser = localStorage.getItem("user");
     const currentUser = rawUser ? JSON.parse(rawUser) : {};
     const userId = user?.user?.id;
     const role = user?.user?.role;
+
     if (!userId) {
-        toast.warn("Không xác định được người dùng.");
-        return;
-      }
-      if (role !== "instructor" && role !== "learner") {
-        toast.warn("Bạn không có quyền truy cập vào buổi học này.");
-        return;
-      }
-      if (role === "instructor" && !isWithin15MinBefore) {
-        toast.warn("Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu.");
-        return;
-      }
+      toast.warn("Không xác định được người dùng.");
+      return;
+    }
+    if (role !== "instructor" && role !== "learner") {
+      toast.warn("Bạn không có quyền truy cập vào buổi học này.");
+      return;
+    }
+    if (role === "instructor" && !isWithin15MinBefore) {
+      toast.warn(
+        "Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu."
+      );
+      return;
+    }
 
     const zoomId = session.ZoomID || session.zoomID || session.zoomId;
     const zoomPass =
@@ -205,7 +221,6 @@ export default function InstructorSchedulePage() {
         Date: session.Date || session.date,
         StartTime: session.StartTime || session.startTime,
       },
-
       userId: currentUser.id,
       userRole: currentUser.role || "instructor",
       userName: currentUser.username || currentUser.fullname || "Giảng viên",
@@ -260,6 +275,7 @@ export default function InstructorSchedulePage() {
             onSaveAttendance={saveAttendance}
             onCloseAttendance={closeAttendanceModal}
             onStartZoom={handleStartZoom}
+            onRequestChangeSchedule={handleRequestChangeSchedule}
           />
         )}
 

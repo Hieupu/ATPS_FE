@@ -274,9 +274,7 @@ export function HeaderInstructor() {
                       <Typography
                         variant="caption"
                         sx={{ color: "#64748b", mt: 0.5, display: "block" }}
-                      >
-                        {new Date(n.CreatedAt).toLocaleString("vi-VN")}
-                      </Typography>
+                      ></Typography>
                     </Box>
                   </MenuItem>
                 ))

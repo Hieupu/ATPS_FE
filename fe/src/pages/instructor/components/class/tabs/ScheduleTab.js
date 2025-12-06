@@ -12,7 +12,16 @@ import {
   Select,
   MenuItem,
   Button,
-  FormControl, // Thêm FormControl
+  FormControl,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Grid,
+  Chip,
+  Tooltip,
+  CircularProgress, // Import thêm loading spinner
 } from "@mui/material";
 import {
   ChevronLeft,
@@ -20,6 +29,9 @@ import {
   VideoCall,
   Assignment,
   Edit,
+  CalendarMonth,
+  AccessTime,
+  WarningAmber,
 } from "@mui/icons-material";
 import {
   format,
@@ -33,12 +45,12 @@ import {
 import AttendanceModal from "../AttendanceModal";
 
 const ALL_TIME_SLOTS = [
-  { start: "08:00", end: "10:00" },
-  { start: "10:20", end: "12:20" },
-  { start: "13:00", end: "15:00" },
-  { start: "15:20", end: "17:20" },
-  { start: "18:00", end: "20:00" },
-  { start: "20:00", end: "22:00" },
+  { id: 1, start: "08:00", end: "10:00" },
+  { id: 2, start: "10:20", end: "12:20" },
+  { id: 3, start: "13:00", end: "15:00" },
+  { id: 4, start: "15:20", end: "17:20" },
+  { id: 5, start: "18:00", end: "20:00" },
+  { id: 6, start: "20:00", end: "22:00" },
 ];
 
 const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
@@ -52,9 +64,21 @@ export default function ScheduleTab({
   onSaveAttendance,
   onCloseAttendance,
   onStartZoom,
+  onRequestChangeSchedule,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+
+  // --- STATE CHO TÍNH NĂNG ĐỔI LỊCH ---
+  const [openChangeModal, setOpenChangeModal] = useState(false);
+  const [targetSession, setTargetSession] = useState(null);
+  const [changeForm, setChangeForm] = useState({
+    newDate: "",
+    newSlotId: null,
+    reason: "",
+  });
+  const [busySlotsInNewDate, setBusySlotsInNewDate] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state cho nút Gửi
 
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -75,7 +99,6 @@ export default function ScheduleTab({
     return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   }, [weekStart]);
 
-  // --- 1. LOGIC TẠO DANH SÁCH TUẦN TRONG NĂM ---
   const allWeeksInYear = useMemo(() => {
     const start = startOfYear(new Date(selectedYear, 0, 1));
     const end = endOfYear(new Date(selectedYear, 0, 1));
@@ -104,6 +127,7 @@ export default function ScheduleTab({
         ...session,
         startTimeFormatted: startTime,
         endTimeFormatted: normalizeTime(session.endTime),
+        slotId: slot.id,
       });
     });
     return grid;
@@ -115,23 +139,110 @@ export default function ScheduleTab({
   const handleYearChange = (e) => {
     const year = parseInt(e.target.value, 10);
     setSelectedYear(year);
-    // Reset về ngày đầu năm khi đổi năm
     setCurrentDate(new Date(year, 0, 1));
   };
 
-  // --- 2. SỰ KIỆN CHỌN TUẦN ---
   const handleWeekSelectChange = (e) => {
     const newDate = new Date(e.target.value);
     setCurrentDate(newDate);
   };
 
+  // --- LOGIC XỬ LÝ ĐỔI LỊCH ---
+  const handleOpenChangeRequest = (session) => {
+    setTargetSession(session);
+    setChangeForm({
+      newDate: "",
+      newSlotId: null,
+      reason: "",
+    });
+    setBusySlotsInNewDate([]);
+    setOpenChangeModal(true);
+  };
+
+  const handleCloseChangeModal = () => {
+    if (!isSubmitting) {
+      setOpenChangeModal(false);
+      setTargetSession(null);
+    }
+  };
+
+  // Khi chọn ngày mới -> Kiểm tra logic ngày & Check trùng lịch
+  const handleNewDateChange = (e) => {
+    const dateVal = e.target.value;
+
+    // 1. Tính ngày tối thiểu cho phép (Ngày mai)
+    const today = new Date();
+    const tomorrow = addDays(today, 1); // Cộng thêm 1 ngày
+    const minDateStr = format(tomorrow, "yyyy-MM-dd");
+
+    // 2. Validate: Nếu người dùng cố tình nhập ngày cũ hoặc hôm nay
+    if (dateVal && dateVal < minDateStr) {
+      alert("Bạn chỉ có thể chọn lịch từ ngày mai trở đi!");
+      // Reset về rỗng hoặc giữ nguyên giá trị cũ tùy logic
+      setChangeForm((prev) => ({ ...prev, newDate: "" }));
+      setBusySlotsInNewDate([]);
+      return;
+    }
+
+    // 3. Nếu ngày hợp lệ -> Cập nhật State
+    setChangeForm((prev) => ({ ...prev, newDate: dateVal, newSlotId: null }));
+
+    if (dateVal) {
+      console.log("Đang check trùng lịch cho ngày:", dateVal);
+
+      // 4. Lọc ra các session trùng ngày (Dữ liệu từ Props)
+      const busySlotIds = sessions
+        .filter((session) => {
+          if (!session.date) return false;
+          // Format lại date của session để so sánh chính xác chuỗi yyyy-MM-dd
+          const sDateStr = format(new Date(session.date), "yyyy-MM-dd");
+          return sDateStr === dateVal;
+        })
+        .map((session) => {
+          // Chuẩn hóa giờ (10:20:00 -> 10:20) để tìm ID
+          const startTime = normalizeTime(session.startTime);
+          const slot = ALL_TIME_SLOTS.find((s) => s.start === startTime);
+          return slot ? slot.id : null;
+        })
+        .filter((id) => id !== null);
+
+      setBusySlotsInNewDate(busySlotIds);
+    } else {
+      setBusySlotsInNewDate([]);
+    }
+  };
+
+  // --- GỬI DỮ LIỆU LÊN CHA ---
+
+  const submitChangeRequest = async () => {
+    if (!onRequestChangeSchedule) return;
+
+    setIsSubmitting(true);
+
+    const success = await onRequestChangeSchedule({
+      sessionId: targetSession.sessionId,
+      newDate: changeForm.newDate,
+      newTimeslotId: changeForm.newSlotId,
+      reason: changeForm.reason,
+    });
+
+    setIsSubmitting(false);
+
+    if (success) {
+      setOpenChangeModal(false);
+      setTargetSession(null);
+    }
+  };
+
   const getStatusColor = (s) => {
+    if (s.changeReqStatus === "PENDING") return "#ffa726";
     if (s.isFullyMarked) return "#4caf50";
     if (s.attendedCount > 0) return "#ff9800";
     return "#9e9e9e";
   };
 
   const getStatusLabel = (s) => {
+    if (s.changeReqStatus === "PENDING") return "Chờ duyệt đổi lịch";
     if (s.isFullyMarked) return "Hoàn thành";
     if (s.attendedCount > 0)
       return `Đã điểm danh ${s.attendedCount}/${s.totalStudents}`;
@@ -139,7 +250,6 @@ export default function ScheduleTab({
   };
 
   const renderSessionCard = (session, idx) => {
-    // 1. Chuẩn hóa ngày hiện tại
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -147,20 +257,20 @@ export default function ScheduleTab({
     sessionDate.setHours(0, 0, 0, 0);
 
     const isFuture = sessionDate.getTime() > today.getTime();
-
+    const isToday = sessionDate.getTime() === today.getTime();
     const diffTime = today.getTime() - sessionDate.getTime();
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
     const isExpired = diffDays > 2;
+    const isPendingChange = session.changeReqStatus === "PENDING";
 
     return (
       <Box
         key={session.sessionId || idx}
         sx={{
-          p: "12px",
+          p: "10px",
           mb: "8px",
           borderLeft: `4px solid ${getStatusColor(session)}`,
-          bgcolor: "#fff",
+          bgcolor: isPendingChange ? "#fff8e1" : "#fff",
           borderRadius: "4px",
           boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
           display: "flex",
@@ -168,9 +278,29 @@ export default function ScheduleTab({
           justifyContent: "space-between",
           transition: "box-shadow 0.2s",
           "&:hover": { boxShadow: "0 4px 8px rgba(0,0,0,0.15)" },
+          position: "relative",
         }}
       >
-        <Box>
+        {/* Nút Đổi lịch: Hiện nếu là Tương lai/Hôm nay VÀ Chưa Pending */}
+        {(isFuture || isToday) && !isPendingChange && (
+          <Tooltip title="Yêu cầu đổi lịch">
+            <IconButton
+              size="small"
+              onClick={() => handleOpenChangeRequest(session)}
+              sx={{
+                position: "absolute",
+                top: 4,
+                right: 4,
+                color: "#757575",
+                "&:hover": { color: "#1976d2", bgcolor: "#e3f2fd" },
+              }}
+            >
+              <CalendarMonth fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        )}
+
+        <Box sx={{ pr: 3 }}>
           <Typography
             sx={{
               fontWeight: 600,
@@ -178,19 +308,16 @@ export default function ScheduleTab({
               mb: "6px",
               fontSize: "0.8rem",
               lineHeight: "1.2",
-              display: "-webkit-box",
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: "vertical",
-              overflow: "hidden",
             }}
           >
             {session.title || session.ClassName}
           </Typography>
-
           <Box
             component="span"
             sx={{
-              display: "inline-block",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
               padding: "2px 8px",
               bgcolor: getStatusColor(session),
               color: "white",
@@ -200,6 +327,7 @@ export default function ScheduleTab({
               mb: "6px",
             }}
           >
+            {isPendingChange && <WarningAmber sx={{ fontSize: 12 }} />}
             {getStatusLabel(session)}
           </Box>
         </Box>
@@ -217,76 +345,77 @@ export default function ScheduleTab({
             {session.startTimeFormatted} - {session.endTimeFormatted}
           </Typography>
 
-          {/* Nút Zoom: Ẩn nếu đã qua ngày (isPast cũ) hoặc dùng logic isExpired tùy bạn. 
-              Thường thì quá ngày học rồi thì ẩn nút Zoom luôn là đúng */}
-          {diffDays <= 0 && onStartZoom && (
-            <Button
-              onClick={() => onStartZoom(session)}
-              fullWidth
-              size="small"
-              sx={{
-                padding: "2px 8px",
-                bgcolor: "#ff9800",
-                color: "white",
-                fontSize: "0.7rem",
-                fontWeight: 500,
-                textTransform: "none",
-                minWidth: "unset",
-                mb: 0.5,
-                "&:hover": { bgcolor: "#f57c00" },
-              }}
-              startIcon={<VideoCall sx={{ width: 16, height: 16 }} />}
+          {isPendingChange ? (
+            <Typography
+              sx={{ fontSize: "0.7rem", color: "#f57c00", fontStyle: "italic" }}
             >
-              Vào Zoom
-            </Button>
-          )}
+              Đang chờ Admin duyệt...
+            </Typography>
+          ) : (
+            <>
+              {diffDays <= 0 && onStartZoom && (
+                <Button
+                  onClick={() => onStartZoom(session)}
+                  fullWidth
+                  size="small"
+                  sx={{
+                    padding: "2px 8px",
+                    bgcolor: "#ff9800",
+                    color: "white",
+                    fontSize: "0.7rem",
+                    textTransform: "none",
+                    mb: 0.5,
+                    "&:hover": { bgcolor: "#f57c00" },
+                  }}
+                  startIcon={<VideoCall sx={{ width: 16, height: 16 }} />}
+                >
+                  Vào Zoom
+                </Button>
+              )}
 
-          {/* Nút Điểm danh */}
-          {/* LOGIC MỚI: Chỉ hiện khi chưa quá hạn (!isExpired) */}
-          {!isExpired && session.totalStudents > 0 && (
-            <Button
-              onClick={() => onOpenAttendance(session)}
-              fullWidth
-              disabled={isFuture} // Vẫn hiện nhưng không bấm được nếu là tương lai
-              size="small"
-              sx={{
-                padding: "2px 8px",
-                bgcolor: isFuture
-                  ? "#9e9e9e"
-                  : session.isFullyMarked
-                  ? "#4caf50"
-                  : "#1976d2",
-                color: "white",
-                fontSize: "0.7rem",
-                fontWeight: 500,
-                textTransform: "none",
-                minWidth: "unset",
-                "&:hover": {
-                  bgcolor: isFuture
-                    ? "#9e9e9e"
+              {!isExpired && session.totalStudents > 0 && (
+                <Button
+                  onClick={() => onOpenAttendance(session)}
+                  fullWidth
+                  disabled={isFuture}
+                  size="small"
+                  sx={{
+                    padding: "2px 8px",
+                    bgcolor: isFuture
+                      ? "#9e9e9e"
+                      : session.isFullyMarked
+                      ? "#4caf50"
+                      : "#1976d2",
+                    color: "white",
+                    fontSize: "0.7rem",
+                    textTransform: "none",
+                    "&:hover": {
+                      bgcolor: isFuture
+                        ? "#9e9e9e"
+                        : session.isFullyMarked
+                        ? "#388e3c"
+                        : "#1565c0",
+                    },
+                  }}
+                  startIcon={
+                    session.isFullyMarked ? (
+                      <Edit sx={{ width: 14, height: 14 }} />
+                    ) : (
+                      <Assignment sx={{ width: 14, height: 14 }} />
+                    )
+                  }
+                >
+                  {isFuture
+                    ? "Điểm danh"
                     : session.isFullyMarked
-                    ? "#388e3c"
-                    : "#1565c0",
-                },
-              }}
-              startIcon={
-                session.isFullyMarked ? (
-                  <Edit sx={{ width: 14, height: 14 }} />
-                ) : (
-                  <Assignment sx={{ width: 14, height: 14 }} />
-                )
-              }
-            >
-              {isFuture
-                ? "Điểm danh"
-                : session.isFullyMarked
-                ? "Cập nhật"
-                : "Điểm danh"}
-            </Button>
+                    ? "Cập nhật"
+                    : "Điểm danh"}
+                </Button>
+              )}
+            </>
           )}
 
-          {/* (Optional) Nếu muốn báo cho user biết là đã hết hạn điểm danh thì mở dòng này */}
-          {isExpired && (
+          {isExpired && !isPendingChange && (
             <Typography
               sx={{
                 fontSize: "0.7rem",
@@ -305,6 +434,7 @@ export default function ScheduleTab({
 
   return (
     <Box sx={{ p: 3, minHeight: "100vh" }}>
+      {/* --- HEADER CHỌN NĂM/TUẦN --- */}
       <Box
         sx={{
           display: "flex",
@@ -316,7 +446,6 @@ export default function ScheduleTab({
         }}
       >
         <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
-          {/* --- CHỌN NĂM --- */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography
               sx={{ fontWeight: 700, color: "#d32f2f", fontSize: "1.1rem" }}
@@ -330,13 +459,6 @@ export default function ScheduleTab({
               sx={{
                 bgcolor: "white",
                 fontWeight: 600,
-                border: "2px solid #d32f2f",
-                "& .MuiOutlinedInput-notchedOutline": { border: "none" },
-                "&:hover .MuiOutlinedInput-notchedOutline": { border: "none" },
-                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                  border: "none",
-                },
-                borderRadius: "4px",
                 minWidth: "100px",
                 height: "40px",
               }}
@@ -349,7 +471,6 @@ export default function ScheduleTab({
             </Select>
           </Box>
 
-          {/* --- CHỌN TUẦN (MỚI) --- */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Typography
               sx={{ fontWeight: 700, color: "#1976d2", fontSize: "1.1rem" }}
@@ -370,7 +491,6 @@ export default function ScheduleTab({
               <IconButton size="small" onClick={handlePrevWeek}>
                 <ChevronLeft />
               </IconButton>
-
               <FormControl variant="standard" sx={{ minWidth: 200 }}>
                 <Select
                   value={weekStart.getTime()}
@@ -403,7 +523,6 @@ export default function ScheduleTab({
                   })}
                 </Select>
               </FormControl>
-
               <IconButton size="small" onClick={handleNextWeek}>
                 <ChevronRight />
               </IconButton>
@@ -412,14 +531,13 @@ export default function ScheduleTab({
         </Box>
       </Box>
 
-      {/* --- TABLE CONTENT (GIỮ NGUYÊN) --- */}
+      {/* --- TABLE CONTENT --- */}
       <TableContainer
         component={Box}
         sx={{
           border: "1px solid #e0e0e0",
           borderRadius: "8px",
           boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-
           overflowX: "auto",
         }}
       >
@@ -519,6 +637,7 @@ export default function ScheduleTab({
         </Table>
       </TableContainer>
 
+      {/* --- MODAL ĐIỂM DANH --- */}
       <AttendanceModal
         open={!!selectedSession}
         session={selectedSession}
@@ -527,6 +646,145 @@ export default function ScheduleTab({
         onClose={onCloseAttendance}
         onSave={onSaveAttendance}
       />
+
+      {/* --- MODAL YÊU CẦU ĐỔI LỊCH --- */}
+      <Dialog
+        open={openChangeModal}
+        onClose={handleCloseChangeModal}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle
+          sx={{ bgcolor: "#f5f5f5", borderBottom: "1px solid #e0e0e0" }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, color: "#1565c0" }}>
+            Yêu cầu đổi lịch
+          </Typography>
+          {targetSession && (
+            <Typography variant="body2" sx={{ color: "#666" }}>
+              Lớp: {targetSession.title} | Lịch cũ:{" "}
+              {format(new Date(targetSession.date), "dd/MM/yyyy")} (
+              {targetSession.startTimeFormatted})
+            </Typography>
+          )}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            {/* 1. Chọn ngày mới */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                1. Chọn ngày mới mong muốn:
+              </Typography>
+              <TextField
+                type="date"
+                fullWidth
+                size="small"
+                value={changeForm.newDate}
+                onChange={handleNewDateChange}
+                InputLabelProps={{ shrink: true }}
+                inputProps={{
+                  min: format(addDays(new Date(), 1), "yyyy-MM-dd"),
+                }}
+              />
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ mt: 0.5, display: "block" }}
+              >
+                * Chỉ được phép chọn từ ngày mai (
+                {format(addDays(new Date(), 1), "dd/MM/yyyy")}) trở đi.
+              </Typography>
+            </Grid>
+
+            {/* 2. Chọn ca */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                2. Chọn Ca học:
+              </Typography>
+              {!changeForm.newDate ? (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  fontStyle="italic"
+                >
+                  Vui lòng chọn ngày trước
+                </Typography>
+              ) : (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                  {ALL_TIME_SLOTS.map((slot) => {
+                    const isBusy = busySlotsInNewDate.includes(slot.id);
+                    const isSelected = changeForm.newSlotId === slot.id;
+
+                    return (
+                      <Chip
+                        key={slot.id}
+                        label={`Ca ${slot.id} (${slot.start})`}
+                        onClick={() =>
+                          !isBusy &&
+                          setChangeForm({ ...changeForm, newSlotId: slot.id })
+                        }
+                        color={isSelected ? "primary" : "default"}
+                        variant={isSelected ? "filled" : "outlined"}
+                        disabled={isBusy}
+                        icon={isBusy ? <WarningAmber /> : <AccessTime />}
+                        sx={{
+                          cursor: isBusy ? "not-allowed" : "pointer",
+                          opacity: isBusy ? 0.6 : 1,
+                          borderColor: isSelected ? "primary.main" : "#e0e0e0",
+                        }}
+                      />
+                    );
+                  })}
+                </Box>
+              )}
+            </Grid>
+
+            {/* 3. Lý do */}
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                3. Lý do đổi lịch:
+              </Typography>
+              <TextField
+                multiline
+                rows={3}
+                fullWidth
+                placeholder="Nhập lý do chi tiết..."
+                value={changeForm.reason}
+                onChange={(e) =>
+                  setChangeForm({ ...changeForm, reason: e.target.value })
+                }
+              />
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e0e0e0" }}>
+          <Button
+            onClick={handleCloseChangeModal}
+            color="inherit"
+            disabled={isSubmitting}
+          >
+            Hủy bỏ
+          </Button>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={submitChangeRequest}
+            disabled={
+              !changeForm.newDate ||
+              !changeForm.newSlotId ||
+              !changeForm.reason ||
+              isSubmitting
+            }
+            startIcon={
+              isSubmitting ? (
+                <CircularProgress size={20} color="inherit" />
+              ) : null
+            }
+          >
+            {isSubmitting ? "Đang gửi..." : "Gửi yêu cầu"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
