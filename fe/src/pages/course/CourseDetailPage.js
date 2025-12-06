@@ -1,46 +1,35 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Container,
-  Grid,
-  Typography,
   Box,
-  Button,
+  Container,
+  Typography,
+  Grid,
   Card,
-  CardContent,
-  Avatar,
   Chip,
-  Rating,
+  Avatar,
   Tabs,
   Tab,
   Divider,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   CircularProgress,
-  Skeleton,
-} from "@mui/material";
+  Alert,
+  Button,
+  CardContent,
+} from '@mui/material';
+import { useParams } from 'react-router-dom';
+import AppHeader from '../../components/Header/AppHeader';
+import ClassList from './components/ClassList';
+import CourseCurriculum from './components/CourseCurriculum';
+import CourseMaterials from './components/CourseMaterials';
+import InstructorInfo from './components/InstructorInfo';
+import CourseReviews from './components/CourseReviews';
+
+// API imports
 import {
-  People,
-  Schedule,
-  Star,
-  PlayCircle,
-  AccessTime,
-  School,
-  WorkspacePremium,
-  Language,
-  CheckCircle,
-  ErrorOutline,
-  Payment,
-} from "@mui/icons-material";
-import { useParams, useNavigate } from "react-router-dom";
-import { getCourseByIdApi } from "../../apiServices/courseService";
-import { createPaymentLinkApi } from "../../apiServices/paymentService";
+  getCourseByIdApi,
+  getClassesByCourseApi,
+  getCourseCurriculumApi,
+  getMyEnrolledCourses,
+} from "../../apiServices/courseService";
 
 const TabPanel = ({ children, value, index, ...other }) => (
   <div
@@ -54,41 +43,17 @@ const TabPanel = ({ children, value, index, ...other }) => (
   </div>
 );
 
-const CourseDetailSkeleton = () => (
-  <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
-    <Box sx={{ bgcolor: "grey.300", py: 6 }}>
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={8}>
-            <Skeleton variant="rectangular" width={100} height={32} sx={{ mb: 2 }} />
-            <Skeleton variant="text" width="80%" height={60} />
-            <Skeleton variant="text" width="60%" height={40} />
-            <Box sx={{ display: "flex", gap: 3, mt: 3 }}>
-              <Skeleton variant="text" width={150} />
-              <Skeleton variant="text" width={150} />
-              <Skeleton variant="text" width={150} />
-            </Box>
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Skeleton variant="rectangular" height={400} />
-          </Grid>
-        </Grid>
-      </Container>
-    </Box>
-  </Box>
-);
-
 const CourseDetailPage = () => {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [tabValue, setTabValue] = useState(0);
-  const [enrollDialog, setEnrollDialog] = useState(false);
-  const [enrolling, setEnrolling] = useState(false);
-  const [enrollError, setEnrollError] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
 
+  // Format price
   const priceFormatter = useMemo(
     () =>
       new Intl.NumberFormat("vi-VN", {
@@ -99,12 +64,16 @@ const CourseDetailPage = () => {
   );
 
   const formatPrice = useCallback(
-    (price) => priceFormatter.format(price),
+    (price) => {
+      if (price == null || isNaN(price)) {
+        return "0 ₫";
+      }
+      return priceFormatter.format(price);
+    },
     [priceFormatter]
   );
 
-  const formatDuration = useCallback((duration) => `${duration} hours`, []);
-
+  // Fetch course data
   const fetchCourse = useCallback(async () => {
     try {
       setLoading(true);
@@ -119,27 +88,45 @@ const CourseDetailPage = () => {
     }
   }, [id]);
 
+  // Fetch classes
+  const fetchClasses = useCallback(async () => {
+    try {
+      setLoadingClasses(true);
+      const data = await getClassesByCourseApi(id);
+      setClasses(data.classes || []);
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      setClasses([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  }, [id]);
+
+  // Check enrollment
+  const checkEnrollment = useCallback(async () => {
+    if (!course?.CourseID) return;
+    try {
+      const res = await getMyEnrolledCourses();
+      const list = res?.data || res?.items || res || [];
+      const enrolled = (Array.isArray(list) ? list : []).some(
+        (c) => c.CourseID === course.CourseID
+      );
+      setIsEnrolledInCourse(enrolled);
+    } catch (e) {
+      setIsEnrolledInCourse(false);
+    }
+  }, [course?.CourseID]);
+
   useEffect(() => {
     fetchCourse();
   }, [fetchCourse]);
 
-
-const handleEnroll = async () => {
-  try {
-    setEnrolling(true);
-    setEnrollError(null);
-
-    const { paymentUrl } = await createPaymentLinkApi(course.CourseID);
-
-    // Chuyển hướng người dùng sang trang PayOS
-    window.location.href = paymentUrl;
-  } catch (error) {
-    console.error("Payment error:", error);
-    setEnrollError(error.message || "Failed to start payment.");
-  } finally {
-    setEnrolling(false);
-  }
-};
+  useEffect(() => {
+    if (course?.CourseID) {
+      fetchClasses();
+      checkEnrollment();
+    }
+  }, [course?.CourseID, fetchClasses, checkEnrollment]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -147,199 +134,343 @@ const handleEnroll = async () => {
 
   const handleRetry = () => {
     fetchCourse();
+    fetchClasses();
   };
 
   if (loading) {
-    return <CourseDetailSkeleton />;
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
+        <AppHeader />
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+          <CircularProgress sx={{ color: "#dc2626" }} />
+        </Box>
+      </Box>
+    );
   }
 
   if (error) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Alert
-          severity="error"
-          icon={<ErrorOutline />}
-          action={
-            <Button color="inherit" size="small" onClick={handleRetry}>
-              Retry
-            </Button>
-          }
-        >
-          {error}
-        </Alert>
-      </Container>
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
+        <AppHeader />
+        <Container maxWidth="lg" sx={{ py: 8 }}>
+          <Alert
+            severity="error"
+            action={
+              <Button color="inherit" size="small" onClick={handleRetry}>
+                Thử lại
+              </Button>
+            }
+          >
+            {error}
+          </Alert>
+        </Container>
+      </Box>
     );
   }
 
   if (!course) {
     return (
-      <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Alert severity="warning">
-          Course not found. Please check the course ID and try again.
-        </Alert>
-        <Button
-          variant="contained"
-          onClick={() => navigate("/courses")}
-          sx={{ mt: 2 }}
-        >
-          Back to Courses
-        </Button>
-      </Container>
+      <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
+        <AppHeader />
+        <Container maxWidth="lg" sx={{ py: 8 }}>
+          <Alert severity="warning">Không tìm thấy khóa học</Alert>
+        </Container>
+      </Box>
     );
   }
 
   return (
-    <Box sx={{ minHeight: "100vh", bgcolor: "background.default" }}>
+    <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
+      <AppHeader />
+      
       {/* Course Header */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
           color: "white",
-          py: 6,
+          py: 8,
+          position: "relative",
+          overflow: "hidden",
+          "&::before": {
+            content: '""',
+            position: "absolute",
+            top: 0,
+            right: 0,
+            width: "40%",
+            height: "100%",
+            background: "radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }
         }}
       >
         <Container maxWidth="lg">
           <Grid container spacing={4}>
             <Grid item xs={12} md={8}>
               <Chip
-                label={course.Category || "Programming"}
-                sx={{
-                  bgcolor: "rgba(255,255,255,0.2)",
-                  color: "white",
-                  mb: 2,
+                label={course.Level || "BEGINNER"}
+                sx={{ 
+                  bgcolor: "rgba(255,255,255,0.25)", 
+                  color: "white", 
+                  mb: 3,
+                  fontWeight: 600,
+                  fontSize: "0.875rem",
+                  px: 1,
+                  height: 32,
+                  borderRadius: 2,
                 }}
               />
               <Typography
                 variant="h3"
                 component="h1"
                 sx={{
-                  fontWeight: 700,
-                  mb: 2,
+                  fontWeight: 800,
+                  mb: 3,
                   fontSize: { xs: "2rem", md: "3rem" },
+                  lineHeight: 1.2,
+                  letterSpacing: "-0.02em",
                 }}
               >
                 {course.Title}
               </Typography>
               <Typography
                 variant="h6"
-                sx={{
-                  opacity: 0.9,
-                  mb: 3,
-                  maxWidth: 600,
+                sx={{ 
+                  opacity: 0.95, 
+                  mb: 4, 
+                  maxWidth: 650,
+                  lineHeight: 1.6,
+                  fontWeight: 400,
+                  fontSize: "1.125rem",
                 }}
               >
                 {course.Description}
               </Typography>
 
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: 3, mb: 3 }}>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <People sx={{ mr: 1 }} />
-                  <Typography>
-                    {course.EnrollmentCount || 0} students enrolled
-                  </Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <Schedule sx={{ mr: 1 }} />
-                  <Typography>{formatDuration(course.Duration)}</Typography>
-                </Box>
-                <Box sx={{ display: "flex", alignItems: "center" }}>
-                  <Star sx={{ mr: 1 }} />
-                  <Typography>
-                    {course.AverageRating
-                      ? course.AverageRating.toFixed(1)
-                      : "N/A"}{" "}
-                    rating
-                  </Typography>
-                </Box>
-              </Box>
+              <Grid container spacing={3} sx={{ mb: 4 }}>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {course.TotalStudents || 0}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Học viên
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {parseFloat(course.Duration || 0).toFixed(0)}h
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Thời lượng
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={6} sm={4}>
+                  <Box 
+                    sx={{ 
+                      bgcolor: "rgba(255,255,255,0.15)",
+                      borderRadius: 2,
+                      p: 2,
+                      textAlign: "center",
+                      backdropFilter: "blur(10px)",
+                    }}
+                  >
+                    <Typography variant="h4" sx={{ fontWeight: 700, mb: 0.5 }}>
+                      {course.ReviewCount || 0}
+                    </Typography>
+                    <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                      Đánh giá
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
 
-              <Box sx={{ display: "flex", alignItems: "center" }}>
-                <Avatar
-                  src={course.InstructorAvatar}
-                  sx={{ width: 56, height: 56, mr: 2 }}
-                  alt={course.InstructorName}
-                >
-                  {course.InstructorName?.charAt(0)}
-                </Avatar>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {course.InstructorName}
-                  </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                    {course.InstructorJob} • {course.InstructorMajor}
-                  </Typography>
-                </Box>
-              </Box>
+           <Box 
+  sx={{ 
+    display: "flex", 
+    alignItems: "center",
+    bgcolor: "rgba(255,255,255,0.18)",
+    borderRadius: 4,
+    p: 3,
+    backdropFilter: "blur(12px)",
+  }}
+>
+  <Avatar
+    src={course.InstructorAvatar}
+    sx={{ 
+      width: 84, 
+      height: 84, 
+      mr: 3,
+      border: "4px solid rgba(255,255,255,0.35)",
+      fontSize: "2rem",
+    }}
+    alt={course.InstructorName}
+  >
+    {course.InstructorName?.charAt(0)}
+  </Avatar>
+
+  <Box>
+    <Typography 
+      variant="body1" 
+      sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+    >
+      Giảng viên
+    </Typography>
+
+    <Typography 
+      variant="h5" 
+      sx={{ fontWeight: 700, mb: 0.8, fontSize: "1.8rem" }}
+    >
+      {course.InstructorName}
+    </Typography>
+
+    <Typography 
+      variant="body1" 
+      sx={{ opacity: 0.9, fontSize: "1.1rem" }}
+    >
+      {course.InstructorJob} • {course.InstructorMajor}
+    </Typography>
+  </Box>
+</Box>
+
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Card sx={{ position: "relative", top: { md: 40 } }}>
+              <Card 
+                sx={{ 
+                  position: "relative", 
+                  top: { md: 40 },
+                  borderRadius: 3,
+                  boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+                  overflow: "hidden",
+                }}
+              >
+                <Box
+                  sx={{
+                    background: "linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)",
+                    color: "white",
+                    p: 3,
+                    textAlign: "center",
+                  }}
+                >
+                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+                    Bắt đầu học ngay
+                  </Typography>
+                  <Typography variant="body2" sx={{ opacity: 0.9 }}>
+                    Nâng cao kỹ năng của bạn ngay hôm nay
+                  </Typography>
+                </Box>
+
                 <CardContent sx={{ p: 3 }}>
-                  <Box sx={{ textAlign: "center", mb: 3 }}>
-                    <Typography
-                      variant="h4"
-                      color="primary.main"
-                      sx={{ fontWeight: 700 }}
+                  <Typography 
+                    variant="subtitle1" 
+                    sx={{ 
+                      fontWeight: 700, 
+                      mb: 2.5,
+                      color: "#1f2937",
+                    }}
+                  >
+                    Khóa học bao gồm:
+                  </Typography>
+                  
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
                     >
-                      {formatPrice(course.TuitionFee)}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      One-time payment
-                    </Typography>
-                  </Box>
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          {course.UnitCount || 0} chương học
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Nội dung chi tiết
+                        </Typography>
+                      </Box>
+                    </Box>
 
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    onClick={() => setEnrollDialog(true)}
-                    startIcon={<Payment />}
-                    sx={{ mb: 2, py: 1.5, fontWeight: 600 }}
-                  >
-                    Enroll Now
-                  </Button>
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Học mọi lúc mọi nơi
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Truy cập không giới hạn
+                        </Typography>
+                      </Box>
+                    </Box>
 
-                  <Button
-                    fullWidth
-                    variant="outlined"
-                    size="large"
-                    sx={{ mb: 3, py: 1.5, fontWeight: 600 }}
-                  >
-                    Add to Wishlist
-                  </Button>
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Chứng chỉ hoàn thành
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Được công nhận
+                        </Typography>
+                      </Box>
+                    </Box>
 
-                  <Box sx={{ textAlign: "left" }}>
-                    <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                      This course includes:
-                    </Typography>
-                    <List dense>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <PlayCircle color="primary" />
-                        </ListItemIcon>
-                        <ListItemText
-                          primary={`${course.UnitCount || 0} learning units`}
-                        />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <AccessTime color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="Lifetime access" />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <WorkspacePremium color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="Certificate of completion" />
-                      </ListItem>
-                      <ListItem sx={{ px: 0 }}>
-                        <ListItemIcon sx={{ minWidth: 32 }}>
-                          <Language color="primary" />
-                        </ListItemIcon>
-                        <ListItemText primary="English subtitles" />
-                      </ListItem>
-                    </List>
+                    <Box 
+                      sx={{ 
+                        display: "flex", 
+                        alignItems: "center",
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        borderRadius: 2,
+                        borderLeft: "4px solid #dc2626",
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                          Hỗ trợ trực tuyến
+                        </Typography>
+                        <Typography variant="caption" sx={{ color: "#6b7280" }}>
+                          Giải đáp 24/7
+                        </Typography>
+                      </Box>
+                    </Box>
                   </Box>
                 </CardContent>
               </Card>
@@ -348,173 +479,75 @@ const handleEnroll = async () => {
         </Container>
       </Box>
 
-      {/* Course Content - Tabs remain the same */}
+      {/* Course Content Tabs */}
       <Container maxWidth="lg" sx={{ py: 6 }}>
-        <Tabs
-          value={tabValue}
-          onChange={handleTabChange}
-          aria-label="course information tabs"
-        >
-          <Tab label="Curriculum" />
-          <Tab label="Instructor" />
-          <Tab label="Reviews" />
-          <Tab label="FAQ" />
-        </Tabs>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="course information tabs"
+            sx={{
+              "& .MuiTab-root": {
+                fontWeight: 600,
+                fontSize: "1rem",
+                textTransform: "none",
+                minHeight: 64,
+                color: "#6b7280",
+                "&.Mui-selected": {
+                  color: "#dc2626",
+                },
+              },
+              "& .MuiTabs-indicator": {
+                backgroundColor: "#dc2626",
+                height: 3,
+                borderRadius: "3px 3px 0 0",
+              },
+            }}
+          >
+            <Tab label="Lớp học" />
+            <Tab label="Lộ trình học" />
+            <Tab label="Giảng viên" />
+            <Tab label="Đánh giá" />
+            {isEnrolledInCourse && <Tab label="Tài liệu" />}
+          </Tabs>
+        </Box>
 
-        <Divider />
-
-        {/* Curriculum Tab */}
+        {/* Class List Tab */}
         <TabPanel value={tabValue} index={0}>
-          <Typography variant="h5" sx={{ fontWeight: 600, mb: 3 }}>
-            Course Curriculum
-          </Typography>
-
-          {course.Units && course.Units.length > 0 ? (
-            <Card>
-              <CardContent sx={{ p: 0 }}>
-                <List>
-                  {course.Units.map((unit, index) => (
-                    <ListItem
-                      key={unit.UnitID}
-                      sx={{
-                        borderBottom: "1px solid",
-                        borderColor: "divider",
-                        "&:last-child": { borderBottom: "none" },
-                        py: 2,
-                      }}
-                    >
-                      <ListItemIcon>
-                        <Box
-                          sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: "50%",
-                            bgcolor: "primary.main",
-                            color: "white",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontWeight: 600,
-                            fontSize: "0.875rem",
-                          }}
-                        >
-                          {index + 1}
-                        </Box>
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                            {unit.Title}
-                          </Typography>
-                        }
-                        secondary={
-                          <Box sx={{ mt: 1 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              {unit.Description}
-                            </Typography>
-                            {unit.Duration && (
-                              <Box
-                                sx={{
-                                  display: "flex",
-                                  alignItems: "center",
-                                  mt: 1,
-                                }}
-                              >
-                                <Schedule sx={{ fontSize: 16, mr: 0.5 }} />
-                                <Typography
-                                  variant="body2"
-                                  color="text.secondary"
-                                >
-                                  {unit.Duration}
-                                </Typography>
-                              </Box>
-                            )}
-                          </Box>
-                        }
-                      />
-                      <Chip
-                        icon={<PlayCircle />}
-                        label="Preview"
-                        variant="outlined"
-                        size="small"
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          ) : (
-            <Alert severity="info">
-              No curriculum available for this course yet.
-            </Alert>
-          )}
+          <ClassList 
+            classes={classes} 
+            loading={loadingClasses}
+            courseId={course.CourseID}
+            onEnrollmentChange={checkEnrollment}
+          />
         </TabPanel>
 
-        {/* Other tabs remain the same... */}
+        {/* Curriculum Tab */}
+        <TabPanel value={tabValue} index={1}>
+          <CourseCurriculum 
+            courseId={course.CourseID}
+            isEnrolled={isEnrolledInCourse}
+          />
+        </TabPanel>
+
+        {/* Instructor Tab */}
+        <TabPanel value={tabValue} index={2}>
+          <InstructorInfo instructor={course} />
+        </TabPanel>
+
+        {/* Reviews Tab */}
+        <TabPanel value={tabValue} index={3}>
+          <CourseReviews courseId={course.CourseID} />
+        </TabPanel>
+
+        {/* Materials Tab */}
+        {isEnrolledInCourse && (
+          <TabPanel value={tabValue} index={4}>
+            <CourseMaterials courseId={course.CourseID} />
+          </TabPanel>
+        )}
+
       </Container>
-
-      {/* Enrollment Dialog - Updated */}
-      <Dialog
-        open={enrollDialog}
-        onClose={() => !enrolling && setEnrollDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-            <Payment color="primary" />
-            <Typography variant="h5" sx={{ fontWeight: 600 }}>
-              Proceed to Payment
-            </Typography>
-          </Box>
-        </DialogTitle>
-        <DialogContent>
-          {enrollError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {enrollError}
-            </Alert>
-          )}
-          
-          <Alert severity="info" sx={{ mb: 2 }}>
-            You will be redirected to PayOS to complete your payment securely.
-          </Alert>
-
-          <Typography variant="body1" sx={{ mb: 2 }}>
-            You are about to enroll in:
-          </Typography>
-          <Typography
-            variant="h6"
-            color="primary.main"
-            sx={{ fontWeight: 600, mb: 2 }}
-          >
-            {course.Title}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Instructor:</strong> {course.InstructorName}
-          </Typography>
-          <Typography variant="body1" sx={{ mb: 1 }}>
-            <strong>Duration:</strong> {formatDuration(course.Duration)}
-          </Typography>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" sx={{ fontWeight: 600 }}>
-            Total: {formatPrice(course.TuitionFee)}
-          </Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setEnrollDialog(false)} disabled={enrolling}>
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleEnroll}
-            disabled={enrolling}
-            sx={{ minWidth: 140 }}
-            startIcon={enrolling ? <CircularProgress size={16} /> : <Payment />}
-          >
-            {enrolling ? "Redirecting..." : "Proceed to Payment"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

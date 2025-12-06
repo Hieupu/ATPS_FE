@@ -1,9 +1,8 @@
-// apiClient.js
-// ⚠️ TESTING MODE: Token và phân quyền đã được comment để test chức năng
-// ⚠️ Nhớ uncomment lại khi deploy production!
 import axios from "axios";
 
 const BASE_URL = process.env.REACT_APP_API_URL || "http://localhost:9999/api";
+
+// const BASE_URL = process.env.REACT_APP_API_URL;
 
 const apiClient = axios.create({
   baseURL: BASE_URL,
@@ -37,12 +36,10 @@ apiClient.interceptors.response.use(
 
       switch (response.status) {
         case 401:
-          // COMMENTED FOR TESTING - Auto redirect on 401
-          // localStorage.removeItem("token");
-          // if (!isAuthPath) {
-          //   window.location.href = "/auth/login"; 
-          // }
-          console.warn("401 Unauthorized - Token có thể không hợp lệ (đã comment redirect để test)");
+          localStorage.removeItem("token");
+          if (!isAuthPath) {
+            window.location.href = "/auth/login";
+          }
           break;
         case 403:
           // COMMENTED FOR TESTING - Permission check

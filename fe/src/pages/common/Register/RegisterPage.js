@@ -7,6 +7,7 @@ import {
 import {
   Visibility, VisibilityOff,
   Google as GoogleIcon, Facebook as FacebookIcon, School,
+  AccountCircle,
 } from "@mui/icons-material";
 import CheckCircleOutlineRoundedIcon from "@mui/icons-material/CheckCircleOutlineRounded";
 import { useNavigate, Link as RouterLink } from "react-router-dom";
@@ -112,17 +113,9 @@ const RegisterPage = () => {
     >
       <Container maxWidth="sm">
         <Paper elevation={8} sx={{ p: 4, borderRadius: 3, backgroundColor: "white" }}>
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-            <Avatar sx={{ width: 80, height: 80, backgroundColor: "primary.light" }}>
-              <School sx={{ fontSize: 48, color: "primary.main" }} />
-            </Avatar>
-          </Box>
           <Box sx={{ textAlign: "center", mb: 3 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
-              Create your account
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Join us and start your journey
+              Đăng kí tài khoản
             </Typography>
           </Box>
           <Collapse in={!!errorMsg} unmountOnExit>
@@ -131,10 +124,10 @@ const RegisterPage = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Username
+                Tên đăng nhập
               </Typography>
               <TextField
-                fullWidth name="username" placeholder="your_username"
+                fullWidth name="username" placeholder="tên đăng nhập"
                 value={form.username} onChange={handleChange} required disabled={loading || successOpen}
               />
             </Box>
@@ -149,7 +142,7 @@ const RegisterPage = () => {
             </Box>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Phone (optional)
+                Điện thoại
               </Typography>
               <TextField
                 fullWidth name="phone" placeholder="0987xxxxxx"
@@ -158,12 +151,12 @@ const RegisterPage = () => {
             </Box>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Password
+                Mật khẩu
               </Typography>
               <TextField
                 fullWidth name="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
+                placeholder="Nhập mật khẩu"
                 value={form.password} onChange={handleChange} required disabled={loading || successOpen}
                 InputProps={{
                   endAdornment: (
@@ -178,12 +171,12 @@ const RegisterPage = () => {
             </Box>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Confirm Password
+                Xác thực mật khẩu
               </Typography>
               <TextField
                 fullWidth name="confirmPassword"
                 type={showConfirm ? "text" : "password"}
-                placeholder="Re-enter your password"
+                placeholder="Nhập lại mật khẩu"
                 value={form.confirmPassword} onChange={handleChange} required disabled={loading || successOpen}
                 InputProps={{
                   endAdornment: (
@@ -201,41 +194,57 @@ const RegisterPage = () => {
               disabled={loading || successOpen}
               sx={{ mb: 3, py: 1.5, fontWeight: 600, fontSize: "1rem" }}
             >
-              {loading ? "Processing..." : "Register"}
+              {loading ? "Đang xử lý" : "Đăng ký"}
             </Button>
             <Divider sx={{ mb: 3 }}>
-              <Typography variant="body2" color="text.secondary">OR</Typography>
+              <Typography variant="body2" color="text.secondary">Đăng ký bằng</Typography>
             </Divider>
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
             <Button
-              fullWidth variant="outlined" size="large"
-              startIcon={<GoogleIcon />} onClick={startGoogleAuth}
-              disabled={loading || successOpen}
               sx={{
-                mb: 2, py: 1.5, fontWeight: 600,
-                borderColor: "grey.300", color: "text.primary",
-                "&:hover": { borderColor: "grey.400", backgroundColor: "grey.50" },
+                flex: 1,
+                py: 1.5,
+                fontWeight: 600,
+                borderColor: 'grey.300',
+                color: 'text.primary',
+                "&:hover": {
+                  borderColor: 'grey.400',
+                  backgroundColor: 'grey.50',
+                },
               }}
+              variant="outlined"
+              size="large"
+              startIcon={<GoogleIcon />}
+              onClick={startGoogleAuth}
             >
-              Continue with Google
+              Google
             </Button>
 
             <Button
-              fullWidth variant="outlined" size="large"
-              startIcon={<FacebookIcon />} onClick={startFacebookAuth}
-              disabled={loading || successOpen}
               sx={{
-                mb: 3, py: 1.5, fontWeight: 600,
-                borderColor: "grey.300", color: "text.primary",
-                "&:hover": { borderColor: "grey.400", backgroundColor: "grey.50" },
+                flex: 1,
+                py: 1.5,
+                fontWeight: 600,
+                borderColor: 'grey.300',
+                color: 'text.primary',
+                "&:hover": {
+                  borderColor: 'grey.400',
+                  backgroundColor: 'grey.50',
+                },
               }}
+              variant="outlined"
+              size="large"
+              startIcon={<FacebookIcon />}
+              onClick={startFacebookAuth}
             >
-              Continue with Facebook
+              Facebook
             </Button>
+          </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
               <Typography variant="body2" color="text.secondary">
-                Already have an account?{" "}
+                Đã có tài khoản?{" "}
                 <Link component={RouterLink} to="/auth/login" underline="hover" sx={{ color: "primary.main", fontWeight: 600 }}>
-                  Login
+                  Đăng nhập
                 </Link>
               </Typography>
             </Box>

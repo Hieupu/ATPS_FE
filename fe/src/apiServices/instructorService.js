@@ -1,18 +1,61 @@
 import apiClient from "./apiClient";
 
 const instructorService = {
-  // Lấy danh sách tất cả giảng viên
+  // Lấy danh sách tất cả giảng viên (Public endpoint)
   getAllInstructors: async () => {
     try {
       const response = await apiClient.get("/instructors");
       console.log("Instructors API raw response:", response.data);
-      // Backend trả về: {success: true, message: "...", data: [...]}
-      // Status, Email, Phone nên được JOIN từ account table
-      const instructorsList = response.data?.data || response.data || [];
+
+      // Handle multiple response formats
+      let instructorsList = [];
+
+      if (response.data) {
+        // Format 1: { success: true, data: [...] }
+        if (response.data.data && Array.isArray(response.data.data)) {
+          instructorsList = response.data.data;
+        }
+        // Format 2: { items: [...], total, page, pageSize }
+        else if (response.data.items && Array.isArray(response.data.items)) {
+          instructorsList = response.data.items;
+        }
+        // Format 3: Direct array
+        else if (Array.isArray(response.data)) {
+          instructorsList = response.data;
+        }
+      }
+
       console.log("Instructors list sample:", instructorsList[0]);
       return instructorsList;
     } catch (error) {
       console.error("Get instructors error:", error);
+      console.error("Error details:", error.response?.data);
+      throw error.response?.data || { message: "Failed to fetch instructors" };
+    }
+  },
+
+  // Lấy danh sách tất cả giảng viên (Admin-specific endpoint)
+  // Format: { success: true, data: [...] }
+  getAllInstructorsAdmin: async () => {
+    try {
+      const response = await apiClient.get("/instructors/admin/all");
+      console.log("Admin Instructors API raw response:", response.data);
+
+      // Admin endpoint always returns: { success: true, data: [...] }
+      const instructorsList = response.data?.data || [];
+
+      if (!Array.isArray(instructorsList)) {
+        console.warn(
+          "Admin instructors API returned non-array format:",
+          response.data
+        );
+        return [];
+      }
+
+      console.log("Admin instructors list sample:", instructorsList[0]);
+      return instructorsList;
+    } catch (error) {
+      console.error("Get admin instructors error:", error);
       console.error("Error details:", error.response?.data);
       throw error.response?.data || { message: "Failed to fetch instructors" };
     }
@@ -26,6 +69,23 @@ const instructorService = {
     } catch (error) {
       console.error("Get instructor error:", error);
       throw error.response?.data || { message: "Failed to fetch instructor" };
+    }
+  },
+
+  // Lấy giảng viên nổi bật
+  getFeaturedInstructors: async (limit = 4) => {
+    try {
+      const response = await apiClient.get(
+        `/instructors/featured?limit=${limit}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Get featured instructors error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to fetch featured instructors",
+        }
+      );
     }
   },
 
@@ -165,10 +225,14 @@ const instructorService = {
     }
   },
 
-  // Search instructors (tùy chọn - có thể backend chưa có)
+  // Search instructors
   searchInstructors: async ({
     search = "",
     major = "",
+    type = "",
+    timeslots = [],
+    minFee = 0,
+    maxFee = 1000000,
     sort = "newest",
     page = 1,
     pageSize = 10,
@@ -179,10 +243,66 @@ const instructorService = {
         sort,
         page: String(page),
         pageSize: String(pageSize),
+        minFee: String(minFee),
+        maxFee: String(maxFee),
       });
+
       if (major) params.append("major", major);
+      if (type) params.append("type", type);
+
+      if (Array.isArray(timeslots) && timeslots.length > 0) {
+        timeslots.forEach((ts) => params.append("timeslots", ts));
+      }
+
       const response = await apiClient.get(`/instructors?${params.toString()}`);
-      return response.data?.data || response.data?.items || response.data || [];
+      console.log("[searchInstructors] Raw API response:", {
+        data: response.data,
+        dataType: typeof response.data,
+        isArray: Array.isArray(response.data),
+        hasItems: response.data?.items !== undefined,
+        hasData: response.data?.data !== undefined,
+        hasInstructors: response.data?.instructors !== undefined,
+        keys: response.data ? Object.keys(response.data) : [],
+      });
+
+      // Backend trả về: { items: [], total: number, page: number, pageSize: number }
+      // Hoặc: { success: true, data: { items, total } }
+      // Hoặc: { instructors: [] } (khi không có filter)
+      if (response.data?.items !== undefined) {
+        // Format: { items, total, page, pageSize }
+        console.log("[searchInstructors] Returning format: { items, total }", {
+          itemsCount: response.data.items?.length || 0,
+          total: response.data.total || 0,
+        });
+        return response.data;
+      } else if (response.data?.data?.items !== undefined) {
+        // Format: { success: true, data: { items, total } }
+        return response.data.data;
+      } else if (response.data?.instructors) {
+        // Format: { instructors: [] }
+        return {
+          items: response.data.instructors,
+          total: response.data.instructors.length,
+          page: 1,
+          pageSize: response.data.instructors.length,
+        };
+      } else if (Array.isArray(response.data)) {
+        // Format: [] (array directly)
+        return {
+          items: response.data,
+          total: response.data.length,
+          page: 1,
+          pageSize: response.data.length,
+        };
+      } else {
+        // Fallback
+        return {
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 10,
+        };
+      }
     } catch (error) {
       console.error("Search instructors error:", error);
       throw error.response?.data || { message: "Failed to search instructors" };
@@ -277,7 +397,13 @@ const instructorService = {
   },
 
   // Lưu lịch bận để dạy của giảng viên
-  saveAvailability: async (instructorId, startDate, endDate, slots, instructorType) => {
+  saveAvailability: async (
+    instructorId,
+    startDate,
+    endDate,
+    slots,
+    instructorType
+  ) => {
     try {
       const response = await apiClient.post(
         `/instructors/${instructorId}/availability`,
@@ -300,10 +426,27 @@ const instructorService = {
   },
 };
 
-// Export default và named exports để tương thích với code cũ
+// Export default
 export default instructorService;
 
-// Named exports để tương thích với code hiện tại
+// ========== NAMED EXPORTS (Compatibility) ==========
+// Các named exports để tương thích với code cũ
 export const getAllInstructorsApi = instructorService.getAllInstructors;
+export const getAllInstructorsAdminApi =
+  instructorService.getAllInstructorsAdmin;
 export const getInstructorByIdApi = instructorService.getInstructorById;
+export const getFeaturedInstructorsApi =
+  instructorService.getFeaturedInstructors;
 export const searchInstructorsApi = instructorService.searchInstructors;
+export const createInstructorApi = instructorService.createInstructor;
+export const updateInstructorApi = instructorService.updateInstructor;
+export const deleteInstructorApi = instructorService.deleteInstructor;
+export const getInstructorWithCoursesApi =
+  instructorService.getInstructorWithCourses;
+export const getInstructorScheduleApi = instructorService.getInstructorSchedule;
+export const getInstructorStatisticsApi =
+  instructorService.getInstructorStatistics;
+export const uploadAvatarApi = instructorService.uploadAvatar;
+export const uploadCVApi = instructorService.uploadCV;
+export const getAvailabilityApi = instructorService.getAvailability;
+export const saveAvailabilityApi = instructorService.saveAvailability;

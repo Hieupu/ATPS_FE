@@ -23,118 +23,24 @@ import {
   computeLostSessions,
   computeScheduleDiff,
 } from "./ClassWizard.utils";
+// Import các Step components
+import ClassWizardStep1 from "./ClassWizardStep1";
+import ClassWizardStep2 from "./ClassWizardStep2";
+import ClassWizardStep3 from "./ClassWizardStep3";
+import ClassWizardStep4 from "./ClassWizardStep4";
+// Import constants
+import {
+  weekdayLabelMap,
+  formatDateForDisplay,
+  getWeekdayLabel,
+  parseDisplayDateToISO,
+  toISODateString,
+  formatTimeRange,
+  normalizeTimeString,
+  countSelectionSlots,
+} from "./ClassWizard.constants";
 
-const formatDateForDisplay = (value) => {
-  if (!value) return "";
-  if (value.includes("/")) return value;
-  const parts = value.split("-");
-  if (parts.length === 3) {
-    const [year, month, day] = parts;
-    return `${day}/${month}/${year}`;
-  }
-  return value;
-};
-
-const getWeekdayLabel = (dateStr) => {
-  if (!dateStr) return "";
-  const code = getDayFromDate(dateStr);
-  return weekdayLabelMap[code] || code || "";
-};
-
-const parseDisplayDateToISO = (displayValue) => {
-  if (!displayValue) return "";
-  const normalized = displayValue.replace(/\s/g, "");
-  if (/^\d{2}\/\d{2}\/\d{4}$/.test(normalized)) {
-    const [day, month, year] = normalized.split("/");
-    return `${year}-${month}-${day}`;
-  }
-  return null;
-};
-
-const toISODateString = (value) => {
-  if (!value) return "";
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
-      return trimmed;
-    }
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
-      const [day, month, year] = trimmed.split("/");
-      return `${year}-${month}-${day}`;
-    }
-  }
-  const parsed = dayjs(value);
-  return parsed.isValid() ? parsed.format("YYYY-MM-DD") : "";
-};
-
-const formatTimeRange = (start, end) => {
-  if (!start || !end) return "";
-  const format = (time) => {
-    if (typeof time !== "string") return "";
-    const parts = time.split(":");
-    return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : time;
-  };
-  return `${format(start)} - ${format(end)}`;
-};
-
-const normalizeTimeString = (value) => {
-  if (!value) return "";
-  const str = String(value).trim();
-  const [timePart] = str.split(/[.\s]/); // Cắt phần đuôi (.000000) hoặc timezone
-  if (/^\d{2}:\d{2}:\d{2}$/.test(timePart)) return timePart;
-  if (/^\d{2}:\d{2}$/.test(timePart)) return `${timePart}:00`;
-  return timePart;
-};
-
-// Không dùng cho logic mới
-// const cloneTimeslotSelection = (source = {}, allowedDays) => {
-//   const result = {};
-//   const allowedSet = Array.isArray(allowedDays)
-//     ? new Set(allowedDays.map((day) => Number(day)))
-//     : null;
-
-//   Object.keys(source || {}).forEach((dayKey) => {
-//     const numericKey = Number(dayKey);
-//     if (Number.isNaN(numericKey)) {
-//       return;
-//     }
-//     if (allowedSet && !allowedSet.has(numericKey)) {
-//       return;
-//     }
-//     const slots = source[dayKey];
-//     if (Array.isArray(slots) && slots.length > 0) {
-//       result[numericKey] = Array.from(new Set(slots));
-//       return result;
-//     }
-//   });
-
-//   return result;
-// }; // Không dùng cho logic mới
-
-const countSelectionSlots = (selection = {}) =>
-  Object.values(selection || {}).reduce((total, slots) => {
-    if (!Array.isArray(slots)) return total;
-    return total + slots.length;
-  }, 0);
-
-// Không dùng cho logic mới
-// const SEARCH_MODE_INITIAL_STATUS = {
-//   loading: false,
-//   success: false,
-//   error: "",
-//   date: null,
-//   message: "",
-// };
-
-const weekdayLabelMap = {
-  CN: "Chủ Nhật",
-  T2: "Thứ 2",
-  T3: "Thứ 3",
-  T4: "Thứ 4",
-  T5: "Thứ 5",
-  T6: "Thứ 6",
-  T7: "Thứ 7",
-};
+// Utility functions và constants đã được tách ra ClassWizard.constants.js
 
 const ClassWizard = ({
   classData,
@@ -157,7 +63,6 @@ const ClassWizard = ({
     Maxstudent: "", // Đổi từ MaxLearners
     ZoomID: "", // Mới
     Zoompass: "", // Mới
-
     // Step 2: Schedule Info
     schedule: {
       OpendatePlan: "", // Đổi từ StartDate
@@ -270,6 +175,7 @@ const ClassWizard = ({
   const analyzeBlockedTimeoutRef = useRef(null);
   // State để quản lý việc tìm ngày bắt đầu khác
   const [alternativeStartDateSearch, setAlternativeStartDateSearch] = useState({
+    applied: false, // Flag để đánh dấu đã áp dụng gợi ý
     loading: false,
     suggestions: [],
     error: null,
@@ -427,8 +333,33 @@ const ClassWizard = ({
     // Lấy danh sách các ngày đã được chọn (để luôn enable chúng)
     const selectedDays = formData.scheduleDetail.DaysOfWeek || [];
 
-    // Duyệt qua các ngày trong tuần (T2-T7, bỏ chủ nhật)
-    [1, 2, 3, 4, 5, 6].forEach((dayOfWeek) => {
+    // Nếu chưa có instructor hoặc instructorType, enable tất cả các ngày (T2-CN: 1-6, 0)
+    if (!instructorType) {
+      [1, 2, 3, 4, 5, 6, 0].forEach((day) => {
+        if (!availableDays.includes(day)) {
+          availableDays.push(day);
+        }
+      });
+      setAvailableDaysForTimeslot(availableDays);
+      return;
+    }
+
+    // Với fulltime, nếu chưa có đủ thông tin (blockedDays, instructorBusySchedule), enable tất cả
+    if (
+      instructorType === "fulltime" &&
+      (!blockedDays || !instructorBusySchedule)
+    ) {
+      [1, 2, 3, 4, 5, 6, 0].forEach((day) => {
+        if (!availableDays.includes(day)) {
+          availableDays.push(day);
+        }
+      });
+      setAvailableDaysForTimeslot(availableDays);
+      return;
+    }
+
+    // Duyệt qua các ngày trong tuần (T2-CN: 1-6, 0)
+    [1, 2, 3, 4, 5, 6, 0].forEach((dayOfWeek) => {
       // Nếu ngày này đã được chọn, luôn enable (không check conflict)
       if (selectedDays.includes(dayOfWeek)) {
         availableDays.push(dayOfWeek);
@@ -444,14 +375,40 @@ const ClassWizard = ({
       Array.from(allSelectedTimeslotIdsMemo).forEach((selectedTimeslotId) => {
         if (hasValidSlot) return; // Đã tìm thấy 1 ca hợp lệ, không cần check tiếp
 
-        // Tìm timeslot trong DB
-        const selectedTimeslot = timeslots.find(
+        // Tìm timeslot trong DB - có thể là ID hoặc string format "08:00-10:00"
+        let selectedTimeslot = timeslots.find(
           (t) =>
             normalizeTimeslotId(t.TimeslotID || t.id) ===
             normalizeTimeslotId(selectedTimeslotId)
         );
 
-        if (!selectedTimeslot) return;
+        // Nếu không tìm thấy bằng ID, có thể selectedTimeslotId là format "08:00-10:00"
+        // Tìm bằng StartTime-EndTime
+        if (
+          !selectedTimeslot &&
+          typeof selectedTimeslotId === "string" &&
+          selectedTimeslotId.includes("-")
+        ) {
+          const [startTime, endTime] = selectedTimeslotId.split("-");
+          selectedTimeslot = timeslots.find((t) => {
+            const tStartTime = normalizeTimeString(
+              t.StartTime || t.startTime || ""
+            );
+            const tEndTime = normalizeTimeString(t.EndTime || t.endTime || "");
+            return tStartTime === startTime && tEndTime === endTime;
+          });
+        }
+
+        if (!selectedTimeslot) {
+          // Nếu vẫn không tìm thấy, có thể timeslot chưa được load hoặc format khác
+          // Với logic mới: nếu không tìm thấy timeslot cụ thể, vẫn cho phép chọn ngày
+          // (vì có thể timeslot sẽ được tạo sau)
+          if (!instructorType || instructorType === "fulltime") {
+            // Fulltime hoặc chưa chọn instructor → mặc định hợp lệ
+            hasValidSlot = true;
+          }
+          return;
+        }
 
         const selectedStartTime = normalizeTimeString(
           selectedTimeslot.StartTime || selectedTimeslot.startTime || ""
@@ -494,23 +451,49 @@ const ClassWizard = ({
           });
         }
 
-        if (!dayTimeslot) return; // Ngày này không có timeslot cùng StartTime-EndTime
+        // Nếu không tìm thấy dayTimeslot, vẫn có thể hợp lệ nếu có selectedTimeslot
+        // (vì timeslot có thể dùng cho mọi ngày)
+        if (!dayTimeslot) {
+          dayTimeslot = selectedTimeslot;
+        }
 
         const timeslotId = dayTimeslot.TimeslotID || dayTimeslot.id;
 
-        // Logic mới: Fulltime mặc định rảnh T2-T7 (1-6), chỉ check conflict
+        // Logic mới: Fulltime mặc định rảnh T2-CN (1-6, 0), chỉ check conflict
         if (instructorType === "fulltime") {
-          // Fulltime: chỉ check session conflict và HOLIDAY, không check parttime availability
-          const slotStatus = getSlotStatus({
-            dayOfWeek,
-            timeslotId,
-            startDate,
-            endDate,
-          });
+          // Fulltime: mặc định hợp lệ cho tất cả các ngày T2-CN
+          // Chỉ check conflict nếu có đủ thông tin (startDate, endDate, và các dependencies)
+          // Nhưng nếu không có đủ thông tin, vẫn cho phép (vì fulltime mặc định rảnh)
+          hasValidSlot = true;
 
-          // Nếu không bị LOCKED, ngày này hợp lệ
-          if (slotStatus.status !== "LOCKED") {
-            hasValidSlot = true;
+          // Nếu có đủ thông tin, check conflict để chính xác hơn
+          if (
+            startDate &&
+            endDate &&
+            blockedDays &&
+            instructorBusySchedule &&
+            getSlotStatus
+          ) {
+            try {
+              const slotStatus = getSlotStatus({
+                dayOfWeek,
+                timeslotId,
+                startDate,
+                endDate,
+              });
+
+              // Nếu bị LOCKED, ngày này không hợp lệ
+              if (slotStatus && slotStatus.status === "LOCKED") {
+                hasValidSlot = false;
+              }
+            } catch (error) {
+              // Nếu có lỗi khi gọi getSlotStatus, mặc định hợp lệ (fallback)
+              console.warn(
+                "Error calling getSlotStatus in availableDays calculation:",
+                error
+              );
+              // Giữ nguyên hasValidSlot = true
+            }
           }
         } else if (instructorType === "parttime") {
           // Parttime: phải có trong instructortimeslot với status AVAILABLE
@@ -524,15 +507,21 @@ const ClassWizard = ({
           if (!hasAvailableSlot) return; // Parttime chưa đăng ký ca này → không rảnh
 
           // Nếu có AVAILABLE, tiếp tục check conflict (session, HOLIDAY)
-          const slotStatus = getSlotStatus({
-            dayOfWeek,
-            timeslotId,
-            startDate,
-            endDate,
-          });
+          try {
+            const slotStatus = getSlotStatus({
+              dayOfWeek,
+              timeslotId,
+              startDate,
+              endDate,
+            });
 
-          // Nếu không bị LOCKED, ngày này hợp lệ
-          if (slotStatus.status !== "LOCKED") {
+            // Nếu không bị LOCKED, ngày này hợp lệ
+            if (slotStatus.status !== "LOCKED") {
+              hasValidSlot = true;
+            }
+          } catch (error) {
+            // Nếu có lỗi khi gọi getSlotStatus, mặc định hợp lệ (fallback)
+            console.warn("Error calling getSlotStatus:", error);
             hasValidSlot = true;
           }
         } else {
@@ -560,6 +549,8 @@ const ClassWizard = ({
     instructorBusySchedule,
     instructorType,
     parttimeAvailableSlotKeySet,
+    alternativeStartDateSearch.showResults, // Thêm dependency để reset khi vào/ra chế độ tìm kiếm
+    // Không thêm getSlotStatus vào dependencies vì nó được định nghĩa sau useEffect này
   ]);
 
   const scheduleStartDate =
@@ -1108,87 +1099,6 @@ const ClassWizard = ({
       isDraftClass,
     });
   };
-
-  // Hàm fetch lock reasons chi tiết khi hover vào ô LOCKED - Không dùng cho logic mới (grid đã bị comment)
-  // const fetchLockReason = async (dayOfWeek, timeslotId) => {
-  //   if (!formData.InstructorID || !plannedStartDate) {
-  //     return;
-  //   }
-
-  //   const cacheKey = `${dayOfWeek}-${timeslotId}`;
-
-  //   // Nếu đã có trong cache, không fetch lại
-  //   if (lockReasonsCache[cacheKey]) {
-  //     return;
-  //   }
-
-  //   // Nếu đang load, không fetch lại
-  //   if (loadingLockReason === cacheKey) {
-  //     return;
-  //   }
-
-  //   setLoadingLockReason(cacheKey);
-
-  //   try {
-  //     const endDate = formData.scheduleDetail.EnddatePlan;
-  //     if (!endDate) {
-  //       // Ước tính endDate nếu chưa có
-  //       const estimatedWeeks = Math.max(
-  //         formData.schedule.Numofsession || 12,
-  //         12
-  //       );
-  //       const estimatedEndDate = dayjs(plannedStartDate)
-  //         .add(estimatedWeeks, "week")
-  //         .format("YYYY-MM-DD");
-
-  //       const reasons = await classService.getTimeslotLockReasons({
-  //         InstructorID: formData.InstructorID,
-  //         dayOfWeek,
-  //         timeslotId,
-  //         startDate: plannedStartDate,
-  //         endDate: estimatedEndDate,
-  //       });
-
-  //       setLockReasonsCache((prev) => ({
-  //         ...prev,
-  //         [cacheKey]: reasons,
-  //       }));
-  //     } else {
-  //       const reasons = await classService.getTimeslotLockReasons({
-  //         InstructorID: formData.InstructorID,
-  //         dayOfWeek,
-  //         timeslotId,
-  //         startDate: plannedStartDate,
-  //         endDate,
-  //       });
-
-  //       setLockReasonsCache((prev) => ({
-  //         ...prev,
-  //         [cacheKey]: reasons,
-  //       }));
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching lock reason:", error);
-  //     // Không set error vào cache để có thể retry
-  //   } finally {
-  //     setLoadingLockReason(null);
-  //   }
-  // }; // Không dùng cho logic mới
-
-  // const applySuggestedStartDate = (date) => {
-  //   if (!date) return;
-  //   setFormData((prev) => ({
-  //     ...prev,
-  //     scheduleDetail: {
-  //       ...prev.scheduleDetail,
-  //       OpendatePlan: date,
-  //     },
-  //     schedule: {
-  //       ...prev.schedule,
-  //       OpendatePlan: date,
-  //     },
-  //   }));
-  // }; // Không dùng
 
   // Filtered instructors based on search
   const filteredInstructors = useMemo(() => {
@@ -1783,6 +1693,15 @@ const ClassWizard = ({
           });
         }
 
+        // Sắp xếp validTimeslotsForDay theo StartTime để đảm bảo thứ tự đúng
+        validTimeslotsForDay.sort((a, b) => {
+          const startTimeA =
+            a.timeslot?.StartTime || a.timeslot?.startTime || "";
+          const startTimeB =
+            b.timeslot?.StartTime || b.timeslot?.startTime || "";
+          return startTimeA.localeCompare(startTimeB);
+        });
+
         // Tạo session cho mỗi ca học hợp lệ trong ngày này
         // Logic cũ: Hỗ trợ multiple timeslots cho mỗi ngày (không dùng cho DRAFT)
         // Logic mới: Với DRAFT chỉ có một timeslot duy nhất, nhưng logic này vẫn hỗ trợ multiple timeslots
@@ -1967,7 +1886,32 @@ const ClassWizard = ({
     }
 
     // Gộp tất cả sessions: Normal + Skipped + Extended
-    const allSessions = [...sessions, ...extendedSessions];
+    let allSessions = [...sessions, ...extendedSessions];
+
+    // Sắp xếp sessions theo thứ tự thời gian: Date trước, sau đó StartTime
+    allSessions.sort((a, b) => {
+      // So sánh Date trước
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      if (dateA !== dateB) {
+        return dateA - dateB;
+      }
+
+      // Nếu cùng ngày, so sánh StartTime
+      const startTimeA = a.timeslot?.StartTime || a.timeslot?.startTime || "";
+      const startTimeB = b.timeslot?.StartTime || b.timeslot?.startTime || "";
+      if (startTimeA && startTimeB) {
+        return startTimeA.localeCompare(startTimeB);
+      }
+
+      return 0;
+    });
+
+    // Đánh số lại sessions sau khi sắp xếp
+    allSessions = allSessions.map((session, index) => ({
+      ...session,
+      number: index + 1,
+    }));
 
     setPreviewSessions(allSessions);
 
@@ -2342,42 +2286,6 @@ const ClassWizard = ({
       a.start.localeCompare(b.start)
     );
   }, [formData.scheduleDetail.DaysOfWeek, timeslotsByDayOfWeek]);
-
-  // Logic cũ: Tính toán summary các timeslot đã chọn (không dùng cho logic mới)
-  // Logic mới: Chọn timeslot trước → không cần summary nữa
-  // Vẫn giữ lại vì được dùng trong grid (logic cũ) cho edit mode không phải DRAFT
-  // const selectedTimeslotSummary = useMemo(() => {
-  //   const summary = [];
-  //   (formData.scheduleDetail.DaysOfWeek || []).forEach((dayOfWeek) => {
-  //     const dayLabel =
-  //       daysOfWeekOptions.find((day) => day.value === dayOfWeek)?.label || "";
-  //     const dayTimeslots = timeslotsByDayOfWeek[dayOfWeek] || [];
-  //     const selectedIds =
-  //       formData.scheduleDetail.TimeslotsByDay?.[dayOfWeek] || [];
-
-  //     selectedIds.forEach((timeslotId) => {
-  //       const match = dayTimeslots.find(
-  //         (slot) =>
-  //           (slot.TimeslotID || slot.id || slot.timeslotId) === timeslotId
-  //       );
-  //       if (match) {
-  //         const start = match.StartTime || match.startTime || "";
-  //         const end = match.EndTime || match.endTime || "";
-  //         summary.push(`${dayLabel} (${formatTimeRange(start, end)})`);
-  //       }
-  //     });
-  //   });
-
-  //   return {
-  //     count: summary.length,
-  //     labels: summary,
-  //   };
-  // }, [
-  //   formData.scheduleDetail.DaysOfWeek,
-  //   formData.scheduleDetail.TimeslotsByDay,
-  //   timeslotsByDayOfWeek,
-  //   daysOfWeekOptions,
-  // ]); // Không dùng
 
   // Initialize scheduleDetail from schedule when entering step 3
   useEffect(() => {
@@ -3046,48 +2954,6 @@ const ClassWizard = ({
     }
   };
 
-  // const findBetterStartDate = async ({
-  //   instructorId,
-  //   daysOfWeek,
-  //   timeslotsByDay,
-  //   sessionsPerWeek,
-  //   numOfSessions,
-  //   requiredSlotsPerWeek,
-  //   currentStartDate,
-  // }) => {
-  //   // Logic mới: Tìm ngày gần nhất hợp lệ (tất cả ca đều AVAILABLE, không trùng)
-  //   const result = await findValidStartDate(
-  //     instructorId,
-  //     daysOfWeek,
-  //     timeslotsByDay,
-  //     sessionsPerWeek,
-  //     numOfSessions,
-  //     requiredSlotsPerWeek || sessionsPerWeek,
-  //     currentStartDate
-  //   );
-  //   return result;
-  // }; // Không dùng
-
-  // Hàm tìm ngày bắt đầu gần nhất có thể (có đủ số ca không bị block) - Giữ lại để tương thích
-  // const findEarliestAvailableStartDate = async (
-  //   instructorId,
-  //   daysOfWeek,
-  //   timeslotsByDay,
-  //   sessionsPerWeek,
-  //   numOfSessions
-  // ) => {
-  //   const suggestions = await findSuggestedStartDates(
-  //     instructorId,
-  //     daysOfWeek,
-  //     timeslotsByDay,
-  //     sessionsPerWeek,
-  //     numOfSessions,
-  //     sessionsPerWeek,
-  //     null
-  //   );
-  //   return suggestions.length > 0 ? suggestions[0].date : null;
-  // }; // Không dùng
-
   // Tính toán số ca học mong muốn mỗi tuần (requiredSlotsPerWeek)
   useEffect(() => {
     if (currentStep === 3 && formData.scheduleDetail.TimeslotsByDay) {
@@ -3392,39 +3258,6 @@ const ClassWizard = ({
     setErrors(result.errors || {});
     return result.isValid;
   };
-
-  // Hàm xử lý khi nhấn nút "Sửa" ở bước 2 (chỉ hiển thị khi edit mode) - Không dùng
-  // const handleEditSubmit = () => {
-  //   if (!validateStep(2)) {
-  //     return;
-  //   }
-
-  //   // Kiểm tra xem có lùi ngày không
-  //   const newStartDate = formData.schedule.OpendatePlan;
-  //   let sessionsToDelete = [];
-
-  //   if (originalStartDate && newStartDate) {
-  //     const originalDate = new Date(originalStartDate);
-  //     const newDate = new Date(newStartDate);
-  //     originalDate.setHours(0, 0, 0, 0);
-  //     newDate.setHours(0, 0, 0, 0);
-
-  //     // Nếu ngày mới sớm hơn ngày cũ (lùi ngày)
-  //     if (newDate < originalDate) {
-  //       sessionsToDelete = (formData.sessions || []).filter((s) => {
-  //         if (!s.Date) return false;
-  //         const sessionDate = new Date(s.Date);
-  //         sessionDate.setHours(0, 0, 0, 0);
-  //         return sessionDate < newDate;
-  //       });
-  //     }
-  //   }
-
-  //   setConfirmEditModal({
-  //     open: true,
-  //     sessionsToDelete: sessionsToDelete,
-  //   });
-  // }; // Không dùng
 
   const handleNext = () => {
     // Nếu đang ở bước 2 và đang xem (readonly), hiện modal chuyển hướng
@@ -3809,14 +3642,6 @@ const ClassWizard = ({
       delete newTimeslotsByDay[dayValue];
     }
 
-    // if (isSearchMode && isCurrentlySelected) {
-    //   setSearchModeSelections((prev) => {
-    //     const next = { ...prev };
-    //     delete next[dayValue];
-    //     return next;
-    //   });
-    // } // Không dùng cho logic mới
-
     setFormData({
       ...formData,
       scheduleDetail: {
@@ -3856,9 +3681,6 @@ const ClassWizard = ({
       ? normalizeTimeslotId(lockedTimeslotId)
       : null;
 
-    // const currentSelectionMap = isSearchMode
-    //   ? searchModeSelections
-    //   : formData.scheduleDetail.TimeslotsByDay || {}; // Không dùng cho logic mới
     const currentSelectionMap = formData.scheduleDetail.TimeslotsByDay || {};
 
     const currentDayTimeslots = currentSelectionMap?.[dayOfWeek] || [];
@@ -3896,21 +3718,6 @@ const ClassWizard = ({
       ? currentDayTimeslots.filter((id) => id !== timeslotId)
       : [...currentDayTimeslots, timeslotId];
 
-    // if (isSearchMode) {
-    //   setSearchModeSelections((prev) => {
-    //     const next = { ...prev };
-    //     if (newDayTimeslots.length > 0) {
-    //       next[dayOfWeek] = newDayTimeslots;
-    //     } else {
-    //       delete next[dayOfWeek];
-    //     }
-    //     return next;
-    //   });
-    //   setSearchModeStatus((prev) =>
-    //     prev.loading ? prev : { ...SEARCH_MODE_INITIAL_STATUS }
-    //   );
-    // } else {
-    // Không dùng cho logic mới - bỏ search mode
     setFormData((prev) => {
       const updatedTimeslots =
         { ...(prev.scheduleDetail.TimeslotsByDay || {}) } || {};
@@ -4117,9 +3924,7 @@ const ClassWizard = ({
       scheduleDetail: {
         ...prev.scheduleDetail,
         OpendatePlan: newStartDate,
-        // Giữ nguyên DaysOfWeek và TimeslotsByDay để user có thể chọn lại
-        // DaysOfWeek: prev.scheduleDetail.DaysOfWeek,
-        // TimeslotsByDay: prev.scheduleDetail.TimeslotsByDay,
+        // Giữ nguyên DaysOfWeek và TimeslotsByDay khi áp dụng gợi ý
       },
     }));
 
@@ -4127,199 +3932,17 @@ const ClassWizard = ({
     setPreviewSessions([]);
     setShouldShowPreview(false);
 
-    // Đóng kết quả tìm kiếm
+    // Đóng kết quả tìm kiếm và đánh dấu đã áp dụng
     setAlternativeStartDateSearch({
       loading: false,
       suggestions: [],
       error: null,
       showResults: false,
+      applied: true, // Đánh dấu đã áp dụng gợi ý
     });
 
-    // Không reset DaysOfWeek và TimeslotsByDay - để user có thể chọn lại nếu cần
-    // User có thể giữ nguyên hoặc chọn lại ca học và ngày học trong tuần
+    // Giữ nguyên DaysOfWeek và TimeslotsByDay khi đã áp dụng gợi ý
   };
-
-  // Không dùng cho logic mới - Search mode không cần thiết
-  // const handleEnterSearchMode = () => {
-  //   const clonedSelection = cloneTimeslotSelection(
-  //     formData.scheduleDetail.TimeslotsByDay || {},
-  //     formData.scheduleDetail.DaysOfWeek
-  //   );
-  //   setSearchModeSelections(clonedSelection);
-  //   setSearchModeStatus({ ...SEARCH_MODE_INITIAL_STATUS });
-  //   setIsSearchMode(true);
-  // };
-
-  // const handleExitSearchMode = () => {
-  //   setIsSearchMode(false);
-  //   setSearchModeSelections({});
-  //   setSearchModeStatus({ ...SEARCH_MODE_INITIAL_STATUS });
-  // };
-
-  // const handleSearchModeSubmit = async () => {
-  //   if (!formData.InstructorID) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: "Vui lòng chọn giảng viên trước khi tìm ngày.",
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   if (
-  //     !formData.schedule?.Numofsession ||
-  //     Number(formData.schedule.Numofsession) <= 0
-  //   ) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: "Vui lòng nhập tổng số buổi học trước khi tìm kiếm.",
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   if (!formData.scheduleDetail.DaysOfWeek?.length) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: "Vui lòng chọn ngày học trong tuần trước khi tìm kiếm.",
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   if (isEditMode && impactedSessionsErrorMessage) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: impactedSessionsErrorMessage,
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   if (instructorType === "parttime" && parttimeAvailabilityError) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: parttimeAvailabilityError,
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   const normalizedSelection = cloneTimeslotSelection(
-  //     Object.keys(searchModeSelections).length > 0
-  //       ? searchModeSelections
-  //       : formData.scheduleDetail.TimeslotsByDay,
-  //     formData.scheduleDetail.DaysOfWeek
-  //   );
-
-  //   const desiredSlotsPerWeek = countSelectionSlots(normalizedSelection);
-
-  //   if (desiredSlotsPerWeek === 0) {
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error: "Vui lòng chọn ít nhất 1 ca mong muốn để tìm ngày phù hợp.",
-  //       date: null,
-  //       message: "",
-  //     });
-  //     return;
-  //   }
-
-  //   setSearchModeStatus({
-  //     loading: true,
-  //     success: false,
-  //     error: "",
-  //     date: null,
-  //     message: "",
-  //   });
-
-  //   try {
-  //     // Sử dụng API chuyên dụng để tối ưu performance
-  //     const result = await classService.searchTimeslots({
-  //       InstructorID: formData.InstructorID,
-  //       DaysOfWeek: formData.scheduleDetail.DaysOfWeek,
-  //       TimeslotsByDay: normalizedSelection,
-  //       Numofsession: formData.schedule.Numofsession,
-  //       sessionsPerWeek: desiredSlotsPerWeek,
-  //       requiredSlotsPerWeek: desiredSlotsPerWeek,
-  //       currentStartDate:
-  //         formData.scheduleDetail.OpendatePlan ||
-  //         formData.schedule.OpendatePlan,
-  //     });
-
-  //     const suggestions = result?.suggestions || result || [];
-  //     const suggestion = suggestions.length > 0 ? suggestions[0] : null;
-
-  //     if (suggestion) {
-  //       setSearchModeStatus({
-  //         loading: false,
-  //         success: true,
-  //         error: "",
-  //         date: suggestion.date,
-  //         message:
-  //           suggestion.reason || `Đủ ${suggestion.availableSlots} ca/tuần`,
-  //       });
-  //     } else {
-  //       setSearchModeStatus({
-  //         loading: false,
-  //         success: false,
-  //         error:
-  //           "Không tìm thấy ngày nào đáp ứng các ca mong muốn trong thời gian kiểm tra.",
-  //         date: null,
-  //         message: "",
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.error("handleSearchModeSubmit error:", error);
-  //     setSearchModeStatus({
-  //       loading: false,
-  //       success: false,
-  //       error:
-  //         error?.message || "Không thể tìm ngày phù hợp. Vui lòng thử lại sau.",
-  //       date: null,
-  //       message: "",
-  //     });
-  //   }
-  // }; // Không dùng cho logic mới
-
-  // const handleApplySearchModeSuggestion = () => {
-  //   if (!searchModeStatus.date) {
-  //     return;
-  //   }
-
-  //   const normalizedSelection = cloneTimeslotSelection(
-  //     Object.keys(searchModeSelections).length > 0
-  //       ? searchModeSelections
-  //       : formData.scheduleDetail.TimeslotsByDay,
-  //     formData.scheduleDetail.DaysOfWeek
-  //   );
-
-  //   applySuggestedStartDate(searchModeStatus.date);
-
-  //   if (Object.keys(normalizedSelection).length > 0) {
-  //     setFormData((prev) => ({
-  //       ...prev,
-  //       scheduleDetail: {
-  //         ...prev.scheduleDetail,
-  //         TimeslotsByDay: normalizedSelection,
-  //       },
-  //     }));
-  //   }
-
-  //   setSearchModeSelections({});
-  //   setSearchModeStatus({ ...SEARCH_MODE_INITIAL_STATUS });
-  //   setIsSearchMode(false);
-  // }; // Không dùng cho logic mới
 
   return (
     <div
@@ -4378,3171 +4001,123 @@ const ClassWizard = ({
         <div className="wizard-content">
           {/* Step 1: Basic Info */}
           {currentStep === 1 && (
-            <div className="wizard-step-content">
-              <div className="form-group">
-                <label htmlFor="Name">
-                  Tên lớp học <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="Name"
-                  value={formData.Name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Name: e.target.value })
-                  }
-                  placeholder="Nhập tên lớp học"
-                  className={errors.Name ? "error" : ""}
-                  disabled={readonly}
-                  readOnly={readonly}
-                />
-                {errors.Name && (
-                  <span className="error-message">{errors.Name}</span>
-                )}
-              </div>
-
-              {/* Search Dropdown cho Giảng viên */}
-              <div className="form-group">
-                <label htmlFor="InstructorID">
-                  Giảng viên <span className="required">*</span>
-                </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type="text"
-                    id="InstructorID"
-                    value={
-                      instructorSearchTerm ||
-                      (selectedInstructor
-                        ? `${
-                            selectedInstructor.FullName ||
-                            selectedInstructor.fullName
-                          } - ${
-                            selectedInstructor.Major || selectedInstructor.major
-                          }`
-                        : "")
-                    }
-                    onChange={(e) => {
-                      if (readonly) return;
-                      setInstructorSearchTerm(e.target.value);
-                      setInstructorDropdownOpen(true);
-                      if (!e.target.value) {
-                        setFormData({ ...formData, InstructorID: null });
-                        setSelectedInstructor(null);
-                        setInstructorType(null);
-                        setParttimeAvailableSlotKeys([]);
-                        setParttimeAvailableEntriesCount(null);
-                        setParttimeAvailabilityError("");
-                      }
-                    }}
-                    onFocus={() => {
-                      if (!readonly) setInstructorDropdownOpen(true);
-                    }}
-                    onBlur={() => {
-                      // Delay để cho phép click vào dropdown item
-                      setTimeout(() => setInstructorDropdownOpen(false), 200);
-                    }}
-                    placeholder="Tìm kiếm giảng viên..."
-                    className={errors.InstructorID ? "error" : ""}
-                    disabled={readonly}
-                    readOnly={readonly}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                    }}
-                  />
-                  {instructorDropdownOpen && filteredInstructors.length > 0 && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: "100%",
-                        left: 0,
-                        right: 0,
-                        zIndex: 1000,
-                        backgroundColor: "#fff",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: "6px",
-                        marginTop: "4px",
-                        maxHeight: "200px",
-                        overflowY: "auto",
-                        boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                      }}
-                    >
-                      {filteredInstructors.map((instructor) => (
-                        <div
-                          key={instructor.InstructorID || instructor.id}
-                          onClick={() => {
-                            // Đảm bảo lấy đúng InstructorID, không phải AccID
-                            // Backend trả về InstructorID từ bảng instructor
-                            // AccID là foreign key đến bảng account, KHÔNG phải InstructorID
-                            const value = instructor.InstructorID;
-
-                            // Nếu không có InstructorID, thử id nhưng phải đảm bảo không phải AccID
-                            const fallbackValue = instructor.id;
-
-                            // Kiểm tra xem id có phải là AccID không (nếu có AccID và id === AccID thì bỏ qua)
-                            const finalValue =
-                              value ||
-                              (fallbackValue &&
-                              fallbackValue !== instructor.AccID
-                                ? fallbackValue
-                                : null);
-
-                            console.log("[ClassWizard] Selected instructor:", {
-                              instructor,
-                              InstructorID: instructor.InstructorID,
-                              id: instructor.id,
-                              AccID: instructor.AccID,
-                              selectedValue: finalValue,
-                              isAccID: fallbackValue === instructor.AccID,
-                            });
-
-                            if (!finalValue) {
-                              console.error(
-                                "[ClassWizard] Cannot find InstructorID in instructor object:",
-                                instructor
-                              );
-                              alert(
-                                "Lỗi: Không tìm thấy InstructorID. Vui lòng thử lại."
-                              );
-                              return;
-                            }
-
-                            // Kiểm tra thêm: nếu finalValue === AccID thì báo lỗi
-                            if (
-                              instructor.AccID &&
-                              finalValue === instructor.AccID
-                            ) {
-                              console.error(
-                                "[ClassWizard] ERROR: Selected AccID instead of InstructorID!",
-                                {
-                                  AccID: instructor.AccID,
-                                  InstructorID: instructor.InstructorID,
-                                  selectedValue: finalValue,
-                                }
-                              );
-                              alert(
-                                "Lỗi: Đã chọn nhầm AccID thay vì InstructorID. Vui lòng thử lại."
-                              );
-                              return;
-                            }
-
-                            setFormData({
-                              ...formData,
-                              InstructorID: finalValue,
-                              // Reset ca học và ngày học khi chọn lại giảng viên
-                              scheduleDetail: {
-                                ...formData.scheduleDetail,
-                                DaysOfWeek: [],
-                                TimeslotsByDay: {},
-                              },
-                            });
-                            setSelectedInstructor(instructor);
-                            setInstructorType(
-                              instructor.Type || instructor.type || null
-                            );
-                            setParttimeAvailableSlotKeys([]);
-                            setParttimeAvailableEntriesCount(null);
-                            setParttimeAvailabilityError("");
-                            setInstructorSearchTerm("");
-                            setInstructorDropdownOpen(false);
-                            setBlockedDays({});
-                            // Reset selectedTimeslotIds khi chọn lại giảng viên
-                            setSelectedTimeslotIds(new Set());
-                            // Reset chế độ tìm kiếm
-                            setAlternativeStartDateSearch({
-                              loading: false,
-                              suggestions: [],
-                              error: null,
-                              showResults: false,
-                            });
-                            // Bỏ hiển thị instructorAvailability
-                          }}
-                          style={{
-                            padding: "10px 12px",
-                            cursor: "pointer",
-                            borderBottom: "1px solid #f1f5f9",
-                            fontSize: "14px",
-                          }}
-                          onMouseEnter={(e) => {
-                            e.target.style.backgroundColor = "#f8fafc";
-                          }}
-                          onMouseLeave={(e) => {
-                            e.target.style.backgroundColor = "#fff";
-                          }}
-                        >
-                          {instructor.FullName || instructor.fullName} -{" "}
-                          {instructor.Major || instructor.major}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-                {errors.InstructorID && (
-                  <span className="error-message">{errors.InstructorID}</span>
-                )}
-              </div>
-
-              {/* Search Dropdown cho Khóa/Môn */}
-              <div className="form-group">
-                <label htmlFor="CourseID">
-                  Khóa/Môn <span className="required">*</span>
-                </label>
-                <div style={{ position: "relative" }}>
-                  <input
-                    type="text"
-                    id="CourseID"
-                    value={
-                      courseSearchTerm ||
-                      (selectedCourse
-                        ? selectedCourse.Title || selectedCourse.title || ""
-                        : "")
-                    }
-                    onChange={(e) => {
-                      if (readonly) return;
-                      setCourseSearchTerm(e.target.value);
-                      setCourseDropdownOpen(true);
-                      if (!e.target.value) {
-                        setFormData({ ...formData, CourseID: null });
-                        setSelectedCourse(null);
-                      }
-                    }}
-                    onFocus={() => {
-                      if (!readonly && formData.InstructorID) {
-                        setCourseDropdownOpen(true);
-                      }
-                    }}
-                    onBlur={() => {
-                      setTimeout(() => setCourseDropdownOpen(false), 200);
-                    }}
-                    placeholder={
-                      formData.InstructorID
-                        ? "Tìm kiếm khóa học..."
-                        : "Vui lòng chọn giảng viên trước"
-                    }
-                    disabled={readonly || !formData.InstructorID}
-                    readOnly={readonly}
-                    className={errors.CourseID ? "error" : ""}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                      backgroundColor: formData.InstructorID
-                        ? "#fff"
-                        : "#f8fafc",
-                      cursor: formData.InstructorID ? "text" : "not-allowed",
-                    }}
-                  />
-                  {courseDropdownOpen &&
-                    formData.InstructorID &&
-                    (filteredCourses.length > 0 || loadingInstructorData) && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          top: "100%",
-                          left: 0,
-                          right: 0,
-                          zIndex: 1000,
-                          backgroundColor: "#fff",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "6px",
-                          marginTop: "4px",
-                          maxHeight: "200px",
-                          overflowY: "auto",
-                          boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
-                        }}
-                      >
-                        {loadingInstructorData ? (
-                          <div
-                            style={{
-                              padding: "12px",
-                              textAlign: "center",
-                              color: "#64748b",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Đang tải khóa học...
-                          </div>
-                        ) : filteredCourses.length === 0 ? (
-                          <div
-                            style={{
-                              padding: "12px",
-                              textAlign: "center",
-                              color: "#64748b",
-                              fontSize: "14px",
-                            }}
-                          >
-                            Không có khóa học nào (PUBLISHED) cho giảng viên này
-                          </div>
-                        ) : (
-                          filteredCourses.map((course) => (
-                            <div
-                              key={course.CourseID || course.id}
-                              onClick={() => {
-                                const value = course.CourseID || course.id;
-                                setFormData({ ...formData, CourseID: value });
-                                setSelectedCourse(course);
-                                setCourseSearchTerm("");
-                                setCourseDropdownOpen(false);
-                              }}
-                              style={{
-                                padding: "10px 12px",
-                                cursor: "pointer",
-                                borderBottom: "1px solid #f1f5f9",
-                                fontSize: "14px",
-                              }}
-                              onMouseEnter={(e) => {
-                                e.target.style.backgroundColor = "#f8fafc";
-                              }}
-                              onMouseLeave={(e) => {
-                                e.target.style.backgroundColor = "#fff";
-                              }}
-                            >
-                              {course.Title ||
-                                course.title ||
-                                course.CourseTitle}
-                              {(course.Description ||
-                                course.CourseDescription) && (
-                                <div
-                                  style={{
-                                    fontSize: "12px",
-                                    color: "#64748b",
-                                    marginTop: "2px",
-                                  }}
-                                >
-                                  {course.Description ||
-                                    course.CourseDescription}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    )}
-                </div>
-                {errors.CourseID && (
-                  <span className="error-message">{errors.CourseID}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="Fee">
-                  Học phí (VND)
-                  <span className="optional">(Tùy chọn)</span>
-                </label>
-                <input
-                  type="number"
-                  id="Fee"
-                  value={formData.Fee}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Fee: e.target.value })
-                  }
-                  placeholder="Nhập học phí (để trống nếu miễn phí)"
-                  min="0"
-                  className={errors.Fee ? "error" : ""}
-                  disabled={readonly}
-                  readOnly={readonly}
-                />
-                {errors.Fee && (
-                  <span className="error-message">{errors.Fee}</span>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="Maxstudent">
-                  Sĩ số tối đa <span className="required">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="Maxstudent"
-                  value={formData.Maxstudent}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Maxstudent: e.target.value })
-                  }
-                  placeholder="Nhập sĩ số tối đa"
-                  min="1"
-                  className={errors.Maxstudent ? "error" : ""}
-                  disabled={readonly}
-                  readOnly={readonly}
-                />
-                {errors.Maxstudent && (
-                  <span className="error-message">{errors.Maxstudent}</span>
-                )}
-              </div>
-
-              <div
-                className="form-row"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "16px",
-                }}
-              >
-                <div className="form-group">
-                  <label htmlFor="ZoomID">
-                    Zoom ID <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="ZoomID"
-                    value={formData.ZoomID}
-                    onChange={(e) =>
-                      setFormData({ ...formData, ZoomID: e.target.value })
-                    }
-                    placeholder="12345678901"
-                    maxLength="11"
-                    className={errors.ZoomID ? "error" : ""}
-                    disabled={readonly}
-                    readOnly={readonly}
-                  />
-                  {errors.ZoomID && (
-                    <span className="error-message">{errors.ZoomID}</span>
-                  )}
-                  <small
-                    style={{
-                      color: "#64748b",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    ID phòng Zoom (tối đa 11 ký tự)
-                  </small>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="Zoompass">
-                    Mật khẩu Zoom <span className="required">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="Zoompass"
-                    value={formData.Zoompass}
-                    onChange={(e) =>
-                      setFormData({ ...formData, Zoompass: e.target.value })
-                    }
-                    placeholder="123456"
-                    maxLength="6"
-                    className={errors.Zoompass ? "error" : ""}
-                    disabled={readonly}
-                    readOnly={readonly}
-                  />
-                  {errors.Zoompass && (
-                    <span className="error-message">{errors.Zoompass}</span>
-                  )}
-                  <small
-                    style={{
-                      color: "#64748b",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    Mật khẩu phòng Zoom (tối đa 6 ký tự)
-                  </small>
-                </div>
-              </div>
-            </div>
+            <ClassWizardStep1
+              formData={formData}
+              setFormData={setFormData}
+              errors={errors}
+              readonly={readonly}
+              instructors={instructors}
+              filteredInstructors={filteredInstructors}
+              instructorSearchTerm={instructorSearchTerm}
+              setInstructorSearchTerm={setInstructorSearchTerm}
+              instructorDropdownOpen={instructorDropdownOpen}
+              setInstructorDropdownOpen={setInstructorDropdownOpen}
+              selectedInstructor={selectedInstructor}
+              setSelectedInstructor={setSelectedInstructor}
+              setInstructorType={setInstructorType}
+              setParttimeAvailableSlotKeys={setParttimeAvailableSlotKeys}
+              setParttimeAvailableEntriesCount={
+                setParttimeAvailableEntriesCount
+              }
+              setParttimeAvailabilityError={setParttimeAvailabilityError}
+              setBlockedDays={setBlockedDays}
+              setSelectedTimeslotIds={setSelectedTimeslotIds}
+              setAlternativeStartDateSearch={setAlternativeStartDateSearch}
+              availableCourses={availableCourses}
+              filteredCourses={filteredCourses}
+              courseSearchTerm={courseSearchTerm}
+              setCourseSearchTerm={setCourseSearchTerm}
+              courseDropdownOpen={courseDropdownOpen}
+              setCourseDropdownOpen={setCourseDropdownOpen}
+              selectedCourse={selectedCourse}
+              setSelectedCourse={setSelectedCourse}
+              loadingInstructorData={loadingInstructorData}
+            />
           )}
 
           {/* Step 2: Schedule (theo DB schema) */}
           {currentStep === 2 && (
-            <div className="wizard-step-content">
-              <div className="schedule-section">
-                <div className="form-group">
-                  <label htmlFor="OpendatePlan">
-                    Ngày dự kiến bắt đầu <span className="required">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    id="OpendatePlan"
-                    value={
-                      formData.schedule.OpendatePlan
-                        ? formData.schedule.OpendatePlan
-                        : ""
-                    }
-                    min={dayjs().add(1, "day").format("YYYY-MM-DD")} // Mặc định: Ngày mai
-                    onChange={(e) => {
-                      const dateValue = e.target.value;
-                      setFormData((prev) => ({
-                        ...prev,
-                        schedule: {
-                          ...prev.schedule,
-                          OpendatePlan: dateValue,
-                        },
-                        scheduleDetail: {
-                          ...prev.scheduleDetail,
-                          OpendatePlan: dateValue,
-                        },
-                      }));
-                    }}
-                    className={errors.OpendatePlan ? "error" : ""}
-                    disabled={readonly}
-                    readOnly={readonly}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                    }}
-                  />
-                  {errors.OpendatePlan && (
-                    <span className="error-message">{errors.OpendatePlan}</span>
-                  )}
-                  <small
-                    style={{
-                      color: "#64748b",
-                      fontSize: "12px",
-                      marginTop: "4px",
-                      display: "block",
-                    }}
-                  >
-                    Mặc định: Ngày mai
-                  </small>
-                  {instructorType === "parttime" &&
-                    parttimeAvailabilityError && (
-                      <div
-                        style={{
-                          marginTop: "12px",
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#fef2f2",
-                          border: "1px solid #fca5a5",
-                          color: "#991b1b",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {parttimeAvailabilityError}
-                      </div>
-                    )}
-                  {isEditMode &&
-                    !readonly &&
-                    impactedSessionMessages.length > 0 && (
-                      <div
-                        style={{
-                          marginTop: "12px",
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#fff7ed",
-                          border: "1px solid #fdba74",
-                          color: "#9a3412",
-                          fontSize: "13px",
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                          Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải
-                          chọn lại:
-                        </div>
-                        <ul style={{ paddingLeft: 18, margin: 0 }}>
-                          {impactedSessionMessages.map((msg, idx) => (
-                            <li key={`impact-step2-${idx}`}>{msg}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="Numofsession">
-                    Tổng số buổi học <span className="required">*</span>
-                  </label>
-                  <input
-                    type="number"
-                    id="Numofsession"
-                    value={formData.schedule.Numofsession}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        schedule: {
-                          ...formData.schedule,
-                          Numofsession: e.target.value,
-                        },
-                      })
-                    }
-                    placeholder="Nhập số buổi học dự kiến"
-                    min="1"
-                    className={errors.Numofsession ? "error" : ""}
-                    disabled={readonly}
-                    readOnly={readonly}
-                  />
-                  {errors.Numofsession && (
-                    <span className="error-message">{errors.Numofsession}</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            <ClassWizardStep2
+              formData={formData}
+              setFormData={setFormData}
+              errors={errors}
+              readonly={readonly}
+              instructorType={instructorType}
+              parttimeAvailabilityError={parttimeAvailabilityError}
+              isEditMode={isEditMode}
+              impactedSessionMessages={impactedSessionMessages}
+            />
           )}
 
           {/* Step 3: Schedule Detail - Layout 2 cột */}
           {/* Disable bước 3 khi readonly */}
           {currentStep === 3 && !readonly && (
-            <div className="wizard-step-content">
-              <div className="schedule-section">
-                {/* Ngày bắt đầu */}
-                <div className="form-group" style={{ marginBottom: "20px" }}>
-                  <label htmlFor="scheduleDetailOpendatePlan">
-                    Ngày dự kiến bắt đầu <span className="required">*</span>
-                  </label>
-                  <input
-                    type="date"
-                    id="scheduleDetailOpendatePlan"
-                    value={
-                      formData.scheduleDetail.OpendatePlan ||
-                      formData.schedule.OpendatePlan ||
-                      ""
-                    }
-                    min={dayjs().add(1, "day").format("YYYY-MM-DD")}
-                    onChange={(e) => {
-                      const dateValue = e.target.value;
-                      setFormData((prev) => ({
-                        ...prev,
-                        scheduleDetail: {
-                          ...prev.scheduleDetail,
-                          OpendatePlan: dateValue,
-                        },
-                        schedule: {
-                          ...prev.schedule,
-                          OpendatePlan: dateValue,
-                        },
-                      }));
-                    }}
-                    className={errors.scheduleDetailOpendatePlan ? "error" : ""}
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                    }}
-                  />
-                  {errors.scheduleDetailOpendatePlan && (
-                    <span className="error-message">
-                      {errors.scheduleDetailOpendatePlan}
-                    </span>
-                  )}
-                  {instructorType === "parttime" &&
-                    parttimeAvailabilityError && (
-                      <div
-                        style={{
-                          marginTop: "12px",
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#fef2f2",
-                          border: "1px solid #fca5a5",
-                          color: "#991b1b",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {parttimeAvailabilityError}
-                      </div>
-                    )}
-                  {/* Thông tin các buổi "mất" và "bù thêm" theo diff giữa lịch cũ và preview */}
-
-                  {isEditMode &&
-                    !readonly &&
-                    impactedSessionMessages.length > 0 && (
-                      <div
-                        style={{
-                          marginTop: "12px",
-                          padding: "12px",
-                          borderRadius: "8px",
-                          backgroundColor: "#fff7ed",
-                          border: "1px solid #fdba74",
-                          color: "#9a3412",
-                          fontSize: "13px",
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                          Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải
-                          chọn lại:
-                        </div>
-                        <ul style={{ paddingLeft: 18, margin: 0 }}>
-                          {impactedSessionMessages.map((msg, idx) => (
-                            <li key={`impact-step3-${idx}`}>{msg}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                </div>
-
-                {/* Tính năng tìm ngày bắt đầu khác - Đặt phía trên trường chọn ca học */}
-                {currentStep === 3 &&
-                  hasScheduleCoreInfo &&
-                  formData.InstructorID &&
-                  formData.schedule?.Numofsession &&
-                  Number(formData.schedule.Numofsession) > 0 && (
-                    <div
-                      style={{
-                        margin: "0 0 20px 0",
-                        padding: "16px",
-                        borderRadius: "8px",
-                        backgroundColor: alternativeStartDateSearch.showResults
-                          ? "#eef2ff"
-                          : "#eff6ff",
-                        border: "1px solid #c7d2fe",
-                        fontSize: "13px",
-                      }}
-                    >
-                      {!alternativeStartDateSearch.showResults ? (
-                        <>
-                          <div
-                            style={{
-                              marginBottom: "8px",
-                              fontWeight: 600,
-                              color: "#1d4ed8",
-                            }}
-                          >
-                            Tìm ngày bắt đầu khác
-                          </div>
-                          <div
-                            style={{ marginBottom: "12px", color: "#3b82f6" }}
-                          >
-                            Chọn ngày học và ca học, sau đó tìm ngày bắt đầu phù
-                            hợp với các ca đã chọn.
-                          </div>
-                          <button
-                            type="button"
-                            onClick={handleSearchAlternativeStartDate}
-                            style={{
-                              padding: "10px 16px",
-                              borderRadius: "6px",
-                              border: "none",
-                              backgroundColor: "#2563eb",
-                              color: "#fff",
-                              fontWeight: 600,
-                              cursor: "pointer",
-                            }}
-                          >
-                            🔍 Tìm ngày bắt đầu khác theo Ca mong muốn
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <div style={{ fontWeight: 600, color: "#312e81" }}>
-                            Đang ở chế độ tìm kiếm theo ca mong muốn
-                          </div>
-                          <p style={{ margin: "8px 0", color: "#4338ca" }}>
-                            Bạn có thể chọn các ca học mong muốn để làm tiêu chí
-                            tìm ngày mới. Sau khi áp dụng ngày phù hợp.
-                          </p>
-                          <p style={{ margin: "4px 0", color: "#312e81" }}>
-                            Đã chọn{" "}
-                            <strong>
-                              {(() => {
-                                // Tính số ca/tuần từ TimeslotsByDay hiện tại
-                                const totalSlotsFromTimeslotsByDay =
-                                  Object.values(
-                                    formData.scheduleDetail.TimeslotsByDay || {}
-                                  ).reduce(
-                                    (sum, arr) => sum + (arr?.length || 0),
-                                    0
-                                  );
-
-                                // Nếu có trong TimeslotsByDay, dùng số đó
-                                if (totalSlotsFromTimeslotsByDay > 0) {
-                                  return totalSlotsFromTimeslotsByDay;
-                                }
-
-                                // Nếu không có trong TimeslotsByDay, tính từ selectedTimeslotIds và DaysOfWeek
-                                const daysCount =
-                                  formData.scheduleDetail.DaysOfWeek?.length ||
-                                  0;
-                                const slotsCount = selectedTimeslotIds.size;
-
-                                if (daysCount > 0 && slotsCount > 0) {
-                                  return daysCount * slotsCount;
-                                }
-
-                                // Nếu chỉ có selectedTimeslotIds mà chưa chọn ngày
-                                if (slotsCount > 0) {
-                                  return slotsCount;
-                                }
-
-                                return 0;
-                              })()}{" "}
-                              ca/tuần
-                            </strong>{" "}
-                            để tìm kiếm.
-                          </p>
-                          <div
-                            style={{
-                              display: "flex",
-                              gap: "8px",
-                              flexWrap: "wrap",
-                              marginTop: "8px",
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={handleSearchAlternativeStartDate}
-                              disabled={alternativeStartDateSearch.loading}
-                              style={{
-                                padding: "8px 16px",
-                                borderRadius: "6px",
-                                border: "none",
-                                backgroundColor: "#4c1d95",
-                                color: "#fff",
-                                fontWeight: 600,
-                                cursor: alternativeStartDateSearch.loading
-                                  ? "not-allowed"
-                                  : "pointer",
-                                opacity: alternativeStartDateSearch.loading
-                                  ? 0.7
-                                  : 1,
-                              }}
-                            >
-                              {alternativeStartDateSearch.loading
-                                ? "Đang tìm kiếm..."
-                                : "Tìm ngày phù hợp"}
-                            </button>
-                            {!alternativeStartDateSearch.loading &&
-                              alternativeStartDateSearch.suggestions.length >
-                                0 &&
-                              alternativeStartDateSearch.suggestions[0] && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleApplyAlternativeStartDate(
-                                      alternativeStartDateSearch.suggestions[0]
-                                        .date
-                                    )
-                                  }
-                                  style={{
-                                    padding: "8px 16px",
-                                    borderRadius: "6px",
-                                    border: "none",
-                                    backgroundColor: "#16a34a",
-                                    color: "#fff",
-                                    fontWeight: 600,
-                                    cursor: "pointer",
-                                  }}
-                                >
-                                  Áp dụng ngày{" "}
-                                  {formatDateForDisplay(
-                                    alternativeStartDateSearch.suggestions[0]
-                                      .date
-                                  )}
-                                </button>
-                              )}
-                            <button
-                              type="button"
-                              onClick={() => {
-                                // Reset chế độ tìm kiếm
-                                setAlternativeStartDateSearch({
-                                  loading: false,
-                                  suggestions: [],
-                                  error: null,
-                                  showResults: false,
-                                });
-                                // Bỏ chọn tất cả ca học và ngày học
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  scheduleDetail: {
-                                    ...prev.scheduleDetail,
-                                    DaysOfWeek: [],
-                                    TimeslotsByDay: {},
-                                  },
-                                }));
-                                // Reset selectedTimeslotIds
-                                setSelectedTimeslotIds(new Set());
-                              }}
-                              disabled={alternativeStartDateSearch.loading}
-                              style={{
-                                padding: "8px 16px",
-                                borderRadius: "6px",
-                                border: "1px solid #cbd5f5",
-                                backgroundColor: "#fff",
-                                color: "#1e1b4b",
-                                fontWeight: 500,
-                                cursor: alternativeStartDateSearch.loading
-                                  ? "not-allowed"
-                                  : "pointer",
-                              }}
-                            >
-                              Thoát chế độ tìm kiếm
-                            </button>
-                          </div>
-                          {alternativeStartDateSearch.error && (
-                            <div
-                              style={{
-                                marginTop: "10px",
-                                padding: "8px",
-                                borderRadius: "6px",
-                                backgroundColor: "#fee2e2",
-                                color: "#b91c1c",
-                              }}
-                            >
-                              {alternativeStartDateSearch.error}
-                            </div>
-                          )}
-                          {!alternativeStartDateSearch.loading &&
-                            alternativeStartDateSearch.suggestions.length >
-                              0 && (
-                              <div
-                                style={{
-                                  marginTop: "10px",
-                                  padding: "8px",
-                                  borderRadius: "6px",
-                                  backgroundColor: "#dcfce7",
-                                  color: "#166534",
-                                }}
-                              >
-                                Tìm thấy ngày bắt đầu mới:{" "}
-                                <strong>
-                                  {formatDateForDisplay(
-                                    alternativeStartDateSearch.suggestions[0]
-                                      .date
-                                  )}
-                                </strong>
-                                {alternativeStartDateSearch.suggestions[0]
-                                  .reason
-                                  ? ` – ${alternativeStartDateSearch.suggestions[0].reason}`
-                                  : ""}
-                              </div>
-                            )}
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                {/* Logic mới: Cho phép chọn 1 hoặc nhiều ca học */}
-                {/* 4 lựa chọn fix cứng: 8-10h, 10-12h, 14-16h, 18-20h */}
-                <div className="form-group" style={{ marginBottom: "20px" }}>
-                  <label>
-                    Chọn ca học <span className="required">*</span>
-                  </label>
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: "repeat(6, 1fr)",
-                      gap: "12px",
-                      marginBottom: "12px",
-                    }}
-                  >
-                    {[
-                      {
-                        start: "08:00:00",
-                        end: "10:00:00",
-                        label: "8:00 - 10:00",
-                      },
-                      {
-                        start: "10:20:00",
-                        end: "12:20:00",
-                        label: "10:20 - 12:20",
-                      },
-                      {
-                        start: "13:00:00",
-                        end: "15:00:00",
-                        label: "13:00 - 15:00",
-                      },
-                      {
-                        start: "15:20:00",
-                        end: "17:20:00",
-                        label: "15:20 - 17:20",
-                      },
-                      {
-                        start: "17:40:00",
-                        end: "19:40:00",
-                        label:"17:40 - 19:40",                      
-                      },    
-{
-                        start: "20:00:00",
-                        end: "22:00:00",
-                        label:"20:00 - 22:00",                      
-                      },
-                    ].map((timeSlot) => {
-                      // Tìm timeslot trong DB có StartTime-EndTime tương ứng
-                      const matchingTimeslot = timeslots.find((t) => {
-                        const startTime = normalizeTimeString(
-                          t.StartTime || t.startTime || ""
-                        );
-                        const endTime = normalizeTimeString(
-                          t.EndTime || t.endTime || ""
-                        );
-                        return (
-                          startTime === normalizeTimeString(timeSlot.start) &&
-                          endTime === normalizeTimeString(timeSlot.end)
-                        );
-                      });
-
-                      const timeslotId = matchingTimeslot
-                        ? matchingTimeslot.TimeslotID || matchingTimeslot.id
-                        : null;
-
-                      // Kiểm tra xem ca này đã được chọn chưa (từ selectedTimeslotIds hoặc TimeslotsByDay)
-                      const isSelected = timeslotId
-                        ? selectedTimeslotIds.has(timeslotId) ||
-                          Object.values(
-                            formData.scheduleDetail.TimeslotsByDay || {}
-                          ).some((dayTimeslots) =>
-                            dayTimeslots.includes(timeslotId)
-                          )
-                        : false;
-
-                      return (
-                        <button
-                          key={`${timeSlot.start}-${timeSlot.end}`}
-                          type="button"
-                          onClick={() => {
-                            if (!matchingTimeslot) {
-                              console.warn(
-                                `Không tìm thấy timeslot cho ${timeSlot.label}`
-                              );
-                              return;
-                            }
-
-                            const clickedTimeslotId =
-                              matchingTimeslot.TimeslotID ||
-                              matchingTimeslot.id;
-
-                            // Nếu đang ở chế độ tìm kiếm, clear suggestions và error khi thay đổi lựa chọn
-                            if (alternativeStartDateSearch.showResults) {
-                              setAlternativeStartDateSearch((prev) => ({
-                                ...prev,
-                                suggestions: [],
-                                error: null,
-                              }));
-                            }
-
-                            // Toggle: Nếu đã chọn thì bỏ chọn, nếu chưa chọn thì thêm vào
-                            setSelectedTimeslotIds((prev) => {
-                              const newSet = new Set(prev);
-                              if (isSelected) {
-                                newSet.delete(clickedTimeslotId);
-                              } else {
-                                newSet.add(clickedTimeslotId);
-                              }
-                              return newSet;
-                            });
-
-                            setFormData((prev) => {
-                              const newTimeslotsByDay = {
-                                ...prev.scheduleDetail.TimeslotsByDay,
-                              };
-
-                              // Nếu đã chọn, xóa khỏi tất cả các ngày
-                              if (isSelected) {
-                                Object.keys(newTimeslotsByDay).forEach(
-                                  (day) => {
-                                    newTimeslotsByDay[day] = newTimeslotsByDay[
-                                      day
-                                    ].filter((id) => id !== clickedTimeslotId);
-                                    // Xóa ngày nếu không còn ca nào
-                                    if (newTimeslotsByDay[day].length === 0) {
-                                      delete newTimeslotsByDay[day];
-                                    }
-                                  }
-                                );
-
-                                // Xóa khỏi DaysOfWeek nếu ngày đó không còn ca nào
-                                // Tính toán selectedTimeslotIds sau khi bỏ chọn
-                                const remainingSelectedTimeslots = new Set(
-                                  selectedTimeslotIds
-                                );
-                                remainingSelectedTimeslots.delete(
-                                  clickedTimeslotId
-                                );
-
-                                // Ở chế độ bình thường, cần check xem còn ca nào khác được chọn cho ngày đó không
-                                // Nếu không còn ca nào, bỏ tick ngày
-                                const newDaysOfWeek =
-                                  prev.scheduleDetail.DaysOfWeek.filter(
-                                    (day) => {
-                                      // Nếu ngày đó còn ca trong TimeslotsByDay, giữ lại
-                                      if (
-                                        newTimeslotsByDay[day] &&
-                                        newTimeslotsByDay[day].length > 0
-                                      ) {
-                                        return true;
-                                      }
-
-                                      // Ở chế độ tìm kiếm, nếu còn ca nào trong selectedTimeslotIds, giữ lại ngày
-                                      if (
-                                        alternativeStartDateSearch.showResults &&
-                                        remainingSelectedTimeslots.size > 0
-                                      ) {
-                                        return true;
-                                      }
-
-                                      // Ở chế độ bình thường, check xem còn ca nào khác được chọn cho ngày đó không
-                                      if (
-                                        !alternativeStartDateSearch.showResults &&
-                                        remainingSelectedTimeslots.size > 0
-                                      ) {
-                                        // Tìm timeslot đã bỏ chọn để lấy StartTime-EndTime
-                                        const removedTimeslot = timeslots.find(
-                                          (t) =>
-                                            normalizeTimeslotId(
-                                              t.TimeslotID || t.id
-                                            ) ===
-                                            normalizeTimeslotId(
-                                              clickedTimeslotId
-                                            )
-                                        );
-
-                                        if (removedTimeslot) {
-                                          const removedStartTime =
-                                            normalizeTimeString(
-                                              removedTimeslot.StartTime ||
-                                                removedTimeslot.startTime ||
-                                                ""
-                                            );
-                                          const removedEndTime =
-                                            normalizeTimeString(
-                                              removedTimeslot.EndTime ||
-                                                removedTimeslot.endTime ||
-                                                ""
-                                            );
-
-                                          // Check xem còn ca nào khác (từ remainingSelectedTimeslots) hợp lệ với ngày này không
-                                          const dayFormat = dayOfWeekToDay(day);
-                                          let hasOtherValidSlot = false;
-
-                                          Array.from(
-                                            remainingSelectedTimeslots
-                                          ).forEach((otherTimeslotId) => {
-                                            if (hasOtherValidSlot) return;
-
-                                            const otherTimeslot =
-                                              timeslots.find(
-                                                (t) =>
-                                                  normalizeTimeslotId(
-                                                    t.TimeslotID || t.id
-                                                  ) ===
-                                                  normalizeTimeslotId(
-                                                    otherTimeslotId
-                                                  )
-                                              );
-
-                                            if (!otherTimeslot) return;
-
-                                            const otherStartTime =
-                                              normalizeTimeString(
-                                                otherTimeslot.StartTime ||
-                                                  otherTimeslot.startTime ||
-                                                  ""
-                                              );
-                                            const otherEndTime =
-                                              normalizeTimeString(
-                                                otherTimeslot.EndTime ||
-                                                  otherTimeslot.endTime ||
-                                                  ""
-                                              );
-
-                                            // Tìm timeslot cho ngày này có cùng StartTime-EndTime
-                                            let dayTimeslot = timeslots.find(
-                                              (t) => {
-                                                const startTime =
-                                                  normalizeTimeString(
-                                                    t.StartTime ||
-                                                      t.startTime ||
-                                                      ""
-                                                  );
-                                                const endTime =
-                                                  normalizeTimeString(
-                                                    t.EndTime || t.endTime || ""
-                                                  );
-                                                const timeslotDay =
-                                                  t.Day || t.day;
-                                                return (
-                                                  startTime ===
-                                                    otherStartTime &&
-                                                  endTime === otherEndTime &&
-                                                  timeslotDay === dayFormat
-                                                );
-                                              }
-                                            );
-
-                                            if (!dayTimeslot) {
-                                              dayTimeslot = timeslots.find(
-                                                (t) => {
-                                                  const startTime =
-                                                    normalizeTimeString(
-                                                      t.StartTime ||
-                                                        t.startTime ||
-                                                        ""
-                                                    );
-                                                  const endTime =
-                                                    normalizeTimeString(
-                                                      t.EndTime ||
-                                                        t.endTime ||
-                                                        ""
-                                                    );
-                                                  const timeslotDay =
-                                                    t.Day || t.day;
-                                                  return (
-                                                    startTime ===
-                                                      otherStartTime &&
-                                                    endTime === otherEndTime &&
-                                                    !timeslotDay
-                                                  );
-                                                }
-                                              );
-                                            }
-
-                                            if (dayTimeslot) {
-                                              hasOtherValidSlot = true;
-                                            }
-                                          });
-
-                                          // Nếu còn ca nào khác hợp lệ với ngày này, giữ lại ngày
-                                          if (hasOtherValidSlot) {
-                                            return true;
-                                          }
-                                        }
-                                      }
-
-                                      // Nếu không còn ca nào, bỏ chọn ngày
-                                      return false;
-                                    }
-                                  );
-
-                                return {
-                                  ...prev,
-                                  scheduleDetail: {
-                                    ...prev.scheduleDetail,
-                                    DaysOfWeek: newDaysOfWeek,
-                                    TimeslotsByDay: newTimeslotsByDay,
-                                  },
-                                };
-                              } else {
-                                // Nếu chưa chọn, thêm vào tất cả các ngày đã chọn
-                                // Khi ở chế độ tìm kiếm, nếu chưa chọn ngày nào, không thêm vào TimeslotsByDay
-                                // Chỉ thêm vào selectedTimeslotIds để user có thể chọn ngày sau
-                                const newDaysOfWeek =
-                                  prev.scheduleDetail.DaysOfWeek.length > 0
-                                    ? prev.scheduleDetail.DaysOfWeek
-                                    : [];
-
-                                // Nếu đang ở chế độ tìm kiếm và chưa chọn ngày, chỉ thêm vào selectedTimeslotIds
-                                if (
-                                  alternativeStartDateSearch.showResults &&
-                                  newDaysOfWeek.length === 0
-                                ) {
-                                  // Chỉ cập nhật selectedTimeslotIds, không cập nhật TimeslotsByDay
-                                  return prev;
-                                }
-
-                                // Nếu đã chọn ngày, thêm vào TimeslotsByDay cho các ngày đó
-                                // Nhưng cần check xem ca này có bị trùng ở ngày nào không
-                                // Nếu có, bỏ tick ngày đó
-                                const startDate =
-                                  prev.scheduleDetail.OpendatePlan ||
-                                  prev.schedule.OpendatePlan ||
-                                  "";
-                                let endDate = prev.scheduleDetail.EnddatePlan;
-                                if (!endDate && startDate) {
-                                  const numOfSessions =
-                                    prev.schedule?.Numofsession || 12;
-                                  const sessionsPerWeekCalc =
-                                    newDaysOfWeek.length * 1; // Ước tính
-                                  const totalWeeks = Math.ceil(
-                                    numOfSessions /
-                                      Math.max(sessionsPerWeekCalc, 1)
-                                  );
-                                  endDate = dayjs(startDate)
-                                    .add(totalWeeks, "week")
-                                    .format("YYYY-MM-DD");
-                                }
-
-                                // Tìm timeslot cho ca vừa thêm
-                                const addedTimeslot = timeslots.find(
-                                  (t) =>
-                                    normalizeTimeslotId(
-                                      t.TimeslotID || t.id
-                                    ) === normalizeTimeslotId(clickedTimeslotId)
-                                );
-
-                                const validDays = [];
-                                newDaysOfWeek.forEach((day) => {
-                                  // Tìm timeslot cho ngày này có cùng StartTime-EndTime
-                                  const dayFormat = dayOfWeekToDay(day);
-                                  let dayTimeslotId = null;
-
-                                  if (addedTimeslot) {
-                                    const selectedStartTime =
-                                      normalizeTimeString(
-                                        addedTimeslot.StartTime ||
-                                          addedTimeslot.startTime ||
-                                          ""
-                                      );
-                                    const selectedEndTime = normalizeTimeString(
-                                      addedTimeslot.EndTime ||
-                                        addedTimeslot.endTime ||
-                                        ""
-                                    );
-
-                                    // Tìm timeslot cho ngày này có cùng StartTime-EndTime
-                                    // Ưu tiên tìm timeslot có Day khớp với ngày đó, nếu không có thì tìm timeslot không có Day
-                                    // Điều này đảm bảo check conflict dùng đúng timeslotId của ngày đó
-                                    let dayTimeslot = timeslots.find((t) => {
-                                      const startTime = normalizeTimeString(
-                                        t.StartTime || t.startTime || ""
-                                      );
-                                      const endTime = normalizeTimeString(
-                                        t.EndTime || t.endTime || ""
-                                      );
-                                      const timeslotDay = t.Day || t.day;
-                                      // Ưu tiên tìm timeslot có Day khớp với ngày đó
-                                      return (
-                                        startTime === selectedStartTime &&
-                                        endTime === selectedEndTime &&
-                                        timeslotDay === dayFormat
-                                      );
-                                    });
-
-                                    // Nếu không tìm thấy timeslot có Day khớp, tìm timeslot không có Day (có thể dùng cho mọi ngày)
-                                    if (!dayTimeslot) {
-                                      dayTimeslot = timeslots.find((t) => {
-                                        const startTime = normalizeTimeString(
-                                          t.StartTime || t.startTime || ""
-                                        );
-                                        const endTime = normalizeTimeString(
-                                          t.EndTime || t.endTime || ""
-                                        );
-                                        const timeslotDay = t.Day || t.day;
-                                        // Tìm timeslot không có Day và có cùng StartTime-EndTime
-                                        return (
-                                          startTime === selectedStartTime &&
-                                          endTime === selectedEndTime &&
-                                          !timeslotDay
-                                        );
-                                      });
-                                    }
-
-                                    if (dayTimeslot) {
-                                      dayTimeslotId =
-                                        dayTimeslot.TimeslotID ||
-                                        dayTimeslot.id;
-                                    }
-                                  }
-
-                                  // Check xem ca này có bị trùng ở ngày này không
-                                  if (dayTimeslotId && startDate) {
-                                    const slotStatus = getSlotStatus({
-                                      dayOfWeek: day,
-                                      timeslotId: dayTimeslotId,
-                                      startDate,
-                                      endDate,
-                                    });
-
-                                    // Nếu bị LOCKED, không thêm vào ngày này
-                                    if (slotStatus.status === "LOCKED") {
-                                      return; // Bỏ qua ngày này
-                                    }
-                                  }
-
-                                  // Nếu không bị trùng, thêm vào
-                                  validDays.push(day);
-                                  if (!newTimeslotsByDay[day]) {
-                                    newTimeslotsByDay[day] = [];
-                                  }
-                                  if (
-                                    !newTimeslotsByDay[day].includes(
-                                      clickedTimeslotId
-                                    )
-                                  ) {
-                                    newTimeslotsByDay[day].push(
-                                      clickedTimeslotId
-                                    );
-                                  }
-                                });
-
-                                // Bỏ tick các ngày bị trùng
-                                const finalDaysOfWeek =
-                                  prev.scheduleDetail.DaysOfWeek.filter((day) =>
-                                    validDays.includes(day)
-                                  );
-
-                                return {
-                                  ...prev,
-                                  scheduleDetail: {
-                                    ...prev.scheduleDetail,
-                                    DaysOfWeek: finalDaysOfWeek,
-                                    TimeslotsByDay: newTimeslotsByDay,
-                                  },
-                                };
-                              }
-                            });
-                          }}
-                          disabled={
-                            readonly ||
-                            !formData.scheduleDetail.OpendatePlan ||
-                            !matchingTimeslot
-                          }
-                          style={{
-                            padding: "16px",
-                            border: `2px solid ${
-                              isSelected ? "#667eea" : "#e2e8f0"
-                            }`,
-                            borderRadius: "8px",
-                            backgroundColor: isSelected ? "#667eea" : "#fff",
-                            color: isSelected ? "#fff" : "#1e293b",
-                            fontSize: "14px",
-                            fontWeight: 600,
-                            cursor:
-                              readonly || !matchingTimeslot
-                                ? "not-allowed"
-                                : "pointer",
-                            opacity: readonly || !matchingTimeslot ? 0.5 : 1,
-                            transition: "all 0.2s",
-                          }}
-                        >
-                          {timeSlot.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Chọn ngày học trong tuần */}
-                {/* Logic cũ: Chọn ngày trước → hiển thị timeslot cho ngày đó */}
-                {/* Logic mới: Chọn timeslot trước → chỉ bật các ngày có timeslot giống và không bị trùng */}
-                <div className="form-group" style={{ marginBottom: "20px" }}>
-                  <label>
-                    Ngày học trong tuần <span className="required">*</span>
-                  </label>
-                  <div className="days-selector">
-                    {daysOfWeekOptions
-                      .filter((day) => day.value !== 0) // Bỏ chủ nhật
-                      .map((day) => {
-                        // Logic mới: Mặc định disable, chỉ enable khi đã chọn ca và ngày đó hợp lệ
-                        // Lấy tất cả các timeslot ID đã chọn
-                        // Lấy tất cả các timeslot ID đã chọn (từ selectedTimeslotIds và TimeslotsByDay)
-                        const allSelectedTimeslotIds = new Set(
-                          selectedTimeslotIds
-                        );
-                        Object.values(
-                          formData.scheduleDetail.TimeslotsByDay || {}
-                        ).forEach((dayTimeslots) => {
-                          dayTimeslots.forEach((timeslotId) => {
-                            allSelectedTimeslotIds.add(timeslotId);
-                          });
-                        });
-
-                        const hasSelectedTimeslots =
-                          allSelectedTimeslotIds.size > 0;
-                        // Khi đang ở chế độ tìm kiếm (showResults = true), cho phép chọn tất cả các ngày
-                        const isInSearchMode =
-                          alternativeStartDateSearch.showResults;
-                        // Mặc định disable tất cả ngày học khi chưa chọn ca học
-                        // Chỉ enable khi đã chọn ca học và ngày đó hợp lệ (có trong availableDaysForTimeslot)
-                        const isDisabled =
-                          readonly ||
-                          (!isInSearchMode && !hasSelectedTimeslots) ||
-                          (!isInSearchMode &&
-                            hasSelectedTimeslots &&
-                            !availableDaysForTimeslot.includes(day.value));
-                        const isSelected =
-                          formData.scheduleDetail.DaysOfWeek.includes(
-                            day.value
-                          );
-
-                        return (
-                          <button
-                            key={day.value}
-                            type="button"
-                            className={`day-button ${
-                              isSelected ? "selected" : ""
-                            }`}
-                            onClick={() => {
-                              // Khi ở chế độ tìm kiếm, chỉ cho phép chọn/bỏ chọn ngày, không tự động thêm ca học
-                              const isInSearchMode =
-                                alternativeStartDateSearch.showResults;
-
-                              // Nếu đang ở chế độ tìm kiếm, clear suggestions và error khi thay đổi lựa chọn
-                              if (isInSearchMode) {
-                                setAlternativeStartDateSearch((prev) => ({
-                                  ...prev,
-                                  suggestions: [],
-                                  error: null,
-                                }));
-                              }
-
-                              if (!isSelected) {
-                                // Chọn ngày
-                                if (isInSearchMode) {
-                                  // Ở chế độ tìm kiếm: chỉ thêm ngày vào DaysOfWeek, không tự động thêm ca học
-                                  setFormData((prev) => ({
-                                    ...prev,
-                                    scheduleDetail: {
-                                      ...prev.scheduleDetail,
-                                      DaysOfWeek: [
-                                        ...prev.scheduleDetail.DaysOfWeek,
-                                        day.value,
-                                      ],
-                                    },
-                                  }));
-                                } else {
-                                  // Ở chế độ bình thường: tự động thêm tất cả các ca đã chọn vào ngày đó
-                                  setFormData((prev) => {
-                                    const newDaysOfWeek = [
-                                      ...prev.scheduleDetail.DaysOfWeek,
-                                      day.value,
-                                    ];
-                                    const newTimeslotsByDay = {
-                                      ...prev.scheduleDetail.TimeslotsByDay,
-                                    };
-                                    if (!newTimeslotsByDay[day.value]) {
-                                      newTimeslotsByDay[day.value] = [];
-                                    }
-
-                                    // Lấy tất cả các timeslot ID đã chọn từ selectedTimeslotIds và các ngày khác
-                                    const allSelectedTimeslotIds = new Set(
-                                      selectedTimeslotIds
-                                    );
-                                    Object.values(
-                                      prev.scheduleDetail.TimeslotsByDay || {}
-                                    ).forEach((dayTimeslots) => {
-                                      dayTimeslots.forEach((timeslotId) => {
-                                        allSelectedTimeslotIds.add(timeslotId);
-                                      });
-                                    });
-
-                                    // Thêm tất cả các ca đã chọn vào ngày mới
-                                    Array.from(allSelectedTimeslotIds).forEach(
-                                      (timeslotId) => {
-                                        const normalizedId =
-                                          normalizeTimeslotId(timeslotId);
-                                        if (
-                                          !newTimeslotsByDay[
-                                            day.value
-                                          ].includes(normalizedId)
-                                        ) {
-                                          newTimeslotsByDay[day.value].push(
-                                            normalizedId
-                                          );
-                                        }
-                                      }
-                                    );
-
-                                    return {
-                                      ...prev,
-                                      scheduleDetail: {
-                                        ...prev.scheduleDetail,
-                                        DaysOfWeek: newDaysOfWeek,
-                                        TimeslotsByDay: newTimeslotsByDay,
-                                      },
-                                    };
-                                  });
-                                }
-                              } else {
-                                // Bỏ chọn ngày
-                                setFormData((prev) => {
-                                  const newDaysOfWeek =
-                                    prev.scheduleDetail.DaysOfWeek.filter(
-                                      (d) => d !== day.value
-                                    );
-                                  const newTimeslotsByDay = {
-                                    ...prev.scheduleDetail.TimeslotsByDay,
-                                  };
-                                  delete newTimeslotsByDay[day.value];
-                                  return {
-                                    ...prev,
-                                    scheduleDetail: {
-                                      ...prev.scheduleDetail,
-                                      DaysOfWeek: newDaysOfWeek,
-                                      TimeslotsByDay: newTimeslotsByDay,
-                                    },
-                                  };
-                                });
-                              }
-                            }}
-                            disabled={isDisabled}
-                            style={{
-                              opacity: isDisabled ? 0.5 : 1,
-                              cursor: isDisabled ? "not-allowed" : "pointer",
-                            }}
-                            title={
-                              isDisabled && selectedTimeslotId
-                                ? "Ngày này không có ca học giống hoặc bị trùng lịch"
-                                : ""
-                            }
-                          >
-                            {day.label}
-                          </button>
-                        );
-                      })}
-                  </div>
-                  {errors.DaysOfWeek && (
-                    <span className="error-message">{errors.DaysOfWeek}</span>
-                  )}
-                  {selectedTimeslotId &&
-                    availableDaysForTimeslot.length === 0 && (
-                      <div
-                        style={{
-                          marginTop: "8px",
-                          padding: "8px 12px",
-                          backgroundColor: "#fef2f2",
-                          border: "1px solid #fca5a5",
-                          borderRadius: "6px",
-                          fontSize: "13px",
-                          color: "#991b1b",
-                        }}
-                      >
-                        Không có ngày nào khả dụng cho ca học này. Vui lòng chọn
-                        ca học khác.
-                      </div>
-                    )}
-                  {/* Hiển thị số buổi/tuần */}
-                  {(() => {
-                    // Tính số buổi/tuần từ TimeslotsByDay và DaysOfWeek
-                    let calculatedSessionsPerWeek = 0;
-                    const selectedDays =
-                      formData.scheduleDetail.DaysOfWeek || [];
-                    selectedDays.forEach((day) => {
-                      const dayTimeslots =
-                        formData.scheduleDetail.TimeslotsByDay?.[day] || [];
-                      calculatedSessionsPerWeek += dayTimeslots.length;
-                    });
-
-                    // Nếu chưa có TimeslotsByDay, tính từ selectedTimeslotIds và DaysOfWeek
-                    if (
-                      calculatedSessionsPerWeek === 0 &&
-                      selectedTimeslotIds.size > 0 &&
-                      selectedDays.length > 0
-                    ) {
-                      calculatedSessionsPerWeek =
-                        selectedTimeslotIds.size * selectedDays.length;
-                    }
-
-                    const numOfSessions =
-                      parseInt(formData.schedule?.Numofsession || "0", 10) || 0;
-                    const isExceeding =
-                      numOfSessions > 0 &&
-                      calculatedSessionsPerWeek > numOfSessions;
-
-                    if (calculatedSessionsPerWeek > 0) {
-                      return (
-                        <div
-                          style={{
-                            marginTop: "12px",
-                            padding: "10px 12px",
-                            backgroundColor: isExceeding
-                              ? "#fef2f2"
-                              : "#f0f9ff",
-                            border: `1px solid ${
-                              isExceeding ? "#fca5a5" : "#7dd3fc"
-                            }`,
-                            borderRadius: "6px",
-                            fontSize: "13px",
-                            color: isExceeding ? "#991b1b" : "#0c4a6e",
-                          }}
-                        >
-                          <strong>Số buổi học/tuần:</strong>{" "}
-                          {calculatedSessionsPerWeek} buổi
-                          {numOfSessions > 0 && (
-                            <>
-                              {" / "}
-                              <strong>Tổng số buổi của lớp:</strong>{" "}
-                              {numOfSessions} buổi
-                            </>
-                          )}
-                          {isExceeding && (
-                            <div
-                              style={{
-                                marginTop: "6px",
-                                color: "#991b1b",
-                                fontWeight: 500,
-                              }}
-                            >
-                              ⚠️ Số buổi học/tuần ({calculatedSessionsPerWeek})
-                              không được lớn hơn tổng số buổi của lớp (
-                              {numOfSessions}). Vui lòng giảm số ca học hoặc số
-                              ngày học.
-                            </div>
-                          )}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-                </div>
-
-                {/* Nút Tính toán */}
-                {(() => {
-                  const hasSelectedTimeslots =
-                    allSelectedTimeslotIdsMemo.size > 0;
-                  const hasSelectedDays =
-                    formData.scheduleDetail.DaysOfWeek.length > 0;
-                  const hasStartDate = Boolean(scheduleStartDate);
-                  // Chỉ cho phép tính toán khi đã có: ngày bắt đầu + ca học + ngày học
-                  // Disable khi ở chế độ tìm kiếm ca mong muốn
-                  const isInSearchMode = alternativeStartDateSearch.showResults;
-                  const canCalculate =
-                    !isInSearchMode &&
-                    hasSelectedTimeslots &&
-                    hasSelectedDays &&
-                    hasStartDate;
-
-                  return (
-                    <div
-                      style={{
-                        marginTop: "20px",
-                        marginBottom: "20px",
-                        display: "flex",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShouldShowPreview(true);
-                        }}
-                        disabled={!canCalculate || readonly}
-                        style={{
-                          padding: "12px 24px",
-                          fontSize: "16px",
-                          fontWeight: 600,
-                          color: "#fff",
-                          backgroundColor: canCalculate ? "#667eea" : "#9ca3af",
-                          border: "none",
-                          borderRadius: "8px",
-                          cursor: canCalculate ? "pointer" : "not-allowed",
-                          transition: "all 0.2s",
-                          boxShadow: canCalculate
-                            ? "0 4px 6px rgba(102, 126, 234, 0.3)"
-                            : "none",
-                        }}
-                        onMouseEnter={(e) => {
-                          if (canCalculate) {
-                            e.target.style.backgroundColor = "#5568d3";
-                            e.target.style.transform = "translateY(-2px)";
-                            e.target.style.boxShadow =
-                              "0 6px 12px rgba(102, 126, 234, 0.4)";
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (canCalculate) {
-                            e.target.style.backgroundColor = "#667eea";
-                            e.target.style.transform = "translateY(0)";
-                            e.target.style.boxShadow =
-                              "0 4px 6px rgba(102, 126, 234, 0.3)";
-                          }
-                        }}
-                      >
-                        {shouldShowPreview ? " Tạo buổi lại" : " Tạo buổi"}
-                      </button>
-                    </div>
-                  );
-                })()}
-
-                {currentStep === 3 &&
-                  formData.scheduleDetail.DaysOfWeek.length > 0 &&
-                  (slotAvailabilityStatus.checking || loadingBlockedDays) && (
-                    <div
-                      style={{
-                        margin: "12px 0",
-                        padding: "12px 16px",
-                        borderRadius: "8px",
-                        backgroundColor: "#eff6ff",
-                        border: "1px solid #bfdbfe",
-                        color: "#1d4ed8",
-                        fontSize: "13px",
-                      }}
-                    >
-                      Hệ thống đang phân tích lịch bận của giảng viên để kiểm
-                      tra các ca học khả dụng...
-                    </div>
-                  )}
-
-                {currentStep === 3 && blockedDaysError && (
-                  <div
-                    style={{
-                      margin: "8px 0",
-                      padding: "10px 14px",
-                      borderRadius: "6px",
-                      backgroundColor: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      color: "#b91c1c",
-                      fontSize: "13px",
-                    }}
-                  >
-                    {blockedDaysError}
-                  </div>
-                )}
-
-                {/* CASE 2: Thiếu slot nhưng vẫn còn ô khả dụng */}
-                {/* Ẩn khi ở chế độ tìm kiếm ca mong muốn */}
-                {hasInsufficientSlots &&
-                  !alternativeStartDateSearch.showResults && (
-                    <div
-                      style={{
-                        margin: "12px 0",
-                        padding: "12px 16px",
-                        borderRadius: "8px",
-                        backgroundColor: "#fff7ed",
-                        border: "1px solid #fdba74",
-                        color: "#9a3412",
-                        fontSize: "13px",
-                      }}
-                    >
-                      Hệ thống phát hiện chỉ còn{" "}
-                      <strong>{slotAvailabilityStatus.availableSlots}</strong>{" "}
-                      ca có thể chọn trong khung thời gian này, cần tối thiểu{" "}
-                      <strong>{slotAvailabilityStatus.requiredSlots}</strong>{" "}
-                      ca. Vui lòng ưu tiên những ô còn trắng, các ô bị khóa đã
-                      vượt giảng viên đã bận ở ca này.
-                    </div>
-                  )}
-
-                {/* Không dùng cho logic mới - Search mode UI */}
-                {/* {shouldShowSearchModeCTA && (
-                  <div
-                    style={{
-                      margin: "12px 0",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      backgroundColor: "#eff6ff",
-                      border: "1px solid #bfdbfe",
-                      color: "#1d4ed8",
-                      fontSize: "13px",
-                    }}
-                  >
-                    <div style={{ marginBottom: "8px", fontWeight: 600 }}>
-                      Hệ thống không đủ ca trống cho khung thời gian này.
-                    </div>
-                    <div style={{ marginBottom: "12px" }}>
-                      Bật <strong>Chế độ tìm kiếm</strong> để chọn các ca mong
-                      muốn (kể cả ô đang bị khóa) và tìm ngày bắt đầu khác phù
-                      hợp.
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleEnterSearchMode}
-                      style={{
-                        padding: "10px 16px",
-                        borderRadius: "6px",
-                        border: "none",
-                        backgroundColor: "#2563eb",
-                        color: "#fff",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      🔍 Tìm ngày bắt đầu khác theo Ca mong muốn
-                    </button>
-                  </div>
-                )} */}
-
-                {/* {isSearchMode && (
-                  <div
-                    style={{
-                      margin: "12px 0",
-                      padding: "16px",
-                      borderRadius: "8px",
-                      backgroundColor: "#eef2ff",
-                      border: "1px solid #c7d2fe",
-                      fontSize: "13px",
-                    }}
-                  >
-                    <div style={{ fontWeight: 600, color: "#312e81" }}>
-                      Đang ở chế độ tìm kiếm ca mong muốn
-                    </div>
-                    <p style={{ margin: "8px 0", color: "#4338ca" }}>
-                      Bạn có thể tick cả những ca đang bị khóa để làm tiêu chí
-                      tìm ngày mới. Sau khi áp dụng ngày phù hợp, các ca này sẽ
-                      được tự động chọn lại.
-                    </p>
-                    <p style={{ margin: "4px 0", color: "#312e81" }}>
-                      Đã chọn{" "}
-                      <strong>{searchModeSelectedCount || 0} ca/tuần</strong> để
-                      tìm kiếm.
-                    </p>
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "8px",
-                        flexWrap: "wrap",
-                        marginTop: "8px",
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={handleSearchModeSubmit}
-                        disabled={searchModeStatus.loading}
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "6px",
-                          border: "none",
-                          backgroundColor: "#4c1d95",
-                          color: "#fff",
-                          fontWeight: 600,
-                          cursor: searchModeStatus.loading
-                            ? "not-allowed"
-                            : "pointer",
-                          opacity: searchModeStatus.loading ? 0.7 : 1,
-                        }}
-                      >
-                        {searchModeStatus.loading
-                          ? "Đang tìm kiếm..."
-                          : "Tìm ngày phù hợp"}
-                      </button>
-                      {searchModeStatus.success && (
-                        <button
-                          type="button"
-                          onClick={handleApplySearchModeSuggestion}
-                          style={{
-                            padding: "8px 16px",
-                            borderRadius: "6px",
-                            border: "none",
-                            backgroundColor: "#16a34a",
-                            color: "#fff",
-                            fontWeight: 600,
-                            cursor: "pointer",
-                          }}
-                        >
-                          Áp dụng ngày{" "}
-                          {formatDateForDisplay(searchModeStatus.date)}
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleExitSearchMode}
-                        disabled={searchModeStatus.loading}
-                        style={{
-                          padding: "8px 16px",
-                          borderRadius: "6px",
-                          border: "1px solid #cbd5f5",
-                          backgroundColor: "#fff",
-                          color: "#1e1b4b",
-                          fontWeight: 500,
-                          cursor: searchModeStatus.loading
-                            ? "not-allowed"
-                            : "pointer",
-                        }}
-                      >
-                        Thoát chế độ tìm kiếm
-                      </button>
-                    </div>
-                    {searchModeStatus.error && (
-                      <div
-                        style={{
-                          marginTop: "10px",
-                          padding: "8px",
-                          borderRadius: "6px",
-                          backgroundColor: "#fee2e2",
-                          color: "#b91c1c",
-                        }}
-                      >
-                        {searchModeStatus.error}
-                      </div>
-                    )}
-                    {searchModeStatus.success && (
-                      <div
-                        style={{
-                          marginTop: "10px",
-                          padding: "8px",
-                          borderRadius: "6px",
-                          backgroundColor: "#dcfce7",
-                          color: "#166534",
-                        }}
-                      >
-                        Tìm thấy ngày bắt đầu mới:{" "}
-                        <strong>
-                          {formatDateForDisplay(searchModeStatus.date)}
-                        </strong>
-                        {searchModeStatus.message
-                          ? ` – ${searchModeStatus.message}`
-                          : ""}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Layout 2 cột: Grid bên trái, Preview list bên phải */}
-                {/* Logic cũ: Hiển thị grid khi đã chọn ngày học trong tuần */}
-                {/* Logic mới: Comment lại grid vì không dùng nữa - Logic ban/disable đã ở phần chọn "Ngày học trong tuần" */}
-                {/* Comment lại toàn bộ grid - không dùng cho logic mới */}
-                {false &&
-                  selectedTimeslotId &&
-                  formData.scheduleDetail.DaysOfWeek.length === 0 && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: "20px",
-                        marginTop: "20px",
-                      }}
-                    >
-                      {/* Cột Trái: Lưới chọn lịch (Weekly Pattern Grid) */}
-                      <div style={{ flex: 1 }}>
-                        <label
-                          style={{
-                            display: "block",
-                            marginBottom: "12px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Chọn ca học <span className="required">*</span>
-                        </label>
-
-                        {/* Logic mới: Banner thông báo chốt timeslot cho DRAFT hoặc tạo mới */}
-                        {(!classId || isDraftClass) && lockedTimeslotId && (
-                          <div
-                            style={{
-                              padding: "12px 16px",
-                              marginBottom: "12px",
-                              backgroundColor: "#e0f2fe",
-                              border: "1px solid #0ea5e9",
-                              borderRadius: "8px",
-                              fontSize: "14px",
-                              color: "#0369a1",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "8px",
-                            }}
-                          >
-                            <span style={{ fontSize: "18px" }}>🔒</span>
-                            <span>
-                              Lớp này đã chốt ca học:{" "}
-                              {(() => {
-                                const lockedTimeslot = timeslots.find(
-                                  (t) =>
-                                    normalizeTimeslotId(
-                                      t.TimeslotID || t.id
-                                    ) === normalizeTimeslotId(lockedTimeslotId)
-                                );
-                                return lockedTimeslot
-                                  ? `${lockedTimeslot.StartTime || ""}-${
-                                      lockedTimeslot.EndTime || ""
-                                    }`
-                                  : lockedTimeslotId;
-                              })()}
-                              {" - "}Áp dụng cho tất cả các ngày
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Search box cho timeslot - Không dùng cho logic mới */}
-                        {/* <input
-                        type="text"
-                        placeholder="Tìm kiếm ca học..."
-                        value={timeslotSearchTerm}
-                          onChange={(e) =>
-                            setTimeslotSearchTerm(e.target.value)
-                          }
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          marginBottom: "12px",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "8px",
-                          fontSize: "14px",
-                        }}
-                        /> */}
-
-                        {/* Weekly Pattern Grid: Bảng Matrix - Cột = Thứ, Dòng = Ca học */}
-                        {/* Logic mới: Chỉ hiển thị khi đã chọn cả ca và ngày VÀ đã nhấn nút tính toán */}
-                        {(() => {
-                          // Kiểm tra xem đã chọn ca chưa (từ selectedTimeslotIds hoặc TimeslotsByDay)
-                          const allSelectedTimeslotIds = new Set(
-                            selectedTimeslotIds
-                          );
-                          Object.values(
-                            formData.scheduleDetail.TimeslotsByDay || {}
-                          ).forEach((dayTimeslots) => {
-                            dayTimeslots.forEach((timeslotId) => {
-                              allSelectedTimeslotIds.add(timeslotId);
-                            });
-                          });
-                          const hasSelectedTimeslots =
-                            allSelectedTimeslotIds.size > 0;
-                          const hasSelectedDays =
-                            formData.scheduleDetail.DaysOfWeek.length > 0;
-
-                          return (
-                            hasSelectedTimeslots &&
-                            hasSelectedDays &&
-                            shouldShowPreview
-                          );
-                        })() ? (
-                          <div
-                            style={{
-                              border: "1px solid #e2e8f0",
-                              borderRadius: "8px",
-                              overflow: "hidden",
-                              backgroundColor: "#fff",
-                              maxWidth: "100%",
-                              overflowX: "auto",
-                            }}
-                          >
-                            {(() => {
-                              // Lấy tất cả các timeslot ID đã chọn từ TimeslotsByDay
-                              const selectedTimeslotIds = new Set();
-                              Object.values(
-                                formData.scheduleDetail.TimeslotsByDay || {}
-                              ).forEach((dayTimeslots) => {
-                                dayTimeslots.forEach((timeslotId) => {
-                                  selectedTimeslotIds.add(timeslotId);
-                                });
-                              });
-
-                              // Tạo danh sách các ca đã chọn với thông tin StartTime-EndTime
-                              const selectedTimeslots = Array.from(
-                                selectedTimeslotIds
-                              )
-                                .map((timeslotId) => {
-                                  // Tìm timeslot trong DB
-                                  const timeslot = timeslots.find(
-                                    (t) =>
-                                      normalizeTimeslotId(
-                                        t.TimeslotID || t.id
-                                      ) === normalizeTimeslotId(timeslotId)
-                                  );
-                                  if (!timeslot) return null;
-                                  return {
-                                    id: timeslotId,
-                                    start:
-                                      timeslot.StartTime ||
-                                      timeslot.startTime ||
-                                      "",
-                                    end:
-                                      timeslot.EndTime ||
-                                      timeslot.endTime ||
-                                      "",
-                                    label: `${timeslot.StartTime || ""}-${
-                                      timeslot.EndTime || ""
-                                    }`,
-                                  };
-                                })
-                                .filter(Boolean)
-                                .sort((a, b) => {
-                                  // Sắp xếp theo StartTime
-                                  return (a.start || "").localeCompare(
-                                    b.start || ""
-                                  );
-                                });
-
-                              if (selectedTimeslots.length === 0) {
-                                return null;
-                              }
-
-                              return (
-                                <div key="timeslot-preview-grid">
-                                  {/* Header: Các thứ trong tuần */}
-                                  <div
-                                    style={{
-                                      display: "grid",
-                                      gridTemplateColumns: `100px repeat(${formData.scheduleDetail.DaysOfWeek.length}, minmax(100px, 1fr))`,
-                                      backgroundColor: "#f8fafc",
-                                      borderBottom: "2px solid #e2e8f0",
-                                      minWidth: "600px",
-                                    }}
-                                  >
-                                    <div
-                                      style={{
-                                        padding: "12px",
-                                        fontWeight: 600,
-                                        fontSize: "13px",
-                                        textAlign: "center",
-                                      }}
-                                    >
-                                      Ca học
-                                    </div>
-                                    {formData.scheduleDetail.DaysOfWeek.map(
-                                      (dayOfWeek) => {
-                                        const dayLabel =
-                                          daysOfWeekOptions.find(
-                                            (d) => d.value === dayOfWeek
-                                          )?.label || "";
-                                        return (
-                                          <div
-                                            key={dayOfWeek}
-                                            style={{
-                                              padding: "12px",
-                                              fontWeight: 600,
-                                              fontSize: "13px",
-                                              textAlign: "center",
-                                              borderLeft: "1px solid #e2e8f0",
-                                            }}
-                                          >
-                                            {dayLabel}
-                                          </div>
-                                        );
-                                      }
-                                    )}
-                                  </div>
-
-                                  {/* Body: Các ca đã chọn */}
-                                  {selectedTimeslots.map(
-                                    (selectedSlot, slotIdx) => {
-                                      return (
-                                        <div
-                                          key={slotIdx}
-                                          style={{
-                                            display: "grid",
-                                            gridTemplateColumns: `100px repeat(${formData.scheduleDetail.DaysOfWeek.length}, minmax(100px, 1fr))`,
-                                            borderBottom: "1px solid #e2e8f0",
-                                            minWidth: "600px",
-                                          }}
-                                        >
-                                          {/* Ca học label */}
-                                          <div
-                                            style={{
-                                              padding: "12px",
-                                              fontSize: "13px",
-                                              textAlign: "center",
-                                              backgroundColor: "#fafafa",
-                                              display: "flex",
-                                              alignItems: "center",
-                                              justifyContent: "center",
-                                              fontWeight: 600,
-                                            }}
-                                          >
-                                            {selectedSlot.label}
-                                          </div>
-
-                                          {/* Các ô cho từng thứ - Chỉ hiển thị preview, không có tick/lock */}
-                                          {formData.scheduleDetail.DaysOfWeek.map(
-                                            (dayOfWeek) => {
-                                              const currentSelection =
-                                                formData.scheduleDetail
-                                                  .TimeslotsByDay?.[
-                                                  dayOfWeek
-                                                ] || [];
-                                              const isSelected =
-                                                currentSelection.includes(
-                                                  selectedSlot.id
-                                                );
-
-                                              return (
-                                                <div
-                                                  key={dayOfWeek}
-                                                  style={{
-                                                    padding: "12px",
-                                                    borderLeft:
-                                                      "1px solid #e2e8f0",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    justifyContent: "center",
-                                                    backgroundColor: isSelected
-                                                      ? "#e0f2fe"
-                                                      : "#fafafa",
-                                                  }}
-                                                >
-                                                  {isSelected ? (
-                                                    <div
-                                                      style={{
-                                                        width: "24px",
-                                                        height: "24px",
-                                                        borderRadius: "50%",
-                                                        backgroundColor:
-                                                          "#667eea",
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        justifyContent:
-                                                          "center",
-                                                        color: "#fff",
-                                                        fontSize: "12px",
-                                                        fontWeight: 600,
-                                                      }}
-                                                    >
-                                                      ✓
-                                                    </div>
-                                                  ) : (
-                                                    <div
-                                                      style={{
-                                                        width: "24px",
-                                                        height: "24px",
-                                                        borderRadius: "50%",
-                                                        backgroundColor:
-                                                          "#f3f4f6",
-                                                      }}
-                                                    />
-                                                  )}
-                                                </div>
-                                              );
-                                            }
-                                          )}
-                                        </div>
-                                      );
-                                    }
-                                  )}
-                                </div>
-                              );
-                            })()}
-                          </div>
-                        ) : (
-                          <div
-                            style={{
-                              padding: "24px",
-                              textAlign: "center",
-                              color: "#64748b",
-                              fontSize: "14px",
-                            }}
-                          >
-                            {(() => {
-                              const allSelectedTimeslotIds = new Set(
-                                selectedTimeslotIds
-                              );
-                              Object.values(
-                                formData.scheduleDetail.TimeslotsByDay || {}
-                              ).forEach((dayTimeslots) => {
-                                dayTimeslots.forEach((timeslotId) => {
-                                  allSelectedTimeslotIds.add(timeslotId);
-                                });
-                              });
-                              const hasSelectedTimeslots =
-                                allSelectedTimeslotIds.size > 0;
-                              const hasSelectedDays =
-                                formData.scheduleDetail.DaysOfWeek.length > 0;
-
-                              if (!hasSelectedTimeslots || !hasSelectedDays) {
-                                return "Vui lòng chọn ca học và ngày học trong tuần để xem preview";
-                              }
-                              if (!shouldShowPreview) {
-                                return "Vui lòng nhấn nút 'Tính toán' để xem preview bảng ca học và các buổi học dự kiến";
-                              }
-                              return "Vui lòng chọn ca học và ngày học trong tuần để xem preview";
-                            })()}
-                          </div>
-                        )}
-
-                        {errors.TimeslotsByDay && (
-                          <span
-                            className="error-message"
-                            style={{ display: "block", marginTop: "8px" }}
-                          >
-                            {errors.TimeslotsByDay}
-                          </span>
-                        )}
-
-                        {/* Hiển thị error khi không có ca phù hợp hoặc có buổi trùng lịch */}
-                        {currentStep === 3 && errors.preview && (
-                          <div
-                            style={{
-                              marginTop: "16px",
-                              padding: "12px",
-                              borderRadius: "8px",
-                              backgroundColor: "#fef2f2",
-                              border: "1px solid #fca5a5",
-                              fontSize: "13px",
-                              color: "#991b1b",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "8px",
-                              }}
-                            >
-                              <span>⚠️</span>
-                              <span>{errors.preview}</span>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Hiển thị cảnh báo buổi trùng lịch (Logic mới) */}
-                        {hasSelectedSlots && hasDuplicateSessions && (
-                          <div
-                            style={{
-                              marginTop: "16px",
-                              padding: "12px",
-                              borderRadius: "8px",
-                              backgroundColor: "#fef2f2",
-                              border: "1px solid #fca5a5",
-                              fontSize: "13px",
-                              color: "#991b1b",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                marginBottom:
-                                  conflictDetails.length > 0 ? "8px" : "0",
-                              }}
-                            >
-                              <span>
-                                <strong>⚠️ Có buổi học trùng lịch</strong>
-                              </span>
-                            </div>
-                            <div
-                              style={{
-                                marginTop: "8px",
-                                fontSize: "12px",
-                              }}
-                            >
-                              Có các buổi học trùng lịch (cùng ngày và cùng ca).
-                              Vui lòng chọn lại các ca học để tránh trùng.
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Bảng chi tiết các buổi trùng lịch */}
-                        {conflictDetails.length > 0 && (
-                          <div
-                            style={{
-                              marginTop: "16px",
-                              padding: "12px",
-                              borderRadius: "8px",
-                              backgroundColor: "#f8fafc",
-                              border: "1px solid #e2e8f0",
-                            }}
-                          >
-                            <div
-                              style={{
-                                fontSize: "14px",
-                                fontWeight: 600,
-                                color: "#1e293b",
-                                marginBottom: "12px",
-                              }}
-                            >
-                              Chi tiết các buổi trùng lịch (
-                              {conflictDetails.length} buổi)
-                            </div>
-                            <div
-                              style={{
-                                maxHeight: "300px",
-                                overflowY: "auto",
-                                border: "1px solid #e2e8f0",
-                                borderRadius: "6px",
-                              }}
-                            >
-                              <table
-                                style={{
-                                  width: "100%",
-                                  borderCollapse: "collapse",
-                                  fontSize: "12px",
-                                }}
-                              >
-                                <thead>
-                                  <tr
-                                    style={{
-                                      backgroundColor: "#f1f5f9",
-                                      borderBottom: "2px solid #e2e8f0",
-                                    }}
-                                  >
-                                    <th
-                                      style={{
-                                        padding: "8px",
-                                        textAlign: "left",
-                                        fontWeight: 600,
-                                        color: "#475569",
-                                      }}
-                                    >
-                                      Ngày
-                                    </th>
-                                    <th
-                                      style={{
-                                        padding: "8px",
-                                        textAlign: "left",
-                                        fontWeight: 600,
-                                        color: "#475569",
-                                      }}
-                                    >
-                                      Thứ
-                                    </th>
-                                    <th
-                                      style={{
-                                        padding: "8px",
-                                        textAlign: "left",
-                                        fontWeight: 600,
-                                        color: "#475569",
-                                      }}
-                                    >
-                                      Ca học
-                                    </th>
-                                    <th
-                                      style={{
-                                        padding: "8px",
-                                        textAlign: "left",
-                                        fontWeight: 600,
-                                        color: "#475569",
-                                      }}
-                                    >
-                                      Nguồn
-                                    </th>
-                                    <th
-                                      style={{
-                                        padding: "8px",
-                                        textAlign: "left",
-                                        fontWeight: 600,
-                                        color: "#475569",
-                                      }}
-                                    >
-                                      Lớp/Session
-                                    </th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {conflictDetails.map((conflict, index) => (
-                                    <tr
-                                      key={index}
-                                      style={{
-                                        borderBottom: "1px solid #e2e8f0",
-                                        backgroundColor:
-                                          index % 2 === 0 ? "#fff" : "#f8fafc",
-                                      }}
-                                    >
-                                      <td
-                                        style={{
-                                          padding: "8px",
-                                          color: "#64748b",
-                                        }}
-                                      >
-                                        {conflict.date === "Định kỳ"
-                                          ? "Định kỳ"
-                                          : formatDateForDisplay(conflict.date)}
-                                      </td>
-                                      <td
-                                        style={{
-                                          padding: "8px",
-                                          color: "#64748b",
-                                        }}
-                                      >
-                                        {conflict.dayLabel}
-                                      </td>
-                                      <td
-                                        style={{
-                                          padding: "8px",
-                                          color: "#1e293b",
-                                          fontWeight: 500,
-                                        }}
-                                      >
-                                        {conflict.timeRange || "N/A"}
-                                      </td>
-                                      <td
-                                        style={{
-                                          padding: "8px",
-                                          color: "#64748b",
-                                        }}
-                                      >
-                                        {conflict.source}
-                                      </td>
-                                      <td
-                                        style={{
-                                          padding: "8px",
-                                          color: "#64748b",
-                                        }}
-                                      >
-                                        {conflict.className ||
-                                          (conflict.sessionId
-                                            ? `Session #${conflict.sessionId}`
-                                            : "-")}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Cột Phải: Xem trước chi tiết (Session Preview List) */}
-                      <div style={{ flex: 1 }}>
-                        <label
-                          style={{
-                            display: "block",
-                            marginBottom: "12px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Xem trước lịch học
-                        </label>
-
-                        {/* Ngày kết thúc */}
-                        <div
-                          className="form-group"
-                          style={{ marginBottom: "16px" }}
-                        >
-                          <label htmlFor="scheduleDetailEnddatePlan">
-                            Ngày dự kiến kết thúc{" "}
-                            <span className="required">*</span>
-                          </label>
-                          <input
-                            type="date"
-                            id="scheduleDetailEnddatePlan"
-                            value={formData.scheduleDetail.EnddatePlan || ""}
-                            readOnly
-                            disabled
-                            className={
-                              errors.scheduleDetailEnddatePlan ? "error" : ""
-                            }
-                            style={{
-                              width: "100%",
-                              padding: "10px",
-                              border: "1px solid #e2e8f0",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              backgroundColor: "#f8fafc",
-                              cursor: "not-allowed",
-                            }}
-                          />
-                          {errors.scheduleDetailEnddatePlan && (
-                            <span className="error-message">
-                              {errors.scheduleDetailEnddatePlan}
-                            </span>
-                          )}
-                          <small
-                            style={{
-                              color: "#64748b",
-                              fontSize: "12px",
-                              marginTop: "4px",
-                              display: "block",
-                            }}
-                          >
-                            Tự động tính dựa trên số buổi học
-                          </small>
-                        </div>
-
-                        {/* Session Preview List - CHỈ HIỂN THỊ KHI ĐÃ NHẤN NÚT TÍNH TOÁN */}
-                        {shouldShowPreview && (
-                          <div
-                            style={{
-                              border: "1px solid #e2e8f0",
-                              borderRadius: "8px",
-                              padding: "16px",
-                              backgroundColor: "#fff",
-                              maxHeight: "500px",
-                              overflowY: "auto",
-                            }}
-                          >
-                            {previewSessions.length === 0 ? (
-                              <div
-                                style={{
-                                  padding: "20px",
-                                  textAlign: "center",
-                                  color: "#64748b",
-                                  fontSize: "14px",
-                                }}
-                              >
-                                Chưa có lịch học. Vui lòng chọn ca học và ngày
-                                học trong tuần, sau đó nhấn nút "Tính toán".
-                              </div>
-                            ) : (
-                              <>
-                                <div
-                                  style={{
-                                    marginBottom: "12px",
-                                    fontSize: "14px",
-                                    fontWeight: 600,
-                                  }}
-                                >
-                                  Tổng: {previewSessions.length} buổi
-                                </div>
-                                <div
-                                  style={{
-                                    display: "flex",
-                                    flexDirection: "column",
-                                    gap: "8px",
-                                  }}
-                                >
-                                  {previewSessions.map((session) => {
-                                    const isSkipped =
-                                      session.type === "SKIPPED";
-                                    const isExtended =
-                                      session.type === "EXTENDED";
-                                    const dateStr =
-                                      session.date.toLocaleDateString("vi-VN");
-
-                                    return (
-                                      <div
-                                        key={session.number}
-                                        style={{
-                                          padding: "12px",
-                                          borderRadius: "6px",
-                                          fontSize: "13px",
-                                          backgroundColor: isSkipped
-                                            ? "#ffebee" // Màu đỏ nhạt cho SKIPPED
-                                            : isExtended
-                                            ? "#e8f5e9" // Màu xanh nhạt cho EXTENDED
-                                            : "#f8f9fa", // Màu xám nhạt cho NORMAL
-                                          border: `1px solid ${
-                                            isSkipped
-                                              ? "#ef5350"
-                                              : isExtended
-                                              ? "#66bb6a"
-                                              : "#e2e8f0"
-                                          }`,
-                                        }}
-                                      >
-                                        <div
-                                          style={{
-                                            display: "flex",
-                                            alignItems: "center",
-                                            gap: "8px",
-                                          }}
-                                        >
-                                          <span
-                                            style={{
-                                              fontSize: "16px",
-                                              fontWeight: 600,
-                                            }}
-                                          >
-                                            {isSkipped
-                                              ? "🔴"
-                                              : isExtended
-                                              ? "🟢"
-                                              : "⚪"}
-                                          </span>
-                                          <div style={{ flex: 1 }}>
-                                            <div
-                                              style={{
-                                                fontWeight: 600,
-                                                textDecoration: isSkipped
-                                                  ? "line-through"
-                                                  : "none",
-                                                color: isSkipped
-                                                  ? "#c62828"
-                                                  : "#1e293b",
-                                              }}
-                                            >
-                                              Buổi {session.number}:{" "}
-                                              {
-                                                daysOfWeekOptions.find(
-                                                  (d) =>
-                                                    d.value ===
-                                                    session.dayOfWeek
-                                                )?.label
-                                              }{" "}
-                                              {dateStr}
-                                            </div>
-                                            <div
-                                              style={{
-                                                fontSize: "12px",
-                                                color: "#64748b",
-                                                marginTop: "4px",
-                                              }}
-                                            >
-                                              {session.timeslot.StartTime ||
-                                                session.timeslot.startTime}{" "}
-                                              -{" "}
-                                              {session.timeslot.EndTime ||
-                                                session.timeslot.endTime}
-                                              {isSkipped && (
-                                                <span
-                                                  style={{
-                                                    marginLeft: "8px",
-                                                    color: "#c62828",
-                                                    fontWeight: 500,
-                                                  }}
-                                                >
-                                                  - Nghỉ:{" "}
-                                                  {session.reason || "GV bận"}
-                                                </span>
-                                              )}
-                                              {isExtended && (
-                                                <span
-                                                  style={{
-                                                    marginLeft: "8px",
-                                                    color: "#2e7d32",
-                                                    fontWeight: 500,
-                                                  }}
-                                                >
-                                                  - Thêm lại ca học
-                                                </span>
-                                              )}
-                                            </div>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                {/* Logic mới: Hiển thị preview list khi đã chọn ca học và ngày học trong tuần VÀ đã nhấn nút tính toán */}
-                {(() => {
-                  const allSelectedTimeslotIds = new Set(selectedTimeslotIds);
-                  Object.values(
-                    formData.scheduleDetail.TimeslotsByDay || {}
-                  ).forEach((dayTimeslots) => {
-                    dayTimeslots.forEach((timeslotId) => {
-                      allSelectedTimeslotIds.add(timeslotId);
-                    });
-                  });
-                  const hasSelectedTimeslots = allSelectedTimeslotIds.size > 0;
-                  const hasSelectedDays =
-                    formData.scheduleDetail.DaysOfWeek.length > 0;
-
-                  return (
-                    (selectedTimeslotId || hasSelectedTimeslots) &&
-                    hasSelectedDays &&
-                    shouldShowPreview && (
-                      <div className="form-group" style={{ marginTop: "20px" }}>
-                        <label
-                          style={{
-                            display: "block",
-                            marginBottom: "12px",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Xem trước lịch học
-                        </label>
-                        <div
-                          style={{
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            padding: "16px",
-                            backgroundColor: "#fff",
-                            maxHeight: "400px",
-                            overflowY: "auto",
-                          }}
-                        >
-                          {previewSessions.length === 0 ? (
-                            <div
-                              style={{
-                                padding: "20px",
-                                textAlign: "center",
-                                color: "#64748b",
-                                fontSize: "14px",
-                              }}
-                            >
-                              Chưa có lịch học. Vui lòng chọn ca học và ngày học
-                              trong tuần.
-                            </div>
-                          ) : (
-                            <>
-                              <div
-                                style={{
-                                  marginBottom: "12px",
-                                  fontSize: "14px",
-                                  fontWeight: 600,
-                                }}
-                              >
-                                Tổng: {previewSessions.length} buổi
-                              </div>
-                              <div
-                                style={{
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  gap: "8px",
-                                }}
-                              >
-                                {previewSessions.map((session) => {
-                                  const isSkipped = session.type === "SKIPPED";
-                                  const isExtended =
-                                    session.type === "EXTENDED";
-                                  const dateStr =
-                                    session.date.toLocaleDateString("vi-VN");
-
-                                  return (
-                                    <div
-                                      key={session.number}
-                                      style={{
-                                        padding: "12px",
-                                        borderRadius: "6px",
-                                        fontSize: "13px",
-                                        backgroundColor: isSkipped
-                                          ? "#ffebee"
-                                          : isExtended
-                                          ? "#e8f5e9"
-                                          : "#f8f9fa",
-                                        border: `1px solid ${
-                                          isSkipped
-                                            ? "#ef5350"
-                                            : isExtended
-                                            ? "#66bb6a"
-                                            : "#e2e8f0"
-                                        }`,
-                                      }}
-                                    >
-                                      <div
-                                        style={{
-                                          display: "flex",
-                                          alignItems: "center",
-                                          gap: "8px",
-                                        }}
-                                      >
-                                        <span
-                                          style={{
-                                            fontSize: "16px",
-                                            fontWeight: 600,
-                                          }}
-                                        >
-                                          {isSkipped
-                                            ? "🔴"
-                                            : isExtended
-                                            ? "🟢"
-                                            : "⚪"}
-                                        </span>
-                                        <div style={{ flex: 1 }}>
-                                          <div
-                                            style={{
-                                              fontWeight: 600,
-                                              textDecoration: isSkipped
-                                                ? "line-through"
-                                                : "none",
-                                              color: isSkipped
-                                                ? "#c62828"
-                                                : "#1e293b",
-                                            }}
-                                          >
-                                            Buổi {session.number}:{" "}
-                                            {
-                                              daysOfWeekOptions.find(
-                                                (d) =>
-                                                  d.value === session.dayOfWeek
-                                              )?.label
-                                            }{" "}
-                                            {dateStr}
-                                          </div>
-                                          <div
-                                            style={{
-                                              fontSize: "12px",
-                                              color: "#64748b",
-                                              marginTop: "4px",
-                                            }}
-                                          >
-                                            {session.timeslot.StartTime ||
-                                              session.timeslot.startTime}{" "}
-                                            -{" "}
-                                            {session.timeslot.EndTime ||
-                                              session.timeslot.endTime}
-                                            {isSkipped && (
-                                              <span
-                                                style={{
-                                                  marginLeft: "8px",
-                                                  color: "#c62828",
-                                                  fontWeight: 500,
-                                                }}
-                                              >
-                                                - Nghỉ:{" "}
-                                                {session.reason || "GV bận"}
-                                              </span>
-                                            )}
-                                            {isExtended && (
-                                              <span
-                                                style={{
-                                                  marginLeft: "8px",
-                                                  color: "#2e7d32",
-                                                  fontWeight: 500,
-                                                }}
-                                              >
-                                                - Thêm lại ca học
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  );
-                })()}
-
-                {formData.scheduleDetail.DaysOfWeek.length === 0 && (
-                  <div
-                    style={{
-                      padding: "20px",
-                      textAlign: "center",
-                      backgroundColor: "#fef3c7",
-                      borderRadius: "8px",
-                      color: "#92400e",
-                    }}
-                  >
-                    💡 Vui lòng chọn ngày học trong tuần để xem lưới chọn lịch
-                  </div>
-                )}
-              </div>
-            </div>
+            <ClassWizardStep3
+              formData={formData}
+              setFormData={setFormData}
+              errors={errors}
+              readonly={readonly}
+              timeslots={timeslots}
+              daysOfWeekOptions={daysOfWeekOptions}
+              availableDaysForTimeslot={availableDaysForTimeslot}
+              selectedTimeslotIds={selectedTimeslotIds}
+              setSelectedTimeslotIds={setSelectedTimeslotIds}
+              alternativeStartDateSearch={alternativeStartDateSearch}
+              setAlternativeStartDateSearch={setAlternativeStartDateSearch}
+              handleSearchAlternativeStartDate={
+                handleSearchAlternativeStartDate
+              }
+              handleApplyAlternativeStartDate={handleApplyAlternativeStartDate}
+              handleDayToggle={handleDayToggle}
+              handleTimeslotToggle={handleTimeslotToggle}
+              previewSessions={previewSessions}
+              setPreviewSessions={setPreviewSessions}
+              generatePreviewSessions={generatePreviewSessions}
+              blockedDays={blockedDays}
+              blockedDaysError={blockedDaysError}
+              hasValidSelectedSlots={hasValidSelectedSlots}
+              hasDuplicateSessions={hasDuplicateSessions}
+              hasParttimeAvailabilityIssue={hasParttimeAvailabilityIssue}
+              sessionsPerWeek={sessionsPerWeek}
+              requiredSlotsPerWeek={requiredSlotsPerWeek}
+              instructorType={instructorType}
+              parttimeAvailabilityError={parttimeAvailabilityError}
+              isEditMode={isEditMode}
+              impactedSessionMessages={impactedSessionMessages}
+              scheduleStartDate={scheduleStartDate}
+              allSelectedTimeslotIdsMemo={allSelectedTimeslotIdsMemo}
+              shouldShowPreview={shouldShowPreview}
+              setShouldShowPreview={setShouldShowPreview}
+              slotAvailabilityStatus={slotAvailabilityStatus}
+              loadingBlockedDays={loadingBlockedDays}
+              hasInsufficientSlots={hasInsufficientSlots}
+              formatDateForDisplay={formatDateForDisplay}
+              normalizeTimeString={normalizeTimeString}
+              normalizeTimeslotId={normalizeTimeslotId}
+              dayOfWeekToDay={dayOfWeekToDay}
+              getSlotStatus={getSlotStatus}
+              dayjs={dayjs}
+              hasScheduleCoreInfo={hasScheduleCoreInfo}
+              selectedTimeslotId={selectedTimeslotId}
+              conflictDetails={conflictDetails}
+              hasSelectedSlots={hasSelectedSlots}
+            />
           )}
 
           {/* Step 4: Review */}
           {currentStep === 4 && (
-            <div className="wizard-step-content">
-              <div className="review-section">
-                <h4>Thông tin lớp:</h4>
-                <ul>
-                  <li>
-                    <strong>Tên:</strong> {formData.Name}
-                  </li>
-                  <li>
-                    <strong>Giảng viên:</strong>{" "}
-                    {selectedInstructor
-                      ? selectedInstructor.FullName ||
-                        selectedInstructor.fullName
-                      : "Chưa chọn"}
-                  </li>
-                  <li>
-                    <strong>Khóa/Môn:</strong>{" "}
-                    {selectedCourse
-                      ? selectedCourse.Title || selectedCourse.title
-                      : "Chưa chọn"}
-                  </li>
-                  <li>
-                    <strong>Học phí:</strong>{" "}
-                    {formData.Fee && parseFloat(formData.Fee) > 0
-                      ? new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        }).format(formData.Fee)
-                      : "Không có"}
-                  </li>
-                  <li>
-                    <strong>Zoom ID:</strong> {formData.ZoomID || "Chưa có"}
-                  </li>
-                  <li>
-                    <strong>Mật khẩu Zoom:</strong>{" "}
-                    {formData.Zoompass || "Chưa có"}
-                  </li>
-                  <li>
-                    <strong>Sĩ số tối đa:</strong>{" "}
-                    {formData.Maxstudent || "Chưa có"}
-                  </li>
-                </ul>
-
-                <h4>Thông tin lịch học:</h4>
-                <ul>
-                  <li>
-                    <strong>Ngày dự kiến bắt đầu:</strong>{" "}
-                    {formatDateForDisplay(formData.schedule.OpendatePlan) ||
-                      "Chưa có"}
-                  </li>
-                  <li>
-                    <strong>Ngày dự kiến kết thúc:</strong>{" "}
-                    {formatDateForDisplay(
-                      formData.scheduleDetail.EnddatePlan
-                    ) || "Chưa có"}
-                  </li>
-                  <li>
-                    <strong>Tổng số buổi học:</strong>{" "}
-                    {formData.schedule.Numofsession || "Chưa có"}
-                  </li>
-                </ul>
-
-                {/* Thông báo quan trọng về số buổi trùng lịch */}
-                {(() => {
-                  const skippedSessions = previewSessions.filter(
-                    (s) => s.type === "SKIPPED"
-                  );
-                  const extendedSessions = previewSessions.filter(
-                    (s) => s.type === "EXTENDED"
-                  );
-
-                  if (skippedSessions.length > 0) {
-                    // Tính số ngày trễ hơn dự kiến
-                    const originalEndDate = formData.scheduleDetail.EnddatePlan
-                      ? dayjs(formData.scheduleDetail.EnddatePlan)
-                      : null;
-                    const actualEndDate =
-                      extendedSessions.length > 0
-                        ? dayjs(
-                            extendedSessions[extendedSessions.length - 1].date
-                          )
-                        : originalEndDate;
-
-                    const daysDelayed =
-                      originalEndDate && actualEndDate
-                        ? actualEndDate.diff(originalEndDate, "day")
-                        : 0;
-
-                    return (
-                      <div
-                        style={{
-                          marginTop: "20px",
-                          padding: "16px",
-                          backgroundColor: "#fff3cd",
-                          border: "1px solid #ffc107",
-                          borderRadius: "8px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontWeight: 600,
-                            fontSize: "16px",
-                            marginBottom: "8px",
-                            color: "#856404",
-                          }}
-                        >
-                          ⚠️ Thông báo quan trọng
-                        </div>
-                        <div style={{ fontSize: "14px", color: "#856404" }}>
-                          Lớp học sẽ kết thúc trễ hơn dự kiến{" "}
-                          <strong>{daysDelayed} ngày</strong> do có{" "}
-                          <strong>{skippedSessions.length} buổi</strong> trùng
-                          lịch giảng viên (Status='Other' hoặc 'Holiday').
-                          {extendedSessions.length > 0 && (
-                            <span>
-                              {" "}
-                              Các buổi thêm lại ca học (
-                              {extendedSessions.length} buổi) sẽ được thêm vào
-                              cuối lịch học.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                <h4>Danh sách buổi học:</h4>
-                {formData.sessions && formData.sessions.length > 0 ? (
-                  <div
-                    style={{
-                      marginTop: "12px",
-                      maxHeight: "320px",
-                      overflowY: "auto",
-                      paddingRight: "8px",
-                    }}
-                  >
-                    {formData.sessions.map((session, index) => {
-                      const timeslot = timeslots.find(
-                        (t) => (t.TimeslotID || t.id) === session.TimeslotID
-                      );
-                      return (
-                        <div
-                          key={index}
-                          style={{
-                            padding: "12px",
-                            marginBottom: "8px",
-                            backgroundColor: "#f8f9fa",
-                            borderRadius: "6px",
-                            border: "1px solid #e2e8f0",
-                          }}
-                        >
-                          <div style={{ fontWeight: 600, marginBottom: "4px" }}>
-                            Buổi {index + 1}: {session.Title}
-                          </div>
-                          <div style={{ fontSize: "14px", color: "#64748b" }}>
-                            <div>
-                              Ngày: {formatDateForDisplay(session.Date)}
-                            </div>
-                            {timeslot && (
-                              <div>
-                                Ca học:{" "}
-                                {timeslot.StartTime || timeslot.startTime} -{" "}
-                                {timeslot.EndTime || timeslot.endTime}
-                              </div>
-                            )}
-                            {session.Description && (
-                              <div>Mô tả: {session.Description}</div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p style={{ color: "#64748b", fontStyle: "italic" }}>
-                    Chưa có buổi học nào
-                  </p>
-                )}
-              </div>
-            </div>
+            <ClassWizardStep4
+              formData={formData}
+              selectedInstructor={selectedInstructor}
+              selectedCourse={selectedCourse}
+              previewSessions={previewSessions}
+              timeslots={timeslots}
+              formatDateForDisplay={formatDateForDisplay}
+            />
           )}
         </div>
+
+        {/* Navigation Buttons */}
 
         {/* Navigation Buttons */}
         <div className="wizard-actions">

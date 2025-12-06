@@ -8,28 +8,76 @@ import PeopleIcon from "@mui/icons-material/People";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import SettingsIcon from "@mui/icons-material/Settings";
 import GridViewIcon from "@mui/icons-material/GridView";
+import RequestPageIcon from "@mui/icons-material/RequestPage";
 import "../pages/style.css";
 
 const navItems = [
-  { id: "dashboard", label: "Dashboard", icon: <DashboardIcon />, path: "/instructor/dashboard" },
-  { id: "courses", label: "Courses", icon: <SchoolIcon />, path: "/instructor/courses" },
-  { id: "classes", label: "Classes", icon: <PeopleIcon />, path: "/instructor/classes" },
-  { id: "assignments", label: "Assignments", icon: <AssignmentIcon />, path: "/instructor/assignments" },
-  { id: "exams", label: "Exams", icon: <QuizIcon />, path: "/instructor/exams" },
-  { id: "grades", label: "Grades", icon: <AssessmentIcon />, path: "/instructor/grades" },
-  { id: "settings", label: "Settings", icon: <SettingsIcon />, path: "/instructor/settings" },
+  {
+    id: "dashboard",
+    label: "Trang chủ",
+    icon: <DashboardIcon />,
+    path: "/instructor/dashboard",
+  },
+  {
+    id: "courses",
+    label: "Khóa học",
+    icon: <SchoolIcon />,
+    path: "/instructor/courses",
+  },
+  {
+    id: "classes",
+    label: "Lớp học",
+    icon: <PeopleIcon />,
+    path: "/instructor/classes",
+  },
+
+  {
+    id: "schedule",
+    label: "Thời khóa biểu",
+    icon: <RequestPageIcon />,
+    path: "/instructor/schedule",
+  },
+  {
+    id: "assignments",
+    label: "Bài tập",
+    icon: <AssignmentIcon />,
+    path: "/instructor/assignments",
+  },
+  {
+    id: "exams",
+    label: "Bài kiểm tra",
+    icon: <QuizIcon />,
+    path: "/instructor/exams",
+  },
+  {
+    id: "grades",
+    label: "Điểm số",
+    icon: <AssessmentIcon />,
+    path: "/instructor/grades",
+  },
+
+  {
+    id: "settings",
+    label: "Cài đặt",
+    icon: <SettingsIcon />,
+    path: "/instructor/settings",
+  },
 ];
 
 export function InstructorSidebar() {
   return (
     <div className="instructor-sidebar">
       {/* LOGO */}
-      <div className="sidebar-header">
-        <div className="sidebar-header-icon">
-          <GridViewIcon sx={{ fontSize: 24 }} />
+      <NavLink to="/" className="sidebar-header-link">
+        <div className="sidebar-header">
+          <div className="sidebar-header-icon">
+            <GridViewIcon sx={{ fontSize: 24 }} />
+          </div>
+          <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>
+            ATPS
+          </h3>
         </div>
-        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>ATPS</h3>
-      </div>
+      </NavLink>
 
       {/* NAV LIST */}
       <div className="sidebar-nav">

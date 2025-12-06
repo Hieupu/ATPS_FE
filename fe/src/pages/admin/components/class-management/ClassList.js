@@ -163,7 +163,7 @@ const ClassList = ({
         return "status-approved";
       case CLASS_STATUS.OPEN:
         return "status-open";
-      case CLASS_STATUS.ON_GOING:
+      case CLASS_STATUS.ONGOING:
         return "status-ongoing";
       case CLASS_STATUS.CLOSED:
         return "status-closed";
@@ -192,7 +192,8 @@ const ClassList = ({
       APPROVED: "Đã duyệt",
       PUBLISHED: "Đã xuất bản",
       OPEN: "Đang tuyển sinh",
-      ON_GOING: "Đang diễn ra",
+      ONGOING: "Đang diễn ra",
+      ON_GOING: "Đang diễn ra", // Backward compatibility
       CLOSED: "Đã kết thúc",
       CANCELLED: "Đã hủy",
       "Đang hoạt động": "Đang hoạt động",
@@ -601,7 +602,7 @@ const ClassList = ({
                       </button>
                     )}
 
-                  {(normalizeStatus(classStatus) === CLASS_STATUS.ON_GOING ||
+                  {(normalizeStatus(classStatus) === CLASS_STATUS.ONGOING ||
                     normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
                     normalizeStatus(classStatus) === CLASS_STATUS.APPROVED) &&
                     !(normalizeStatus(classStatus) === CLASS_STATUS.CANCEL) && (

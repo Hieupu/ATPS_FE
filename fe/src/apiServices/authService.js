@@ -1,19 +1,22 @@
 import apiClient from "./apiClient";
 
-export const loginApi = async (email, password) => {
+export const loginApi = async (email, password, rememberMe = false) => {
   try {
-    const response = await apiClient.post("/login", { email, password });
+    const response = await apiClient.post("/login", {
+      email,
+      password,
+      rememberMe,
+    });
+
     const data = response.data;
-    
+
     if (data?.token) {
-      // Lưu cả token và thông tin user (bao gồm role)
-      const userData = {
-        ...data.user,
-        token: data.token
-      };
-      
       localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(userData));
+
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      const expiryTime = Date.now() + data.expiresIn * 1000;
+      localStorage.setItem("tokenExpiry", expiryTime.toString());
     }
 
     return data;
@@ -74,6 +77,7 @@ export const registerApi = async (payload) => {
 export const startGoogleAuth = () => {
   const base = apiClient.defaults.baseURL.replace(/\/$/, "");
   window.location.href = `${base}/google`;
+  console.log(base);
 };
 
 export const startFacebookAuth = () => {

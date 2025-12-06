@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   AppBar,
   Toolbar,
@@ -15,36 +15,91 @@ import {
   MenuItem,
   useMediaQuery,
   Divider,
+  Badge,
+  MenuList,
 } from "@mui/material";
 import {
   School,
   Menu as MenuIcon,
   Person,
-  ShoppingCart,
-  Favorite,
   Logout,
   Book,
   Dashboard,
   Group,
+  CalendarToday,
+  CheckCircle,
+  Assignment,
+  Folder,
+  Notifications,
+  AssignmentTurnedIn,
+  Payment,
+  Quiz,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext"; // Import AuthContext
+import {
+  listNotificationsApi,
+  markAllNotificationsReadApi,
+  markNotificationReadApi,
+} from "../../apiServices/notificationService";
+import apiClient from "../../apiServices/apiClient";
 
 const AppHeader = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery("(max-width: 768px)");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState(null);
-  
+  const [notifAnchor, setNotifAnchor] = useState(null);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
   // Sử dụng AuthContext thay vì localStorage trực tiếp
   const { user, isLearner, isInstructor, isParent, logout } = useAuth();
 
-  const navItems = ["Home", "Courses", "About", "Contact"];
+  // Load notifications on mount and when user changes
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (!user) return;
+        const data = await listNotificationsApi(20);
+        const list = data.notifications || [];
+        setNotifications(list);
+        setUnreadCount(
+          list.filter((n) => (n.Status || "").toLowerCase() !== "read").length
+        );
+      } catch (e) {}
+    };
+    load();
+  }, [user]);
+
+  const navItems = [
+    {
+      label: "Trang chủ",
+      path: "/",
+    },
+    {
+      label: "Khoá học",
+      path: "/courses",
+    },
+    {
+      label: "Giảng viên",
+      path: "/instructors",
+    },
+    {
+      label: "Lịch khai giảng",
+      path: "/openingCeremony",
+    },
+    {
+      label: "Liên hệ",
+      path: "/contact",
+    },
+  ];
 
   const toggleMobileMenu = () => setMobileMenuOpen(!mobileMenuOpen);
 
   const handleLogout = () => {
     logout(); // Sử dụng logout từ AuthContext
+    localStorage.removeItem(`zoomScheduleData`);
     navigate("/auth/login");
   };
 
@@ -68,7 +123,97 @@ const AppHeader = () => {
           }}
         >
           <Book sx={{ mr: 1, color: "#6b7280" }} />
-          My Courses
+          Khóa học của tôi
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-schedule"
+          onClick={() => navigate("/schedule")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <CalendarToday sx={{ mr: 1, color: "#6b7280" }} />
+          Lịch học
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-attendance"
+          onClick={() => navigate("/attendance")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <CheckCircle sx={{ mr: 1, color: "#6b7280" }} />
+          Điểm danh
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-exam"
+          onClick={() => navigate("/exam")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
+         Bài kiểm tra
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="my-progress"
+          onClick={() => navigate("/progress")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Assignment sx={{ mr: 1, color: "#6b7280" }} />
+          Tiến độ
+        </MenuItem>
+      );
+      items.push(
+        <MenuItem
+          key="paymenthistory"
+          onClick={() => navigate("/paymenthistory")}
+          sx={{
+            py: 1.5,
+            fontSize: "1rem",
+            color: "#374151",
+            "&:hover": {
+              background: "#f0f9ff",
+              color: "#1e40af",
+            },
+          }}
+        >
+          <Payment sx={{ mr: 1, color: "#6b7280" }} />
+          Lịch sử thanh toán
         </MenuItem>
       );
     }
@@ -89,7 +234,7 @@ const AppHeader = () => {
           }}
         >
           <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
-          Course Management
+          Quản lý khoá học
         </MenuItem>
       );
     }
@@ -110,7 +255,7 @@ const AppHeader = () => {
           }}
         >
           <Group sx={{ mr: 1, color: "#6b7280" }} />
-          Tracking Student
+          Báo cáo học tập
         </MenuItem>
       );
     }
@@ -124,16 +269,71 @@ const AppHeader = () => {
 
     if (isLearner) {
       items.push(
-        <ListItem button key="my-courses-mobile" onClick={() => navigate("/my-courses")}>
+        <ListItem
+          button
+          key="my-courses-mobile"
+          onClick={() => navigate("/my-courses")}
+        >
           <Book sx={{ mr: 2 }} />
-          <ListItemText primary="My Courses" />
+          <ListItemText primary="Khóa học của tôi" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-schedule-mobile"
+          onClick={() => navigate("/schedule")}
+        >
+          <CalendarToday sx={{ mr: 2 }} />
+          <ListItemText primary="Lịch học" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-attendance-mobile"
+          onClick={() => navigate("/attendance")}
+        >
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Điểm danh" />
+        </ListItem>
+      );
+
+      items.push(
+        <ListItem button key="my-exam-mobile" onClick={() => navigate("/exam")}>
+          <CheckCircle sx={{ mr: 2 }} />
+          <ListItemText primary="Exam" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="my-progress-mobile"
+          onClick={() => navigate("/progress")}
+        >
+          <Assignment sx={{ mr: 2 }} />
+          <ListItemText primary="Tiến độ" />
+        </ListItem>
+      );
+      items.push(
+        <ListItem
+          button
+          key="paymenthistory-mobile"
+          onClick={() => navigate("/paymenthistory")}
+        >
+          <Assignment sx={{ mr: 2 }} />
+          <ListItemText primary="Payment" />
         </ListItem>
       );
     }
 
     if (isInstructor) {
       items.push(
-        <ListItem button key="course-manage-mobile" onClick={() => navigate("/instructor/courses")}>
+        <ListItem
+          button
+          key="course-manage-mobile"
+          onClick={() => navigate("/instructor/courses")}
+        >
           <Dashboard sx={{ mr: 2 }} />
           <ListItemText primary="Course Management" />
         </ListItem>
@@ -142,7 +342,11 @@ const AppHeader = () => {
 
     if (isParent) {
       items.push(
-        <ListItem button key="tracking-student-mobile" onClick={() => navigate("/parent/tracking")}>
+        <ListItem
+          button
+          key="tracking-student-mobile"
+          onClick={() => navigate("/parent/tracking")}
+        >
           <Group sx={{ mr: 2 }} />
           <ListItemText primary="Tracking Student" />
         </ListItem>
@@ -225,7 +429,7 @@ const AppHeader = () => {
             <Box sx={{ display: "flex", gap: 3, alignItems: "center" }}>
               {navItems.map((item) => (
                 <Button
-                  key={item}
+                  key={item.label}
                   sx={{
                     color: "white",
                     fontWeight: 600,
@@ -245,12 +449,12 @@ const AppHeader = () => {
                       width: "100%",
                     },
                   }}
+                  onClick={() => navigate(item.path)}
                 >
-                  {item}
+                  {item.label}
                 </Button>
               ))}
 
-              {/*  Nếu chưa login */}
               {!user ? (
                 <>
                   <Button
@@ -268,7 +472,7 @@ const AppHeader = () => {
                     }}
                     onClick={() => navigate("/auth/login")}
                   >
-                    Login
+                    Đăng nhập
                   </Button>
                   <Button
                     variant="contained"
@@ -284,12 +488,199 @@ const AppHeader = () => {
                     }}
                     onClick={() => navigate("/auth/register")}
                   >
-                    Register
+                    Đăng ký
                   </Button>
                 </>
               ) : (
                 <>
-                  
+                  {/* Notifications bell */}
+                  <IconButton
+                    color="inherit"
+                    onClick={(e) => setNotifAnchor(e.currentTarget)}
+                    sx={{ mr: 1 }}
+                  >
+                    <Badge badgeContent={unreadCount} color="error">
+                      <Notifications />
+                    </Badge>
+                  </IconButton>
+                  <Menu
+                    anchorEl={notifAnchor}
+                    open={Boolean(notifAnchor)}
+                    onClose={() => setNotifAnchor(null)}
+                    PaperProps={{ sx: { width: 360, maxHeight: 420 } }}
+                  >
+                    <Box
+                      sx={{
+                        px: 2,
+                        py: 1,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+                        Thông báo
+                      </Typography>
+                      <Button
+                        size="small"
+                        onClick={async () => {
+                          await markAllNotificationsReadApi();
+                          setUnreadCount(0);
+                          setNotifications((prev) =>
+                            prev.map((n) => ({ ...n, Status: "read" }))
+                          );
+                        }}
+                      >
+                        Đánh dấu đã đọc
+                      </Button>
+                    </Box>
+                    <Divider />
+                    <MenuList dense>
+                      {notifications.length === 0 ? (
+                        <MenuItem disabled>Chưa có thông báo</MenuItem>
+                      ) : (
+                        notifications.map((n) => {
+                          // Extract payment URL from notification content
+                          const extractPaymentUrl = (content) => {
+                            if (!content) return null;
+                            // Tìm "Link thanh toán: <url>" hoặc URL pattern
+                            const urlMatch =
+                              content.match(/Link thanh toán:\s*(\S+)/i) ||
+                              content.match(/https?:\/\/[^\s]+/);
+                            return urlMatch ? urlMatch[1] || urlMatch[0] : null;
+                          };
+
+                          // Extract OrderCode from notification content
+                          const extractOrderCode = (content) => {
+                            if (!content) return null;
+                            const match =
+                              content.match(/Mã đơn hàng:\s*(\d+)/i);
+                            return match ? match[1] : null;
+                          };
+
+                          const paymentUrl =
+                            n.Type === "payment"
+                              ? extractPaymentUrl(n.Content)
+                              : null;
+
+                          const orderCode =
+                            n.Type === "payment"
+                              ? extractOrderCode(n.Content)
+                              : null;
+
+                          return (
+                            <MenuItem
+                              key={n.NotificationID}
+                              onClick={async () => {
+                                await markNotificationReadApi(n.NotificationID);
+                                setNotifications((prev) =>
+                                  prev.map((x) =>
+                                    x.NotificationID === n.NotificationID
+                                      ? { ...x, Status: "read" }
+                                      : x
+                                  )
+                                );
+                                setUnreadCount((c) =>
+                                  Math.max(
+                                    0,
+                                    c -
+                                      ((n.Status || "").toLowerCase() !== "read"
+                                        ? 1
+                                        : 0)
+                                  )
+                                );
+                                setNotifAnchor(null); // Đóng menu
+
+                                // Xử lý notification payment: redirect đến trang thanh toán
+                                if (n.Type === "payment") {
+                                  // Nếu có payment URL trực tiếp, dùng ngay
+                                  if (paymentUrl) {
+                                    window.location.href = paymentUrl;
+                                  }
+                                  // Nếu có OrderCode, gọi API để lấy payment link từ PayOS
+                                  else if (orderCode) {
+                                    try {
+                                      // Gọi API để lấy payment link từ OrderCode
+                                      const response = await apiClient.get(
+                                        `/payment/get-link/${orderCode}`
+                                      );
+
+                                      if (response.data?.paymentUrl) {
+                                        window.location.href =
+                                          response.data.paymentUrl;
+                                      } else {
+                                        throw new Error(
+                                          response.data?.message ||
+                                            "Không tìm thấy payment URL"
+                                        );
+                                      }
+                                    } catch (error) {
+                                      console.error(
+                                        "Error getting payment link:",
+                                        error
+                                      );
+                                      alert(
+                                        error.response?.data?.message ||
+                                          `Không thể lấy link thanh toán. Mã đơn hàng: ${orderCode}`
+                                      );
+                                    }
+                                  } else {
+                                    alert(
+                                      "Không tìm thấy thông tin thanh toán trong thông báo."
+                                    );
+                                  }
+                                }
+                              }}
+                              sx={{
+                                whiteSpace: "normal",
+                                alignItems: "start",
+                                gap: 1,
+                                cursor:
+                                  n.Type === "payment" ? "pointer" : "default",
+                                "&:hover":
+                                  n.Type === "payment"
+                                    ? {
+                                        background: "#f0f9ff",
+                                      }
+                                    : {},
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 8,
+                                  height: 8,
+                                  borderRadius: "50%",
+                                  bgcolor:
+                                    (n.Status || "").toLowerCase() === "read"
+                                      ? "transparent"
+                                      : "primary.main",
+                                  mt: 1,
+                                }}
+                              />
+                              <Box sx={{ flex: 1 }}>
+                                <Typography variant="body2">
+                                  {n.Content}
+                                </Typography>
+                                {n.Type === "payment" && (
+                                  <Typography
+                                    variant="caption"
+                                    sx={{
+                                      color: "primary.main",
+                                      fontWeight: 600,
+                                      mt: 0.5,
+                                      display: "block",
+                                    }}
+                                  >
+                                    → Nhấn để thanh toán
+                                  </Typography>
+                                )}
+                              </Box>
+                            </MenuItem>
+                          );
+                        })
+                      )}
+                    </MenuList>
+                  </Menu>
                   <Avatar
                     onClick={(e) => setAnchorEl(e.currentTarget)}
                     sx={{
@@ -311,7 +702,8 @@ const AppHeader = () => {
                       },
                     }}
                   >
-                    {user?.username?.charAt(0).toUpperCase() || user?.Username?.charAt(0).toUpperCase()}
+                    {user?.username?.charAt(0).toUpperCase() ||
+                      user?.Username?.charAt(0).toUpperCase()}
                   </Avatar>
                   <Menu
                     anchorEl={anchorEl}
@@ -344,58 +736,12 @@ const AppHeader = () => {
                       }}
                     >
                       <Person sx={{ mr: 1, color: "#6b7280" }} />
-                      Profile
-                    </MenuItem>
-                    
-                    <MenuItem
-                      onClick={() => navigate("/mylearning")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <School sx={{ mr: 1, color: "#6b7280" }} />
-                      My Learning
+                      Hồ sơ cá nhân
                     </MenuItem>
 
                     {/* Menu items theo role */}
                     {getRoleSpecificMenuItems()}
 
-                    <MenuItem
-                      onClick={() => navigate("/cart")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <ShoppingCart sx={{ mr: 1, color: "#6b7280" }} />
-                      My Cart
-                    </MenuItem>
-                    <MenuItem
-                      onClick={() => navigate("/wishlist")}
-                      sx={{
-                        py: 1.5,
-                        fontSize: "1rem",
-                        color: "#374151",
-                        "&:hover": {
-                          background: "#f0f9ff",
-                          color: "#1e40af",
-                        },
-                      }}
-                    >
-                      <Favorite sx={{ mr: 1, color: "#6b7280" }} />
-                      Wishlist
-                    </MenuItem>
                     <Divider sx={{ my: 0.5 }} />
                     <MenuItem
                       onClick={handleLogout}
@@ -410,7 +756,7 @@ const AppHeader = () => {
                       }}
                     >
                       <Logout sx={{ mr: 1, color: "#dc2626" }} />
-                      Logout
+                      Đăng xuất
                     </MenuItem>
                   </Menu>
                 </>
@@ -429,8 +775,8 @@ const AppHeader = () => {
         <Box sx={{ width: 250, pt: 2 }}>
           <List>
             {navItems.map((item) => (
-              <ListItem button key={item}>
-                <ListItemText primary={item} />
+              <ListItem key={item.label} onClick={() => navigate(item.path)}>
+                <ListItemText primary={item.label} />
               </ListItem>
             ))}
 
@@ -447,7 +793,7 @@ const AppHeader = () => {
                     sx={{ mb: 1 }}
                     onClick={() => navigate("/auth/login")}
                   >
-                    Login
+                    Đăng nhập
                   </Button>
                 </ListItem>
                 <ListItem>
@@ -457,7 +803,7 @@ const AppHeader = () => {
                     color="primary"
                     onClick={() => navigate("/auth/register")}
                   >
-                    Register
+                    Đăng ký
                   </Button>
                 </ListItem>
               </>
@@ -469,7 +815,7 @@ const AppHeader = () => {
                   color="primary"
                   onClick={handleLogout}
                 >
-                  Logout
+                  Đăng xuất
                 </Button>
               </ListItem>
             )}

@@ -1,29 +1,75 @@
 import React from "react";
-import { Dialog, DialogTitle, DialogContent, DialogActions, Box, TextField, Button } from "@mui/material";
+import QuizForm from "./QuizForm";
+import WizardStepperBar from "./WizardStepperBar";
+import "./style/AssignmentFormDialog.css";
 
-export default function AssignmentFormDialog({ open, onClose, onSubmit, busy, form, setForm, editMode }) {
+export default function AssignmentFormDialog({
+  show,
+  onClose,
+  form,
+  setField,
+  courses,
+  units,
+  onCourseChange,
+  onUploadFile,
+  busy,
+  wizardProps,
+}) {
+  if (!show) return null;
+
+  const canGoPrev = !!wizardProps && wizardProps.activeStep > 1;
+
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>{editMode ? "Edit Assignment" : "Create Assignment"}</DialogTitle>
-      <DialogContent>
-        <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-          <TextField label="Title" value={form.Title} onChange={(e) => setForm({ ...form, Title: e.target.value })} />
-          <TextField label="Description" multiline minRows={3} value={form.Description} onChange={(e) => setForm({ ...form, Description: e.target.value })} />
-          <TextField select label="Type" value={form.Type} onChange={(e) => setForm({ ...form, Type: e.target.value })} SelectProps={{ native: true }}>
-            <option value="assignment">Assignment</option>
-            <option value="homework">Homework</option>
-            <option value="exam">Exam</option>
-          </TextField>
-          <TextField label="UnitID" type="number" value={form.UnitID} onChange={(e) => setForm({ ...form, UnitID: e.target.value })} />
-          <TextField label="Deadline" type="date" InputLabelProps={{ shrink: true }} value={form.Deadline} onChange={(e) => setForm({ ...form, Deadline: e.target.value })} />
-        </Box>
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={busy}>Cancel</Button>
-        <Button variant="contained" onClick={onSubmit} disabled={busy}>
-          {busy ? (editMode ? "Saving..." : "Creating...") : (editMode ? "Save" : "Create")}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <div className="afd-overlay">
+      <div className="afd-modal">
+        {wizardProps && (
+          <div className="afd-stepper-container">
+            <WizardStepperBar
+              variant="inline"
+              showActions={false}
+              centered
+              {...wizardProps}
+            />
+          </div>
+        )}
+        
+        {/* Body */}
+        <div className="afd-body">
+          <div className="afd-form-card">
+            <div className="afd-card-header">
+              <h2>Nhập thông tin bài tập</h2>
+            </div>
+            <div className="afd-card-body">
+              <QuizForm
+                form={form}
+                setField={setField}
+                courses={courses}
+                units={units}
+                onCourseChange={onCourseChange}
+                onUploadFile={onUploadFile}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="afd-footer">
+          <button className="afd-secondary-btn" onClick={onClose}>
+            Hủy
+          </button>
+          <div className="afd-footer-right">
+            <button
+              className="afd-primary-btn"
+              onClick={wizardProps?.onNext}
+              disabled={busy}
+            >
+              {wizardProps?.finish
+                ? "Hoàn thành"
+                : wizardProps?.nextLabel || "Tiếp theo"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

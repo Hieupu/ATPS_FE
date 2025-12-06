@@ -38,16 +38,10 @@ import {
   CloudUpload,
   CheckCircle,
   HourglassEmpty,
-  CalendarToday,
 } from "@mui/icons-material";
-import { useAuth } from "../../../contexts/AuthContext";
-import instructorService from "../../../apiServices/instructorService";
-import AvailabilityTab from "../components/AvailabilityTab";
-import { useEffect } from "react";
 import "./style.css";
 
 export default function InstructorSettings() {
-  const { user } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
@@ -56,38 +50,6 @@ export default function InstructorSettings() {
     push: false,
     schedule: true,
   });
-  
-  // Availability state
-  const [instructorId, setInstructorId] = useState(null);
-  const [instructorType, setInstructorType] = useState("parttime");
-  const [availabilityData, setAvailabilityData] = useState({
-    availabilitySlots: [],
-    existingSessions: [],
-  });
-  const [loadingAvailability, setLoadingAvailability] = useState(false);
-  const [savingAvailability, setSavingAvailability] = useState(false);
-
-  // Lấy instructorId từ user
-  useEffect(() => {
-    const fetchInstructorInfo = async () => {
-      try {
-        // TODO: Lấy instructorId từ user context hoặc API
-        // Tạm thời dùng user.InstructorID hoặc gọi API để lấy
-        if (user?.InstructorID) {
-          setInstructorId(user.InstructorID);
-          setInstructorType(user.Type || "parttime");
-        } else if (user?.AccID) {
-          // Nếu chỉ có AccID, cần gọi API để lấy InstructorID
-          // const instructor = await instructorService.getInstructorByAccountId(user.AccID);
-          // setInstructorId(instructor.InstructorID);
-          // setInstructorType(instructor.Type || "parttime");
-        }
-      } catch (error) {
-        console.error("Error fetching instructor info:", error);
-      }
-    };
-    fetchInstructorInfo();
-  }, [user]);
 
   // Dữ liệu giảng viên
   const [profile, setProfile] = useState({
@@ -160,7 +122,6 @@ export default function InstructorSettings() {
           <Tab label="Security" />
           <Tab label="Verification" />
           <Tab label="Preferences" />
-          <Tab label="Availability" icon={<CalendarToday />} iconPosition="start" />
         </Tabs>
 
         {/* Tab Content */}
@@ -497,72 +458,6 @@ export default function InstructorSettings() {
               </Card>
             </Grid>
           </Grid>
-        )}
-
-        {tabValue === 4 && (
-          <Box>
-            {instructorId ? (
-              <AvailabilityTab
-                instructorId={instructorId}
-                instructorType={instructorType}
-                existingSessions={availabilityData.existingSessions}
-                availabilitySlots={availabilityData.availabilitySlots}
-                loading={loadingAvailability}
-                saving={savingAvailability}
-                onFetchAvailability={async (startDate, endDate) => {
-                  try {
-                    setLoadingAvailability(true);
-                    const data = await instructorService.getAvailability(
-                      instructorId,
-                      startDate,
-                      endDate
-                    );
-                    setAvailabilityData({
-                      availabilitySlots: data.availabilitySlots || [],
-                      existingSessions: data.existingSessions || [],
-                    });
-                  } catch (error) {
-                    console.error("Error fetching availability:", error);
-                  } finally {
-                    setLoadingAvailability(false);
-                  }
-                }}
-                onSaveAvailability={async (startDate, endDate, slots, type) => {
-                  try {
-                    setSavingAvailability(true);
-                    await instructorService.saveAvailability(
-                      instructorId,
-                      startDate,
-                      endDate,
-                      slots,
-                      type || instructorType
-                    );
-                    // Refresh data after save
-                    const data = await instructorService.getAvailability(
-                      instructorId,
-                      startDate,
-                      endDate
-                    );
-                    setAvailabilityData({
-                      availabilitySlots: data.availabilitySlots || [],
-                      existingSessions: data.existingSessions || [],
-                    });
-                  } catch (error) {
-                    console.error("Error saving availability:", error);
-                    throw error;
-                  } finally {
-                    setSavingAvailability(false);
-                  }
-                }}
-              />
-            ) : (
-              <Card sx={{ borderRadius: 3, p: 3 }}>
-                <Alert severity="warning">
-                  Không tìm thấy thông tin giảng viên. Vui lòng đăng nhập lại.
-                </Alert>
-              </Card>
-            )}
-          </Box>
         )}
       </Box>
     </div>

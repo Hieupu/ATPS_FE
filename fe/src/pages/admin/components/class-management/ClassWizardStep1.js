@@ -1,0 +1,531 @@
+import React from "react";
+
+/**
+ * ClassWizardStep1 - Component cho Step 1: Thông tin cơ bản
+ * 
+ * Props:
+ * - formData: Object chứa dữ liệu form
+ * - setFormData: Function để cập nhật formData
+ * - errors: Object chứa lỗi validation
+ * - readonly: Boolean - chế độ chỉ đọc
+ * - instructors: Array - danh sách giảng viên
+ * - filteredInstructors: Array - danh sách giảng viên đã filter
+ * - instructorSearchTerm: String - từ khóa tìm kiếm giảng viên
+ * - setInstructorSearchTerm: Function
+ * - instructorDropdownOpen: Boolean
+ * - setInstructorDropdownOpen: Function
+ * - selectedInstructor: Object - giảng viên đã chọn
+ * - setSelectedInstructor: Function
+ * - setInstructorType: Function
+ * - setParttimeAvailableSlotKeys: Function
+ * - setParttimeAvailableEntriesCount: Function
+ * - setParttimeAvailabilityError: Function
+ * - setBlockedDays: Function
+ * - setSelectedTimeslotIds: Function
+ * - setAlternativeStartDateSearch: Function
+ * - availableCourses: Array - danh sách khóa học
+ * - filteredCourses: Array - danh sách khóa học đã filter
+ * - courseSearchTerm: String
+ * - setCourseSearchTerm: Function
+ * - courseDropdownOpen: Boolean
+ * - setCourseDropdownOpen: Function
+ * - selectedCourse: Object
+ * - setSelectedCourse: Function
+ * - loadingInstructorData: Boolean
+ */
+const ClassWizardStep1 = ({
+  formData,
+  setFormData,
+  errors,
+  readonly,
+  instructors,
+  filteredInstructors,
+  instructorSearchTerm,
+  setInstructorSearchTerm,
+  instructorDropdownOpen,
+  setInstructorDropdownOpen,
+  selectedInstructor,
+  setSelectedInstructor,
+  setInstructorType,
+  setParttimeAvailableSlotKeys,
+  setParttimeAvailableEntriesCount,
+  setParttimeAvailabilityError,
+  setBlockedDays,
+  setSelectedTimeslotIds,
+  setAlternativeStartDateSearch,
+  availableCourses,
+  filteredCourses,
+  courseSearchTerm,
+  setCourseSearchTerm,
+  courseDropdownOpen,
+  setCourseDropdownOpen,
+  selectedCourse,
+  setSelectedCourse,
+  loadingInstructorData,
+}) => {
+  return (
+    <div className="wizard-step-content">
+      <div className="form-group">
+        <label htmlFor="Name">
+          Tên lớp học <span className="required">*</span>
+        </label>
+        <input
+          type="text"
+          id="Name"
+          value={formData.Name}
+          onChange={(e) =>
+            setFormData({ ...formData, Name: e.target.value })
+          }
+          placeholder="Nhập tên lớp học"
+          className={errors.Name ? "error" : ""}
+          disabled={readonly}
+          readOnly={readonly}
+        />
+        {errors.Name && (
+          <span className="error-message">{errors.Name}</span>
+        )}
+      </div>
+
+      {/* Search Dropdown cho Giảng viên */}
+      <div className="form-group">
+        <label htmlFor="InstructorID">
+          Giảng viên <span className="required">*</span>
+        </label>
+        <div style={{ position: "relative" }}>
+          <input
+            type="text"
+            id="InstructorID"
+            value={
+              instructorSearchTerm ||
+              (selectedInstructor
+                ? `${
+                    selectedInstructor.FullName ||
+                    selectedInstructor.fullName
+                  } - ${
+                    selectedInstructor.Major || selectedInstructor.major
+                  }`
+                : "")
+            }
+            onChange={(e) => {
+              if (readonly) return;
+              setInstructorSearchTerm(e.target.value);
+              setInstructorDropdownOpen(true);
+              if (!e.target.value) {
+                setFormData({ ...formData, InstructorID: null });
+                setSelectedInstructor(null);
+                setInstructorType(null);
+                setParttimeAvailableSlotKeys([]);
+                setParttimeAvailableEntriesCount(null);
+                setParttimeAvailabilityError("");
+              }
+            }}
+            onFocus={() => {
+              if (!readonly) setInstructorDropdownOpen(true);
+            }}
+            onBlur={() => {
+              // Delay để cho phép click vào dropdown item
+              setTimeout(() => setInstructorDropdownOpen(false), 200);
+            }}
+            placeholder="Tìm kiếm giảng viên..."
+            className={errors.InstructorID ? "error" : ""}
+            disabled={readonly}
+            readOnly={readonly}
+            style={{
+              width: "100%",
+              padding: "10px",
+              border: "1px solid #e2e8f0",
+              borderRadius: "6px",
+              fontSize: "14px",
+            }}
+          />
+          {instructorDropdownOpen && filteredInstructors.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                left: 0,
+                right: 0,
+                zIndex: 1000,
+                backgroundColor: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+                marginTop: "4px",
+                maxHeight: "200px",
+                overflowY: "auto",
+                boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+              }}
+            >
+              {filteredInstructors.map((instructor) => (
+                <div
+                  key={instructor.InstructorID || instructor.id}
+                  onClick={() => {
+                    // Đảm bảo lấy đúng InstructorID, không phải AccID
+                    const value = instructor.InstructorID;
+                    const fallbackValue = instructor.id;
+                    const finalValue =
+                      value ||
+                      (fallbackValue &&
+                      fallbackValue !== instructor.AccID
+                        ? fallbackValue
+                        : null);
+
+                    console.log("[ClassWizard] Selected instructor:", {
+                      instructor,
+                      InstructorID: instructor.InstructorID,
+                      id: instructor.id,
+                      AccID: instructor.AccID,
+                      selectedValue: finalValue,
+                      isAccID: fallbackValue === instructor.AccID,
+                    });
+
+                    if (!finalValue) {
+                      console.error(
+                        "[ClassWizard] Cannot find InstructorID in instructor object:",
+                        instructor
+                      );
+                      alert(
+                        "Lỗi: Không tìm thấy InstructorID. Vui lòng thử lại."
+                      );
+                      return;
+                    }
+
+                    if (
+                      instructor.AccID &&
+                      finalValue === instructor.AccID
+                    ) {
+                      console.error(
+                        "[ClassWizard] ERROR: Selected AccID instead of InstructorID!",
+                        {
+                          AccID: instructor.AccID,
+                          InstructorID: instructor.InstructorID,
+                          selectedValue: finalValue,
+                        }
+                      );
+                      alert(
+                        "Lỗi: Đã chọn nhầm AccID thay vì InstructorID. Vui lòng thử lại."
+                      );
+                      return;
+                    }
+
+                    setFormData({
+                      ...formData,
+                      InstructorID: finalValue,
+                      // Reset ca học và ngày học khi chọn lại giảng viên
+                      scheduleDetail: {
+                        ...formData.scheduleDetail,
+                        DaysOfWeek: [],
+                        TimeslotsByDay: {},
+                      },
+                    });
+                    setSelectedInstructor(instructor);
+                    setInstructorType(
+                      instructor.Type || instructor.type || null
+                    );
+                    setParttimeAvailableSlotKeys([]);
+                    setParttimeAvailableEntriesCount(null);
+                    setParttimeAvailabilityError("");
+                    setInstructorSearchTerm("");
+                    setInstructorDropdownOpen(false);
+                    setBlockedDays({});
+                    // Reset selectedTimeslotIds khi chọn lại giảng viên
+                    setSelectedTimeslotIds(new Set());
+                    // Reset chế độ tìm kiếm
+                    setAlternativeStartDateSearch({
+                      loading: false,
+                      suggestions: [],
+                      error: null,
+                      showResults: false,
+                    });
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    cursor: "pointer",
+                    borderBottom: "1px solid #f1f5f9",
+                    fontSize: "14px",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.backgroundColor = "#f8fafc";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.backgroundColor = "#fff";
+                  }}
+                >
+                  {instructor.FullName || instructor.fullName} -{" "}
+                  {instructor.Major || instructor.major}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {errors.InstructorID && (
+          <span className="error-message">{errors.InstructorID}</span>
+        )}
+      </div>
+
+      {/* Search Dropdown cho Khóa/Môn */}
+      <div className="form-group">
+        <label htmlFor="CourseID">
+          Khóa/Môn <span className="required">*</span>
+        </label>
+        <div style={{ position: "relative" }}>
+          <input
+            type="text"
+            id="CourseID"
+            value={
+              courseSearchTerm ||
+              (selectedCourse
+                ? selectedCourse.Title || selectedCourse.title || ""
+                : "")
+            }
+            onChange={(e) => {
+              if (readonly) return;
+              setCourseSearchTerm(e.target.value);
+              setCourseDropdownOpen(true);
+              if (!e.target.value) {
+                setFormData({ ...formData, CourseID: null });
+                setSelectedCourse(null);
+              }
+            }}
+            onFocus={() => {
+              if (!readonly && formData.InstructorID) {
+                setCourseDropdownOpen(true);
+              }
+            }}
+            onBlur={() => {
+              setTimeout(() => setCourseDropdownOpen(false), 200);
+            }}
+            placeholder={
+              formData.InstructorID
+                ? "Tìm kiếm khóa học..."
+                : "Vui lòng chọn giảng viên trước"
+            }
+            disabled={readonly || !formData.InstructorID}
+            readOnly={readonly}
+            className={errors.CourseID ? "error" : ""}
+            style={{
+              width: "100%",
+              padding: "10px",
+              border: "1px solid #e2e8f0",
+              borderRadius: "6px",
+              fontSize: "14px",
+              backgroundColor: formData.InstructorID
+                ? "#fff"
+                : "#f8fafc",
+              cursor: formData.InstructorID ? "text" : "not-allowed",
+            }}
+          />
+          {courseDropdownOpen &&
+            formData.InstructorID &&
+            (filteredCourses.length > 0 || loadingInstructorData) && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000,
+                  backgroundColor: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                  marginTop: "4px",
+                  maxHeight: "200px",
+                  overflowY: "auto",
+                  boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+                }}
+              >
+                {loadingInstructorData ? (
+                  <div
+                    style={{
+                      padding: "12px",
+                      textAlign: "center",
+                      color: "#64748b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Đang tải khóa học...
+                  </div>
+                ) : filteredCourses.length === 0 ? (
+                  <div
+                    style={{
+                      padding: "12px",
+                      textAlign: "center",
+                      color: "#64748b",
+                      fontSize: "14px",
+                    }}
+                  >
+                    Không có khóa học nào (PUBLISHED) cho giảng viên này
+                  </div>
+                ) : (
+                  filteredCourses.map((course) => (
+                    <div
+                      key={course.CourseID || course.id}
+                      onClick={() => {
+                        const value = course.CourseID || course.id;
+                        setFormData({ ...formData, CourseID: value });
+                        setSelectedCourse(course);
+                        setCourseSearchTerm("");
+                        setCourseDropdownOpen(false);
+                      }}
+                      style={{
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #f1f5f9",
+                        fontSize: "14px",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.backgroundColor = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.backgroundColor = "#fff";
+                      }}
+                    >
+                      {course.Title ||
+                        course.title ||
+                        course.CourseTitle}
+                      {(course.Description ||
+                        course.CourseDescription) && (
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#64748b",
+                            marginTop: "2px",
+                          }}
+                        >
+                          {course.Description ||
+                            course.CourseDescription}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+        </div>
+        {errors.CourseID && (
+          <span className="error-message">{errors.CourseID}</span>
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="Fee">
+          Học phí (VND)
+          <span className="optional">(Tùy chọn)</span>
+        </label>
+        <input
+          type="number"
+          id="Fee"
+          value={formData.Fee}
+          onChange={(e) =>
+            setFormData({ ...formData, Fee: e.target.value })
+          }
+          placeholder="Nhập học phí (để trống nếu miễn phí)"
+          min="0"
+          className={errors.Fee ? "error" : ""}
+          disabled={readonly}
+          readOnly={readonly}
+        />
+        {errors.Fee && (
+          <span className="error-message">{errors.Fee}</span>
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="Maxstudent">
+          Sĩ số tối đa <span className="required">*</span>
+        </label>
+        <input
+          type="number"
+          id="Maxstudent"
+          value={formData.Maxstudent}
+          onChange={(e) =>
+            setFormData({ ...formData, Maxstudent: e.target.value })
+          }
+          placeholder="Nhập sĩ số tối đa"
+          min="1"
+          className={errors.Maxstudent ? "error" : ""}
+          disabled={readonly}
+          readOnly={readonly}
+        />
+        {errors.Maxstudent && (
+          <span className="error-message">{errors.Maxstudent}</span>
+        )}
+      </div>
+
+      <div
+        className="form-row"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "16px",
+        }}
+      >
+        <div className="form-group">
+          <label htmlFor="ZoomID">
+            Zoom ID <span className="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="ZoomID"
+            value={formData.ZoomID}
+            onChange={(e) =>
+              setFormData({ ...formData, ZoomID: e.target.value })
+            }
+            placeholder="12345678901"
+            maxLength="11"
+            className={errors.ZoomID ? "error" : ""}
+            disabled={readonly}
+            readOnly={readonly}
+          />
+          {errors.ZoomID && (
+            <span className="error-message">{errors.ZoomID}</span>
+          )}
+          <small
+            style={{
+              color: "#64748b",
+              fontSize: "12px",
+              marginTop: "4px",
+              display: "block",
+            }}
+          >
+            ID phòng Zoom (tối đa 11 ký tự)
+          </small>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="Zoompass">
+            Mật khẩu Zoom <span className="required">*</span>
+          </label>
+          <input
+            type="text"
+            id="Zoompass"
+            value={formData.Zoompass}
+            onChange={(e) =>
+              setFormData({ ...formData, Zoompass: e.target.value })
+            }
+            placeholder="123456"
+            maxLength="6"
+            className={errors.Zoompass ? "error" : ""}
+            disabled={readonly}
+            readOnly={readonly}
+          />
+          {errors.Zoompass && (
+            <span className="error-message">{errors.Zoompass}</span>
+          )}
+          <small
+            style={{
+              color: "#64748b",
+              fontSize: "12px",
+              marginTop: "4px",
+              display: "block",
+            }}
+          >
+            Mật khẩu phòng Zoom (tối đa 6 ký tự)
+          </small>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ClassWizardStep1;
+

@@ -58,7 +58,7 @@ import instructorService from "../../../apiServices/instructorService";
 import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
 
-const InstructorsPage = () => {
+const AdminInstructorsPage = () => {
   const navigate = useNavigate();
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -82,8 +82,9 @@ const InstructorsPage = () => {
   const loadInstructors = async () => {
     try {
       setLoading(true);
-      // Gọi API để lấy danh sách giảng viên từ database
-      const instructorsList = await instructorService.getAllInstructors();
+      // Gọi API admin-specific để lấy danh sách giảng viên từ database
+      // Format: { success: true, data: [...] }
+      const instructorsList = await instructorService.getAllInstructorsAdmin();
       console.log("Đã tải danh sách giảng viên từ DB:", instructorsList.length);
       console.log("Sample instructor data:", instructorsList[0]);
 
@@ -1578,4 +1579,4 @@ const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
   );
 };
 
-export default InstructorsPage;
+export default AdminInstructorsPage;

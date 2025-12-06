@@ -19,7 +19,9 @@ export const getCoursesApi = async () => {
             return response.data?.data || response.data || [];
           } catch (error3) {
             console.error("Get courses error (all endpoints failed):", error3);
-            throw error3.response?.data || { message: "Failed to fetch courses" };
+            throw (
+              error3.response?.data || { message: "Failed to fetch courses" }
+            );
           }
         }
         console.error("Get courses error:", error2);
@@ -28,6 +30,31 @@ export const getCoursesApi = async () => {
     }
     console.error("Get courses error:", error);
     throw error.response?.data || { message: "Failed to fetch courses" };
+  }
+};
+
+export const searchCoursesApi = async ({
+  search = "",
+  category = "",
+  sort = "newest",
+  page = 1,
+  pageSize = 10,
+}) => {
+  try {
+    const params = new URLSearchParams({
+      search,
+      sort,
+      page: String(page),
+      pageSize: String(pageSize),
+    });
+    if (category) params.append("category", category);
+
+    const response = await apiClient.get(
+      `/courses/search?${params.toString()}`
+    );
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Failed to search courses" };
   }
 };
 
@@ -40,7 +67,6 @@ export const getCourseByIdApi = async (courseId) => {
     throw error.response?.data || { message: "Failed to fetch course" };
   }
 };
-
 
 // Keep existing enrollCourseApi for backward compatibility
 export const enrollCourseApi = async (courseId) => {
@@ -59,7 +85,21 @@ export const getPopularCoursesApi = async () => {
     return response.data;
   } catch (error) {
     console.error("Get popular courses error:", error);
-    throw error.response?.data || { message: "Failed to fetch popular courses" };
+    throw (
+      error.response?.data || { message: "Failed to fetch popular courses" }
+    );
+  }
+};
+
+export const getPopularClassesApi = async () => {
+  try {
+    const response = await apiClient.get("/courses/classes/popular");
+    return response.data;
+  } catch (error) {
+    console.error("Get popular classes error:", error);
+    throw (
+      error.response?.data || { message: "Failed to fetch popular classes" }
+    );
   }
 };
 
@@ -69,16 +109,16 @@ export const getMyEnrolledCourses = async () => {
     return response.data;
   } catch (error) {
     console.error("Get enrolled courses error:", error);
-    throw error.response?.data || { message: "Failed to fetch enrolled courses" };
+    throw (
+      error.response?.data || { message: "Failed to fetch enrolled courses" }
+    );
   }
 };
 
 // Get courses for admin (only IN_REVIEW, APPROVED, PUBLISHED)
 export const getCoursesForAdmin = async () => {
   try {
-    const response = await apiClient.get("/courses/admin", {
-      params: { isAdmin: true },
-    });
+    const response = await apiClient.get("/courses/admin/all");
     return response.data?.data || response.data || [];
   } catch (error) {
     console.error("Get courses for admin error:", error);
@@ -119,5 +159,94 @@ export const checkCourseInUse = async (courseId) => {
   } catch (error) {
     console.error("Check course in use error:", error);
     throw error.response?.data || { message: "Failed to check course in use" };
+  }
+};
+
+export const getClassesByCourseApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/classes`);
+    return response.data;
+  } catch (error) {
+    console.error("Get classes error:", error);
+    throw error.response?.data || { message: "Failed to fetch classes" };
+  }
+};
+
+export const enrollInClassApi = async (classId) => {
+  try {
+    const response = await apiClient.post("/courses/enroll", { classId });
+    return response.data;
+  } catch (error) {
+    console.error("Enrollment error:", error);
+    throw error.response?.data || { message: "Enrollment failed" };
+  }
+};
+
+export const getCourseCurriculumApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/curriculum`);
+    return response.data; // { curriculum: Unit[] }
+  } catch (error) {
+    console.error("Get curriculum error:", error);
+    throw error.response?.data || { message: "Failed to fetch curriculum" };
+  }
+};
+
+export const getMyClassesInCourseApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/my-classes`);
+    return response.data;
+  } catch (error) {
+    console.error("Get my classes in course error:", error);
+    throw error.response?.data || { message: "Failed to fetch your classes" };
+  }
+};
+
+export const getCourseAssignmentsApi = async (courseId) => {
+  try {
+    const response = await apiClient.get(`/courses/${courseId}/assignments`);
+    return response.data;
+  } catch (error) {
+    console.error("Get course assignments error:", error);
+    throw error.response?.data || { message: "Failed to fetch assignments" };
+  }
+};
+
+export const submitAssignmentApi = async (assignmentId, submissionData) => {
+  try {
+    const response = await apiClient.post(
+      `/assignments/${assignmentId}/submit`,
+      submissionData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Submit assignment error:", error);
+    throw error.response?.data || { message: "Failed to submit assignment" };
+  }
+};
+
+export const getSubmissionDetailApi = async (submissionId) => {
+  try {
+    const response = await apiClient.get(`/submissions/${submissionId}`);
+    return response.data;
+  } catch (error) {
+    console.error("Get submission detail error:", error);
+    throw (
+      error.response?.data || { message: "Failed to fetch submission detail" }
+    );
+  }
+};
+
+export const checkEnrollmentStatusApi = async (classId) => {
+  try {
+    const response = await apiClient.get(
+      `/courses/classes/${classId}/enrollment-status`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Check enrollment error:", error);
+    throw (
+      error.response?.data || { message: "Failed to check enrollment status" }
+    );
   }
 };

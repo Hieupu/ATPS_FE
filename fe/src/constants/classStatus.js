@@ -7,7 +7,7 @@
  *
  * Trạng thái Công khai (Public & Học viên):
  * - ACTIVE: Đang tuyển sinh (tự động chuyển từ APPROVED khi đủ điều kiện)
- * - ON_GOING: Đang diễn ra
+ * - ONGOING: Đang diễn ra
  *
  * Trạng thái Kết thúc:
  * - CLOSE: Đã kết thúc
@@ -25,7 +25,8 @@ export const CLASS_STATUS = {
   ACTIVE: "ACTIVE",
   OPEN: "ACTIVE", // Alias cho ACTIVE (backward compatibility)
   PUBLISHED: "ACTIVE", // Alias cho ACTIVE (backward compatibility)
-  ON_GOING: "ON_GOING",
+  ONGOING: "ONGOING",
+  ON_GOING: "ONGOING", // Alias for backward compatibility
 
   // Trạng thái Kết thúc
   CLOSE: "CLOSE",
@@ -43,7 +44,7 @@ export const CLASS_STATUS_LABELS = {
   [CLASS_STATUS.DRAFT]: "Nháp",
   [CLASS_STATUS.APPROVED]: "Đã duyệt",
   [CLASS_STATUS.ACTIVE]: "Đang tuyển sinh",
-  [CLASS_STATUS.ON_GOING]: "Đang diễn ra",
+  [CLASS_STATUS.ONGOING]: "Đang diễn ra",
   [CLASS_STATUS.CLOSE]: "Đã kết thúc",
   [CLASS_STATUS.CANCEL]: "Đã hủy",
 };
@@ -67,7 +68,7 @@ export const CLASS_STATUS_COLORS = {
     bgColor: "#eff6ff",
     label: "Đang tuyển sinh",
   },
-  [CLASS_STATUS.ON_GOING]: {
+  [CLASS_STATUS.ONGOING]: {
     color: "#8b5cf6",
     bgColor: "#faf5ff",
     label: "Đang diễn ra",
@@ -118,6 +119,7 @@ export const normalizeStatus = (status) => {
     CLOSED: CLASS_STATUS.CLOSE,
     CANCEL: CLASS_STATUS.CANCEL,
     CANCELLED: CLASS_STATUS.CANCEL,
+    ON_GOING: CLASS_STATUS.ONGOING, // Backward compatibility
     // Hỗ trợ backward compatibility cho WAITING và PENDING (chuyển về DRAFT hoặc APPROVED)
     WAITING: CLASS_STATUS.DRAFT,
     PENDING: CLASS_STATUS.DRAFT,
@@ -134,7 +136,7 @@ export const normalizeStatus = (status) => {
     CLASS_STATUS.DRAFT,
     CLASS_STATUS.APPROVED,
     CLASS_STATUS.ACTIVE,
-    CLASS_STATUS.ON_GOING,
+    CLASS_STATUS.ONGOING,
     CLASS_STATUS.CLOSE,
     CLASS_STATUS.CANCEL,
   ];
@@ -157,7 +159,7 @@ export const isAdminStatus = (status) => {
 
 export const isPublicStatus = (status) => {
   const normalized = normalizeStatus(status);
-  return [CLASS_STATUS.ACTIVE, CLASS_STATUS.ON_GOING].includes(normalized);
+  return [CLASS_STATUS.ACTIVE, CLASS_STATUS.ONGOING].includes(normalized);
 };
 
 export const isEndStatus = (status) => {
@@ -181,8 +183,8 @@ export const canTransitionTo = (currentStatus, targetStatus) => {
   const validTransitions = {
     [CLASS_STATUS.DRAFT]: [CLASS_STATUS.APPROVED, CLASS_STATUS.CANCEL],
     [CLASS_STATUS.APPROVED]: [CLASS_STATUS.ACTIVE, CLASS_STATUS.CANCEL],
-    [CLASS_STATUS.ACTIVE]: [CLASS_STATUS.ON_GOING, CLASS_STATUS.CANCEL],
-    [CLASS_STATUS.ON_GOING]: [CLASS_STATUS.CLOSE, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.ACTIVE]: [CLASS_STATUS.ONGOING, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.ONGOING]: [CLASS_STATUS.CLOSE, CLASS_STATUS.CANCEL],
   };
 
   return validTransitions[current]?.includes(target) || false;

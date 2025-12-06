@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, memo, useMemo, useCallback, useRef } from "react";
 import {
   Container,
   Grid,
@@ -11,284 +11,90 @@ import {
   MenuItem,
   Pagination,
   Chip,
-  Card,
-  CardContent,
-  CardMedia,
   Button,
-  Avatar,
   InputAdornment,
   Paper,
+  Skeleton,
+  Fade,
 } from "@mui/material";
-import {
-  Search,
-  FilterList,
-  Sort,
-  People,
-  Schedule,
-  Star,
-  ArrowForward,
-} from "@mui/icons-material";
-import { getCoursesApi } from "../../apiServices/courseService";
-import { useNavigate } from "react-router-dom";
+import { Search, TuneRounded, RocketLaunchRounded } from "@mui/icons-material";
+import { searchCoursesApi } from "../../apiServices/courseService";
+import AppHeader from "../../components/Header/AppHeader";
+import CourseCard from "./CourseCard";
 
-// Array ảnh để random
-const courseImages = [
-  "https://wp-s3-edilume-test-bucket.s3.ap-southeast-1.amazonaws.com/wp-content/uploads/2022/12/31183122/IELTS_new_thumbnail.png",
-  "https://top-courses.org/wp-content/uploads/2022/07/IELTS-TEST_Speaking-and-Writing.jpg",
-  "https://www.focusedu.org/wp-content/uploads/2021/03/Top-Reasons-Why-IELTS-Coaching-Is-Important.jpg"
-];
-
-const CourseCard = ({ course }) => {
-  const navigate = useNavigate();
-
-  const handleViewDetails = () => {
-    navigate(`/courses/${course.CourseID}`);
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(price);
-  };
-
-  // Random ảnh dựa trên CourseID
-  const imageUrl = courseImages[course.CourseID % courseImages.length];
-
-  return (
-    <Card
-      sx={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
-        borderRadius: 3,
-        overflow: "hidden",
-        position: "relative",
-        "&:hover": {
-          transform: "translateY(-12px)",
-          boxShadow: "0 20px 60px rgba(102, 126, 234, 0.25)",
-          "& .course-image": {
-            transform: "scale(1.1)",
-          },
-          "& .view-button": {
-            transform: "translateX(8px)",
-          }
-        },
-      }}
-    >
-      {/* Course Image */}
-      <Box sx={{ position: "relative", overflow: "hidden", height: 200 }}>
-        <CardMedia
-          component="img"
-          className="course-image"
-          height="200"
-          image={imageUrl}
-          alt={course.Title}
-          sx={{ 
-            objectFit: "cover",
-            transition: "transform 0.4s ease",
-          }}
-        />
-        <Box
-          sx={{
-            position: "absolute",
-            top: 16,
-            right: 16,
-          }}
-        >
-          <Chip
-            label={course.Category || "Programming"}
-            size="small"
-            sx={{
-              bgcolor: "rgba(255, 255, 255, 0.95)",
-              fontWeight: 600,
-              backdropFilter: "blur(10px)",
-            }}
-          />
-        </Box>
-      </Box>
-
-      <CardContent sx={{ flexGrow: 1, p: 3, display: "flex", flexDirection: "column" }}>
-        {/* Course Title */}
-        <Typography
-          variant="h6"
-          component="h3"
-          sx={{
-            fontWeight: 700,
-            mb: 2,
-            height: "56px",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            lineHeight: 1.4,
-            color: "text.primary",
-          }}
-        >
-          {course.Title}
-        </Typography>
-
-        {/* Course Description */}
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{
-            mb: 3,
-            height: "42px",
-            overflow: "hidden",
-            display: "-webkit-box",
-            WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical",
-            lineHeight: 1.5,
-          }}
-        >
-          {course.Description}
-        </Typography>
-
-        {/* Instructor Info */}
-        <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
-          <Avatar
-            src={course.InstructorAvatar}
-            sx={{ 
-              width: 36, 
-              height: 36, 
-              mr: 1.5,
-              border: "2px solid",
-              borderColor: "primary.light",
-            }}
-          >
-            {course.InstructorName?.charAt(0)}
-          </Avatar>
-          <Typography variant="body2" sx={{ fontWeight: 600, color: "text.primary" }}>
-            {course.InstructorName}
-          </Typography>
-        </Box>
-
-        {/* Course Stats */}
-        <Box 
-          sx={{ 
-            display: "flex", 
-            gap: 2,
-            mb: 3,
-            pb: 3,
-            borderBottom: "1px solid",
-            borderColor: "divider",
-          }}
-        >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <People sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {course.EnrollmentCount || 0}
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Schedule sx={{ fontSize: 18, color: "primary.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 500 }}>
-              {course.Duration}h
-            </Typography>
-          </Box>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Star sx={{ fontSize: 18, color: "warning.main" }} />
-            <Typography variant="body2" sx={{ fontWeight: 600 }}>
-              {course.AverageRating ? course.AverageRating.toFixed(1) : "N/A"}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Price and Action */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mt: "auto" }}>
-          <Typography 
-            variant="h5" 
-            sx={{ 
-              fontWeight: 800,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {formatPrice(course.TuitionFee)}
-          </Typography>
-          <Button
-            className="view-button"
-            variant="contained"
-            endIcon={<ArrowForward />}
-            onClick={handleViewDetails}
-            sx={{ 
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              transition: "transform 0.3s ease",
-              textTransform: "none",
-              fontWeight: 600,
-              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-            }}
-          >
-            View
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
-  );
+// Level mapping từ tiếng Anh sang tiếng Việt
+const LEVEL_LABELS = {
+  BEGINNER: "Dành cho người mới",
+  INTERMEDIATE: "Trình độ trung cấp",
+  ADVANCED: "Trình độ nâng cao",
 };
 
 const CoursesPage = () => {
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [category, setCategory] = useState("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
+  const [level, setLevel] = useState("");
   const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
   const coursesPerPage = 9;
+  
+  // Ref to scroll to courses container
+  const courseContainerRef = useRef(null);
 
+  // Fetch courses with improved UX (avoid screen flickering)
   useEffect(() => {
-    fetchCourses();
+    const fetch = async () => {
+      try {
+        const { items, total: t } = await searchCoursesApi({
+          search: debouncedSearch,
+          category: level,
+          sort: sortBy,
+          page,
+          pageSize: coursesPerPage,
+        });
+        
+        setCourses(items || []);
+        setTotal(t || 0);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching courses:", error);
+        setCourses([]);
+        setTotal(0);
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [debouncedSearch, level, sortBy, page]);
+
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1); // Reset to page 1 when search changes
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const totalPages = Math.max(1, Math.ceil(total / coursesPerPage));
+
+  const handleResetFilters = useCallback(() => {
+    setSearchTerm("");
+    setLevel("");
+    setSortBy("newest");
+    setPage(1);
   }, []);
-
-  const fetchCourses = async () => {
-    try {
-      setLoading(true);
-      const data = await getCoursesApi();
-      setCourses(data);
-    } catch (error) {
-      console.error("Error fetching courses:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Filter and sort courses
-  const filteredCourses = courses.filter(course => {
-    const matchesSearch = course.Title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         course.Description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = category === "all" || course.Category === category;
-    return matchesSearch && matchesCategory;
-  });
-
-  const sortedCourses = [...filteredCourses].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.TuitionFee - b.TuitionFee;
-      case "price-high":
-        return b.TuitionFee - a.TuitionFee;
-      case "popular":
-        return (b.EnrollmentCount || 0) - (a.EnrollmentCount || 0);
-      case "rating":
-        return (b.AverageRating || 0) - (a.AverageRating || 0);
-      default: // newest
-        return b.CourseID - a.CourseID;
-    }
-  });
-
-  // Pagination
-  const totalPages = Math.ceil(sortedCourses.length / coursesPerPage);
-  const paginatedCourses = sortedCourses.slice(
-    (page - 1) * coursesPerPage,
-    page * coursesPerPage
-  );
-
-  const categories = ["all", "Programming", "Design", "Business", "Marketing", "Data Science"];
+  
+  // Memoized active filters count
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (searchTerm) count++;
+    if (level) count++;
+    if (sortBy !== "newest") count++;
+    return count;
+  }, [searchTerm, level, sortBy]);
 
   if (loading) {
     return (
@@ -296,11 +102,12 @@ const CoursesPage = () => {
         <Grid container spacing={3}>
           {[...Array(6)].map((_, index) => (
             <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ height: 400, borderRadius: 3 }}>
-                <CardContent sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%" }}>
-                  <Typography variant="h6" color="text.secondary">Loading...</Typography>
-                </CardContent>
-              </Card>
+              <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 3 }} />
+              <Box sx={{ pt: 2 }}>
+                <Skeleton variant="text" height={40} />
+                <Skeleton variant="text" height={20} />
+                <Skeleton variant="text" height={20} width="60%" />
+              </Box>
             </Grid>
           ))}
         </Grid>
@@ -310,83 +117,280 @@ const CoursesPage = () => {
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
-      {/* Hero Section */}
+      <AppHeader />
+      
+      {/* Hero Section - Enhanced Premium Design */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
           color: "white",
-          py: 10,
-          mb: 6,
+          py: { xs: 3, md: 4 },
+          mb: 5,
           position: "relative",
           overflow: "hidden",
+          borderBottomLeftRadius: { xs: 40, md: 60 },
+          borderBottomRightRadius: { xs: 40, md: 60 },
+          boxShadow: "0 50px 100px rgba(102, 126, 234, 0.4)",
+          // Gradient overlay với light glow (tăng độ sáng)
           "&::before": {
             content: '""',
             position: "absolute",
+            width: "100%",
+            height: "100%",
             top: 0,
             left: 0,
-            right: 0,
-            bottom: 0,
-            background: "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+            background:
+              "radial-gradient(circle at 15% 30%, rgba(255,255,255,0.25) 0%, transparent 60%)",
+            zIndex: 1,
           },
           "&::after": {
             content: '""',
             position: "absolute",
+            width: "100%",
+            height: "100%",
             top: 0,
-            left: 0,
             right: 0,
-            bottom: 0,
-            background: "radial-gradient(circle at 80% 80%, rgba(255,255,255,0.1) 0%, transparent 50%)",
-          }
+            background:
+              "radial-gradient(circle at 85% 70%, rgba(255,255,255,0.22) 0%, transparent 60%)",
+            zIndex: 1,
+          },
         }}
       >
-        <Container maxWidth="lg" sx={{ position: "relative", zIndex: 1 }}>
-          <Typography
-            variant="h2"
-            component="h1"
+        {/* Decorative Background Icons */}
+        <Box
+          sx={{
+            position: "absolute",
+            width: "100%",
+            height: "100%",
+            top: 0,
+            left: 0,
+            opacity: 0.12,
+            zIndex: 0,
+          }}
+        >
+          {/* Icon Search */}
+          <Box
             sx={{
-              fontWeight: 800,
-              textAlign: "center",
-              mb: 2,
-              fontSize: { xs: "2.5rem", md: "3.5rem" },
+              position: "absolute",
+              fontSize: "4rem",
+              top: "15%",
+              left: "8%",
+              transform: "rotate(-15deg)",
             }}
           >
-            Explore Our Courses
+            🔍
+          </Box>
+          {/* Icon Chat */}
+          <Box
+            sx={{
+              position: "absolute",
+              fontSize: "3.5rem",
+              top: "65%",
+              left: "12%",
+              transform: "rotate(25deg)",
+            }}
+          >
+            💬
+          </Box>
+          {/* Icon Mail */}
+          <Box
+            sx={{
+              position: "absolute",
+              fontSize: "3rem",
+              top: "25%",
+              right: "10%",
+              transform: "rotate(15deg)",
+            }}
+          >
+            ✉️
+          </Box>
+          {/* Icon Pen */}
+          <Box
+            sx={{
+              position: "absolute",
+              fontSize: "3.5rem",
+              top: "70%",
+              right: "15%",
+              transform: "rotate(-20deg)",
+            }}
+          >
+            ✏️
+          </Box>
+          {/* Icon Book */}
+          <Box
+            sx={{
+              position: "absolute",
+              fontSize: "4rem",
+              top: "45%",
+              left: "5%",
+              transform: "rotate(10deg)",
+            }}
+          >
+            📘
+          </Box>
+          {/* Icon Trophy */}
+          <Box
+            sx={{
+              position: "absolute",
+              fontSize: "3.5rem",
+              top: "50%",
+              right: "8%",
+              transform: "rotate(-12deg)",
+            }}
+          >
+            🏆
+          </Box>
+        </Box>
+
+        <Container
+          maxWidth="lg"
+          sx={{
+            position: "relative",
+            zIndex: 2,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          {/* Hero Icon - Enlarged */}
+          <Box
+            sx={{
+              width: 70,
+              height: 70,
+              borderRadius: "22px",
+              background:
+                "linear-gradient(135deg, rgba(255,255,255,0.35), rgba(255,255,255,0.18))",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              boxShadow: "0 35px 90px rgba(0,0,0,0.35), 0 0 80px rgba(255,255,255,0.35), inset 0 1px 1px rgba(255,255,255,0.5)",
+              backdropFilter: "blur(25px)",
+              fontSize: "2.5rem",
+              border: "3px solid rgba(255,255,255,0.35)",
+            }}
+          >
+            🎓
+          </Box>
+
+          {/* Title with better typography */}
+          <Typography
+            component="h1"
+            sx={{
+              fontFamily: "'Poppins', 'Inter', sans-serif",
+              fontWeight: 900,
+              textAlign: "center",
+              mb: 0.5,
+              letterSpacing: "-0.5px",
+              fontSize: { xs: "1.6rem", sm: "2rem", md: "2.5rem" },
+              textShadow: "0 20px 40px rgba(0,0,0,0.3)",
+              lineHeight: 1.2,
+            }}
+          >
+            Khám Phá Khóa Học Đỉnh Cao
           </Typography>
+
+          {/* Subtitle - lighter font weight */}
           <Typography
             variant="h6"
             sx={{
               textAlign: "center",
-              opacity: 0.95,
+              opacity: 0.92,
               maxWidth: 700,
               mx: "auto",
-              fontWeight: 400,
+              fontWeight: 300,
               lineHeight: 1.6,
+              fontSize: { xs: "0.9rem", md: "1rem" },
+              fontFamily: "'Inter', 'Segoe UI', sans-serif",
+              letterSpacing: "0.2px",
+              mb: 1,
             }}
           >
-            Discover the perfect course to advance your career and skills with expert instructors
+            Cập nhật lộ trình học tập mới nhất, học cùng giảng viên chất lượng và đạt mục tiêu IELTS nhanh hơn.
           </Typography>
+
+          {/* CTA Button */}
+          <Button
+            variant="contained"
+            size="medium"
+            endIcon={<RocketLaunchRounded />}
+            onClick={() => {
+              courseContainerRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "start",
+              });
+            }}
+            sx={{
+              mt: 1.5,
+              px: 4,
+              py: 1.5,
+              borderRadius: 999,
+              fontSize: "1rem",
+              fontWeight: 700,
+              textTransform: "none",
+              background: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
+              boxShadow: "0 20px 50px rgba(79, 172, 254, 0.4)",
+              border: "2px solid rgba(255,255,255,0.3)",
+              color: "white",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                transform: "translateY(-4px)",
+                boxShadow: "0 30px 60px rgba(79, 172, 254, 0.5)",
+                background: "linear-gradient(135deg, #3d8bd9 0%, #00d4e6 100%)",
+              },
+            }}
+          >
+            Khám Phá Ngay
+          </Button>
         </Container>
       </Box>
 
-      <Container maxWidth="xl" sx={{ pb: 8 }}>
+      <Container maxWidth="xl" sx={{ pb: 8 }} ref={courseContainerRef}>
         {/* Filters and Search */}
-        <Paper 
+        <Paper
           elevation={0}
-          sx={{ 
-            mb: 5, 
-            p: 4,
-            borderRadius: 4,
-            background: "white",
-            boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
+          sx={{
+            mb: 4,
+            p: { xs: 2.5, md: 3 },
+            borderRadius: 3,
+            background: "rgba(255,255,255,0.9)",
+            boxShadow: "0 16px 40px rgba(15,23,42,0.08)",
+            border: "1px solid rgba(124,58,237,0.15)",
+            backdropFilter: "blur(6px)",
           }}
         >
-          <Grid container spacing={3} alignItems="center">
+          <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+            <TuneRounded sx={{ color: "primary.main", mr: 1 }} />
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                color: "text.primary",
+                fontFamily: "'Poppins', 'Segoe UI', sans-serif",
+              }}
+            >
+              Bộ Lọc & Tìm Kiếm
+            </Typography>
+            {activeFiltersCount > 0 && (
+              <Chip
+                label={`${activeFiltersCount} bộ lọc`}
+                size="small"
+                color="primary"
+                sx={{ ml: 2, fontWeight: 600, borderRadius: 1.5 }}
+              />
+            )}
+          </Box>
+          
+          <Grid container spacing={2} alignItems="center">
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                placeholder="Search courses..."
+                placeholder="Tìm kiếm khóa học..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setPage(1);
+                }}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -396,103 +400,308 @@ const CoursesPage = () => {
                 }}
                 sx={{
                   "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                  }
+                    borderRadius: 999,
+                    bgcolor: "#f5f6ff",
+                    "&:hover": {
+                      bgcolor: "#eef0ff",
+                    },
+                    "&.Mui-focused": {
+                      bgcolor: "white",
+                      boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
+                    },
+                  },
                 }}
               />
             </Grid>
+            
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Category</InputLabel>
+                <InputLabel>Trình độ</InputLabel>
                 <Select
-                  value={category}
-                  label="Category"
-                  onChange={(e) => setCategory(e.target.value)}
-                  sx={{ borderRadius: 2 }}
+                  value={level}
+                  label="Trình độ"
+                  onChange={(e) => {
+                    setLevel(e.target.value);
+                    setPage(1);
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    bgcolor: "#f5f6ff",
+                    "&:hover": {
+                      bgcolor: "#eef0ff",
+                    },
+                    "& .MuiSelect-select": {
+                      borderRadius: 999,
+                      py: 1.2,
+                    },
+                    "&.Mui-focused": {
+                      bgcolor: "white",
+                      boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
+                    },
+                  }}
                 >
-                  {categories.map((cat) => (
-                    <MenuItem key={cat} value={cat}>
-                      {cat === "all" ? "All Categories" : cat}
-                    </MenuItem>
-                  ))}
+                  <MenuItem value="">Tất cả trình độ</MenuItem>
+                  <MenuItem value="BEGINNER">
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {LEVEL_LABELS.BEGINNER}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Beginner
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="INTERMEDIATE">
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {LEVEL_LABELS.INTERMEDIATE}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Intermediate
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="ADVANCED">
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {LEVEL_LABELS.ADVANCED}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Advanced
+                      </Typography>
+                    </Box>
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Grid>
+            
             <Grid item xs={12} sm={6} md={3}>
               <FormControl fullWidth>
-                <InputLabel>Sort By</InputLabel>
+                <InputLabel>Sắp xếp</InputLabel>
                 <Select
                   value={sortBy}
-                  label="Sort By"
-                  onChange={(e) => setSortBy(e.target.value)}
-                  sx={{ borderRadius: 2 }}
+                  label="Sắp xếp"
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    setPage(1);
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    bgcolor: "#f5f6ff",
+                    "&:hover": {
+                      bgcolor: "#eef0ff",
+                    },
+                    "& .MuiSelect-select": {
+                      borderRadius: 999,
+                      py: 1.2,
+                    },
+                    "&.Mui-focused": {
+                      bgcolor: "white",
+                      boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
+                    },
+                  }}
                 >
-                  <MenuItem value="newest">Newest</MenuItem>
-                  <MenuItem value="popular">Most Popular</MenuItem>
-                  <MenuItem value="rating">Highest Rated</MenuItem>
-                  <MenuItem value="price-low">Price: Low to High</MenuItem>
-                  <MenuItem value="price-high">Price: High to Low</MenuItem>
+                  <MenuItem value="newest">Mới nhất</MenuItem>
+                  <MenuItem value="popular">Phổ biến nhất</MenuItem>
+                  <MenuItem value="rating">Đánh giá cao nhất</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
+            
             <Grid item xs={12} md={2}>
-              <Chip
-                label={`${filteredCourses.length} Courses`}
-                sx={{ 
-                  width: "100%",
-                  height: 48,
-                  fontSize: "1rem",
-                  fontWeight: 600,
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  color: "white",
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 1,
                 }}
-              />
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    borderRadius: 3,
+                    py: 1.5,
+                    px: 2,
+                    textAlign: "center",
+                    background: "linear-gradient(120deg, #6366f1, #8b5cf6)",
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "1rem",
+                    boxShadow: "0 10px 30px rgba(99,102,241,0.35)",
+                  }}
+                >
+                  {total} khóa học
+                </Paper>
+                {activeFiltersCount > 0 && (
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={handleResetFilters}
+                    sx={{
+                      textTransform: "none",
+                      color: "error.main",
+                      fontWeight: 600,
+                      fontSize: "0.8rem",
+                    }}
+                  >
+                    Xóa bộ lọc
+                  </Button>
+                )}
+              </Box>
             </Grid>
           </Grid>
         </Paper>
 
-        {/* Courses Grid */}
-        <Grid container spacing={4}>
-          {paginatedCourses.map((course) => (
-            <Grid item xs={12} sm={6} md={4} key={course.CourseID}>
-              <CourseCard course={course} />
+        {/* Courses Grid with Fade transition */}
+        <Box ref={courseContainerRef}>
+          <Fade in={!loading} timeout={500}>
+            <Grid container spacing={4}>
+              {courses.map((course, index) => (
+                <Grid 
+                  item 
+                  xs={12} 
+                  sm={6} 
+                  md={4} 
+                  key={course.CourseID}
+                >
+                  <Fade in={true} timeout={300 + index * 50}>
+                    <Box>
+                      <CourseCard course={course} />
+                    </Box>
+                  </Fade>
+                </Grid>
+              ))}
             </Grid>
-          ))}
-        </Grid>
+          </Fade>
+        </Box>
 
         {/* No Results */}
-        {paginatedCourses.length === 0 && (
-          <Box sx={{ textAlign: "center", py: 10 }}>
-            <Typography variant="h5" color="text.secondary" sx={{ fontWeight: 600 }}>
-              No courses found matching your criteria
-            </Typography>
-            <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-              Try adjusting your filters or search terms
-            </Typography>
-          </Box>
+        {!loading && courses.length === 0 && (
+          <Fade in={true} timeout={500}>
+            <Box
+              sx={{
+                textAlign: "center",
+                py: 10,
+                px: 2,
+              }}
+            >
+              <Box
+                sx={{
+                  fontSize: "5rem",
+                  mb: 2,
+                }}
+              >
+                📚
+              </Box>
+              <Typography
+                variant="h5"
+                color="text.primary"
+                sx={{ fontWeight: 700, mb: 1 }}
+              >
+                Không tìm thấy khóa học phù hợp
+              </Typography>
+              <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+                Vui lòng thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={handleResetFilters}
+                sx={{
+                  borderRadius: 2,
+                  px: 4,
+                  py: 1.5,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  textTransform: "none",
+                  fontWeight: 600,
+                  boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+                }}
+              >
+                Đặt lại bộ lọc
+              </Button>
+            </Box>
+          </Fade>
         )}
 
         {/* Pagination */}
-        {totalPages > 1 && (
-          <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-            <Pagination
-              count={totalPages}
-              page={page}
-              onChange={(event, value) => setPage(value)}
-              color="primary"
-              size="large"
+        {!loading && totalPages > 1 && (
+          <Fade in={true} timeout={500}>
+            <Box
               sx={{
-                "& .MuiPaginationItem-root": {
-                  fontWeight: 600,
-                  fontSize: "1rem",
-                }
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                mt: 8,
+                gap: 2,
               }}
-            />
-          </Box>
+            >
+              <Typography variant="body2" color="text.secondary">
+                Trang {page} / {totalPages}
+              </Typography>
+              <Paper
+                elevation={0}
+                sx={{
+                  px: { xs: 1.5, md: 2.5 },
+                  py: 1.5,
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.9)",
+                  border: "1px solid rgba(99,102,241,0.15)",
+                  boxShadow: "0 15px 35px rgba(15,23,42,0.12)",
+                }}
+              >
+                <Pagination
+                  count={totalPages}
+                  page={page}
+                  onChange={(event, value) => {
+                    setPage(value);
+                    // Scroll to course container instead of top
+                    if (courseContainerRef.current) {
+                      courseContainerRef.current.scrollIntoView({ 
+                        behavior: "smooth", 
+                        block: "start" 
+                      });
+                    }
+                  }}
+                  shape="rounded"
+                  color="primary"
+                  size="large"
+                  showFirstButton
+                  showLastButton
+                  sx={{
+                    "& .MuiPaginationItem-root": {
+                      fontWeight: 600,
+                      fontSize: "0.95rem",
+                      borderRadius: 999,
+                      border: "1px solid rgba(99,102,241,0.15)",
+                      mx: 0.3,
+                      minWidth: 42,
+                      minHeight: 42,
+                      boxShadow: "0 6px 12px rgba(15,23,42,0.08)",
+                    },
+                    "& .MuiPaginationItem-root.Mui-selected": {
+                      background: "linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%)",
+                      color: "white",
+                      border: "none",
+                      boxShadow: "0 12px 25px rgba(109,40,217,0.35)",
+                    },
+                    "& .MuiPaginationItem-root:not(.Mui-selected):hover": {
+                      background: "rgba(99,102,241,0.12)",
+                    },
+                    "& .MuiPaginationItem-icon": {
+                      fontSize: "1.4rem",
+                    },
+                    "& .MuiPaginationItem-ellipsis": {
+                      color: "text.secondary",
+                      fontWeight: 700,
+                    },
+                  }}
+                />
+              </Paper>
+            </Box>
+          </Fade>
         )}
       </Container>
     </Box>
   );
 };
 
-export default CoursesPage;
+export default memo(CoursesPage);
