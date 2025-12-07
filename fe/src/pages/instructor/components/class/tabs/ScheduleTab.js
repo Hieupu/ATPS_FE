@@ -21,7 +21,7 @@ import {
   Grid,
   Chip,
   Tooltip,
-  CircularProgress, // Import thêm loading spinner
+  CircularProgress,
 } from "@mui/material";
 import {
   ChevronLeft,
@@ -69,16 +69,15 @@ export default function ScheduleTab({
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // --- STATE CHO TÍNH NĂNG ĐỔI LỊCH ---
   const [openChangeModal, setOpenChangeModal] = useState(false);
   const [targetSession, setTargetSession] = useState(null);
   const [changeForm, setChangeForm] = useState({
     newDate: "",
-    newSlotId: null,
+    newStartTime: null,
     reason: "",
   });
   const [busySlotsInNewDate, setBusySlotsInNewDate] = useState([]);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Loading state cho nút Gửi
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const yearsList = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -147,12 +146,11 @@ export default function ScheduleTab({
     setCurrentDate(newDate);
   };
 
-  // --- LOGIC XỬ LÝ ĐỔI LỊCH ---
   const handleOpenChangeRequest = (session) => {
     setTargetSession(session);
     setChangeForm({
       newDate: "",
-      newSlotId: null,
+      newStartTime: null,
       reason: "",
     });
     setBusySlotsInNewDate([]);
@@ -166,40 +164,34 @@ export default function ScheduleTab({
     }
   };
 
-  // Khi chọn ngày mới -> Kiểm tra logic ngày & Check trùng lịch
   const handleNewDateChange = (e) => {
     const dateVal = e.target.value;
 
-    // 1. Tính ngày tối thiểu cho phép (Ngày mai)
     const today = new Date();
-    const tomorrow = addDays(today, 1); // Cộng thêm 1 ngày
+    const tomorrow = addDays(today, 1);
     const minDateStr = format(tomorrow, "yyyy-MM-dd");
 
-    // 2. Validate: Nếu người dùng cố tình nhập ngày cũ hoặc hôm nay
     if (dateVal && dateVal < minDateStr) {
       alert("Bạn chỉ có thể chọn lịch từ ngày mai trở đi!");
-      // Reset về rỗng hoặc giữ nguyên giá trị cũ tùy logic
       setChangeForm((prev) => ({ ...prev, newDate: "" }));
       setBusySlotsInNewDate([]);
       return;
     }
 
-    // 3. Nếu ngày hợp lệ -> Cập nhật State
-    setChangeForm((prev) => ({ ...prev, newDate: dateVal, newSlotId: null }));
+    setChangeForm((prev) => ({
+      ...prev,
+      newDate: dateVal,
+      newStartTime: null,
+    }));
 
     if (dateVal) {
-      console.log("Đang check trùng lịch cho ngày:", dateVal);
-
-      // 4. Lọc ra các session trùng ngày (Dữ liệu từ Props)
       const busySlotIds = sessions
         .filter((session) => {
           if (!session.date) return false;
-          // Format lại date của session để so sánh chính xác chuỗi yyyy-MM-dd
           const sDateStr = format(new Date(session.date), "yyyy-MM-dd");
           return sDateStr === dateVal;
         })
         .map((session) => {
-          // Chuẩn hóa giờ (10:20:00 -> 10:20) để tìm ID
           const startTime = normalizeTime(session.startTime);
           const slot = ALL_TIME_SLOTS.find((s) => s.start === startTime);
           return slot ? slot.id : null;
@@ -212,8 +204,6 @@ export default function ScheduleTab({
     }
   };
 
-  // --- GỬI DỮ LIỆU LÊN CHA ---
-
   const submitChangeRequest = async () => {
     if (!onRequestChangeSchedule) return;
 
@@ -222,7 +212,7 @@ export default function ScheduleTab({
     const success = await onRequestChangeSchedule({
       sessionId: targetSession.sessionId,
       newDate: changeForm.newDate,
-      newTimeslotId: changeForm.newSlotId,
+      newStartTime: changeForm.newStartTime,
       reason: changeForm.reason,
     });
 
@@ -281,7 +271,6 @@ export default function ScheduleTab({
           position: "relative",
         }}
       >
-        {/* Nút Đổi lịch: Hiện nếu là Tương lai/Hôm nay VÀ Chưa Pending */}
         {(isFuture || isToday) && !isPendingChange && (
           <Tooltip title="Yêu cầu đổi lịch">
             <IconButton
@@ -434,7 +423,6 @@ export default function ScheduleTab({
 
   return (
     <Box sx={{ p: 3, minHeight: "100vh" }}>
-      {/* --- HEADER CHỌN NĂM/TUẦN --- */}
       <Box
         sx={{
           display: "flex",
@@ -531,7 +519,6 @@ export default function ScheduleTab({
         </Box>
       </Box>
 
-      {/* --- TABLE CONTENT --- */}
       <TableContainer
         component={Box}
         sx={{
@@ -637,7 +624,6 @@ export default function ScheduleTab({
         </Table>
       </TableContainer>
 
-      {/* --- MODAL ĐIỂM DANH --- */}
       <AttendanceModal
         open={!!selectedSession}
         session={selectedSession}
@@ -647,7 +633,6 @@ export default function ScheduleTab({
         onSave={onSaveAttendance}
       />
 
-      {/* --- MODAL YÊU CẦU ĐỔI LỊCH --- */}
       <Dialog
         open={openChangeModal}
         onClose={handleCloseChangeModal}
@@ -670,7 +655,6 @@ export default function ScheduleTab({
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Grid container spacing={2} sx={{ mt: 0.5 }}>
-            {/* 1. Chọn ngày mới */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                 1. Chọn ngày mới mong muốn:
@@ -696,7 +680,6 @@ export default function ScheduleTab({
               </Typography>
             </Grid>
 
-            {/* 2. Chọn ca */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                 2. Chọn Ca học:
@@ -713,7 +696,7 @@ export default function ScheduleTab({
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
                   {ALL_TIME_SLOTS.map((slot) => {
                     const isBusy = busySlotsInNewDate.includes(slot.id);
-                    const isSelected = changeForm.newSlotId === slot.id;
+                    const isSelected = changeForm.newStartTime === slot.start;
 
                     return (
                       <Chip
@@ -721,7 +704,10 @@ export default function ScheduleTab({
                         label={`Ca ${slot.id} (${slot.start})`}
                         onClick={() =>
                           !isBusy &&
-                          setChangeForm({ ...changeForm, newSlotId: slot.id })
+                          setChangeForm({
+                            ...changeForm,
+                            newStartTime: slot.start,
+                          })
                         }
                         color={isSelected ? "primary" : "default"}
                         variant={isSelected ? "filled" : "outlined"}
@@ -739,7 +725,6 @@ export default function ScheduleTab({
               )}
             </Grid>
 
-            {/* 3. Lý do */}
             <Grid item xs={12}>
               <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
                 3. Lý do đổi lịch:
@@ -771,7 +756,7 @@ export default function ScheduleTab({
             onClick={submitChangeRequest}
             disabled={
               !changeForm.newDate ||
-              !changeForm.newSlotId ||
+              !changeForm.newStartTime ||
               !changeForm.reason ||
               isSubmitting
             }

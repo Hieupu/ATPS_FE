@@ -3,6 +3,7 @@ import axios from "axios";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
 import { toast } from "react-toastify"; // Import toast
+import { useAuth } from "../../../contexts/AuthContext";
 
 import ClassDetailLayout from "../components/class/ClassDetailLayout";
 
@@ -27,6 +28,7 @@ export default function ClassDetailPage() {
   const { classId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const user = useAuth();
 
   // State cho dữ liệu
   const [classData, setClassData] = useState(null);
@@ -152,41 +154,64 @@ export default function ClassDetailPage() {
   }, [classData]);
 
   //load zoom
-  const handleStartZoom = () => {
-    if (!classData || !classData.zoomMeetingId) {
-      alert("Chưa có thông tin phòng Zoom cho lớp học này!");
-      return;
-    }
+  const handleStartZoom = (session) => {
+    if (!session) return;
+    const start = new Date(`${session.date}T${session.startTime}`);
+    const now = new Date();
+    const isWithin15MinBefore =
+      now >= new Date(start.getTime() - 15 * 60 * 1000);
 
     const rawUser = localStorage.getItem("user");
     const currentUser = rawUser ? JSON.parse(rawUser) : {};
+    const userId = user?.user?.id;
+    const role = user?.user?.role;
+
+    if (!userId) {
+      toast.warn("Không xác định được người dùng.");
+      return;
+    }
+    if (role !== "instructor" && role !== "learner") {
+      toast.warn("Bạn không có quyền truy cập vào buổi học này.");
+      return;
+    }
+    if (role === "instructor" && !isWithin15MinBefore) {
+      toast.warn(
+        "Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu."
+      );
+      return;
+    }
+
+    const zoomId = session.ZoomID || session.zoomID || session.zoomId;
+    const zoomPass =
+      session.ZoomPass || session.zoomPass || session.zoom_pass || "";
+    const className =
+      session.className || session.ClassName || session.title || "Lớp học";
+
+    if (!zoomId) {
+      alert("Lỗi: Không tìm thấy Zoom ID trong buổi học này.");
+      return;
+    }
 
     const zoomPayload = {
       schedule: {
-        ZoomID: classData.zoomMeetingId,
-        Zoompass: classData.zoomPassword,
-        ClassName: classData.className,
-        CourseTitle: classData.course?.title,
-
-        Date: new Date().toISOString().split("T")[0],
-        StartTime: new Date().toTimeString().split(" ")[0],
+        ZoomID: zoomId,
+        Zoompass: zoomPass,
+        ClassName: className,
+        Date: session.Date || session.date,
+        StartTime: session.StartTime || session.startTime,
       },
-
       userId: currentUser.id,
+      userRole: currentUser.role || "instructor",
       userName: currentUser.username || currentUser.fullname || "Giảng viên",
       email: currentUser.email,
-      userRole: currentUser.role || "instructor",
-
       timestamp: new Date().getTime(),
     };
 
     localStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
 
     setTimeout(() => {
-      let url = `/zoom/${classData.zoomMeetingId}`;
-      if (classData.zoomPassword) {
-        url += `/${classData.zoomPassword}`;
-      }
+      let url = `/zoom/${zoomId}`;
+      if (zoomPass) url += `/${zoomPass}`;
       window.open(url, "_blank");
     }, 100);
   };
