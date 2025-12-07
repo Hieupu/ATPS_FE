@@ -511,20 +511,13 @@ const ScheduleGrid = ({
         const now = Date.now();
         const recentSlotCount = (slotReserveHistory[slotKey] || [])
           .filter(ts => now - ts < 5 * 60 * 1000).length + 1;
-        const recentClickCount = clickHistory.filter(ts => now - ts < 60000).length;
         
         if (recentSlotCount >= 3) {
           setConflictAlert({
             severity: "warning",
-            message: `⚠️ Bạn đã giữ slot này ${recentSlotCount} lần trong 15 phút. Giới hạn: 5 lần.`
+            message: `Bạn đã giữ slot này ${recentSlotCount} lần trong 15 phút. Giới hạn: 5 lần.`
           });
-        } else if (recentClickCount >= 15) {
-          setConflictAlert({
-            severity: "warning",
-            message: `⚠️ Bạn đã click ${recentClickCount} lần trong 1 phút. Giới hạn: 20 lần.`
-          });
-        }
-      } else {
+        }} else {
         setConflictAlert({
           severity: "warning",
           message: reserveResult.message || "Không thể giữ slot này"
@@ -622,7 +615,7 @@ const ScheduleGrid = ({
         <Alert severity="error" sx={{ mb: 2 }}>
           <strong>Tài khoản tạm thời bị khóa</strong>
           <br />
-          Lý do: {banReason === 'too_many_clicks' ? 'Click quá nhanh (>20 lần/phút)' : 'Giữ slot quá nhiều lần (>5 lần/15 phút)'}
+          Lý do: {banReason === 'too_many_clicks' ? 'Click quá nhanh' : 'Giữ slot quá nhiều lần (>5 lần/15 phút)'}
           <br />
           Thời gian còn lại: <strong>{Math.floor(banTimeRemaining / 60)}:{(banTimeRemaining % 60).toString().padStart(2, '0')}</strong>
         </Alert>
@@ -631,7 +624,7 @@ const ScheduleGrid = ({
       {/* Hiển thị cảnh báo khi gần đạt giới hạn */}
       {!isBanned && clickHistory.length > 15 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
-          ⚠️ Bạn đã click {clickHistory.filter(ts => Date.now() - ts < 60000).length}/20 lần trong phút này. Hãy chậm lại!
+          Bạn đã click {clickHistory.filter(ts => Date.now() - ts < 60000).length}/20 lần trong phút này. Hãy chậm lại!
         </Alert>
       )}
 

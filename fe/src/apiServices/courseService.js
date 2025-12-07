@@ -98,6 +98,19 @@ export const getClassesByCourseApi = async (courseId) => {
   }
 };
 
+export const transferClassApi = async (fromClassId, toClassId, courseId) => {
+  try {
+    const response = await apiClient.post(`/courses/${courseId}/transfer-class`, {
+      fromClassId,
+      toClassId
+    });
+    return response.data;
+  } catch (error) {
+    console.error("Transfer class error:", error);
+    throw error.response?.data || { message: "Failed to transfer class" };
+  }
+};
+
 export const getScheduleClassesApi = async (filters = {}) => {
   try {
     const response = await apiClient.get('/courses/schedule/all-classes', { params: filters });
