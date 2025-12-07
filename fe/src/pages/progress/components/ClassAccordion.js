@@ -60,8 +60,8 @@ const examData = (() => {
 
 // Dữ liệu cho biểu đồ tròn - Điểm danh
 const attendanceData = (() => {
-  const attended = classItem.stats.attendedSessions || 0;
-  const absent = classItem.stats.absentSessions || 0;
+  const attended = stats.attendedSessions || 0;
+  const absent = stats.absentSessions || 0;
   const total = stats.totalSessions || 0;
   
   if (total === 0) {

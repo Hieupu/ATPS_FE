@@ -16,7 +16,11 @@ import {
   Alert,
   Radio,
   Chip,
+  Collapse,
+  IconButton,
 } from '@mui/material';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 const TransferClassModal = ({ 
   open, 
@@ -27,38 +31,51 @@ const TransferClassModal = ({
   loading 
 }) => {
   const [selectedClassId, setSelectedClassId] = useState(null);
+  const [scheduleConflicts, setScheduleConflicts] = useState([]);
+  const [openConflict, setOpenConflict] = useState(false);
+  const [transferring, setTransferring] = useState(false);
 
   useEffect(() => {
     if (open) {
       setSelectedClassId(null);
+      setScheduleConflicts([]);
+      setOpenConflict(false);
+      setTransferring(false);
     }
   }, [open]);
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
-    const time = new Date(`2000-01-01T${timeString}`);
-    return time.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
-    });
+    return timeString.substring(0, 5); // Format HH:mm
   };
 
-  const getDayAbbreviation = (day) => {
+  const getDayVietnamese = (day) => {
     const dayMap = {
-      'Monday': 'T2',
-      'Tuesday': 'T3', 
-      'Wednesday': 'T4',
-      'Thursday': 'T5',
-      'Friday': 'T6',
-      'Saturday': 'T7',
-      'Sunday': 'CN'
+      'Monday': 'Thứ 2',
+      'Tuesday': 'Thứ 3', 
+      'Wednesday': 'Thứ 4',
+      'Thursday': 'Thứ 5',
+      'Friday': 'Thứ 6',
+      'Saturday': 'Thứ 7',
+      'Sunday': 'Chủ nhật'
     };
     return dayMap[day] || day;
   };
 
-  const handleTransfer = () => {
+  const handleTransfer = async () => {
     if (selectedClassId) {
-      onTransfer(currentClass.ClassID, selectedClassId);
+      setTransferring(true);
+      try {
+        await onTransfer(currentClass.ClassID, selectedClassId);
+      } catch (error) {
+        // Kiểm tra nếu có conflict
+        if (error.conflicts) {
+          setScheduleConflicts(error.conflicts);
+          setOpenConflict(true);
+        }
+      } finally {
+        setTransferring(false);
+      }
     }
   };
 
@@ -78,6 +95,26 @@ const TransferClassModal = ({
     return 'Còn chỗ';
   };
 
+const getFormattedSchedule = (cls) => {
+  if (!cls.weeklySchedule || cls.weeklySchedule.length === 0) {
+    return 'Chưa có lịch';
+  }
+  
+  const scheduleMap = {};
+  cls.weeklySchedule.forEach(schedule => {
+    const day = getDayVietnamese(schedule.Day);
+    const time = `${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`;
+    if (!scheduleMap[day]) {
+      scheduleMap[day] = [];
+    }
+    scheduleMap[day].push(time);
+  });
+
+  return Object.entries(scheduleMap)
+    .map(([day, times]) => `${day}: ${times.join(', ')}`)
+    .join('\n'); // Thay dấu ";" bằng "\n" để xuống dòng
+};
+
   return (
     <Modal open={open} onClose={onClose}>
       <Box sx={{
@@ -85,8 +122,8 @@ const TransferClassModal = ({
         top: '50%',
         left: '50%',
         transform: 'translate(-50%, -50%)',
-        width: { xs: '95%', md: 900 },
-        maxHeight: '85vh',
+        width: { xs: '95%', md: 1000 },
+        maxHeight: '90vh',
         bgcolor: 'background.paper',
         borderRadius: 2,
         boxShadow: 24,
@@ -101,14 +138,12 @@ const TransferClassModal = ({
           borderColor: 'divider',
           bgcolor: 'background.paper',
         }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-            <Typography variant="h6" sx={{ fontWeight: 600 }}>
-              Chuyển lớp học
-            </Typography>
-          </Box>
+          <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
+            Chuyển lớp học
+          </Typography>
           {currentClass && (
             <Typography variant="body2" color="text.secondary">
-              Lớp hiện tại: <strong>{currentClass.ClassName}</strong>
+              Lớp hiện tại: <strong>{currentClass.Name}</strong> | Giảng viên: {currentClass.InstructorName}
             </Typography>
           )}
         </Box>
@@ -126,8 +161,39 @@ const TransferClassModal = ({
           ) : (
             <>
               <Typography variant="subtitle2" sx={{ mb: 3, color: 'text.secondary' }}>
-                Chọn lớp từ bảng dưới đây:
+                Chọn lớp từ bảng dưới đây (chỉ hiển thị lớp có lịch học khác với các lớp bạn đang tham gia):
               </Typography>
+              
+              {/* Hiển thị conflict nếu có */}
+              {scheduleConflicts.length > 0 && (
+                <Alert 
+                  severity="warning" 
+                  sx={{ mb: 3 }}
+                  action={
+                    <IconButton
+                      size="small"
+                      onClick={() => setOpenConflict(!openConflict)}
+                    >
+                      {openConflict ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                    </IconButton>
+                  }
+                >
+                  <Typography variant="subtitle2" fontWeight="medium">
+                    ⚠️ Lịch học bị trùng!
+                  </Typography>
+                  <Collapse in={openConflict} timeout="auto" unmountOnExit>
+                    <Box sx={{ mt: 1, pl: 1 }}>
+                      {scheduleConflicts.map((conflict, index) => (
+                        <Typography key={index} variant="body2" sx={{ mb: 0.5 }}>
+                          • <strong>{getDayVietnamese(conflict.day)}</strong>: 
+                          {conflict.targetClass} ({formatTime(conflict.targetTime)}) trùng với 
+                          {conflict.existingClass} ({formatTime(conflict.existingTime)})
+                        </Typography>
+                      ))}
+                    </Box>
+                  </Collapse>
+                </Alert>
+              )}
               
               <TableContainer 
                 component={Paper} 
@@ -149,7 +215,6 @@ const TransferClassModal = ({
                       <TableCell sx={{ fontWeight: 600 }}>Trạng thái</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>Lịch học</TableCell>
                       <TableCell sx={{ fontWeight: 600 }}>Khai giảng</TableCell>
-      
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -162,17 +227,25 @@ const TransferClassModal = ({
                           '&:hover': { bgcolor: 'action.hover' },
                           bgcolor: selectedClassId === cls.ClassID ? 'action.selected' : 'inherit'
                         }}
-                        onClick={() => setSelectedClassId(cls.ClassID)}
+                        onClick={() => {
+                          setSelectedClassId(cls.ClassID);
+                          setScheduleConflicts([]);
+                          setOpenConflict(false);
+                        }}
                       >
                         <TableCell>
                           <Radio
                             checked={selectedClassId === cls.ClassID}
-                            onChange={() => setSelectedClassId(cls.ClassID)}
+                            onChange={() => {
+                              setSelectedClassId(cls.ClassID);
+                              setScheduleConflicts([]);
+                              setOpenConflict(false);
+                            }}
                             size="small"
                           />
                         </TableCell>
                         <TableCell sx={{ fontWeight: 500 }}>
-                          {cls.ClassName}
+                          {cls.Name || cls.ClassName}
                         </TableCell>
                         <TableCell>
                           <Typography variant="body2">
@@ -193,24 +266,9 @@ const TransferClassModal = ({
                           />
                         </TableCell>
                         <TableCell>
-                          {cls.weeklySchedule && cls.weeklySchedule.length > 0 ? (
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                              {cls.weeklySchedule.slice(0, 2).map((schedule, idx) => (
-                                <Typography key={idx} variant="caption" component="div">
-                                  {getDayAbbreviation(schedule.Day)} {formatTime(schedule.StartTime)}-{formatTime(schedule.EndTime)}
-                                </Typography>
-                              ))}
-                              {cls.weeklySchedule.length > 2 && (
-                                <Typography variant="caption" color="text.secondary">
-                                  +{cls.weeklySchedule.length - 2} buổi khác
-                                </Typography>
-                              )}
-                            </Box>
-                          ) : (
-                            <Typography variant="caption" color="text.secondary">
-                              Chưa có lịch
-                            </Typography>
-                          )}
+                          <Typography variant="body2" sx={{ maxWidth: 250, lineHeight: 1.4 , whiteSpace: 'pre-line' }}>
+                            {getFormattedSchedule(cls)}
+                          </Typography>
                         </TableCell>
                         <TableCell>
                           {cls.Opendate ? (
@@ -219,11 +277,9 @@ const TransferClassModal = ({
                             </Typography>
                           ) : (
                             <Typography variant="caption" color="text.secondary">
-                              Chưa cập nhật
+                              Chưa có
                             </Typography>
                           )}
-                        </TableCell>
-                        <TableCell align="center">
                         </TableCell>
                       </TableRow>
                     ))}
@@ -244,15 +300,20 @@ const TransferClassModal = ({
                   <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
                     Lớp đã chọn:
                   </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center' }}>
                     <Typography variant="body2">
-                      <strong>{availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.ClassName}</strong>
+                      <strong>{availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.Name || 
+                               availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.ClassName}</strong>
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary">
                       • Giảng viên: {availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.InstructorName}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      • Sỉ số: {availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.StudentCount || 0}/{availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.Maxstudent}
+                    <Typography variant="body2" color="text.secondary">
+                      • Sỉ số: {availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.StudentCount || 0}/
+                      {availableClassesFiltered.find(c => c.ClassID === selectedClassId)?.Maxstudent}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      • Lịch: {getFormattedSchedule(availableClassesFiltered.find(c => c.ClassID === selectedClassId))}
                     </Typography>
                   </Box>
                 </Box>
@@ -268,28 +329,39 @@ const TransferClassModal = ({
           borderColor: 'divider',
           bgcolor: 'background.paper',
           display: 'flex',
-          justifyContent: 'flex-end',
-          gap: 2,
+          justifyContent: 'space-between',
+          alignItems: 'center',
         }}>
-          <Button 
-            onClick={onClose} 
-            variant="outlined"
-            sx={{ minWidth: 100 }}
-          >
-            Hủy
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleTransfer}
-            disabled={!selectedClassId || loading}
-            sx={{ minWidth: 140 }}
-          >
-            {loading ? (
-              <CircularProgress size={20} sx={{ color: 'white' }} />
-            ) : (
-              'Xác nhận chuyển lớp'
+          <Box>
+            {scheduleConflicts.length > 0 && (
+              <Typography variant="caption" color="warning.main" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                ⚠️ Đã phát hiện {scheduleConflicts.length} trùng lịch
+              </Typography>
             )}
-          </Button>
+          </Box>
+          
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              onClick={onClose} 
+              variant="outlined"
+              sx={{ minWidth: 100 }}
+              disabled={transferring}
+            >
+              Hủy
+            </Button>
+            <Button
+              variant="contained"
+              onClick={handleTransfer}
+              disabled={!selectedClassId || transferring || scheduleConflicts.length > 0}
+              sx={{ minWidth: 140 }}
+            >
+              {transferring ? (
+                <CircularProgress size={20} sx={{ color: 'white' }} />
+              ) : (
+                'Xác nhận chuyển lớp'
+              )}
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Modal>
