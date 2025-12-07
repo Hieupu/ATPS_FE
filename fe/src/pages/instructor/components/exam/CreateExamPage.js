@@ -100,7 +100,6 @@ const CreateExamPage = () => {
           open={true}
           onClose={() => navigate("/instructor/exams")}
           onSave={handleSave}
-          courses={[]}  // Không dùng course nữa
           mode="create"
         />
         <ToastContainer

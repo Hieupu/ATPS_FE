@@ -48,6 +48,7 @@ import {
     verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+
 import AddSectionDialog from "./AddSectionDialog";
 import AddQuestionDialog from "./AddQuestionDialog";
 
@@ -58,16 +59,46 @@ const SECTION_ICONS = {
     Writing: <WritingIcon sx={{ color: "#ed6c02" }} />,
 };
 
-const normalizeQuestion = (q) => ({
-    id: q.id,
-    content: q.content || q.Content || "",
-    type: q.type || q.Type || "",
-    level: q.difficulty || q.level || q.Level || "",
-    point: q.point || q.Point || q.score || 1,
-    topic: q.topic || q.Topic || q.subject || "",
-    options: q.options || q.Options || q.choices || [],
-    correctAnswer: q.correctAnswer || q.CorrectAnswer || q.answer || "",
-});
+/**
+ * Chuẩn hóa object câu hỏi về 1 format thống nhất
+ * để:
+ *  - Hiển thị preview
+ *  - Lưu vào sections[].questions
+ */
+const normalizeQuestion = (q) => {
+    // FE ID an toàn, luôn là số nhỏ
+    const tempId = q.id || q.tempId || `temp-${Math.random().toString(36).slice(2, 10)}`;
+
+
+    // QuestionID thật từ DB
+    let realQuestionId = null;
+
+    if (
+        q.QuestionID &&
+        Number.isInteger(Number(q.QuestionID)) &&
+        Number(q.QuestionID) > 0 &&
+        Number(q.QuestionID) <= 2147483647
+    ) {
+        realQuestionId = Number(q.QuestionID);
+    }
+
+    return {
+        id: tempId,           // FE render
+        QuestionID: realQuestionId,  // chỉ nhận ID thật
+        content: q.content || q.Content || "",
+        type: q.type || q.Type || "multiple_choice",
+        level: q.level || q.Level || "Medium",
+        point: Number(q.point || q.Point || 1),
+        topic: q.topic || q.Topic || "",
+        options: q.options || q.Options || [],
+        correctAnswer: q.correctAnswer || q.CorrectAnswer || "",
+        matchingPairs: q.matchingPairs || [],
+    };
+};
+
+
+
+
 
 const SortableParentSection = ({
     parent,
@@ -91,7 +122,9 @@ const SortableParentSection = ({
         transition,
         isDragging,
     } = useSortable({ id: parent.id });
+
     const [isExpanded, setIsExpanded] = React.useState(true);
+
     const childSensors = useSensors(
         useSensor(PointerSensor),
         useSensor(KeyboardSensor, {
@@ -117,7 +150,7 @@ const SortableParentSection = ({
                 mb: 3,
             }}
         >
-            {/* Parent Header with Drag Handle */}
+            {/* Parent Header */}
             <Box
                 sx={{
                     bgcolor: "#f8f9fa",
@@ -125,9 +158,18 @@ const SortableParentSection = ({
                     borderBottom: "1px solid #e0e0e0",
                 }}
             >
-                <Stack direction="row" alignItems="center" justifyContent="space-between">
-                    <Stack direction="row" alignItems="center" spacing={2} sx={{ flex: 1 }}>
-                        {/* Drag Handle */}
+                <Stack
+                    direction="row"
+                    alignItems="center"
+                    justifyContent="space-between"
+                >
+                    <Stack
+                        direction="row"
+                        alignItems="center"
+                        spacing={2}
+                        sx={{ flex: 1 }}
+                    >
+                        {/* Drag handle */}
                         <Box
                             {...attributes}
                             {...listeners}
@@ -143,7 +185,7 @@ const SortableParentSection = ({
                             <DragIcon />
                         </Box>
 
-                        {/* Clickable Header Area - Click anywhere to toggle */}
+                        {/* Clickable header */}
                         <Box
                             onClick={() => setIsExpanded(!isExpanded)}
                             sx={{
@@ -174,20 +216,34 @@ const SortableParentSection = ({
                             >
                                 {SECTION_ICONS[parent.type]}
                             </Box>
+
                             <Box>
                                 <Typography variant="h6" fontWeight={600}>
                                     {parent.title || parent.type}
                                 </Typography>
                                 <Stack direction="row" spacing={1} mt={0.5}>
-                                    <Chip label={parent.type} size="small" color="primary" variant="outlined" />
+                                    <Chip
+                                        label={parent.type}
+                                        size="small"
+                                        color="primary"
+                                        variant="outlined"
+                                    />
                                     <Chip label={`Phần ${index + 1}`} size="small" />
-                                    <Chip label={`${childSections.length} phân mục`} size="small" color="success" />
+                                    <Chip
+                                        label={`${childSections.length} phân mục`}
+                                        size="small"
+                                        color="success"
+                                    />
                                 </Stack>
                             </Box>
                         </Box>
                     </Stack>
 
-                    <Stack direction="row" spacing={1} onClick={(e) => e.stopPropagation()}>
+                    <Stack
+                        direction="row"
+                        spacing={1}
+                        onClick={(e) => e.stopPropagation()}
+                    >
                         <Tooltip title="Thêm phân mục">
                             <Button
                                 variant="outlined"
@@ -198,18 +254,27 @@ const SortableParentSection = ({
                                 Thêm phân mục
                             </Button>
                         </Tooltip>
+
                         <Tooltip title="Sửa">
-                            <IconButton onClick={() => onEdit(parent)} color="primary" size="small">
+                            <IconButton
+                                onClick={() => onEdit(parent)}
+                                color="primary"
+                                size="small"
+                            >
                                 <EditIcon />
                             </IconButton>
                         </Tooltip>
+
                         <Tooltip title="Xóa">
-                            <IconButton onClick={() => onDelete(parent.id)} color="error" size="small">
+                            <IconButton
+                                onClick={() => onDelete(parent.id)}
+                                color="error"
+                                size="small"
+                            >
                                 <DeleteIcon />
                             </IconButton>
                         </Tooltip>
 
-                        {/* Collapse/Expand Button - Always visible for consistency */}
                         <Tooltip title={isExpanded ? "Thu gọn" : "Mở rộng"}>
                             <IconButton
                                 onClick={() => setIsExpanded(!isExpanded)}
@@ -226,11 +291,14 @@ const SortableParentSection = ({
                 </Stack>
             </Box>
 
-            {/* Child Sections - Sortable (Collapsible) */}
+            {/* Child sections */}
             {isExpanded && (
                 <Box sx={{ p: 2 }}>
                     {childSections.length === 0 ? (
-                        <Paper variant="outlined" sx={{ p: 3, textAlign: "center", bgcolor: "#fafafa" }}>
+                        <Paper
+                            variant="outlined"
+                            sx={{ p: 3, textAlign: "center", bgcolor: "#fafafa" }}
+                        >
                             <Typography color="text.secondary" variant="body2">
                                 Chưa có phần thi con. Nhấn "Thêm phần thi con" để bắt đầu.
                             </Typography>
@@ -254,7 +322,9 @@ const SortableParentSection = ({
                                             questions={getQuestions(child.id)}
                                             onEdit={onEdit}
                                             onDelete={onDelete}
-                                            onAddQuestion={() => onAddQuestion(parent.id, child.id)}
+                                            onAddQuestion={() =>
+                                                onAddQuestion(parent.id, child.id)
+                                            }
                                             onDeleteQuestion={onDeleteQuestion}
                                             onEditQuestion={onEditQuestion}
                                             onPreviewQuestion={onPreviewQuestion}
@@ -270,7 +340,6 @@ const SortableParentSection = ({
     );
 };
 
-// Sortable Child Section Component
 const SortableChildSection = ({
     child,
     childIndex,
@@ -290,6 +359,7 @@ const SortableChildSection = ({
         transition,
         isDragging,
     } = useSortable({ id: child.id });
+
     const [expanded, setExpanded] = React.useState(childIndex === 0);
 
     const style = {
@@ -312,7 +382,9 @@ const SortableChildSection = ({
                 onChange={(e, isExpanded) => setExpanded(isExpanded)}
                 sx={{
                     "&:before": { display: "none" },
-                    boxShadow: isDragging ? "0 4px 12px rgba(0,0,0,0.2)" : "0 1px 3px rgba(0,0,0,0.1)",
+                    boxShadow: isDragging
+                        ? "0 4px 12px rgba(0,0,0,0.2)"
+                        : "0 1px 3px rgba(0,0,0,0.1)",
                     borderRadius: "8px !important",
                     border: isDragging ? "2px solid #1976d2" : "none",
                 }}
@@ -378,6 +450,7 @@ const SortableChildSection = ({
 
                         <Chip label={`${questions.length} câu hỏi`} size="small" color="info" />
                         <Box sx={{ flexGrow: 1 }} />
+
                         <Tooltip title="Sửa">
                             <IconButton
                                 size="small"
@@ -389,6 +462,7 @@ const SortableChildSection = ({
                                 <EditIcon fontSize="small" />
                             </IconButton>
                         </Tooltip>
+
                         <Tooltip title="Xóa">
                             <IconButton
                                 size="small"
@@ -437,16 +511,37 @@ const SortableChildSection = ({
                                     }}
                                 >
                                     <Stack spacing={1}>
-                                        <Stack direction="row" alignItems="flex-start" justifyContent="space-between">
+                                        <Stack
+                                            direction="row"
+                                            alignItems="flex-start"
+                                            justifyContent="space-between"
+                                        >
                                             <Box flex={1}>
-                                                <Typography variant="body2" fontWeight={600} gutterBottom>
+                                                <Typography
+                                                    variant="body2"
+                                                    fontWeight={600}
+                                                    gutterBottom
+                                                >
                                                     <strong>Q{qIndex + 1}:</strong>{" "}
                                                     {(question.Content || question.content)?.length > 60
-                                                        ? (question.Content || question.content).substring(0, 60) + "..."
-                                                        : (question.Content || question.content)}
+                                                        ? (question.Content || question.content).substring(
+                                                            0,
+                                                            60
+                                                        ) + "..."
+                                                        : question.Content || question.content}
                                                 </Typography>
-                                                <Stack direction="row" spacing={1} flexWrap="wrap" mt={1}>
-                                                    <Chip label={question.Type || question.type || "Unknown"} size="small" color="primary" />
+
+                                                <Stack
+                                                    direction="row"
+                                                    spacing={1}
+                                                    flexWrap="wrap"
+                                                    mt={1}
+                                                >
+                                                    <Chip
+                                                        label={question.Type || question.type || "Unknown"}
+                                                        size="small"
+                                                        color="primary"
+                                                    />
                                                     <Chip
                                                         label={question.Level || question.level || "Medium"}
                                                         size="small"
@@ -458,10 +553,20 @@ const SortableChildSection = ({
                                                                     : "warning"
                                                         }
                                                     />
-                                                    {(question.Topic || question.topic) && <Chip label={question.Topic || question.topic} size="small" variant="outlined" />}
-                                                    <Chip label={`${question.Point || question.point || 1} điểm`} size="small" />
+                                                    {(question.Topic || question.topic) && (
+                                                        <Chip
+                                                            label={question.Topic || question.topic}
+                                                            size="small"
+                                                            variant="outlined"
+                                                        />
+                                                    )}
+                                                    <Chip
+                                                        label={`${question.Point || question.point || 1} điểm`}
+                                                        size="small"
+                                                    />
                                                 </Stack>
                                             </Box>
+
                                             <Stack direction="row" spacing={0.5}>
                                                 <Tooltip title="Xem">
                                                     <IconButton
@@ -475,7 +580,9 @@ const SortableChildSection = ({
                                                     <IconButton
                                                         size="small"
                                                         color="error"
-                                                        onClick={() => onDeleteQuestion(child.id, qIndex)}
+                                                        onClick={() =>
+                                                            onDeleteQuestion(child.id, qIndex)
+                                                        }
                                                     >
                                                         <DeleteIcon fontSize="small" />
                                                     </IconButton>
@@ -493,13 +600,14 @@ const SortableChildSection = ({
     );
 };
 
-const Step2Content = ({ sections, setSections, onError }) => {
+const Step2Content = ({ examId, sections, setSections }) => {
     const [openAddSection, setOpenAddSection] = useState(false);
     const [editingSection, setEditingSection] = useState(null);
     const [openAddQuestion, setOpenAddQuestion] = useState(false);
     const [currentParentId, setCurrentParentId] = useState(null);
     const [currentParentType, setCurrentParentType] = useState(null);
     const [currentChildId, setCurrentChildId] = useState(null);
+
     const [previewQuestion, setPreviewQuestion] = useState(null);
     const [openPreview, setOpenPreview] = useState(false);
 
@@ -513,39 +621,35 @@ const Step2Content = ({ sections, setSections, onError }) => {
     const parentSections = sections
         .filter((s) => !s.parentSectionId)
         .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+
     const getChildSections = (parentId) =>
         sections
             .filter((s) => s.parentSectionId === parentId)
             .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+
     const getQuestions = (sectionId) => {
         const section = sections.find((s) => s.id === sectionId);
         return section?.questions || [];
     };
+
     const handleDragEnd = (event) => {
         const { active, over } = event;
+
         const isChildDrag = sections.some(
-            s => s.id === active?.id && s.parentSectionId !== null
+            (s) => s.id === active?.id && s.parentSectionId !== null
         );
+        if (isChildDrag) return;
 
-        if (isChildDrag) {
-            return;
-        }
-
-        if (!over || active.id === over.id) {
-            return;
-        }
+        if (!over || active.id === over.id) return;
 
         const oldIndex = parentSections.findIndex((s) => s.id === active.id);
         const newIndex = parentSections.findIndex((s) => s.id === over.id);
-
-        if (oldIndex === -1 || newIndex === -1) {
-            return;
-        }
+        if (oldIndex === -1 || newIndex === -1) return;
 
         const reorderedParents = arrayMove(parentSections, oldIndex, newIndex);
         const parentsWithNewOrder = reorderedParents.map((parent, index) => ({
             ...parent,
-            orderIndex: index
+            orderIndex: index,
         }));
         const childSections = sections.filter((s) => s.parentSectionId);
         const newSections = [...parentsWithNewOrder, ...childSections];
@@ -555,28 +659,21 @@ const Step2Content = ({ sections, setSections, onError }) => {
 
     const handleDragEndChild = (event, parentId) => {
         const { active, over } = event;
-
-        if (!over || active.id === over.id) {
-            return;
-        }
+        if (!over || active.id === over.id) return;
 
         const children = getChildSections(parentId);
         const oldIndex = children.findIndex((s) => s.id === active.id);
         const newIndex = children.findIndex((s) => s.id === over.id);
-
-        if (oldIndex === -1 || newIndex === -1) {
-            return;
-        }
+        if (oldIndex === -1 || newIndex === -1) return;
 
         const reorderedChildren = arrayMove(children, oldIndex, newIndex);
-
         const childrenWithNewOrder = reorderedChildren.map((child, index) => ({
             ...child,
-            orderIndex: index
+            orderIndex: index,
         }));
 
-        const otherSections = sections.filter((s) =>
-            !(s.parentSectionId === parentId)
+        const otherSections = sections.filter(
+            (s) => !(s.parentSectionId === parentId)
         );
         const newSections = [...otherSections, ...childrenWithNewOrder];
         setSections(newSections);
@@ -599,7 +696,7 @@ const Step2Content = ({ sections, setSections, onError }) => {
     const handleEditSection = (section) => {
         setEditingSection(section);
         setCurrentParentId(section.parentSectionId);
-        const parent = sections.find(s => s.id === section.parentSectionId);
+        const parent = sections.find((s) => s.id === section.parentSectionId);
         setCurrentParentType(parent?.type || section.type);
         setOpenAddSection(true);
     };
@@ -619,7 +716,15 @@ const Step2Content = ({ sections, setSections, onError }) => {
     const handleSaveSection = (sectionData) => {
         if (editingSection) {
             setSections((prev) =>
-                prev.map((s) => (s.id === editingSection.id ? { ...s, ...sectionData } : s))
+                prev.map((s) =>
+                    s.id === editingSection.id
+                        ? {
+                            ...s,
+                            ...sectionData,
+                            fileURL: sectionData.fileURL || s.fileURL // Giữ file cũ nếu không thay đổi
+                        }
+                        : s
+                )
             );
         } else {
             let title = sectionData.title?.trim();
@@ -630,7 +735,6 @@ const Step2Content = ({ sections, setSections, onError }) => {
                 title = sectionData.title?.trim() || "";
             }
 
-
             const newSection = {
                 id: `section-${Date.now()}`,
                 type: sectionData.type,
@@ -640,6 +744,7 @@ const Step2Content = ({ sections, setSections, onError }) => {
                     ? getChildSections(currentParentId).length
                     : parentSections.length,
                 questions: [],
+                fileURL: sectionData.fileURL || null // ← LƯU fileURL TỪ DIALOG
             };
 
             setSections((prev) => [...prev, newSection]);
@@ -649,24 +754,49 @@ const Step2Content = ({ sections, setSections, onError }) => {
 
     const handleAddQuestion = (parentId, childId) => {
         setCurrentParentId(parentId);
-        setCurrentChildId(childId);
+        setCurrentChildId(childId); // ← Đảm bảo lưu đúng childId
         setOpenAddQuestion(true);
-    };
+    }
 
     const handleSaveQuestions = (questions) => {
-        setSections((prev) =>
-            prev.map((s) => {
-                if (s.id === currentChildId) {
+        // Chuẩn hóa câu hỏi
+        const normalized = questions.map(q => normalizeQuestion(q));
+
+        // Tìm parent và child để cập nhật đúng
+        setSections(prev => {
+            return prev.map(section => {
+                // Nếu là parent section
+                if (section.id === currentParentId && section.childSections) {
                     return {
-                        ...s,
-                        questions: [...(s.questions || []), ...questions],
+                        ...section,
+                        childSections: section.childSections.map(child => {
+                            if (child.id === currentChildId) {
+                                return {
+                                    ...child,
+                                    questions: [...(child.questions || []), ...normalized]
+                                };
+                            }
+                            return child;
+                        })
                     };
                 }
-                return s;
-            })
-        );
+                // Nếu dùng cấu trúc phẳng (như hiện tại)
+                if (section.id === currentChildId) {
+                    return {
+                        ...section,
+                        questions: [...(section.questions || []), ...normalized]
+                    };
+                }
+                return section;
+            });
+        });
+
         setOpenAddQuestion(false);
+        setCurrentChildId(null);
     };
+
+
+
 
     const handleDeleteQuestion = (sectionId, questionIndex) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
@@ -674,7 +804,7 @@ const Step2Content = ({ sections, setSections, onError }) => {
         setSections((prev) =>
             prev.map((s) => {
                 if (s.id === sectionId) {
-                    const newQuestions = [...s.questions];
+                    const newQuestions = [...(s.questions || [])];
                     newQuestions.splice(questionIndex, 1);
                     return { ...s, questions: newQuestions };
                 }
@@ -683,7 +813,7 @@ const Step2Content = ({ sections, setSections, onError }) => {
         );
     };
 
-    const handleEditQuestion = (sectionId, questionIndex) => {
+    const handleEditQuestion = () => {
         alert("Chức năng chỉnh sửa câu hỏi sẽ được cập nhật sau");
     };
 
@@ -693,8 +823,7 @@ const Step2Content = ({ sections, setSections, onError }) => {
         setOpenPreview(true);
     };
 
-
-    // Empty state
+    // EMPTY STATE
     if (parentSections.length === 0) {
         return (
             <Box>
@@ -721,12 +850,23 @@ const Step2Content = ({ sections, setSections, onError }) => {
                     >
                         <QuestionAnswerIcon sx={{ fontSize: 60, color: "#9e9e9e" }} />
                     </Box>
-                    <Typography variant="h6" gutterBottom sx={{ color: "#666", fontWeight: 600 }}>
+
+                    <Typography
+                        variant="h6"
+                        gutterBottom
+                        sx={{ color: "#666", fontWeight: 600 }}
+                    >
                         Chưa có phần thi nào
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+
+                    <Typography
+                        variant="body2"
+                        color="text.secondary"
+                        sx={{ mb: 3 }}
+                    >
                         Nhấn nút "Thêm phần thi mới" để bắt đầu xây dựng bài thi
                     </Typography>
+
                     <Button
                         variant="contained"
                         size="large"
@@ -742,26 +882,52 @@ const Step2Content = ({ sections, setSections, onError }) => {
                     open={openAddSection}
                     onClose={() => setOpenAddSection(false)}
                     onSave={handleSaveSection}
+                    examId={examId}
                     isChild={Boolean(currentParentId)}
                     parentType={currentParentType}
                     editData={editingSection}
                 />
 
-                <AddQuestionDialog
-                    open={openAddQuestion}
-                    onClose={() => setOpenAddQuestion(false)}
-                    onSave={handleSaveQuestions}
-                    parentSectionId={currentParentId}
-                    childSectionId={currentChildId}
-                />
+
+                {/* Preview dialog vẫn render được nếu có */}
+                <Dialog
+                    open={openPreview}
+                    onClose={() => setOpenPreview(false)}
+                    maxWidth="md"
+                    fullWidth
+                >
+                    <DialogTitle>
+                        <Typography variant="h6" fontWeight={600}>
+                            Chi tiết câu hỏi
+                        </Typography>
+                    </DialogTitle>
+                    <DialogContent dividers>
+                        {previewQuestion && (
+                            <QuestionPreviewContent question={previewQuestion} />
+                        )}
+                    </DialogContent>
+                    <DialogActions>
+                        <Button
+                            onClick={() => setOpenPreview(false)}
+                            variant="contained"
+                        >
+                            Đóng
+                        </Button>
+                    </DialogActions>
+                </Dialog>
             </Box>
         );
     }
 
-    // Main content with drag & drop
+    // MAIN CONTENT
     return (
         <Box>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={3}>
+            <Stack
+                direction="row"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={3}
+            >
                 <Typography variant="h6" fontWeight={600}>
                     Cấu trúc bài thi
                 </Typography>
@@ -836,209 +1002,279 @@ const Step2Content = ({ sections, setSections, onError }) => {
                 </DialogTitle>
                 <DialogContent dividers>
                     {previewQuestion && (
-                        <Stack spacing={3}>
-                            {/* Question Content */}
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                    Nội dung câu hỏi
-                                </Typography>
-                                <Typography variant="body1">
-                                    {previewQuestion.Content || previewQuestion.content}
-                                </Typography>
-                            </Box>
-
-                            <Divider />
-
-                            {/* Question Info */}
-                            <Box>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                    Thông tin
-                                </Typography>
-                                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                                    <Chip
-                                        label={`Loại: ${previewQuestion.Type || previewQuestion.type}`}
-                                        size="small"
-                                        color="primary"
-                                    />
-                                    <Chip
-                                        label={`Độ khó: ${previewQuestion.Level || previewQuestion.level}`}
-                                        size="small"
-                                        color={
-                                            (previewQuestion.Level || previewQuestion.level) === "Easy"
-                                                ? "success"
-                                                : (previewQuestion.Level || previewQuestion.level) === "Hard"
-                                                    ? "error"
-                                                    : "warning"
-                                        }
-                                    />
-                                    {(previewQuestion.Topic || previewQuestion.topic) && (
-                                        <Chip
-                                            label={`Chủ đề: ${previewQuestion.Topic || previewQuestion.topic}`}
-                                            size="small"
-                                            variant="outlined"
-                                        />
-                                    )}
-                                    <Chip
-                                        label={`Điểm: ${previewQuestion.Point || previewQuestion.point || 1}`}
-                                        size="small"
-                                        variant="outlined"
-                                    />
-                                </Stack>
-                            </Box>
-
-                            {/* Options for Multiple Choice */}
-                            {(previewQuestion.Type === "multiple_choice" || previewQuestion.type === "multiple_choice") && (
-                                <>
-                                    <Divider />
-                                    <Box>
-                                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                            Các lựa chọn
-                                        </Typography>
-                                        {(!previewQuestion.options || previewQuestion.options.length === 0) ? (
-                                            <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic", mt: 1 }}>
-                                                Không có lựa chọn nào
-                                            </Typography>
-                                        ) : (
-                                            <Stack spacing={1} mt={1}>
-                                                {previewQuestion.options.map((option, index) => (
-                                                    <Paper
-                                                        key={index}
-                                                        variant="outlined"
-                                                        sx={{
-                                                            p: 1.5,
-                                                            bgcolor: option.IsCorrect || option.isCorrect ? "#e8f5e9" : "transparent",
-                                                            borderColor: option.IsCorrect || option.isCorrect ? "#4caf50" : "#e0e0e0",
-                                                        }}
-                                                    >
-                                                        <Stack direction="row" alignItems="center" spacing={1}>
-                                                            <Typography
-                                                                sx={{
-                                                                    minWidth: 24,
-                                                                    height: 24,
-                                                                    borderRadius: "50%",
-                                                                    bgcolor: option.IsCorrect || option.isCorrect ? "#4caf50" : "#e0e0e0",
-                                                                    color: "white",
-                                                                    display: "flex",
-                                                                    alignItems: "center",
-                                                                    justifyContent: "center",
-                                                                    fontSize: "0.75rem",
-                                                                    fontWeight: 600,
-                                                                }}
-                                                            >
-                                                                {String.fromCharCode(65 + index)}
-                                                            </Typography>
-                                                            <Typography variant="body2" flex={1}>
-                                                                {option.Content || option.content}
-                                                            </Typography>
-                                                            {(option.IsCorrect || option.isCorrect) && (
-                                                                <Chip label="Đúng" size="small" color="success" />
-                                                            )}
-                                                        </Stack>
-                                                    </Paper>
-                                                ))}
-                                            </Stack>
-                                        )}
-                                    </Box>
-                                </>
-                            )}
-
-                            {/* Correct Answer for other types */}
-                            {/* Đáp án đúng cho các loại khác multiple_choice */}
-                            {/* ❗ Chỉ hiển thị đáp án nếu KHÔNG phải essay hoặc speaking */}
-                            {!["essay", "speaking"].includes(previewQuestion.Type || previewQuestion.type) && (
-                                <>
-                                    <Divider />
-                                    <Box>
-                                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                            Đáp án đúng
-                                        </Typography>
-
-                                        {/* MATCHING */}
-                                        {(previewQuestion.Type === "matching" || previewQuestion.type === "matching") ? (
-                                            <Stack spacing={1}>
-                                                {(() => {
-                                                    try {
-                                                        let raw =
-                                                            previewQuestion.CorrectAnswer ??
-                                                            previewQuestion.correctAnswer ??
-                                                            null;
-
-                                                        let pairs = null;
-
-                                                        // Nếu CorrectAnswer là JSON string → parse
-                                                        if (raw && typeof raw === "string") {
-                                                            pairs = JSON.parse(raw);
-                                                        }
-                                                        // Nếu là object → dùng luôn
-                                                        else if (raw && typeof raw === "object") {
-                                                            pairs = raw;
-                                                        }
-                                                        // Nếu không có nhưng có options {left,right} → tự build
-                                                        else if (Array.isArray(previewQuestion.options || previewQuestion.Options)) {
-                                                            pairs = {};
-                                                            (previewQuestion.options || previewQuestion.Options).forEach((p) => {
-                                                                const left = p.left || p.Left;
-                                                                const right = p.right || p.Right;
-                                                                if (left) pairs[left] = right || "";
-                                                            });
-                                                        }
-
-                                                        if (!pairs || Object.keys(pairs).length === 0) {
-                                                            return (
-                                                                <Typography variant="body2" color="error">
-                                                                    Lỗi định dạng đáp án
-                                                                </Typography>
-                                                            );
-                                                        }
-
-                                                        return Object.entries(pairs).map(([key, value], index) => (
-                                                            <Paper key={index} variant="outlined" sx={{ p: 1.5, bgcolor: "#e8f5e9" }}>
-                                                                <Stack direction="row" alignItems="center" spacing={2}>
-                                                                    <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
-                                                                        {key}
-                                                                    </Typography>
-                                                                    <Typography variant="body2" color="text.secondary">
-                                                                        →
-                                                                    </Typography>
-                                                                    <Typography variant="body2" sx={{ flex: 1 }}>
-                                                                        {value}
-                                                                    </Typography>
-                                                                </Stack>
-                                                            </Paper>
-                                                        ));
-
-                                                    } catch (e) {
-                                                        return (
-                                                            <Typography variant="body2" color="error">
-                                                                Lỗi định dạng đáp án
-                                                            </Typography>
-                                                        );
-                                                    }
-                                                })()}
-                                            </Stack>
-                                        ) : (
-                                            // Các loại khác: hiển thị text đơn giản
-                                            <Paper variant="outlined" sx={{ p: 2, bgcolor: "#e8f5e9" }}>
-                                                <Typography variant="body2">
-                                                    {previewQuestion.CorrectAnswer || previewQuestion.correctAnswer}
-                                                </Typography>
-                                            </Paper>
-                                        )}
-                                    </Box>
-                                </>
-                            )}
-
-
-                        </Stack>
+                        <QuestionPreviewContent question={previewQuestion} />
                     )}
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenPreview(false)} variant="contained">
+                    <Button
+                        onClick={() => setOpenPreview(false)}
+                        variant="contained"
+                    >
                         Đóng
                     </Button>
                 </DialogActions>
             </Dialog>
         </Box>
+    );
+};
+
+/** Tách phần JSX preview câu hỏi cho gọn */
+const QuestionPreviewContent = ({ question: previewQuestion }) => {
+    return (
+        <Stack spacing={3}>
+            {/* Content */}
+            <Box>
+                <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                >
+                    Nội dung câu hỏi
+                </Typography>
+                <Typography variant="body1">
+                    {previewQuestion.Content || previewQuestion.content}
+                </Typography>
+            </Box>
+
+            <Divider />
+
+            {/* Info */}
+            <Box>
+                <Typography
+                    variant="subtitle2"
+                    color="text.secondary"
+                    gutterBottom
+                >
+                    Thông tin
+                </Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                    <Chip
+                        label={`Loại: ${previewQuestion.Type || previewQuestion.type}`}
+                        size="small"
+                        color="primary"
+                    />
+                    <Chip
+                        label={`Độ khó: ${previewQuestion.Level || previewQuestion.level}`}
+                        size="small"
+                        color={
+                            (previewQuestion.Level || previewQuestion.level) === "Easy"
+                                ? "success"
+                                : (previewQuestion.Level || previewQuestion.level) === "Hard"
+                                    ? "error"
+                                    : "warning"
+                        }
+                    />
+                    {(previewQuestion.Topic || previewQuestion.topic) && (
+                        <Chip
+                            label={`Chủ đề: ${previewQuestion.Topic || previewQuestion.topic
+                                }`}
+                            size="small"
+                            variant="outlined"
+                        />
+                    )}
+                    <Chip
+                        label={`Điểm: ${previewQuestion.Point || previewQuestion.point || 1
+                            }`}
+                        size="small"
+                        variant="outlined"
+                    />
+                </Stack>
+            </Box>
+
+            {/* Multiple choice options */}
+            {(previewQuestion.Type === "multiple_choice" ||
+                previewQuestion.type === "multiple_choice") && (
+                    <>
+                        <Divider />
+                        <Box>
+                            <Typography
+                                variant="subtitle2"
+                                color="text.secondary"
+                                gutterBottom
+                            >
+                                Các lựa chọn
+                            </Typography>
+                            {!previewQuestion.options ||
+                                previewQuestion.options.length === 0 ? (
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ fontStyle: "italic", mt: 1 }}
+                                >
+                                    Không có lựa chọn nào
+                                </Typography>
+                            ) : (
+                                <Stack spacing={1} mt={1}>
+                                    {previewQuestion.options.map((option, index) => (
+                                        <Paper
+                                            key={index}
+                                            variant="outlined"
+                                            sx={{
+                                                p: 1.5,
+                                                bgcolor:
+                                                    option.IsCorrect || option.isCorrect
+                                                        ? "#e8f5e9"
+                                                        : "transparent",
+                                                borderColor:
+                                                    option.IsCorrect || option.isCorrect
+                                                        ? "#4caf50"
+                                                        : "#e0e0e0",
+                                            }}
+                                        >
+                                            <Stack
+                                                direction="row"
+                                                alignItems="center"
+                                                spacing={1}
+                                            >
+                                                <Typography
+                                                    sx={{
+                                                        minWidth: 24,
+                                                        height: 24,
+                                                        borderRadius: "50%",
+                                                        bgcolor:
+                                                            option.IsCorrect || option.isCorrect
+                                                                ? "#4caf50"
+                                                                : "#e0e0e0",
+                                                        color: "white",
+                                                        display: "flex",
+                                                        alignItems: "center",
+                                                        justifyContent: "center",
+                                                        fontSize: "0.75rem",
+                                                        fontWeight: 600,
+                                                    }}
+                                                >
+                                                    {String.fromCharCode(65 + index)}
+                                                </Typography>
+                                                <Typography variant="body2" flex={1}>
+                                                    {option.Content || option.content}
+                                                </Typography>
+                                                {(option.IsCorrect || option.isCorrect) && (
+                                                    <Chip label="Đúng" size="small" color="success" />
+                                                )}
+                                            </Stack>
+                                        </Paper>
+                                    ))}
+                                </Stack>
+                            )}
+                        </Box>
+                    </>
+                )}
+
+            {/* Correct answer (except essay / speaking) */}
+            {!["essay", "speaking"].includes(
+                previewQuestion.Type || previewQuestion.type
+            ) && (
+                    <>
+                        <Divider />
+                        <Box>
+                            <Typography
+                                variant="subtitle2"
+                                color="text.secondary"
+                                gutterBottom
+                            >
+                                Đáp án đúng
+                            </Typography>
+
+                            {/* Matching */}
+                            {previewQuestion.Type === "matching" ||
+                                previewQuestion.type === "matching" ? (
+                                <Stack spacing={1}>
+                                    {(() => {
+                                        try {
+                                            let raw =
+                                                previewQuestion.CorrectAnswer ??
+                                                previewQuestion.correctAnswer ??
+                                                null;
+
+                                            let pairs = null;
+
+                                            if (raw && typeof raw === "string") {
+                                                pairs = JSON.parse(raw);
+                                            } else if (raw && typeof raw === "object") {
+                                                pairs = raw;
+                                            } else if (
+                                                Array.isArray(
+                                                    previewQuestion.options ||
+                                                    previewQuestion.Options
+                                                )
+                                            ) {
+                                                pairs = {};
+                                                (
+                                                    previewQuestion.options ||
+                                                    previewQuestion.Options
+                                                ).forEach((p) => {
+                                                    const left = p.left || p.Left;
+                                                    const right = p.right || p.Right;
+                                                    if (left) pairs[left] = right || "";
+                                                });
+                                            }
+
+                                            if (!pairs || Object.keys(pairs).length === 0) {
+                                                return (
+                                                    <Typography variant="body2" color="error">
+                                                        Lỗi định dạng đáp án
+                                                    </Typography>
+                                                );
+                                            }
+
+                                            return Object.entries(pairs).map(
+                                                ([key, value], index) => (
+                                                    <Paper
+                                                        key={index}
+                                                        variant="outlined"
+                                                        sx={{ p: 1.5, bgcolor: "#e8f5e9" }}
+                                                    >
+                                                        <Stack
+                                                            direction="row"
+                                                            alignItems="center"
+                                                            spacing={2}
+                                                        >
+                                                            <Typography
+                                                                variant="body2"
+                                                                sx={{ fontWeight: 600, flex: 1 }}
+                                                            >
+                                                                {key}
+                                                            </Typography>
+                                                            <Typography
+                                                                variant="body2"
+                                                                color="text.secondary"
+                                                            >
+                                                                →
+                                                            </Typography>
+                                                            <Typography
+                                                                variant="body2"
+                                                                sx={{ flex: 1 }}
+                                                            >
+                                                                {value}
+                                                            </Typography>
+                                                        </Stack>
+                                                    </Paper>
+                                                )
+                                            );
+                                        } catch {
+                                            return (
+                                                <Typography variant="body2" color="error">
+                                                    Lỗi định dạng đáp án
+                                                </Typography>
+                                            );
+                                        }
+                                    })()}
+                                </Stack>
+                            ) : (
+                                <Paper
+                                    variant="outlined"
+                                    sx={{ p: 2, bgcolor: "#e8f5e9" }}
+                                >
+                                    <Typography variant="body2">
+                                        {previewQuestion.CorrectAnswer ||
+                                            previewQuestion.correctAnswer}
+                                    </Typography>
+                                </Paper>
+                            )}
+                        </Box>
+                    </>
+                )}
+        </Stack>
     );
 };
 

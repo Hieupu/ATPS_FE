@@ -370,16 +370,29 @@ export const createExamInstanceApi = async (examId, instanceData) => {
 // Cập nhật exam instance
 export const updateExamInstanceApi = async (examId, instanceId, instanceData) => {
   try {
+    // ✅ LOG TRƯỚC KHI GỬI
+    console.log("📤 UPDATE EXAM INSTANCE REQUEST:");
+    console.log("  - URL:", `/instructor/exams/${examId}/instances/${instanceId}`);
+    console.log("  - Payload BEFORE stringify:", instanceData);
+    console.log("  - classId type:", typeof instanceData.classId);
+    console.log("  - classId isArray:", Array.isArray(instanceData.classId));
+    console.log("  - classId value:", instanceData.classId);
+    
+    // ✅ ĐẢNG BẢO KHÔNG BỊ STRINGIFY 2 LẦN
     const response = await apiClient.put(
       `/instructor/exams/${examId}/instances/${instanceId}`,
-      instanceData
+      instanceData  // ← KHÔNG stringify ở đây, để axios tự xử lý
     );
+    
+    console.log("✅ Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("Update exam instance error:", error);
-    throw error.response?.data || { message: "Không thể cập nhật bài gắn" };
+    console.error("❌ Update exam instance error:", error);
+    console.error("  - Request data:", error.config?.data);
+    throw error.response?.data || { message: "Không thể cập nhật phiên thi" };
   }
 };
+
 
 // Xóa exam instance
 export const deleteExamInstanceApi = async (examId, instanceId) => {
@@ -425,6 +438,15 @@ export const getUnitByCourseApi = async (courseId) => {
   } catch (err) {
     console.error("getUnitByCourseApi error:", err?.response?.data || err.message);
     return [];
+  }
+};
+export const createFullExamApi = async (fullExamData) => {
+  try {
+    const response = await apiClient.post("/instructor/exams/full", fullExamData);
+    return response.data;
+  } catch (error) {
+    console.error("Create Full Exam API error:", error);
+    throw error.response?.data || { message: "Không thể tạo full exam" };
   }
 };
 

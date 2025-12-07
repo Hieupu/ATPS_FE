@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Box,
     Button,
@@ -12,111 +12,130 @@ import {
     Container
 } from "@mui/material";
 
-import {
-    createExamApi,
-    updateExamApi,
-    getExamByIdApi,
-} from "../../../../apiServices/instructorExamService";
-
 import Step2Content from "./Step2Content";
 import ExamInstanceSettingsStep from "./ExamInstanceSettingsStep";
 
 const steps = ["Thông tin bài thi", "Phần thi & Câu hỏi", "Gắn bài & Cài đặt"];
 
-const ExamWizard = ({
-    open,
-    onClose,
-    onSave,
-    mode = "create",
-    initialData = null,
-    examId: editId,
-    onError
-}) => {
-
+const ExamWizard = ({ open, onClose, exam }) => {
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
 
-    const [sections, setSections] = useState([]);
     const [examId, setExamId] = useState(null);
+    const [sections, setSections] = useState([]);
 
     const [examData, setExamData] = useState({
         title: "",
         description: "",
     });
 
+    const [instanceData, setInstanceData] = useState(null);
+
     const [errors, setErrors] = useState({});
-    const isInitialLoadRef = useRef(true);
 
+    /* ==========================================================
+       LOAD DATA KHI EDIT
+    ========================================================== */
+  /* ==========================================================
+   LOAD DATA KHI EDIT
+========================================================== */
+useEffect(() => {
+  if (!exam) return;
+
+  console.log("LOAD exam vào Wizard:", exam);
+
+  // Fill Step 1
+  setExamData({
+    title: exam.Title || "",
+    description: exam.Description || "",
+  });
+
+  setExamId(exam.ExamID);
+
+  // Fill Step 2 - Convert sections
+  if (Array.isArray(exam.sections)) {
+    const flat = [];
+
+    exam.sections.forEach((parent) => {
+      const parentId = `p-${parent.SectionID}`;
+
+      flat.push({
+        id: parentId,
+        type: parent.Type,
+        title: parent.Title,
+        parentSectionId: null,
+        orderIndex: parent.OrderIndex,
+      });
+
+      (parent.childSections || []).forEach((child) => {
+        const childId = `c-${child.SectionID}`;
+        flat.push({
+          id: childId,
+          type: child.Type,
+          title: child.Title,
+          parentSectionId: parentId,
+          orderIndex: child.OrderIndex,
+          questions: child.questions || [],
+          fileURL: child.FileURL || null,
+        });
+      });
+    });
+
+    setSections(flat);
+  }
+
+  // Fill Step 3 - Instance - CHUẨN HÓA MẢNG
+  if (exam.instances && exam.instances.length > 0) {
+    const rawInstance = exam.instances[0];
+
+    const normalizedInstance = {
+      ...rawInstance,
+      InstanceId: rawInstance.InstanceId || rawInstance.instanceId,
+      ExamId: rawInstance.ExamId || rawInstance.examId,
+      Type: rawInstance.Type || (rawInstance.UnitId ? "Assignment" : "Exam"),
+      CourseName: rawInstance.CourseName || rawInstance.courseName,
+
+      // CHUẨN HÓA MẢNG
+      ClassId: rawInstance.ClassId != null 
+        ? (Array.isArray(rawInstance.ClassId) ? rawInstance.ClassId : [rawInstance.ClassId])
+        : null,
+      UnitId: rawInstance.UnitId != null 
+        ? (Array.isArray(rawInstance.UnitId) ? rawInstance.UnitId : [rawInstance.UnitId])
+        : null,
+    };
+
+    console.log("Normalized Instance:", normalizedInstance);
+    setInstanceData(normalizedInstance);
+  }
+
+  setActiveStep(0);
+}, [exam]);
+
+    /* ==========================================================
+       RESET KHI TẠO BÀI MỚI
+    ========================================================== */
     useEffect(() => {
-        if (!open) return;
-
-        if (mode === "edit" && editId) {
-            loadExam(editId);
-        } else {
-            resetWizard();
-        }
-    }, [open, mode, editId]);
+        if (!open || exam) return;
+        resetWizard();
+    }, [open]);
 
     const resetWizard = () => {
         setSections([]);
-        setExamId(null);
-        setExamData({
-            title: "",
-            description: "",
-        });
+        setExamData({ title: "", description: "" });
+        setInstanceData(null);
         setErrors({});
         setActiveStep(0);
     };
 
-    const loadExam = async (id) => {
-        try {
-            const data = await getExamByIdApi(id);
-
-            setExamId(id);
-
-            setExamData({
-                title: data.Title || "",
-                description: data.Description || "",
-            });
-
-            const mapped = [];
-            (data.sections || []).forEach(parent => {
-                const children = parent.childSections || parent.ChildSections || [];
-
-                mapped.push({
-                    id: parent.SectionId,
-                    title: parent.Title || parent.Type,
-                    type: parent.Type,
-                    orderIndex: parent.OrderIndex,
-                    parentSectionId: null,
-                    questions: parent.Questions || []
-                });
-
-                children.forEach(child => {
-                    mapped.push({
-                        id: child.SectionId,
-                        title: child.Title || child.Type,
-                        type: child.Type,
-                        orderIndex: child.OrderIndex,
-                        parentSectionId: parent.SectionId,
-                        fileURL: child.FileURL || null,
-                        questions: child.Questions || [],
-                    });
-                });
-            });
-
-            setSections(mapped);
-        } catch (err) {
-            console.error("Load exam failed:", err);
-        }
-    };
-
+    /* ==========================================================
+       VALIDATE
+    ========================================================== */
     const validateStep1 = () => {
         const newErrors = {};
         if (!examData.title.trim()) newErrors.title = "Tiêu đề bắt buộc";
         if (!examData.description.trim()) newErrors.description = "Mô tả bắt buộc";
-        setErrors(newErrors);
 
+        setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
 
@@ -130,10 +149,12 @@ const ExamWizard = ({
 
         for (const p of parents) {
             const children = sections.filter(s => s.parentSectionId === p.id);
+
             if (!children.length) {
                 alert(`Phần thi "${p.title}" phải có ít nhất 1 phần thi con`);
                 return false;
             }
+
             for (const c of children) {
                 if (!c.questions?.length) {
                     alert(`"${c.title}" phải có ít nhất 1 câu hỏi`);
@@ -141,9 +162,13 @@ const ExamWizard = ({
                 }
             }
         }
+
         return true;
     };
 
+    /* ==========================================================
+       CHUYỂN SECTIONS → PAYLOAD GỬI BE
+    ========================================================== */
     const convertToHierarchical = (flat) => {
         const parents = flat.filter(s => !s.parentSectionId);
 
@@ -152,20 +177,47 @@ const ExamWizard = ({
 
             return {
                 type: parent.type,
-                title: parent.title,
-                orderIndex: parent.orderIndex,
-                childSections: children.map(child => ({
-                    type: child.type,
-                    title: child.title,
-                    orderIndex: child.orderIndex,
-                    fileURL: child.fileURL || null,
-                    questions: child.questions.map(q => q.QuestionID || q.id)
-                }))
+                title: parent.title || "",
+                orderIndex: parent.orderIndex ?? 0,
+
+                childSections: children.map(child => {
+                    const validQuestionIds = (child.questions || [])
+                        .map(q => q.QuestionID)
+                        .filter(id => Number.isInteger(id) && id > 0);
+
+                    const newQuestions = (child.questions || [])
+                        .filter(q => q.QuestionID === null)
+                        .map(q => ({
+                            content: q.content || "",
+                            type: q.type || "multiple_choice",
+                            level: q.level || "Medium",
+                            point: Number(q.point) || 1,
+                            topic: q.topic || null,
+                            options: q.options || [],
+                            correctAnswer: q.correctAnswer || "",
+                            matchingPairs: q.matchingPairs || []
+                        }));
+
+                    const childPayload = {
+                        type: child.type,
+                        title: child.title || "",
+                        orderIndex: child.orderIndex ?? 0,
+                    };
+
+                    if (child.fileURL) childPayload.fileURL = child.fileURL;
+                    if (validQuestionIds.length) childPayload.questions = validQuestionIds;
+                    if (newQuestions.length) childPayload.newQuestions = newQuestions;
+
+                    return childPayload;
+                })
             };
         });
     };
 
-    const handleNext = async () => {
+    /* ==========================================================
+       HANDLE NEXT
+    ========================================================== */
+    const handleNext = () => {
         if (activeStep === 0) {
             if (!validateStep1()) return;
             setActiveStep(1);
@@ -175,45 +227,19 @@ const ExamWizard = ({
         if (activeStep === 1) {
             if (!validateStep2()) return;
 
-            setLoading(true);
-            try {
-                const hierarchical = convertToHierarchical(sections);
-                let finalExamId = examId;
-
-                if (mode === "create") {
-                    const payload = {
-                        title: examData.title,
-                        description: examData.description,
-                        sections: hierarchical,
-                    };
-
-                    const res = await createExamApi(payload);
-                    finalExamId = res.examId;
-                    setExamId(finalExamId);
-                } else {
-                    await updateExamApi(finalExamId, {
-                        title: examData.title,
-                        description: examData.description,
-                        sections: hierarchical,
-                    });
-                }
-
-                setActiveStep(2);
-            } catch (err) {
-                console.error(err);
-                alert("Không thể lưu đề thi. Vui lòng thử lại.");
-            }
-            setLoading(false);
+            window.examTempSections = convertToHierarchical(sections);
+            setActiveStep(2);
             return;
         }
     };
 
     const handleBack = () => {
-        if (activeStep === 0) return;
-        setActiveStep(activeStep - 1);
+        if (activeStep > 0) setActiveStep(activeStep - 1);
     };
 
-    // STEP 3 Content
+    /* ==========================================================
+       HIỂN THỊ CÁC STEP
+    ========================================================== */
     const renderStepContent = () => {
         if (activeStep === 0) {
             return (
@@ -260,7 +286,7 @@ const ExamWizard = ({
                 <Step2Content
                     sections={sections}
                     setSections={setSections}
-                    onError={(e) => console.error(e)}
+                    examId={examId}
                 />
             );
         }
@@ -268,17 +294,21 @@ const ExamWizard = ({
         if (activeStep === 2) {
             return (
                 <ExamInstanceSettingsStep
+                    examData={examData}
+                    sections={window.examTempSections}
                     examId={examId}
+                    initialInstance={instanceData}   
                     onDone={() => {
-                        alert("Tạo bài thi thành công!");
-                        onClose();  // ⬅⬅⬅ Sửa lại đây
+                        onClose();
                     }}
                 />
             );
         }
-
     };
 
+    /* ==========================================================
+       MAIN UI
+    ========================================================== */
     return (
         <Box sx={{ bgcolor: "#f8fafc", minHeight: "100vh" }}>
             <Container maxWidth="lg">
@@ -300,7 +330,7 @@ const ExamWizard = ({
                         justifyContent: "space-between",
                         mt: 4,
                         pt: 3,
-                        borderTop: "1px solid #e5e7eb"
+                        borderTop: "1px solid #e5e7eb",
                     }}
                 >
                     <Button variant="outlined" onClick={onClose}>

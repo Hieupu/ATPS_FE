@@ -3,42 +3,96 @@ import { Box, Button, Typography, CircularProgress } from "@mui/material";
 import * as XLSX from "xlsx";
 
 /* ===========================================
-   🔥 NORMALIZE QUESTION — HỖ TRỢ TẤT CẢ LOẠI
+   🔥 NORMALIZE — TRẢ VỀ ĐÚNG FORMAT BACKEND
    =========================================== */
 const normalizeQuestion = (row, index) => {
-  const type = row["Loại"]?.trim() || "";
-  const correct = (row["Đáp án"] || "").toString().trim();
+  const rawType = (row["Loại"] || "").toString().trim().toLowerCase();
+  const tempId = Date.now() + index;
 
-  /* --------------------------
-     1️⃣ MATCHING
-     -------------------------- */
+  // === CHUẨN HÓA TYPE ===
+  let type = "";
+  if (rawType.includes("multiple")) type = "multiple_choice";
+  else if (rawType.includes("true") || rawType.includes("false")) type = "true_false";
+  else if (rawType.includes("fill")) type = "fill_in_blank";
+  else if (rawType.includes("match")) type = "matching";
+  else if (rawType.includes("essay")) type = "essay";
+  else if (rawType.includes("speak")) type = "speaking";
+  else return null; // Bỏ dòng lỗi
+
+  const content = row["Nội dung"] || "";
+  const level = row["Mức độ"] || "Medium";
+  const point = Number(row["Điểm"]) || 1;
+  const topic = row["Chủ đề"] || "";
+
+  // === XỬ LÝ THEO TYPE ===
   if (type === "matching") {
-    const leftList = (row["Tùy chọn A"] || "").split("\n").filter(Boolean);
-    const rightList = (row["Tùy chọn B"] || "").split("\n").filter(Boolean);
-
-    const options = leftList.map((item, idx) => ({
-      left: item,
+    const leftList = (row["Tùy chọn A"] || "").split("\n").map(s => s.trim()).filter(Boolean);
+    const rightList = (row["Tùy chọn B"] || "").split("\n").map(s => s.trim()).filter(Boolean);
+    const matchingPairs = leftList.map((left, idx) => ({
+      left,
       right: rightList[idx] || "",
     }));
-
-    const correctAnswer = {};
-    options.forEach(p => correctAnswer[p.left] = p.right);
+    const correctAnswer = Object.fromEntries(matchingPairs.map(p => [p.left, p.right]));
 
     return {
-      id: Date.now() + index,
-      content: row["Nội dung"] || "",
+      id: tempId,
+      QuestionID: null,
+      content,
       type,
-      level: row["Mức độ"] || "",
-      point: row["Điểm"] || 1,
-      topic: row["Chủ đề"] || "",
-      options,
+      level,
+      point,
+      topic,
+      options: [],
       correctAnswer,
+      matchingPairs,
     };
   }
 
-  /* --------------------------
-     2️⃣ MULTIPLE CHOICE
-     -------------------------- */
+  if (type === "true_false") {
+    const correct = (row["Đáp án"] || "").toString().trim().toLowerCase();
+    return {
+      id: tempId,
+      QuestionID: null,
+      content,
+      type,
+      level,
+      point,
+      topic,
+      options: [],
+      correctAnswer: correct === "true" ? "true" : "false",
+    };
+  }
+
+  if (type === "fill_in_blank") {
+    return {
+      id: tempId,
+      QuestionID: null,
+      content,
+      type,
+      level,
+      point,
+      topic,
+      options: [],
+      correctAnswer: (row["Đáp án"] || "").toString().trim(),
+    };
+  }
+
+  if (["essay", "speaking"].includes(type)) {
+    return {
+      id: tempId,
+      QuestionID: null,
+      content,
+      type,
+      level,
+      point,
+      topic,
+      options: [],
+      correctAnswer: "",
+      matchingPairs: [],
+    };
+  }
+
+  // === MULTIPLE CHOICE (mặc định nếu không khớp) ===
   const rawOptions = [
     row["Tùy chọn A"],
     row["Tùy chọn B"],
@@ -46,27 +100,28 @@ const normalizeQuestion = (row, index) => {
     row["Tùy chọn D"],
   ].filter(Boolean);
 
+  const correctAnswer = (row["Đáp án"] || "").toString().trim();
+  const correctLetters = correctAnswer.split(",").map(l => l.trim().toUpperCase());
+
   const options = rawOptions.map((opt, idx) => ({
     content: opt,
-    isCorrect:
-      correct.includes(String.fromCharCode(65 + idx)) || // A B C D
-      correct.toLowerCase() === opt?.toLowerCase(),      // hoặc text
+    isCorrect: correctLetters.includes(String.fromCharCode(65 + idx)),
   }));
 
-  /* --------------------------
-     3️⃣ OTHER QUESTION TYPES
-     -------------------------- */
   return {
-    id: Date.now() + index,
-    content: row["Nội dung"] || "",
-    type,
-    level: row["Mức độ"] || "",
-    point: row["Điểm"] || 1,
-    topic: row["Chủ đề"] || "",
+    id: tempId,
+    QuestionID: null,
+    content,
+    type: "multiple_choice",
+    level,
+    point,
+    topic,
     options,
-    correctAnswer: correct,
+    correctAnswer,
+    matchingPairs: [],
   };
 };
+
 
 /* ===========================================
    🔥 COMPONENT UPLOAD FILE
@@ -113,7 +168,6 @@ const QuestionUploadTab = ({ uploadedQuestions = [], setUploadedQuestions }) => 
         <input type="file" accept=".xlsx,.xls" hidden onChange={handleFileSelect} />
       </Button>
 
-      {/* Danh sách câu hỏi */}
       {uploadedQuestions.length > 0 && (
         <Box mt={3}>
           <Typography fontWeight={600} mb={1}>
@@ -138,10 +192,9 @@ const QuestionUploadTab = ({ uploadedQuestions = [], setUploadedQuestions }) => 
               <Typography variant="body2">Độ khó: {q.level}</Typography>
               <Typography variant="body2">Điểm: {q.point}</Typography>
 
-              {/* Preview Matching trong list */}
               {q.type === "matching" && (
                 <Box mt={1}>
-                  {q.options.map((pair, i) => (
+                  {q.matchingPairs.map((pair, i) => (
                     <Typography key={i} variant="body2">
                       {pair.left} → {pair.right}
                     </Typography>

@@ -11,18 +11,26 @@ import {
   IconButton,
   Typography,
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
 
 import CreateQuestionTab from "./CreateQuestionTab";
 import QuestionBankTab from "./QuestionBankTab";
 import QuestionUploadTab from "./QuestionUploadTab";
 
-const AddQuestionDialog = ({ open, onClose, onSave, examId, parentSectionId, childSectionId }) => {
+const AddQuestionDialog = ({
+  open,
+  onClose,
+  onSave,
+  examId,
+  parentSectionId,
+  childSectionId
+}) => {
   const [activeTab, setActiveTab] = useState(0);
 
-  const [newQuestions, setNewQuestions] = useState([]);          // TAB 1
-  const [selectedQuestions, setSelectedQuestions] = useState([]); // TAB 2
-  const [uploadedQuestions, setUploadedQuestions] = useState([]); // TAB 3
+  const [newQuestions, setNewQuestions] = useState([]);          
+  const [selectedQuestions, setSelectedQuestions] = useState([]); 
+  const [uploadedQuestions, setUploadedQuestions] = useState([]); 
 
   useEffect(() => {
     if (open) {
@@ -32,6 +40,33 @@ const AddQuestionDialog = ({ open, onClose, onSave, examId, parentSectionId, chi
       setUploadedQuestions([]);
     }
   }, [open]);
+
+  /** ---------------------------------------------------------
+   *  🔥 FIX QUAN TRỌNG NHẤT
+   *  - Không convert q.id thành QuestionID!
+   *  - Chỉ giữ QuestionID thật nếu nó <= INT(32-bit)
+   *  - Câu hỏi mới hoặc Excel upload phải QuestionID = null
+   * --------------------------------------------------------- */
+  const normalizeQuestions = (questions) => {
+    return questions.map((q) => {
+      let realId = null;
+
+      // Chỉ nhận ID thật từ DB
+      if (
+        Number.isInteger(Number(q.QuestionID)) &&
+        Number(q.QuestionID) > 0 &&
+        Number(q.QuestionID) <= 2147483647
+      ) {
+        realId = Number(q.QuestionID);
+      }
+
+      return {
+        ...q,
+        QuestionID: realId, // ID thật hoặc null
+        id: q.id             // giữ nguyên ID FE để render UI
+      };
+    });
+  };
 
   const handleSave = () => {
     let result = [];
@@ -45,7 +80,10 @@ const AddQuestionDialog = ({ open, onClose, onSave, examId, parentSectionId, chi
       return;
     }
 
-    onSave(result);
+    // ⭐ FIX: chuẩn hóa trước khi gửi qua Step 2
+    const normalized = normalizeQuestions(result);
+
+    onSave(normalized);
     onClose();
   };
 
@@ -72,7 +110,10 @@ const AddQuestionDialog = ({ open, onClose, onSave, examId, parentSectionId, chi
       {/* CONTENT */}
       <DialogContent sx={{ minHeight: 500, p: 0 }}>
         {activeTab === 0 && (
-          <CreateQuestionTab questions={newQuestions} setQuestions={setNewQuestions} />
+          <CreateQuestionTab
+            questions={newQuestions}
+            setQuestions={setNewQuestions}
+          />
         )}
 
         {activeTab === 1 && (
@@ -93,14 +134,17 @@ const AddQuestionDialog = ({ open, onClose, onSave, examId, parentSectionId, chi
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} variant="outlined">Hủy</Button>
+        <Button onClick={onClose} variant="outlined">
+          Hủy
+        </Button>
+
         <Button
           onClick={handleSave}
           variant="contained"
           disabled={
-            activeTab === 0 && newQuestions.length === 0 ||
-            activeTab === 1 && selectedQuestions.length === 0 ||
-            activeTab === 2 && uploadedQuestions.length === 0
+            (activeTab === 0 && newQuestions.length === 0) ||
+            (activeTab === 1 && selectedQuestions.length === 0) ||
+            (activeTab === 2 && uploadedQuestions.length === 0)
           }
         >
           Lưu & Thêm vào phần thi
