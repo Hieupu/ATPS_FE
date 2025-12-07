@@ -44,7 +44,6 @@ const MyCourseDetailPage = () => {
       setError(null);
 
       const courseData = await getCourseByIdApi(id);
-      console.log(courseData);
 
       setCourse(courseData);
 
