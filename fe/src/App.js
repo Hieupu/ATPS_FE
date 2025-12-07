@@ -9,11 +9,30 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import AdminLayout from "./layouts/AdminLayout";
-import ClassManagementPage from "./pages/admin/ClassManagementPage/ClassManagementPage";
-import ScheduleManagementPage from "./pages/admin/ScheduleManagementPage/ScheduleManagementPage";
-import { PUBLIC_ROUTES } from "./routingLayer/routes";
+import DashboardPage from "./pages/admin/pages/DashboardPage";
+import ClassesPage from "./pages/admin/pages/ClassesPage";
+import CreateClassPage from "./pages/admin/pages/CreateClassPage";
+import InstructorsPageAdmin from "./pages/admin/pages/InstructorsPage";
+import LearnersPage from "./pages/admin/pages/LearnersPage";
+import StaffPage from "./pages/admin/pages/StaffPage";
+import AdminsPage from "./pages/admin/pages/AdminsPage";
+import AdminReportsPage from "./pages/admin/pages/ReportsPage";
+import RevenueReportsPage from "./pages/admin/pages/RevenueReportsPage";
+import LearnerReportsPage from "./pages/admin/pages/LearnerReportsPage";
+import ClassReportsPage from "./pages/admin/pages/ClassReportsPage";
+import StaffReportsPage from "./pages/admin/pages/StaffReportsPage";
+import SchedulePageAdmin from "./pages/admin/pages/SchedulePage";
+import InstructorLeavePage from "./pages/admin/pages/InstructorLeavePage";
+import InstructorSchedulePageAdmin from "./pages/admin/pages/InstructorSchedulePage";
+import TimeslotManagerPage from "./pages/admin/pages/TimeslotManagerPage";
+import NewsPage from "./pages/admin/pages/NewsPage";
+import AdminCoursesPage from "./pages/admin/pages/CoursesPage";
+import RefundPage from "./pages/admin/pages/RefundPage";
+import PromotionsPage from "./pages/admin/pages/PromotionsPage";
+import EmailTemplatePage from "./pages/admin/pages/EmailTemplatePage";
+import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
-
+import AdminInstructorsPage from "./pages/admin/pages/InstructorsPage";
 import LoginPage from "./pages/common/Login/LoginPage";
 import HomePage from "./pages/common/HomePage/HomePage";
 import ForgotPassword from "./pages/common/ForgotPassword/ForgotPassword";
@@ -55,10 +74,17 @@ import MaterialsPage from "./pages/materials/MaterialsPage";
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
 import ExamsPage from "./pages/exam/ExamsPage";
-import ExamTakingPage from "./pages/exam/ExamTakingPage";      
-import ExamResultPage from "./pages/exam/ExamResultPage";   
+import ExamTakingPage from "./pages/exam/ExamTakingPage";
+import ExamResultPage from "./pages/exam/ExamResultPage";
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 
+import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
+import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
+import InstructorClassesPage from "./pages/instructor/pages/ClassesPage";
+import InstructorAssignmentsPage from "./pages/instructor/pages/AssignmentsPage";
+import InstructorExamsPage from "./pages/instructor/pages/ExamsPage";
+import InstructorGradesPage from "./pages/instructor/pages/GradesPage";
+import InstructorSettingsPage from "./pages/instructor/pages/SettingsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
 
@@ -83,7 +109,7 @@ function AppRoutes() {
       <Route path="/courses/:id" element={<CourseDetailPage />} />
       <Route path="/my-courses" element={<MyCourses />} />
       <Route path="/my-courses/:id" element={<MyCourseDetailPage />} />
-         <Route path="/openingCeremony" element={<ClassSchedulePage />} />
+      <Route path="/openingCeremony" element={<ClassSchedulePage />} />
 
       <Route path="/payment-success" element={<PaymentSuccessPage />} />
       <Route path="/payment-failed" element={<PaymentFailedPage />} />
@@ -97,27 +123,61 @@ function AppRoutes() {
       <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
       <Route path="/exam/:examId/result" element={<ExamResultPage />} />
 
-      {/* Learner Routes */} 
+      {/* Learner Routes */}
       <Route path="/schedule" element={<SchedulePage />} />
       <Route path="/reschedule-requests" element={<RescheduleRequestsPage />} />
       <Route path="/attendance" element={<AttendancePage />} />
-      <Route
-        path="/zoom/:zoomId?/:zoomPass?"
-        element={<ZoomMeetingPage />}
-      />
+      <Route path="/zoom/:zoomId?/:zoomPass?" element={<ZoomMeetingPage />} />
       <Route path="/progress" element={<ProgressPage />} />
       <Route path="/materials" element={<MaterialsPage />} />
 
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<AdminDashboard />} />
-        <Route path="classes" element={<ClassManagementPage />} />
+        <Route index element={<DashboardPage />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="classes" element={<ClassesPage />} />
+        <Route path="classes/new" element={<CreateClassPage />} />
+        <Route path="classes/edit/:classId" element={<CreateClassPage />} />
+        <Route path="courses" element={<AdminCoursesPage />} />
+        <Route path="instructors" element={<InstructorsPageAdmin />} />
+        <Route path="learners" element={<LearnersPage />} />
+        <Route path="reports" element={<AdminReportsPage />} />
+        <Route path="news" element={<NewsPage />} />
         <Route
           path="classes/:courseId/schedule"
-          element={<ScheduleManagementPage />}
+          element={<SchedulePageAdmin />}
         />
+        {/* Statistics Routes */}
+        <Route path="statistics/revenue" element={<RevenueReportsPage />} />
+        <Route path="statistics/learners" element={<LearnerReportsPage />} />
+        <Route path="statistics/classes" element={<ClassReportsPage />} />
+        <Route path="statistics/staff" element={<StaffReportsPage />} />
+        {/* User Management Routes */}
+        <Route path="users/learners" element={<LearnersPage />} />
+        <Route path="users/instructors" element={<AdminInstructorsPage />} />
+        <Route path="users/staff" element={<StaffPage />} />
+        <Route path="users/admins" element={<AdminsPage />} />
+        <Route path="users/create" element={<InstructorsPage />} />
+        {/* Class & Schedule Routes */}
+        <Route path="schedule" element={<SchedulePage />} />
+        <Route
+          path="instructor-calendar"
+          element={<InstructorSchedulePageAdmin />}
+        />
+        <Route path="instructor-leave" element={<InstructorLeavePage />} />
+        {/* Finance Routes */}
+        <Route path="finance/payment-history" element={<AdminReportsPage />} />
+        <Route path="finance/refunds" element={<RefundPage />} />
+        <Route path="finance/promotions" element={<PromotionsPage />} />
+        <Route path="finance/payroll" element={<AdminReportsPage />} />
+        {/* System Routes */}
+        <Route path="system/payment-gateways" element={<AdminReportsPage />} />
+        <Route
+          path="system/notification-templates"
+          element={<EmailTemplatePage />}
+        />
+        <Route path="system/timeslots" element={<TimeslotManagerPage />} />
       </Route>
-
       {/* Instructor Routes */}
       <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
         <Route path="/instructor" element={<InstructorLayout />}>
@@ -139,8 +199,8 @@ function AppRoutes() {
           <Route path="exams/edit/:examId" element={<EditExamPage />} />
         </Route>
       </Route>
-
-      {/* 404 */}
+      {/* </Route> */}
+      {/* 404 Page */}
       <Route path="*" element={<NotFound />} />
     </Routes>
   );
@@ -164,30 +224,6 @@ function App() {
   );
 }
 
-// Admin Dashboard
-function AdminDashboard() {
-  return (
-    <div style={{ padding: "24px" }}>
-      <h1>Dashboard Admin</h1>
-      <p>Chào mừng đến với hệ thống quản lý đào tạo ATPS!</p>
-      <div style={{ marginTop: "20px" }}>
-        <a
-          href="/admin/classes"
-          style={{
-            padding: "12px 24px",
-            background: "#667eea",
-            color: "white",
-            textDecoration: "none",
-            borderRadius: "8px",
-          }}
-        >
-          Quản lý lớp học
-        </a>
-      </div>
-    </div>
-  );
-}
-
 // Not Found
 function NotFound() {
   return (
@@ -202,9 +238,7 @@ function NotFound() {
       }}
     >
       <h1 style={{ fontSize: "72px", margin: 0 }}>404</h1>
-      <p style={{ fontSize: "24px", color: "#6c757d" }}>
-        Không tìm thấy trang
-      </p>
+      <p style={{ fontSize: "24px", color: "#6c757d" }}>Không tìm thấy trang</p>
       <a
         href="/"
         style={{

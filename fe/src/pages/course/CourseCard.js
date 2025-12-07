@@ -9,12 +9,7 @@ import {
   Avatar,
   Button,
 } from "@mui/material";
-import {
-  People,
-  Schedule,
-  Star,
-  ArrowForward,
-} from "@mui/icons-material";
+import { People, Schedule, Star, ArrowForward } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 
 // Array ảnh để random
@@ -42,7 +37,8 @@ const CourseCard = ({ course }) => {
   };
 
   // Sử dụng ảnh từ database mới
-  const imageUrl = course.Image || courseImages[course.CourseID % courseImages.length];
+  const imageUrl =
+    course.CourseImage || courseImages[course.CourseID % courseImages.length];
 
   return (
     <Card
@@ -180,8 +176,8 @@ const CourseCard = ({ course }) => {
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography
               variant="body2"
-              sx={{ 
-                fontWeight: 700, 
+              sx={{
+                fontWeight: 700,
                 color: "text.primary",
                 mb: 0.2,
                 whiteSpace: "nowrap",
@@ -193,7 +189,7 @@ const CourseCard = ({ course }) => {
             </Typography>
             <Typography
               variant="caption"
-              sx={{ 
+              sx={{
                 color: "text.secondary",
                 display: "block",
                 fontSize: "0.75rem",
@@ -213,7 +209,7 @@ const CourseCard = ({ course }) => {
             display: "flex",
             justifyContent: "space-around",
             gap: 1,
-            mt:2,
+            mt: 2,
             mb: 2,
             pb: 3,
             borderBottom: "2px solid",

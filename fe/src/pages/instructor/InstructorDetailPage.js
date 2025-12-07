@@ -85,8 +85,18 @@ const InstructorDetailPage = () => {
       setLoading(true);
       setError(null);
       const data = await getInstructorByIdApi(id);
-      console.log("getInstructorByIdApi" , data)
-      setInstructor(data.instructor);
+      console.log("getInstructorByIdApi", data);
+
+      // Handle different response formats
+      // Backend có thể trả về: {instructor: {...}} hoặc {...} trực tiếp
+      const instructorData = data?.instructor || data?.data || data;
+      console.log("Instructor data to set:", instructorData);
+
+      if (!instructorData || !instructorData.InstructorID) {
+        throw new Error("Không tìm thấy thông tin giảng viên");
+      }
+
+      setInstructor(instructorData);
     } catch (error) {
       console.error("Error fetching instructor:", error);
       setError(error.message || "Không thể tải thông tin giảng viên");
@@ -159,21 +169,24 @@ const InstructorDetailPage = () => {
     }).format(amount);
   };
 
-const formatDuration = (hours) => {
+  const formatDuration = (hours) => {
     if (hours < 1) return `${Math.round(hours * 60)} phút`;
     const wholeHours = Math.floor(hours);
     const minutes = Math.round((hours - wholeHours) * 60);
-    return minutes > 0 ? `${wholeHours} giờ ${minutes} phút` : `${wholeHours} giờ`;
-};
+    return minutes > 0
+      ? `${wholeHours} giờ ${minutes} phút`
+      : `${wholeHours} giờ`;
+  };
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa" }}>
       <AppHeader />
-      
+
       {/* Enhanced Header Section */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
+          background:
+            "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)",
           color: "white",
           py: { xs: 4, md: 8 },
           position: "relative",
@@ -185,7 +198,8 @@ const formatDuration = (hours) => {
             left: 0,
             right: 0,
             bottom: 0,
-            background: "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
+            background:
+              "radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%)",
           },
         }}
       >
@@ -230,7 +244,15 @@ const formatDuration = (hours) => {
                   {instructor.FullName?.charAt(0)}
                 </Avatar>
                 <Box sx={{ textAlign: { xs: "center", sm: "left" }, flex: 1 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: { xs: "center", sm: "flex-start" }, gap: 1, mb: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: { xs: "center", sm: "flex-start" },
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
                     <VerifiedUser sx={{ fontSize: 24, color: "#ffd700" }} />
                     <Typography
                       variant="h3"
@@ -265,7 +287,10 @@ const formatDuration = (hours) => {
                     }}
                   >
                     <School sx={{ fontSize: 22, opacity: 0.9 }} />
-                    <Typography variant="h6" sx={{ opacity: 0.95, fontWeight: 500 }}>
+                    <Typography
+                      variant="h6"
+                      sx={{ opacity: 0.95, fontWeight: 500 }}
+                    >
                       {instructor.Major}
                     </Typography>
                   </Box>
@@ -295,14 +320,13 @@ const formatDuration = (hours) => {
                     border: "1px solid rgba(255,255,255,0.2)",
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{ fontWeight: 800, mb: 0.5 }}
-                  >
-               {instructor?.Courses?.length ?? 0}
-
+                  <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+                    {instructor?.Courses?.length ?? 0}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9, fontSize: "0.9rem" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ opacity: 0.9, fontSize: "0.9rem" }}
+                  >
                     Khóa học
                   </Typography>
                 </Paper>
@@ -319,51 +343,50 @@ const formatDuration = (hours) => {
                     border: "1px solid rgba(255,255,255,0.2)",
                   }}
                 >
-                  <Typography
-                    variant="h4"
-                    sx={{ fontWeight: 800, mb: 0.5 }}
-                  >
+                  <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
                     {instructor.TotalStudents || 0}
                   </Typography>
-                  <Typography variant="body2" sx={{ opacity: 0.9, fontSize: "0.9rem" }}>
+                  <Typography
+                    variant="body2"
+                    sx={{ opacity: 0.9, fontSize: "0.9rem" }}
+                  >
                     Học sinh
                   </Typography>
                 </Paper>
               </Box>
 
-                <Box sx={{ mt: 3 }}>
-               <Button
-  variant="contained"
-  size="large"
-  startIcon={<CalendarToday />}
-  onClick={() => {
-    if (!user) {
-      window.location.href = "/auth/login";
-      return;
-    }
-    handleOpenBookingDialog();
-  }}
-  sx={{
-    px: 5,
-    py: 1.5,
-    fontSize: "1.1rem",
-    borderRadius: 3,
-    bgcolor: "white",
-    color: "primary.main",
-    fontWeight: 700,
-    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
-    "&:hover": {
-      bgcolor: "rgba(255,255,255,0.95)",
-      transform: "translateY(-2px)",
-      boxShadow: "0 6px 25px rgba(0,0,0,0.3)",
-    },
-    transition: "all 0.3s ease",
-  }}
->
-  Đặt lịch học 1-1
-</Button>
-                </Box>
-            
+              <Box sx={{ mt: 3 }}>
+                <Button
+                  variant="contained"
+                  size="large"
+                  startIcon={<CalendarToday />}
+                  onClick={() => {
+                    if (!user) {
+                      window.location.href = "/auth/login";
+                      return;
+                    }
+                    handleOpenBookingDialog();
+                  }}
+                  sx={{
+                    px: 5,
+                    py: 1.5,
+                    fontSize: "1.1rem",
+                    borderRadius: 3,
+                    bgcolor: "white",
+                    color: "primary.main",
+                    fontWeight: 700,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.95)",
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 6px 25px rgba(0,0,0,0.3)",
+                    },
+                    transition: "all 0.3s ease",
+                  }}
+                >
+                  Đặt lịch học 1-1
+                </Button>
+              </Box>
             </Grid>
           </Grid>
         </Container>
@@ -578,7 +601,16 @@ const formatDuration = (hours) => {
               }}
             >
               <CardContent sx={{ p: 4 }}>
-                <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 3,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
                   <BusinessCenter color="primary" />
                   Thông tin cá nhân
                 </Typography>
@@ -603,7 +635,11 @@ const formatDuration = (hours) => {
                       <Box>
                         <Typography
                           variant="subtitle2"
-                          sx={{ fontWeight: 600, mb: 0.5, color: "text.secondary" }}
+                          sx={{
+                            fontWeight: 600,
+                            mb: 0.5,
+                            color: "text.secondary",
+                          }}
                         >
                           Địa chỉ
                         </Typography>
@@ -634,7 +670,11 @@ const formatDuration = (hours) => {
                         <Box>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 600, mb: 0.5, color: "text.secondary" }}
+                            sx={{
+                              fontWeight: 600,
+                              mb: 0.5,
+                              color: "text.secondary",
+                            }}
                           >
                             Email
                           </Typography>
@@ -666,7 +706,11 @@ const formatDuration = (hours) => {
                         <Box>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 600, mb: 0.5, color: "text.secondary" }}
+                            sx={{
+                              fontWeight: 600,
+                              mb: 0.5,
+                              color: "text.secondary",
+                            }}
                           >
                             Điện thoại
                           </Typography>
@@ -698,15 +742,22 @@ const formatDuration = (hours) => {
                         <Box>
                           <Typography
                             variant="subtitle2"
-                            sx={{ fontWeight: 600, mb: 0.5, color: "text.secondary" }}
+                            sx={{
+                              fontWeight: 600,
+                              mb: 0.5,
+                              color: "text.secondary",
+                            }}
                           >
                             Ngày sinh
                           </Typography>
                           <Typography variant="body1" sx={{ fontWeight: 500 }}>
-                            {new Date(instructor.DateOfBirth).toLocaleDateString(
-                              "vi-VN",
-                              { year: "numeric", month: "long", day: "numeric" }
-                            )}
+                            {new Date(
+                              instructor.DateOfBirth
+                            ).toLocaleDateString("vi-VN", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
                           </Typography>
                         </Box>
                       </Box>
@@ -726,7 +777,16 @@ const formatDuration = (hours) => {
                 }}
               >
                 <CardContent sx={{ p: 4 }}>
-                  <Typography variant="h5" sx={{ fontWeight: 700, mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      fontWeight: 700,
+                      mb: 3,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
                     <Star color="primary" />
                     Đánh giá từ học viên ({instructor.Reviews.length})
                   </Typography>
@@ -780,7 +840,11 @@ const formatDuration = (hours) => {
                               >
                                 {new Date(review.ReviewDate).toLocaleDateString(
                                   "vi-VN",
-                                  { year: "numeric", month: "long", day: "numeric" }
+                                  {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                  }
                                 )}
                               </Typography>
                             </Box>
@@ -805,23 +869,32 @@ const formatDuration = (hours) => {
           </Grid>
 
           {/* Right Column - Summary */}
-<Grid item xs={12} md={4}>
-  <Card
-    sx={{
-      position: { md: "sticky" },
-      top: { md: 100 },
-      borderRadius: 4,
-      boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-      border: "1px solid rgba(0,0,0,0.05)",
-      mb: 4,
-    }}
-  >
-    <CardContent sx={{ p: 3 }}>
-      <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, display: "flex", alignItems: "center", gap: 1 }}>
-        <CheckCircle color="primary" />
-        Thông tin tóm tắt
-      </Typography>
-      <Divider sx={{ mb: 3 }} />
+          <Grid item xs={12} md={4}>
+            <Card
+              sx={{
+                position: { md: "sticky" },
+                top: { md: 100 },
+                borderRadius: 4,
+                boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+                border: "1px solid rgba(0,0,0,0.05)",
+                mb: 4,
+              }}
+            >
+              <CardContent sx={{ p: 3 }}>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    fontWeight: 700,
+                    mb: 3,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                  }}
+                >
+                  <CheckCircle color="primary" />
+                  Thông tin tóm tắt
+                </Typography>
+                <Divider sx={{ mb: 3 }} />
 
       <Stack spacing={2}>
         {/* Thêm phần học phí vào đây */}
@@ -875,88 +948,100 @@ const formatDuration = (hours) => {
 </Box>
 
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "grey.50",
-          }}
-        >
-          <School color="primary" />
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Chuyên ngành
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {instructor.Major}
-            </Typography>
-          </Box>
-        </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: "grey.50",
+                    }}
+                  >
+                    <School color="primary" />
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        Chuyên ngành
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {instructor.Major}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "grey.50",
-          }}
-        >
-          <Business color="primary" />
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Công việc
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {instructor.Job}
-            </Typography>
-          </Box>
-        </Box>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: "grey.50",
+                    }}
+                  >
+                    <Business color="primary" />
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        Công việc
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {instructor.Job}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            p: 2,
-            borderRadius: 2,
-            bgcolor: "grey.50",
-          }}
-        >
-          <LocationOn color="primary" />
-          <Box>
-            <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-              Địa chỉ
-            </Typography>
-            <Typography variant="body1" sx={{ fontWeight: 600 }}>
-              {instructor.Address || "Chưa cập nhật"}
-            </Typography>
-          </Box>
-        </Box>
-      </Stack>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 2,
+                      p: 2,
+                      borderRadius: 2,
+                      bgcolor: "grey.50",
+                    }}
+                  >
+                    <LocationOn color="primary" />
+                    <Box>
+                      <Typography
+                        variant="caption"
+                        color="text.secondary"
+                        sx={{ fontWeight: 600 }}
+                      >
+                        Địa chỉ
+                      </Typography>
+                      <Typography variant="body1" sx={{ fontWeight: 600 }}>
+                        {instructor.Address || "Chưa cập nhật"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Stack>
 
-      <Divider sx={{ my: 3 }} />
+                <Divider sx={{ my: 3 }} />
 
-      <Box sx={{ textAlign: "center" }}>
-        <Chip
-          icon={<VerifiedUser />}
-          label="Giảng viên được xác nhận"
-          color="success"
-          sx={{
-            fontWeight: 700,
-            fontSize: "0.9rem",
-            py: 2.5,
-            px: 1,
-          }}
-        />
-      </Box>
-    </CardContent>
-  </Card>
-</Grid>
+                <Box sx={{ textAlign: "center" }}>
+                  <Chip
+                    icon={<VerifiedUser />}
+                    label="Giảng viên được xác nhận"
+                    color="success"
+                    sx={{
+                      fontWeight: 700,
+                      fontSize: "0.9rem",
+                      py: 2.5,
+                      px: 1,
+                    }}
+                  />
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
         </Grid>
       </Container>
 

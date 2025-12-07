@@ -12,11 +12,17 @@ export const getAllInstructorsApi = async () => {
 
 export const getFeaturedInstructorsApi = async (limit = 4) => {
   try {
-    const response = await apiClient.get(`/instructors/featured?limit=${limit}`);
+    const response = await apiClient.get(
+      `/instructors/featured?limit=${limit}`
+    );
     return response.data;
   } catch (error) {
     console.error("Get featured instructors error:", error);
-    throw error.response?.data || { message: "Failed to fetch featured instructors" };
+    throw (
+      error.response?.data || {
+        message: "Failed to fetch featured instructors",
+      }
+    );
   }
 };
 
@@ -40,13 +46,13 @@ export const searchInstructorsApi = async ({
     });
     if (major) params.append("major", major);
     if (type) params.append("type", type);
-    
+
     if (timeslots && timeslots.length > 0) {
-      timeslots.forEach(timeslot => {
-        params.append('timeslots', timeslot);
+      timeslots.forEach((timeslot) => {
+        params.append("timeslots", timeslot);
       });
     }
-    
+
     const response = await apiClient.get(`/instructors?${params.toString()}`);
     return response.data;
   } catch (error) {
