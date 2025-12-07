@@ -5,12 +5,12 @@ import {
   Button,
   Tabs,
   Tab,
-  Card,
   Typography,
   Avatar,
   Chip,
   Stack,
   Grid,
+  IconButton,
 } from "@mui/material";
 import { ArrowBack, People, CalendarMonth } from "@mui/icons-material";
 
@@ -34,95 +34,141 @@ export default function ClassDetailLayout({
   };
 
   return (
-    // 1. Đổi nền thành white (hoặc bỏ luôn bgcolor) để đồng bộ màu
-    <Box sx={{ minHeight: "100vh", bgcolor: "white" }}>
-      {/* HEADER */}
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Box sx={{ maxWidth: 1400, mx: "auto", px: 4, py: 3 }}>
-          <Button startIcon={<ArrowBack />} onClick={onBack} sx={{ mb: 3 }}>
-            Quay lại
-          </Button>
+    <Box sx={{ minHeight: "100vh", bgcolor: "white", width: "100%" }}>
+      <Box sx={{ borderBottom: 1, borderColor: "divider", py: 1.5, px: 3 }}>
+        <Stack direction="row" spacing={2} alignItems="center">
+          {/* Nút Back đẹp hơn */}
+          <IconButton
+            onClick={onBack}
+            sx={{
+              bgcolor: "grey.100",
+              "&:hover": { bgcolor: "grey.200" },
+              width: 40,
+              height: 40,
+            }}
+          >
+            <ArrowBack fontSize="small" />
+          </IconButton>
 
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md="auto">
-              <Avatar
-                src={course?.image}
-                alt={course?.title}
-                variant="rounded"
-                sx={{
-                  width: 200,
-                  height: 120,
-                  borderRadius: 2,
-                  border: "1px solid #e0e0e0",
-                }}
-                imgProps={{ sx: { objectFit: "cover" } }}
-              />
-            </Grid>
+          {/* Ảnh khóa học */}
+          <Avatar
+            src={course?.image}
+            alt={course?.title}
+            variant="rounded"
+            sx={{
+              width: 160,
+              height: 100,
+              borderRadius: 2,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+            }}
+            imgProps={{ sx: { objectFit: "cover" } }}
+          />
 
-            <Grid item xs={12} md>
-              <Typography variant="h4" fontWeight={700} gutterBottom>
-                {className}
-              </Typography>
-              <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-                {course?.title}
-              </Typography>
-              <Stack direction="row" spacing={1.5} flexWrap="wrap" gap={1}>
-                {course?.level && (
-                  <Chip label={getLevelLabel(course.level)} size="medium" />
-                )}
+          {/* Thông tin lớp học */}
+          <Stack spacing={0.5} flex={1}>
+            <Typography variant="h5" fontWeight={700} sx={{ lineHeight: 1.3 }}>
+              {className}
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary">
+              {course?.title}
+            </Typography>
+
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{ mt: 0.5 }}
+            >
+              {course?.level && (
                 <Chip
-                  label={status === "ACTIVE" ? "Đang diễn ra" : status}
-                  color="success"
-                  size="medium"
+                  label={getLevelLabel(course.level)}
+                  size="small"
+                  variant="outlined"
+                  sx={{ borderRadius: 1.5 }}
                 />
-                {hasSessionToday && (
-                  <Chip label="Hôm nay có lớp" color="error" size="medium" />
-                )}
-              </Stack>
-            </Grid>
-          </Grid>
-        </Box>
+              )}
+              <Chip
+                label={
+                  ["APPROVED", "ACTIVE"].includes(status)
+                    ? "Đang diễn ra"
+                    : ["WAITING", "PENDING", "ONGOING"].includes(status)
+                    ? "Sắp khai giảng"
+                    : status === "CLOSE"
+                    ? "Đã kết thúc"
+                    : status === "CANCEL"
+                    ? "Đã hủy"
+                    : status
+                }
+                color={
+                  ["APPROVED", "ACTIVE"].includes(status)
+                    ? "success"
+                    : ["WAITING", "PENDING", "ONGOING"].includes(status)
+                    ? "warning"
+                    : status === "CANCEL"
+                    ? "error"
+                    : "default"
+                }
+                size="small"
+                sx={{
+                  borderRadius: 1.5,
+                  fontWeight: 500,
+                  ...(status === "CLOSE" && {
+                    bgcolor: "#6366f1",
+                    color: "white",
+                  }),
+                }}
+              />
+              {hasSessionToday && (
+                <Chip
+                  label="Hôm nay có lớp"
+                  color="error"
+                  size="small"
+                  sx={{ borderRadius: 1.5, fontWeight: 500 }}
+                />
+              )}
+            </Stack>
+          </Stack>
+        </Stack>
       </Box>
 
-      {/* TABS + CONTENT */}
-      {/* Container này có maxWidth và px giống hệt Header ở trên -> Đảm bảo thẳng hàng */}
-      <Box sx={{ maxWidth: 1400, mx: "auto", px: 4, py: 4 }}>
-        <Card
-          elevation={0}
-          sx={{
-            border: 1,
-            borderColor: "divider",
-            borderRadius: 2,
-            overflow: "hidden",
-            // Đảm bảo Card chiếm 100% width của Box chứa nó
-            width: "100%",
-          }}
-        >
+      {/* BODY & TABS: Full width, không bọc Card để tránh tràn lề */}
+      <Box sx={{ width: "100%" }}>
+        <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
           <Tabs
             value={activeTab}
             onChange={(_, v) => onTabChange(v)}
+            // Chống tràn Tab: Cho phép scroll nếu màn hình nhỏ
+            variant="scrollable"
+            scrollButtons="auto"
+            allowScrollButtonsMobile
             sx={{
-              borderBottom: 1,
-              borderColor: "divider",
-              bgcolor: "white", // 2. Bỏ màu nền xám
-              px: 0,
+              minHeight: 48,
+              "& .MuiTab-root": {
+                minHeight: 48,
+                textTransform: "none",
+                fontSize: "15px",
+                fontWeight: 500,
+                mr: 2,
+              },
             }}
           >
             <Tab label="Tổng quan" />
             <Tab
-              label={`Học viên (${currentStudents})`}
-              icon={<People fontSize="small" />}
+              label={`Học viên (${currentStudents || 0})`}
+              icon={<People fontSize="small" sx={{ mb: 0, mr: 1 }} />}
               iconPosition="start"
             />
             <Tab
               label="Thời khóa biểu & Điểm danh"
-              icon={<CalendarMonth fontSize="small" />}
+              icon={<CalendarMonth fontSize="small" sx={{ mb: 0, mr: 1 }} />}
               iconPosition="start"
             />
           </Tabs>
+        </Box>
 
-          <Box sx={{ p: 3, minHeight: 400 }}>{children}</Box>
-        </Card>
+        {/* Content bên dưới Tab: Full width, padding nhẹ để nội dung thoáng */}
+        <Box sx={{ p: 3, width: "100%" }}>{children}</Box>
       </Box>
     </Box>
   );

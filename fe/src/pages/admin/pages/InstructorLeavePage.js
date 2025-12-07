@@ -41,7 +41,7 @@ import {
 import { Delete, EventBusy, Add, Sync } from "@mui/icons-material";
 import dayjs from "dayjs";
 import classService from "../../../apiServices/classService";
-import instructorService from "../../../apiServices/instructorService";
+import instructorService from "../../../apiServices/instructorServicead";
 import { getDayFromDate } from "../../../utils/validate";
 
 const STATUS_OPTIONS = [

@@ -73,20 +73,6 @@ export default function CourseFormDialog({
     }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const blobUrl = URL.createObjectURL(file);
-
-    setValues((prev) => ({
-      ...prev,
-      ImageFile: file,
-      // để bên dưới có link ngay sau khi chọn file
-      Image: blobUrl,
-    }));
-  };
-
   const handleSubmit = () => {
     const payload = {
       ...values,

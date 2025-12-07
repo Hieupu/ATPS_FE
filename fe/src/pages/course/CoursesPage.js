@@ -291,7 +291,7 @@ const CoursesPage = () => {
           </Typography>
 
           {/* Subtitle - lighter font weight */}
-          <Typography
+          {/* <Typography
             variant="h6"
             sx={{
               textAlign: "center",
@@ -307,10 +307,10 @@ const CoursesPage = () => {
             }}
           >
             Cập nhật lộ trình học tập mới nhất, học cùng giảng viên chất lượng và đạt mục tiêu IELTS nhanh hơn.
-          </Typography>
+          </Typography> */}
 
           {/* CTA Button */}
-          <Button
+          {/* <Button
             variant="contained"
             size="medium"
             endIcon={<RocketLaunchRounded />}
@@ -341,7 +341,7 @@ const CoursesPage = () => {
             }}
           >
             Khám Phá Ngay
-          </Button>
+          </Button> */}
         </Container>
       </Box>
 

@@ -50,7 +50,7 @@ import {
   getCourseClasses,
   checkCourseInUse,
 } from "../../../apiServices/courseService";
-import instructorService from "../../../apiServices/instructorService";
+import instructorService from "../../../apiServices/instructorServicead";
 import "./style.css";
 
 export default function CoursesPage() {

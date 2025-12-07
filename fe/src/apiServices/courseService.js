@@ -172,6 +172,16 @@ export const getClassesByCourseApi = async (courseId) => {
   }
 };
 
+export const getScheduleClassesApi = async (filters = {}) => {
+  try {
+    const response = await apiClient.get('/courses/schedule/all-classes', { params: filters });
+    return response.data;
+  } catch (error) {
+    console.error("Get schedule classes error:", error);
+    throw error.response?.data || { message: "Failed to fetch schedule classes" };
+  }
+};
+
 export const enrollInClassApi = async (classId) => {
   try {
     const response = await apiClient.post("/courses/enroll", { classId });

@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
+import { toast } from "react-toastify"; // Import toast
 
 import ClassDetailLayout from "../components/class/ClassDetailLayout";
 
@@ -9,7 +10,7 @@ import OverviewTab from "../components/class/tabs/OverviewTab";
 import StudentsTab from "../components/class/tabs/StudentsTab";
 import ScheduleTab from "../components/class/tabs/ScheduleTab";
 
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/instructor`;
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });
@@ -66,18 +67,37 @@ export default function ClassDetailPage() {
     if (classId) fetchStudents();
   }, [classId]);
 
-  // 4. Lấy thời khóa biểu
-  useEffect(() => {
-    const fetchSchedule = async () => {
-      try {
-        const res = await apiClient.get(`/classes/${classId}/schedule`);
-        setSessions(res.data.Sessions || []);
-      } catch (err) {
-        console.error("Lỗi tải lịch học:", err);
-      }
-    };
-    if (classId) fetchSchedule();
+  // 4. Lấy thời khóa biểu (Đưa ra ngoài useEffect để dùng lại)
+  const fetchSchedule = useCallback(async () => {
+    try {
+      const res = await apiClient.get(`/classes/${classId}/schedule`);
+      setSessions(res.data.Sessions || []);
+    } catch (err) {
+      console.error("Lỗi tải lịch học:", err);
+    }
   }, [classId]);
+
+  useEffect(() => {
+    if (classId) fetchSchedule();
+  }, [fetchSchedule, classId]);
+
+  // --- HÀM XỬ LÝ ĐỔI LỊCH (MỚI THÊM) ---
+  const handleRequestChangeSchedule = async (payload) => {
+    try {
+      const res = await apiClient.post("/session/request-change", payload);
+      toast.success(res.data.message || "Gửi yêu cầu đổi lịch thành công!");
+
+      // Load lại lịch để hiện trạng thái Pending
+      await fetchSchedule();
+      return true;
+    } catch (err) {
+      console.error("Change schedule error:", err);
+      const message =
+        err.response?.data?.message || "Lỗi khi gửi yêu cầu đổi lịch.";
+      toast.error(message);
+      return false;
+    }
+  };
 
   // 5. Mở modal điểm danh
   const openAttendanceModal = async (session) => {
@@ -110,8 +130,7 @@ export default function ClassDetailPage() {
       );
       alert("Điểm danh thành công!");
 
-      const res = await apiClient.get(`/classes/${classId}/schedule`);
-      setSessions(res.data.Sessions || []);
+      await fetchSchedule(); // Load lại lịch sau khi điểm danh
 
       setSelectedSession(null);
       setAttendanceSheet(null);
@@ -215,6 +234,7 @@ export default function ClassDetailPage() {
           onSaveAttendance={saveAttendance}
           onCloseAttendance={closeAttendanceModal}
           onStartZoom={handleStartZoom}
+          onRequestChangeSchedule={handleRequestChangeSchedule}
         />
       )}
     </ClassDetailLayout>

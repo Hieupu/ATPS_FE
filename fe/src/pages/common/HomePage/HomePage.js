@@ -357,7 +357,7 @@ const HomePage = () => {
                       mb: 2.5,
                     }}
                   >
-                    Học Kỹ Năng Mới <br />
+                    Hệ Thống Luyện Thi<br />
                     <Box
                       component="span"
                       sx={{
@@ -376,7 +376,7 @@ const HomePage = () => {
                         },
                       }}
                     >
-                      Mọi Lúc, Mọi Nơi
+                      IELTS All-in-One.
                     </Box>
                   </Typography>
                   

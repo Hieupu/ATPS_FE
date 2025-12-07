@@ -57,7 +57,7 @@ import {
   EventBusy,
 } from "@mui/icons-material";
 import "../pages/style.css";
-import instructorService from "../../../apiServices/instructorService";
+import instructorService from "../../../apiServices/instructorServicead";
 import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
 

@@ -13,7 +13,7 @@ import {
   // validateForm as validateFormUtil, // Không dùng
 } from "../../../../utils/classWizardValidation";
 import classService from "../../../../apiServices/classService";
-import instructorService from "../../../../apiServices/instructorService";
+import instructorService from "../../../../apiServices/instructorServicead";
 import "./ClassWizard.css";
 import {
   determineSlotStatus,

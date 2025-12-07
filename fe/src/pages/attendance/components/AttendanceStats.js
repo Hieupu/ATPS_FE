@@ -16,14 +16,14 @@ const AttendanceStats = ({ stats }) => {
       <Grid item xs={12} md={3}>
         <Card
           sx={{
-            background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+            background: "linear-gradient(135deg, #bd92deff 0%, #b571d7ff 100%)",
             color: "white",
             borderRadius: 3,
-            boxShadow: "0 4px 14px rgba(220, 38, 38, 0.3)",
+            boxShadow: "0 4px 14px rgba(152, 56, 168, 0.3)",
             transition: "all 0.3s ease",
             "&:hover": {
               transform: "translateY(-4px)",
-              boxShadow: "0 8px 24px rgba(220, 38, 38, 0.4)",
+              boxShadow: "0 8px 24px rgba(119, 65, 163, 0.4)",
             },
           }}
         >
