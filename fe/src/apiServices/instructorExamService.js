@@ -58,7 +58,6 @@ export const deleteExamApi = async (examId) => {
   }
 };
 
-
 export const cloneExamApi = async (examId, newTitle) => {
   try {
     const response = await apiClient.post(`/instructor/exams/${examId}/clone`, { newTitle });
@@ -68,7 +67,6 @@ export const cloneExamApi = async (examId, newTitle) => {
     throw error.response?.data || { message: "Không thể nhân bản bài thi" };
   }
 };
-
 
 export const publishExamApi = async (examId) => {
   try {
@@ -135,14 +133,13 @@ export const getSectionDetailApi = async (examId, sectionId) => {
 
 export const getClassesByCourseApi = async (courseId) => {
   try {
-    const response = await apiClient.get(`/instructor/courses/${courseId}/classes`);
+    const response = await apiClient.get(`/instructor/course/${courseId}/classes`);
     return response.data.data || response.data || [];
   } catch (error) {
     console.error("Get classes by course error:", error);
     throw error.response?.data || { message: "Không thể tải danh sách lớp học" };
   }
 };
-
 
 export const createSectionApi = async (examId, sectionData) => {
   try {
@@ -187,7 +184,6 @@ export const deleteExamSectionApi = async (examId, sectionId) => {
   return await deleteSectionApi(examId, sectionId);
 };
 
- 
 export const reorderSectionsApi = async (examId, reorderData) => {
   try {
     const response = await apiClient.post(`/instructor/exams/${examId}/sections/reorder`, { reorderData });
@@ -247,7 +243,6 @@ export const deleteQuestionApi = async (questionId) => {
 
 // ==================== SECTION-QUESTION MANAGEMENT ====================
 
- 
 export const getQuestionsBySectionApi = async (sectionId) => {
   try {
     const response = await apiClient.get(`/instructor/sections/${sectionId}/questions`);
@@ -258,7 +253,6 @@ export const getQuestionsBySectionApi = async (sectionId) => {
   }
 };
 
- 
 export const addQuestionToSectionApi = async (sectionId, questionId) => {
   try {
     const response = await apiClient.post(`/instructor/sections/${sectionId}/questions`, { questionId });
@@ -274,13 +268,16 @@ export const addQuestionsToSectionApi = async (...args) => {
   try {
     if (args.length === 3) {
       const [examId, sectionId, questionIds] = args;
-      const response = await apiClient.post(`/instructor/exams/${examId}/sections/${sectionId}/questions`, { questionIds });
+      const response = await apiClient.post(
+        `/instructor/exams/${examId}/sections/${sectionId}/questions`,
+        { questionIds }
+      );
       return response.data;
     } else if (args.length === 2) {
       const [sectionId, questionId] = args;
       return await addQuestionToSectionApi(sectionId, questionId);
     } else {
-      throw new Error('Invalid arguments for addQuestionsToSectionApi');
+      throw new Error("Invalid arguments for addQuestionsToSectionApi");
     }
   } catch (error) {
     console.error("Add questions to section error:", error);
@@ -288,20 +285,23 @@ export const addQuestionsToSectionApi = async (...args) => {
   }
 };
 
-
 // Flexible: removeQuestionFromSectionApi(examId, sectionId, questionId) or removeQuestionFromSectionApi(sectionId, examQuestionId)
 export const removeQuestionFromSectionApi = async (...args) => {
   try {
     if (args.length === 3) {
       const [examId, sectionId, questionId] = args;
-      const response = await apiClient.delete(`/instructor/exams/${examId}/sections/${sectionId}/questions/${questionId}`);
+      const response = await apiClient.delete(
+        `/instructor/exams/${examId}/sections/${sectionId}/questions/${questionId}`
+      );
       return response.data;
     } else if (args.length === 2) {
       const [sectionId, examQuestionId] = args;
-      const response = await apiClient.delete(`/instructor/sections/${sectionId}/questions/${examQuestionId}`);
+      const response = await apiClient.delete(
+        `/instructor/sections/${sectionId}/questions/${examQuestionId}`
+      );
       return response.data;
     } else {
-      throw new Error('Invalid arguments for removeQuestionFromSectionApi');
+      throw new Error("Invalid arguments for removeQuestionFromSectionApi");
     }
   } catch (error) {
     console.error("Remove question from section error:", error);
@@ -309,10 +309,12 @@ export const removeQuestionFromSectionApi = async (...args) => {
   }
 };
 
-
 export const reorderQuestionsApi = async (sectionId, reorderData) => {
   try {
-    const response = await apiClient.post(`/instructor/sections/${sectionId}/questions/reorder`, { reorderData });
+    const response = await apiClient.post(
+      `/instructor/sections/${sectionId}/questions/reorder`,
+      { reorderData }
+    );
     return response.data;
   } catch (error) {
     console.error("Reorder questions error:", error);
@@ -322,24 +324,107 @@ export const reorderQuestionsApi = async (sectionId, reorderData) => {
 
 // ==================== EXCEL IMPORT ====================
 
-export const importQuestionsFromExcelApi = async (sectionId, file) => {
+export const importQuestionsFromExcelApi = async (examId, sectionId, file) => {
   try {
     const formData = new FormData();
-    formData.append('file', file);
-    
+    formData.append("file", file);
+
     const response = await apiClient.post(
-      `/instructor/sections/${sectionId}/questions/import-excel`,
+      `/instructor/exams/${examId}/sections/${sectionId}/questions/import`,
       formData,
-      {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      }
+      { headers: { "Content-Type": "multipart/form-data" } }
+    );
+
+    return response.data;
+  } catch (error) {
+    console.error("Import Excel error:", error);
+    throw error.response?.data || { message: "Không thể import câu hỏi từ Excel" };
+  }
+};
+
+// Lấy danh sách instance của 1 exam
+export const getExamInstancesApi = async (examId) => {
+  try {
+    const response = await apiClient.get(`/instructor/exams/${examId}/instances`);
+    return response.data.data || response.data || [];
+  } catch (error) {
+    console.error("Get exam instances error:", error);
+    throw error.response?.data || { message: "Không thể tải danh sách bài gắn" };
+  }
+};
+
+// Tạo exam instance (Assignment / Exam)
+export const createExamInstanceApi = async (examId, instanceData) => {
+  try {
+    const response = await apiClient.post(
+      `/instructor/exams/${examId}/instances`,
+      instanceData
     );
     return response.data;
   } catch (error) {
-    console.error("Import questions from Excel error:", error);
-    throw error.response?.data || { message: "Không thể import câu hỏi từ Excel" };
+    console.error("Create exam instance error:", error);
+    throw error.response?.data || { message: "Không thể gắn bài cho lớp / unit" };
+  }
+};
+
+// Cập nhật exam instance
+export const updateExamInstanceApi = async (examId, instanceId, instanceData) => {
+  try {
+    const response = await apiClient.put(
+      `/instructor/exams/${examId}/instances/${instanceId}`,
+      instanceData
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Update exam instance error:", error);
+    throw error.response?.data || { message: "Không thể cập nhật bài gắn" };
+  }
+};
+
+// Xóa exam instance
+export const deleteExamInstanceApi = async (examId, instanceId) => {
+  try {
+    const response = await apiClient.delete(
+      `/instructor/exams/${examId}/instances/${instanceId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Delete exam instance error:", error);
+    throw error.response?.data || { message: "Không thể xoá bài gắn" };
+  }
+};
+
+// Lấy danh sách khoá học của giảng viên
+export const getInstructorCoursesApi = async () => {
+  try {
+    const res = await apiClient.get("/instructor/courses");
+
+    // Backend trả raw array → res.data chính là mảng
+    const list = Array.isArray(res.data)
+      ? res.data
+      : res.data?.data || [];
+
+    console.log("📌 Parsed course list:", list);
+
+    return list.map(c => ({
+      value: c.CourseID,
+      label: c.Title
+    }));
+
+  } catch (err) {
+    console.error("❌ getInstructorCoursesApi error:", err);
+    return [];
+  }
+};
+
+// Lấy danh sách unit theo khoá học
+export const getUnitByCourseApi = async (courseId) => {
+  try {
+    const res = await apiClient.get(`/instructor/course/${courseId}/units`);
+    return res.data.units || [];
+  } catch (err) {
+    console.error("getUnitByCourseApi error:", err?.response?.data || err.message);
+    return [];
   }
 };
 
@@ -356,10 +441,9 @@ export const validateExamData = (data) => {
     errors.description = "Mô tả là bắt buộc";
   }
 
-  
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 };
 
@@ -367,7 +451,7 @@ export const validateSectionData = (data) => {
   const errors = {};
 
   const validSectionTypes = ["Listening", "Speaking", "Reading", "Writing"];
-  
+
   if (!data.type) {
     errors.type = "Loại section là bắt buộc";
   } else if (!validSectionTypes.includes(data.type)) {
@@ -376,7 +460,7 @@ export const validateSectionData = (data) => {
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 };
 
@@ -391,7 +475,14 @@ export const validateQuestionData = (data) => {
     errors.type = "Loại câu hỏi là bắt buộc";
   }
 
-  const validTypes = ["multiple_choice", "true_false", "fill_in_blank", "matching", "essay", "speaking"];
+  const validTypes = [
+    "multiple_choice",
+    "true_false",
+    "fill_in_blank",
+    "matching",
+    "essay",
+    "speaking",
+  ];
   if (data.type && !validTypes.includes(data.type)) {
     errors.type = "Loại câu hỏi không hợp lệ";
   }
@@ -410,14 +501,16 @@ export const validateQuestionData = (data) => {
       if (!Array.isArray(data.options) || data.options.length < 2) {
         errors.options = "Cần ít nhất 2 lựa chọn";
       } else {
-        const hasCorrect = data.options.some(o => o.isCorrect === true);
+        const hasCorrect = data.options.some((o) => o.isCorrect === true);
         if (!hasCorrect) {
           errors.options = "Phải có ít nhất 1 đáp án đúng";
         }
       }
       break;
     case "true_false":
-      if (!["true", "false"].includes(String(data.correctAnswer).toLowerCase())) {
+      if (
+        !["true", "false"].includes(String(data.correctAnswer).toLowerCase())
+      ) {
         errors.correctAnswer = "Đáp án đúng phải là 'true' hoặc 'false'";
       }
       break;
@@ -426,11 +519,13 @@ export const validateQuestionData = (data) => {
         errors.correctAnswer = "Đáp án đúng là bắt buộc";
       }
       break;
+    default:
+      break;
   }
 
   return {
     isValid: Object.keys(errors).length === 0,
-    errors
+    errors,
   };
 };
 
@@ -438,20 +533,20 @@ export const validateQuestionData = (data) => {
 
 export const flattenSections = (sections) => {
   const result = [];
-  
+
   const flatten = (sectionList, parentId = null) => {
     for (const section of sectionList) {
       result.push({
         ...section,
-        ParentSectionId: parentId
+        ParentSectionId: parentId,
       });
-      
+
       if (section.childSections && section.childSections.length > 0) {
         flatten(section.childSections, section.SectionId);
       }
     }
   };
-  
+
   flatten(sections);
   return result;
 };
@@ -459,18 +554,21 @@ export const flattenSections = (sections) => {
 export const buildSectionHierarchy = (flatSections) => {
   const sectionMap = new Map();
   const rootSections = [];
-  
-  flatSections.forEach(section => {
+
+  flatSections.forEach((section) => {
     sectionMap.set(section.SectionId, {
       ...section,
-      childSections: []
+      childSections: [],
     });
   });
-  
-  flatSections.forEach(section => {
+
+  flatSections.forEach((section) => {
     const sectionNode = sectionMap.get(section.SectionId);
-    
-    if (section.ParentSectionId === null || section.ParentSectionId === undefined) {
+
+    if (
+      section.ParentSectionId === null ||
+      section.ParentSectionId === undefined
+    ) {
       rootSections.push(sectionNode);
     } else {
       const parent = sectionMap.get(section.ParentSectionId);
@@ -479,33 +577,35 @@ export const buildSectionHierarchy = (flatSections) => {
       }
     }
   });
-  
+
   return rootSections;
 };
 
 export const getAllQuestionIds = (sections) => {
   const questionIds = [];
-  
+
   const extractIds = (sectionList) => {
     for (const section of sectionList) {
       if (section.directQuestions && section.directQuestions.length > 0) {
-        section.directQuestions.forEach(q => questionIds.push(q.QuestionID));
+        section.directQuestions.forEach((q) =>
+          questionIds.push(q.QuestionID)
+        );
       }
-      
+
       if (section.childSections && section.childSections.length > 0) {
-        section.childSections.forEach(child => {
+        section.childSections.forEach((child) => {
           if (child.questions && child.questions.length > 0) {
-            child.questions.forEach(q => questionIds.push(q.QuestionID));
+            child.questions.forEach((q) => questionIds.push(q.QuestionID));
           }
         });
       }
-      
+
       if (section.childSections && section.childSections.length > 0) {
         extractIds(section.childSections);
       }
     }
   };
-  
+
   extractIds(sections);
   return [...new Set(questionIds)];
 };
@@ -520,7 +620,7 @@ export const SECTION_TYPES = [
   { value: "Listening", label: "Listening" },
   { value: "Speaking", label: "Speaking" },
   { value: "Reading", label: "Reading" },
-  { value: "Writing", label: "Writing" }
+  { value: "Writing", label: "Writing" },
 ];
 
 export const QUESTION_TYPES = [
@@ -529,17 +629,17 @@ export const QUESTION_TYPES = [
   { value: "fill_in_blank", label: "Fill in the Blank" },
   { value: "matching", label: "Matching" },
   { value: "essay", label: "Essay" },
-  { value: "speaking", label: "Speaking" }
+  { value: "speaking", label: "Speaking" },
 ];
 
 export const QUESTION_LEVELS = [
   { value: "Easy", label: "Easy" },
   { value: "Medium", label: "Medium" },
-  { value: "Hard", label: "Hard" }
+  { value: "Hard", label: "Hard" },
 ];
 
 export const EXAM_STATUSES = [
   { value: "Draft", label: "Draft" },
   { value: "Published", label: "Published" },
-  { value: "Archived", label: "Archived" }
+  { value: "Archived", label: "Archived" },
 ];

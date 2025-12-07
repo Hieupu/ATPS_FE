@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Button,
-  TextField,
-  MenuItem,
-  Grid,
-  Typography,
-  Box,
-  IconButton,
-  Alert,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, MenuItem, Grid, Typography,
+  Box, IconButton, Alert
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { cloudinaryUpload } from "../../../../utils/cloudinaryUpload";
 
 const SECTION_TYPES = [
   { value: "Listening", label: "Listening" },
@@ -22,91 +14,102 @@ const SECTION_TYPES = [
   { value: "Writing", label: "Writing" },
 ];
 
+/** ⭐ Loại bỏ suffix Cloudinary (_abcxyz) để file nhìn đẹp hơn */
+const cleanFileName = (url) => {
+  if (!url) return "";
+  const file = url.split("/").pop(); // ExamInstructor_bybcgr.docx
+  const match = file.match(/(.+?)_\w+\.(\w+)$/);
+  if (match) return `${match[1]}.${match[2]}`;
+  return file;
+};
+
+/** ⭐ Tạo link preview (Google Docs Viewer cho file Word/PDF) */
+const getPreviewUrl = (url) => {
+  if (!url) return "";
+  const ext = url.split(".").pop().toLowerCase();
+  const docTypes = ["doc", "docx", "ppt", "pptx", "xls", "xlsx", "pdf"];
+
+  if (docTypes.includes(ext)) {
+    return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+  }
+  return url; // media mở bình thường
+};
+
 const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType }) => {
   const [formData, setFormData] = useState({
     title: "",
     type: "",
+    fileURL: ""
   });
 
+  const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState({});
 
+  /** Reset form khi mở dialog */
   useEffect(() => {
     if (open) {
       if (editData) {
-        // Edit mode
         setFormData({
           title: editData.title || "",
           type: editData.type || "",
+          fileURL: editData.fileURL || ""
         });
-      } else if (isChild && parentType) {
-        // Child section - auto inherit parent type
+      } else if (isChild) {
         setFormData({
           title: "",
-          type: parentType, // Kế thừa type từ parent
+          type: parentType,
+          fileURL: ""
         });
       } else {
-        // Create parent mode
         setFormData({
           title: "",
           type: "",
+          fileURL: ""
         });
       }
       setErrors({});
     }
   }, [open, editData, isChild, parentType]);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) {
-      setErrors((prev) => ({ ...prev, [field]: null }));
-    }
-  };
-
+  /** Validate */
   const validate = () => {
     const newErrors = {};
-
-    if (!formData.type) {
-      newErrors.type = "Vui lòng chọn loại phần thi";
-    }
-
-    // Title required for parent, optional for child
-    if (!isChild && !formData.title?.trim()) {
-      newErrors.title = "Tiêu đề là bắt buộc cho phần thi cha";
-    }
-
+    if (!formData.type) newErrors.type = "Vui lòng chọn loại phần thi";
+    if (!isChild && !formData.title.trim()) newErrors.title = "Tiêu đề là bắt buộc";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
+  /** Save dữ liệu */
   const handleSave = () => {
     if (!validate()) return;
 
-    // Auto-generate title for child if empty
-    let finalTitle = formData.title;
-    if (isChild && !finalTitle.trim()) {
-      finalTitle = `Section ${Date.now()}`; // Will be replaced by orderIndex later
-    }
+    let title = formData.title.trim();
+    if (isChild && !title) title = `Section ${Date.now()}`;
 
     onSave({
-      title: finalTitle,
+      title,
       type: formData.type,
+      fileURL: formData.fileURL
     });
   };
 
-  const handleClose = () => {
-    setFormData({ title: "", type: "" });
-    setErrors({});
-    onClose();
+  /** Upload file Cloudinary */
+  const handleFileSelect = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const url = await cloudinaryUpload(file, setUploading);
+    if (url) {
+      setFormData(prev => ({ ...prev, fileURL: url }));
+    }
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { p: 1.5 } }}>
       <DialogTitle>
-        {editData ? "Chỉnh sửa phần thi" : isChild ? "Thêm phân mục" : "Thêm phần thi mới"}
-        <IconButton
-          onClick={handleClose}
-          sx={{ position: "absolute", right: 8, top: 8 }}
-        >
+        {editData ? "Chỉnh sửa phần thi" : isChild ? "Thêm phân mục" : "Thêm phần thi"}
+        <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8 }}>
           <CloseIcon />
         </IconButton>
       </DialogTitle>
@@ -114,90 +117,119 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           <Grid container spacing={3}>
-            {/* Type Dropdown */}
+
+            {/* Loại phần thi */}
             <Grid item xs={12}>
               <TextField
                 select
                 fullWidth
                 label="Loại phần thi *"
                 value={formData.type}
-                onChange={(e) => handleChange("type", e.target.value)}
+                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 error={Boolean(errors.type)}
                 helperText={errors.type}
-                disabled={isChild} // Child không được chọn type, kế thừa từ parent
+                disabled={isChild}
               >
-                {SECTION_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                      <span>{type.icon}</span>
-                      <span>{type.label}</span>
-                    </Box>
+                {SECTION_TYPES.map((t) => (
+                  <MenuItem key={t.value} value={t.value}>
+                    {t.label}
                   </MenuItem>
                 ))}
               </TextField>
             </Grid>
 
-            {/* Title */}
+            {/* Tiêu đề */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
-                label={isChild ? "Tiêu đề (Tùy chọn)" : "Tiêu đề *"}
+                label={isChild ? "Tiêu đề (tùy chọn)" : "Tiêu đề *"}
                 value={formData.title}
-                onChange={(e) => handleChange("title", e.target.value)}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                 error={Boolean(errors.title)}
                 helperText={
-                  errors.title || 
-                  (isChild 
-                    ? "Ví dụ: Section 1, Part A, ..." 
-                    : "Ví dụ: Listening Section, Reading Comprehension, ...")
-                }
-                placeholder={
-                  isChild
-                    ? "Để trống sẽ tự động đặt tên"
-                    : "Nhập tiêu đề phần thi"
+                  errors.title ||
+                  (isChild ? "Nếu để trống hệ thống tự tạo tên" : "Nhập tiêu đề phần thi")
                 }
               />
             </Grid>
 
-            {/* Info box for child sections */}
+            {/* Upload file cho SECTION CON */}
             {isChild && (
               <Grid item xs={12}>
-                <Alert severity="info">
-                  <Typography variant="body2" fontWeight={600} gutterBottom>
-                    Lưu ý:
-                  </Typography>
-                  <Typography variant="body2">
-                    • Phân mục này sẽ thuộc về phân mục cha đã chọn.
-                  </Typography>
-                  <Typography variant="body2">
-                    • Bạn có thể kéo–thả để sắp xếp thứ tự sau khi tạo.
-                  </Typography>
-                  <Typography variant="body2">
-                    • Loại phần thi được tự động kế thừa từ phân mục cha.
-                  </Typography>
-                </Alert>
+                <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                  Tài liệu đính kèm
+                </Typography>
+
+                <Button
+                  variant="outlined"
+                  component="label"
+                  fullWidth
+                  disabled={uploading}
+                >
+                  {uploading ? "Đang tải lên..." : "TẢI LÊN TÀI LIỆU"}
+                  <input
+                    type="file"
+                    hidden
+                    accept=".pdf,.doc,.docx,.mp3,.mp4"
+                    onChange={handleFileSelect}
+                  />
+                </Button>
+
+                {/* Hiển thị file đã upload */}
+                {formData.fileURL && (
+                  <Box
+                    sx={{
+                      mt: 2,
+                      p: 1.5,
+                      border: "1px solid #ddd",
+                      borderRadius: "6px",
+                      backgroundColor: "#fafafa",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    {/* Click xem preview */}
+                    <a
+                      href={getPreviewUrl(formData.fileURL)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        textDecoration: "none",
+                        color: "#1976d2",
+                        fontWeight: 600,
+                      }}
+                    >
+                      📄 {cleanFileName(formData.fileURL)}
+                    </a>
+
+                    <IconButton
+                      size="small"
+                      color="error"
+                      onClick={() => setFormData(prev => ({ ...prev, fileURL: "" }))}
+                    >
+                      <CloseIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                )}
               </Grid>
             )}
 
-            {/* Info box for parent sections */}
-            {!isChild && !editData && (
-              <Grid item xs={12}>
-                <Alert severity="info">
-                  <Typography variant="body2">
-                    Sau khi tạo phần thi, bạn có thể kéo thả để sắp xếp thứ tự
-                  </Typography>
-                </Alert>
-              </Grid>
-            )}
+            {/* Info box */}
+            <Grid item xs={12}>
+              <Alert severity="info">
+                {isChild
+                  ? "Phân mục con kế thừa loại phần thi từ phân mục cha."
+                  : "Bạn có thể thêm phân mục con sau khi tạo phần thi."}
+              </Alert>
+            </Grid>
           </Grid>
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose} size="large">
-          Hủy
-        </Button>
-        <Button onClick={handleSave} variant="contained" size="large">
+      <DialogActions>
+        <Button onClick={onClose}>Hủy</Button>
+        <Button variant="contained" disabled={uploading} onClick={handleSave}>
           {editData ? "Lưu" : "Thêm"}
         </Button>
       </DialogActions>

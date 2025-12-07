@@ -20,35 +20,35 @@ const CreateExamPage = () => {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
 
-  React.useEffect(() => {
-    const loadCourses = async () => {
-      try {
-        const data = await getCoursesApi();
-        const formatted = (data || []).map((c, index) => {
-          const id = c.value;
+  // React.useEffect(() => {
+  //   const loadCourses = async () => {
+  //     try {
+  //       const data = await getCoursesApi();
+  //       const formatted = (data || []).map((c, index) => {
+  //         const id = c.value;
 
-          if (id) {
-            return {
-              label: c.label || `Khóa học ${index + 1}`,
-              value: `${id}-idx${index}`,
-              originalId: id,
-            };
-          } else {
-            const tempId = `temp-${Date.now()}-${index}`;
-            return {
-              label: c.label || `Khóa học ${index + 1}`,
-              value: tempId,
-              originalId: tempId,
-            };
-          }
-        });
-        setCourses(formatted);
-      } catch (err) {
-        setCourses([]);
-      }
-    };
-    loadCourses();
-  }, []);
+  //         if (id) {
+  //           return {
+  //             label: c.label || `Khóa học ${index + 1}`,
+  //             value: `${id}-idx${index}`,
+  //             originalId: id,
+  //           };
+  //         } else {
+  //           const tempId = `temp-${Date.now()}-${index}`;
+  //           return {
+  //             label: c.label || `Khóa học ${index + 1}`,
+  //             value: tempId,
+  //             originalId: tempId,
+  //           };
+  //         }
+  //       });
+  //       setCourses(formatted);
+  //     } catch (err) {
+  //       setCourses([]);
+  //     }
+  //   };
+  //   loadCourses();
+  // }, []);
 
   const handleSave = async (examData) => {
     setLoading(true);
@@ -96,20 +96,13 @@ const CreateExamPage = () => {
           </Box>
         )}
 
-        {courses.length === 0 ? (
-          <Box sx={{ textAlign: "center", py: 10 }}>
-            <CircularProgress />
-            <Typography sx={{ mt: 2 }}>Đang tải danh sách khóa học...</Typography>
-          </Box>
-        ) : (
-          <ExamWizard
-            open={true}
-            onClose={() => navigate("/instructor/exams")}
-            onSave={handleSave}
-            courses={courses}
-            mode="create"
-          />
-        )}
+        <ExamWizard
+          open={true}
+          onClose={() => navigate("/instructor/exams")}
+          onSave={handleSave}
+          courses={[]}  // Không dùng course nữa
+          mode="create"
+        />
         <ToastContainer
           position="top-right"
           autoClose={2500}

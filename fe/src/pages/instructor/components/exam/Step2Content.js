@@ -58,6 +58,17 @@ const SECTION_ICONS = {
     Writing: <WritingIcon sx={{ color: "#ed6c02" }} />,
 };
 
+const normalizeQuestion = (q) => ({
+    id: q.id,
+    content: q.content || q.Content || "",
+    type: q.type || q.Type || "",
+    level: q.difficulty || q.level || q.Level || "",
+    point: q.point || q.Point || q.score || 1,
+    topic: q.topic || q.Topic || q.subject || "",
+    options: q.options || q.Options || q.choices || [],
+    correctAnswer: q.correctAnswer || q.CorrectAnswer || q.answer || "",
+});
+
 const SortableParentSection = ({
     parent,
     index,
@@ -677,9 +688,11 @@ const Step2Content = ({ sections, setSections, onError }) => {
     };
 
     const handlePreviewQuestion = (question) => {
-        setPreviewQuestion(question);
+        const normalized = normalizeQuestion(question);
+        setPreviewQuestion(normalized);
         setOpenPreview(true);
     };
+
 
     // Empty state
     if (parentSections.length === 0) {
@@ -930,55 +943,92 @@ const Step2Content = ({ sections, setSections, onError }) => {
                             )}
 
                             {/* Correct Answer for other types */}
-                            {(previewQuestion.CorrectAnswer || previewQuestion.correctAnswer) &&
-                                (previewQuestion.Type !== "multiple_choice" && previewQuestion.type !== "multiple_choice") && (
-                                    <>
-                                        <Divider />
-                                        <Box>
-                                            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                                                Đáp án đúng
-                                            </Typography>
-                                            {/* Matching type - parse JSON and display as pairs */}
-                                            {(previewQuestion.Type === "matching" || previewQuestion.type === "matching") ? (
-                                                <Stack spacing={1}>
-                                                    {(() => {
-                                                        try {
-                                                            const pairs = JSON.parse(previewQuestion.CorrectAnswer || previewQuestion.correctAnswer);
-                                                            return Object.entries(pairs).map(([key, value], index) => (
-                                                                <Paper key={index} variant="outlined" sx={{ p: 1.5, bgcolor: "#e8f5e9" }}>
-                                                                    <Stack direction="row" alignItems="center" spacing={2}>
-                                                                        <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
-                                                                            {key}
-                                                                        </Typography>
-                                                                        <Typography variant="body2" color="text.secondary">
-                                                                            →
-                                                                        </Typography>
-                                                                        <Typography variant="body2" sx={{ flex: 1 }}>
-                                                                            {value}
-                                                                        </Typography>
-                                                                    </Stack>
-                                                                </Paper>
-                                                            ));
-                                                        } catch (e) {
+                            {/* Đáp án đúng cho các loại khác multiple_choice */}
+                            {/* ❗ Chỉ hiển thị đáp án nếu KHÔNG phải essay hoặc speaking */}
+                            {!["essay", "speaking"].includes(previewQuestion.Type || previewQuestion.type) && (
+                                <>
+                                    <Divider />
+                                    <Box>
+                                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                                            Đáp án đúng
+                                        </Typography>
+
+                                        {/* MATCHING */}
+                                        {(previewQuestion.Type === "matching" || previewQuestion.type === "matching") ? (
+                                            <Stack spacing={1}>
+                                                {(() => {
+                                                    try {
+                                                        let raw =
+                                                            previewQuestion.CorrectAnswer ??
+                                                            previewQuestion.correctAnswer ??
+                                                            null;
+
+                                                        let pairs = null;
+
+                                                        // Nếu CorrectAnswer là JSON string → parse
+                                                        if (raw && typeof raw === "string") {
+                                                            pairs = JSON.parse(raw);
+                                                        }
+                                                        // Nếu là object → dùng luôn
+                                                        else if (raw && typeof raw === "object") {
+                                                            pairs = raw;
+                                                        }
+                                                        // Nếu không có nhưng có options {left,right} → tự build
+                                                        else if (Array.isArray(previewQuestion.options || previewQuestion.Options)) {
+                                                            pairs = {};
+                                                            (previewQuestion.options || previewQuestion.Options).forEach((p) => {
+                                                                const left = p.left || p.Left;
+                                                                const right = p.right || p.Right;
+                                                                if (left) pairs[left] = right || "";
+                                                            });
+                                                        }
+
+                                                        if (!pairs || Object.keys(pairs).length === 0) {
                                                             return (
                                                                 <Typography variant="body2" color="error">
                                                                     Lỗi định dạng đáp án
                                                                 </Typography>
                                                             );
                                                         }
-                                                    })()}
-                                                </Stack>
-                                            ) : (
-                                                /* Other types - display as simple text */
-                                                <Paper variant="outlined" sx={{ p: 2, bgcolor: "#e8f5e9" }}>
-                                                    <Typography variant="body2">
-                                                        {previewQuestion.CorrectAnswer || previewQuestion.correctAnswer}
-                                                    </Typography>
-                                                </Paper>
-                                            )}
-                                        </Box>
-                                    </>
-                                )}
+
+                                                        return Object.entries(pairs).map(([key, value], index) => (
+                                                            <Paper key={index} variant="outlined" sx={{ p: 1.5, bgcolor: "#e8f5e9" }}>
+                                                                <Stack direction="row" alignItems="center" spacing={2}>
+                                                                    <Typography variant="body2" sx={{ fontWeight: 600, flex: 1 }}>
+                                                                        {key}
+                                                                    </Typography>
+                                                                    <Typography variant="body2" color="text.secondary">
+                                                                        →
+                                                                    </Typography>
+                                                                    <Typography variant="body2" sx={{ flex: 1 }}>
+                                                                        {value}
+                                                                    </Typography>
+                                                                </Stack>
+                                                            </Paper>
+                                                        ));
+
+                                                    } catch (e) {
+                                                        return (
+                                                            <Typography variant="body2" color="error">
+                                                                Lỗi định dạng đáp án
+                                                            </Typography>
+                                                        );
+                                                    }
+                                                })()}
+                                            </Stack>
+                                        ) : (
+                                            // Các loại khác: hiển thị text đơn giản
+                                            <Paper variant="outlined" sx={{ p: 2, bgcolor: "#e8f5e9" }}>
+                                                <Typography variant="body2">
+                                                    {previewQuestion.CorrectAnswer || previewQuestion.correctAnswer}
+                                                </Typography>
+                                            </Paper>
+                                        )}
+                                    </Box>
+                                </>
+                            )}
+
+
                         </Stack>
                     )}
                 </DialogContent>
