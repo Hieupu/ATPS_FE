@@ -77,7 +77,6 @@ export default function AssignmentsPage() {
   });
 
   try {
-    // 🔥 GỌI API LẤY CÂU HỎI
     const qs = await getAssignmentQuestionsApi(assignmentId);
     setDetailQuestions(Array.isArray(qs) ? qs : []);
   } catch (err) {

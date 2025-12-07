@@ -55,10 +55,16 @@ import MaterialsPage from "./pages/materials/MaterialsPage";
 import ZoomMeetingPage from "./pages/schedule/ZoomMeetingPage";
 
 import ExamsPage from "./pages/exam/ExamsPage";
+import ExamTakingPage from "./pages/exam/ExamTakingPage";      
+import ExamResultPage from "./pages/exam/ExamResultPage";   
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
+
+// ⭐ Các route mới từ nhánh của bạn
+import CreateExamPage from "./pages/instructor/components/exam/CreateExamPage";
+import EditExamPage from "./pages/instructor/components/exam/EditExamPage";
 
 function AppRoutes() {
   useTokenExpiry();
@@ -88,6 +94,8 @@ function AppRoutes() {
 
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
+      <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
+      <Route path="/exam/:examId/result" element={<ExamResultPage />} />
 
       {/* Learner Routes */} 
       <Route path="/schedule" element={<SchedulePage />} />
@@ -115,15 +123,20 @@ function AppRoutes() {
         <Route path="/instructor" element={<InstructorLayout />}>
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<InstructorDashboard />} />
+
           <Route path="courses" element={<CoursesPagee />} />
           <Route path="courses/:courseId" element={<CourseBuilderPage />} />
+
           <Route path="classes" element={<InstructorClasses />} />
           <Route path="classes/:classId" element={<ClassDetailPage />} />
+
           <Route path="assignments" element={<InstructorAssignments />} />
           <Route path="exams" element={<InstructorExams />} />
           <Route path="grades" element={<InstructorGrades />} />
           <Route path="schedule" element={<InstructorSchedulePage />} />
           <Route path="settings" element={<InstructorSettings />} />
+          <Route path="exams/create" element={<CreateExamPage />} />
+          <Route path="exams/edit/:examId" element={<EditExamPage />} />
         </Route>
       </Route>
 
