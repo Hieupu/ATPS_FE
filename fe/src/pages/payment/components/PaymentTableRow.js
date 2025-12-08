@@ -1,27 +1,57 @@
-// PaymentTableRow.jsx - Phiên bản tối ưu
 import React from "react";
-import { Box, Typography, Button, Chip } from "@mui/material";
+import { Box, Typography, Chip } from "@mui/material";
 import { 
   formatCurrency, 
-  formatDate, 
-  getStatusDisplay,
-  canRequestRefund,
-  canCancelRefund
+  formatDate
 } from "./paymentUtils";
 
-const PaymentTableRow = ({ 
-  payment, 
-  onRefundRequest, 
-  onActionMenuOpen,
-  isLast 
-}) => {
-  const statusDisplay = getStatusDisplay(payment);
+const PaymentTableRow = ({ payment, isLast }) => {
+  // Hàm xử lý màu và text cho trạng thái thanh toán
+  const getPaymentStatusInfo = (status) => {
+    switch(status?.toLowerCase()) {
+      case 'success':
+      case 'completed':
+        return {
+          text: 'Thành công',
+          bgcolor: '#dcfce7',
+          color: '#166534'
+        };
+      case 'pending':
+      case 'processing':
+        return {
+          text: 'Đang xử lý',
+          bgcolor: '#fef9c3',
+          color: '#854d0e'
+        };
+      case 'failed':
+      case 'error':
+        return {
+          text: 'Thất bại',
+          bgcolor: '#fee2e2',
+          color: '#991b1b'
+        };
+      case 'cancelled':
+        return {
+          text: 'Đã hủy',
+          bgcolor: '#f3f4f6',
+          color: '#374151'
+        };
+      default:
+        return {
+          text: 'Không xác định',
+          bgcolor: '#f3f4f6',
+          color: '#6b7280'
+        };
+    }
+  };
+
+  const statusInfo = getPaymentStatusInfo(payment.PaymentStatus || payment.Status);
 
   return (
     <Box 
       sx={{ 
         display: "grid",
-        gridTemplateColumns: "1fr 1fr 2fr 1fr 1fr 120px",
+        gridTemplateColumns: "1fr 1fr 2fr 1fr 1fr",
         gap: 3,
         px: 3,
         py: 3,
@@ -38,9 +68,6 @@ const PaymentTableRow = ({
         <Typography variant="body2" sx={{ fontWeight: 600, color: "#1e293b", fontFamily: 'monospace' }}>
           {payment.OrderCode || "N/A"}
         </Typography>
-        <Typography variant="caption" sx={{ color: "#64748b", display: 'block', mt: 0.5 }}>
-          {payment.PaymentMethod}
-        </Typography>
       </Box>
       
       {/* Ngày thanh toán */}
@@ -48,11 +75,6 @@ const PaymentTableRow = ({
         <Typography variant="body2" sx={{ fontWeight: 500, color: "#1e293b" }}>
           {formatDate(payment.PaymentDate)}
         </Typography>
-        {payment.RefundRequestDate && (
-          <Typography variant="caption" sx={{ color: "#ef4444", display: 'block', mt: 0.5 }}>
-            YC hoàn tiền: {formatDate(payment.RefundRequestDate)}
-          </Typography>
-        )}
       </Box>
       
       {/* Thông tin khóa học */}
@@ -76,13 +98,6 @@ const PaymentTableRow = ({
             <span style={{ fontWeight: 500, minWidth: 70 }}>Kết thúc:</span>
             {formatDate(payment.EnddatePlan || payment.Enddate) || "Chưa xác định"}
           </Typography>
-
-          {payment.RefundReason && (
-            <Typography variant="caption" sx={{ color: "#dc2626", display: 'flex', mt: 0.5 }}>
-              <span style={{ fontWeight: 500, minWidth: 70 }}>Lý do:</span>
-              {payment.RefundReason}
-            </Typography>
-          )}
         </Box>
       </Box>
       
@@ -97,14 +112,14 @@ const PaymentTableRow = ({
         </Typography>
       </Box>
       
-      {/* Trạng thái */}
+      {/* Trạng thái - Chỉ hiển thị trạng thái thanh toán */}
       <Box>
         <Chip
-          label={statusDisplay.text}
+          label={statusInfo.text}
           size="medium"
           sx={{
-            bgcolor: statusDisplay.color.bgcolor,
-            color: statusDisplay.color.color,
+            bgcolor: statusInfo.bgcolor,
+            color: statusInfo.color,
             fontWeight: 600,
             fontSize: '0.75rem',
             height: 28,
@@ -114,75 +129,6 @@ const PaymentTableRow = ({
             }
           }}
         />
-      </Box>
-      
-      {/* Thao tác */}
-      <Box sx={{ display: "flex", gap: 1, justifyContent: 'center' }}>
-        {canRequestRefund(payment) && (
-          <Button
-            size="small"
-            variant="outlined"
-            sx={{ 
-              textTransform: 'none',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#dc2626',
-              borderColor: '#dc2626',
-              borderRadius: 1.5,
-              px: 2,
-              py: 0.5,
-              minWidth: 'auto',
-              '&:hover': {
-                bgcolor: '#fef2f2',
-                borderColor: '#b91c1c'
-              }
-            }}
-            onClick={() => onRefundRequest({ 
-              open: true, 
-              payment: payment 
-            })}
-          >
-            Yêu cầu hoàn tiền
-          </Button>
-        )}
-        
-        {canCancelRefund(payment) && (
-          <Button
-            size="small"
-            variant="outlined"
-            sx={{ 
-              textTransform: 'none',
-              fontSize: '0.75rem',
-              fontWeight: 600,
-              color: '#475569',
-              borderColor: '#cbd5e1',
-              borderRadius: 1.5,
-              px: 2,
-              py: 0.5,
-              minWidth: 'auto',
-              '&:hover': {
-                bgcolor: '#f8fafc',
-                borderColor: '#94a3b8'
-              }
-            }}
-            onClick={(e) => onActionMenuOpen({ anchor: e.currentTarget, payment })}
-          >
-            Hủy yêu cầu
-          </Button>
-        )}
-
-        {!canRequestRefund(payment) && !canCancelRefund(payment) && (
-          <Typography 
-            variant="caption" 
-            sx={{ 
-              color: "#94a3b8", 
-              fontStyle: 'italic',
-              textAlign: 'center'
-            }}
-          >
-            Không có thao tác
-          </Typography>
-        )}
       </Box>
     </Box>
   );

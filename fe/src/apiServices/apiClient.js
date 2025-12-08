@@ -12,7 +12,9 @@ const apiClient = axios.create({
 
 apiClient.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    // COMMENTED FOR TESTING - Token authentication
+    // Thêm token test để bypass backend check
+    const token = localStorage.getItem("token") || "test-token-for-development";
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
@@ -40,7 +42,11 @@ apiClient.interceptors.response.use(
           }
           break;
         case 403:
-          console.error("Forbidden - Bạn không có quyền truy cập");
+          // COMMENTED FOR TESTING - Permission check
+          // console.error("Forbidden - Bạn không có quyền truy cập");
+          console.warn(
+            "403 Forbidden - Không có quyền truy cập (đã comment để test)"
+          );
           break;
         case 404:
           console.error("Not Found - Không tìm thấy tài nguyên");

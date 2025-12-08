@@ -142,14 +142,14 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             top: 10,
             right: 50,
             bgcolor: ["APPROVED", "ACTIVE"].includes(cls.classStatus)
-              ? "#10b981" // Xanh lá
+              ? "#10b981"
               : ["PENDING", "WAITING", "ONGOING"].includes(cls.classStatus)
-              ? "#f59e0b" // Cam
+              ? "#f59e0b"
               : cls.classStatus === "CLOSE"
-              ? "#6366f1" // Tím
+              ? "#6366f1"
               : cls.classStatus === "CANCEL"
-              ? "#ef4444" // Đỏ
-              : "#94a3b8", // Mặc định
+              ? "#ef4444"
+              : "#94a3b8",
             color: "white",
             fontWeight: 700,
             fontSize: "10px",
@@ -185,7 +185,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             backdropFilter: "blur(4px)",
             width: 32,
             height: 32,
-            "&:hover": { bgcolor: "white" },
+            "& hover": { bgcolor: "white" },
           }}
         >
           <MoreVert sx={{ fontSize: 18 }} />
@@ -224,6 +224,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
           {cls.courseTitle}
         </Typography>
 
+        {/* --- ĐÂY LÀ PHẦN ĐÃ SỬA --- */}
         <Box
           sx={{
             bgcolor: "#f8fafc",
@@ -231,9 +232,22 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             p: 1.5,
             mb: 2,
             border: "1px solid #e2e8f0",
+            // Thêm các dòng dưới để cố định chiều cao và scroll
+            height: "110px", // Chiều cao cố định cho khung lịch (khoảng 3-4 dòng)
+            display: "flex",
+            flexDirection: "column",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 1 }}>
+          {/* Header cố định */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              mb: 1,
+              flexShrink: 0,
+            }}
+          >
             <Schedule sx={{ fontSize: 16, color: "#6366f1" }} />
             <Typography
               variant="caption"
@@ -245,12 +259,40 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
-          {cls.scheduleSummary &&
-          cls.scheduleSummary !== "Chưa có lịch cố định" ? (
-            scheduleLines.length > 0 ? (
-              scheduleLines.map((line, index) => (
+          {/* Phần nội dung cuộn (Scrollable) */}
+          <Box
+            sx={{
+              overflowY: "auto", // Cho phép cuộn dọc
+              flexGrow: 1,
+              // Style thanh cuộn cho đẹp
+              "&::-webkit-scrollbar": { width: "4px" },
+              "&::-webkit-scrollbar-track": { background: "transparent" },
+              "&::-webkit-scrollbar-thumb": {
+                background: "#cbd5e1",
+                borderRadius: "4px",
+              },
+              "&::-webkit-scrollbar-thumb:hover": { background: "#94a3b8" },
+            }}
+          >
+            {cls.scheduleSummary &&
+            cls.scheduleSummary !== "Chưa có lịch cố định" ? (
+              scheduleLines.length > 0 ? (
+                scheduleLines.map((line, index) => (
+                  <Typography
+                    key={index}
+                    variant="body2"
+                    sx={{
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      color: "#1e293b",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {line}
+                  </Typography>
+                ))
+              ) : (
                 <Typography
-                  key={index}
                   variant="body2"
                   sx={{
                     fontSize: "13px",
@@ -259,32 +301,21 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
                     lineHeight: 1.6,
                   }}
                 >
-                  {line}
+                  {cls.scheduleSummary}
                 </Typography>
-              ))
+              )
             ) : (
               <Typography
                 variant="body2"
-                sx={{
-                  fontSize: "13px",
-                  fontWeight: 600,
-                  color: "#1e293b",
-                  lineHeight: 1.6,
-                }}
+                color="text.secondary"
+                sx={{ fontSize: "13px", fontStyle: "italic" }}
               >
-                {cls.scheduleSummary}
+                Chưa có lịch cố định
               </Typography>
-            )
-          ) : (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ fontSize: "13px", fontStyle: "italic" }}
-            >
-              Chưa có lịch cố định
-            </Typography>
-          )}
+            )}
+          </Box>
         </Box>
+        {/* --- KẾT THÚC PHẦN ĐÃ SỬA --- */}
 
         <Box
           sx={{

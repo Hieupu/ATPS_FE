@@ -32,8 +32,6 @@ export default function OverviewTab({ classData, onStartZoom }) {
     dates,
     scheduleSummary,
     nextSession,
-    zoomMeetingId,
-    zoomPassword,
     completedSessions,
     totalSessions,
     progress,
@@ -108,39 +106,6 @@ export default function OverviewTab({ classData, onStartZoom }) {
             title="Buổi học tiếp theo"
             value={nextSession}
           />
-
-          <Box
-            sx={{
-              mt: 2,
-              p: 2,
-              bgcolor: "grey.50",
-              borderRadius: 2,
-              border: "1px dashed #ccc",
-            }}
-          >
-            <Button
-              variant="contained"
-              color="error"
-              size="large"
-              fullWidth
-              startIcon={<VideoCameraFront />}
-              onClick={onStartZoom}
-              disabled={status !== "ACTIVE"}
-              sx={{ mb: 1, fontWeight: "bold", py: 1.5 }}
-            >
-              BẮT ĐẦU LỚP HỌC
-            </Button>
-
-            <Typography
-              variant="caption"
-              align="center"
-              display="block"
-              color="text.secondary"
-            >
-              Zoom ID: <b>{zoomMeetingId}</b> &nbsp;|&nbsp; Pass:
-              <b>{zoomPassword}</b>
-            </Typography>
-          </Box>
         </Stack>
       </Grid>
 

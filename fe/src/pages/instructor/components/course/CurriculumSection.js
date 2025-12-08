@@ -251,10 +251,6 @@ export default function CurriculumSection({
         [unitId]: reindexed,
       }));
 
-      // --- DEBUG LOG ---
-      console.log(`Đã kéo thả Lesson tại Unit ${unitId}. Đang set timer 5s...`);
-
-      
       const timerKey = String(unitId);
 
       if (lessonDebounceTimers.current[timerKey]) {
@@ -264,14 +260,7 @@ export default function CurriculumSection({
 
       lessonDebounceTimers.current[timerKey] = setTimeout(async () => {
         try {
-          console.log(
-            `Auto-save: Đang gửi API cập nhật Lesson cho Unit ${unitId}...`
-          );
-          
-
           await onReorderLessons(unitId, reindexed);
-
-         
         } catch (err) {
           console.error(`Lỗi cập nhật Lesson Unit ${unitId}:`, err);
         } finally {
@@ -1114,11 +1103,14 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
 
 function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
   const [values, setValues] = useState(initialValues || {});
+
   useEffect(() => {
     if (open && initialValues) setValues(initialValues);
   }, [open, initialValues]);
+
   const handleChange = (field) => (e) =>
     setValues({ ...values, [field]: e.target.value });
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -1174,16 +1166,79 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               ))}
             </TextField>
           </Grid>
+
+          {/* --- PHẦN ĐÃ CHỈNH SỬA: TÁCH RIÊNG HIỂN THỊ FILE VÀ NÚT UPLOAD --- */}
           <Grid item xs={12}>
+            {/* Nếu có file cũ VÀ chưa chọn file mới thay thế thì hiện Link xem */}
+            {!values.file && values.existingFileUrl && (
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 2,
+                  bgcolor: "grey.100",
+                  borderRadius: 1,
+                  border: "1px solid",
+                  borderColor: "divider",
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  display="block"
+                  color="text.secondary"
+                  gutterBottom
+                >
+                  Tài liệu hiện tại (Click để xem):
+                </Typography>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <DescriptionIcon color="primary" fontSize="small" />
+                  <a
+                    href={values.existingFileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Typography
+                      variant="body2"
+                      color="primary"
+                      sx={{
+                        textDecoration: "underline",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        "&:hover": { color: "primary.dark" },
+                      }}
+                    >
+                      {values.existingFileName || "Xem tài liệu đính kèm"}
+                    </Typography>
+                  </a>
+                </Stack>
+              </Box>
+            )}
+
+            {/* Nút Upload */}
             <Button
               component="label"
               variant="outlined"
               fullWidth
               sx={{ borderStyle: "dashed", py: 2 }}
             >
-              {values.file
-                ? values.file.name
-                : values.existingFileName || "Chọn file bài học"}
+              <Stack alignItems="center" spacing={1}>
+                {/* Logic hiển thị Label của nút */}
+                <Typography variant="body2" fontWeight={500}>
+                  {values.file
+                    ? `File mới đang chọn: ${values.file.name}`
+                    : values.existingFileUrl
+                    ? "Chọn file khác để thay thế"
+                    : "Chọn file bài học (Video/PDF/Audio)"}
+                </Typography>
+
+                {/* Chỉ dẫn phụ */}
+                <Typography variant="caption" color="text.secondary">
+                  {values.file
+                    ? "(Nhấn Lưu để cập nhật)"
+                    : "(Nhấn vào đây để tải lên)"}
+                </Typography>
+              </Stack>
+
               <input
                 type="file"
                 hidden
