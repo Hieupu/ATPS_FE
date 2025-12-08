@@ -27,6 +27,8 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import DescriptionIcon from "@mui/icons-material/Description";
+// --- MỚI THÊM: Icon Download ---
+import DownloadIcon from "@mui/icons-material/Download";
 
 const MATERIAL_STATUS_OPTIONS = ["VISIBLE", "HIDDEN"];
 
@@ -223,24 +225,41 @@ export default function MaterialsSection({
                     </Stack>
                   </TableCell>
 
-                  {/* Cột: Tài liệu (link) */}
+                  {/* --- Cột: Tài liệu (ĐÃ CHỈNH SỬA) --- */}
                   <TableCell>
                     {m.FileURL ? (
-                      <Typography
-                        component="a"
-                        href={m.FileURL}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        variant="body2"
-                        color="primary"
-                        sx={{
-                          textDecoration: "underline",
-                          cursor: "pointer",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {m.FileURL.split("/").pop() || "Xem tài liệu"}
-                      </Typography>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Typography
+                          component="a"
+                          href={m.FileURL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          variant="body2"
+                          color="primary"
+                          sx={{
+                            textDecoration: "underline",
+                            cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {m.FileURL.split("/").pop() || "Xem tài liệu"}
+                        </Typography>
+
+                        {/* Nút Download */}
+                        <Tooltip title="Tải xuống">
+                          <IconButton
+                            component="a"
+                            href={m.FileURL}
+                            download // Thuộc tính HTML5 hỗ trợ tải xuống
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            size="small"
+                            sx={{ color: "text.secondary" }}
+                          >
+                            <DownloadIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Stack>
                     ) : (
                       <Typography variant="caption" color="text.secondary">
                         Không có file

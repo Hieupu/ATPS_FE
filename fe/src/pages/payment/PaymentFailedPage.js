@@ -46,7 +46,7 @@ export default function PaymentFailedPage() {
   return (
     <Box textAlign="center" sx={{ mt: 10 }}>
       <Typography variant="h3" color="error.main" gutterBottom>
-        ❌ Thanh toán thất bại
+ Thanh toán thất bại
       </Typography>
       <Typography variant="body1" sx={{ mb: 4 }}>
         Bạn đã hủy thanh toán hoặc thanh toán không thành công.

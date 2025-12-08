@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Container,
@@ -14,15 +14,16 @@ import {
   Alert,
   Button,
   CardContent,
-} from '@mui/material';
-import { useParams } from 'react-router-dom';
-import AppHeader from '../../components/Header/AppHeader';
-import ClassList from './components/ClassList';
-import CourseCurriculum from './components/CourseCurriculum';
-import CourseMaterials from './components/CourseMaterials';
-import InstructorInfo from './components/InstructorInfo';
-import CourseReviews from './components/CourseReviews';
+} from "@mui/material";
+import { useParams } from "react-router-dom";
+import AppHeader from "../../components/Header/AppHeader";
+import ClassList from "./components/ClassList";
+import CourseCurriculum from "./components/CourseCurriculum";
+import CourseMaterials from "./components/CourseMaterials";
+import InstructorInfo from "./components/InstructorInfo";
+import CourseReviews from "./components/CourseReviews";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 // API imports
 import {
   getCourseByIdApi,
@@ -45,6 +46,7 @@ const TabPanel = ({ children, value, index, ...other }) => (
 
 const CourseDetailPage = () => {
   const { id } = useParams();
+  const { user } = useAuth(); // Check if user is authenticated
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,7 +54,7 @@ const CourseDetailPage = () => {
   const [classes, setClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [isEnrolledInCourse, setIsEnrolledInCourse] = useState(false);
-   const navigate = useNavigate();
+  const navigate = useNavigate();
   // Format price
   const priceFormatter = useMemo(
     () =>
@@ -79,7 +81,7 @@ const CourseDetailPage = () => {
       setLoading(true);
       setError(null);
       const data = await getCourseByIdApi(id);
-      console.log("getCourseByIdApi" , data)
+      console.log("getCourseByIdApi", data);
       setCourse(data);
     } catch (error) {
       console.error("Error fetching course:", error);
@@ -94,7 +96,7 @@ const CourseDetailPage = () => {
     try {
       setLoadingClasses(true);
       const data = await getClassesByCourseApi(id);
-      console.log("getClassesByCourseApi" , data)
+      console.log("getClassesByCourseApi", data);
       setClasses(data.classes || []);
     } catch (error) {
       console.error("Error fetching classes:", error);
@@ -104,9 +106,13 @@ const CourseDetailPage = () => {
     }
   }, [id]);
 
-  // Check enrollment
+  // Check enrollment - Only for authenticated users
   const checkEnrollment = useCallback(async () => {
-    if (!course?.CourseID) return;
+    // Don't check enrollment if user is not authenticated (guest)
+    if (!user || !course?.CourseID) {
+      setIsEnrolledInCourse(false);
+      return;
+    }
     try {
       const res = await getMyEnrolledCourses();
       const list = res?.data || res?.items || res || [];
@@ -115,9 +121,10 @@ const CourseDetailPage = () => {
       );
       setIsEnrolledInCourse(enrolled);
     } catch (e) {
+      // Silently fail for guests or if API error
       setIsEnrolledInCourse(false);
     }
-  }, [course?.CourseID]);
+  }, [user, course?.CourseID]);
 
   useEffect(() => {
     fetchCourse();
@@ -184,11 +191,12 @@ const CourseDetailPage = () => {
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#fafafa" }}>
       <AppHeader />
-      
+
       {/* Course Header */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
+          background:
+            "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
           color: "white",
           py: 8,
           position: "relative",
@@ -217,7 +225,7 @@ const CourseDetailPage = () => {
             background:
               "radial-gradient(circle at 85% 70%, rgba(255,255,255,0.22) 0%, transparent 60%)",
             zIndex: 1,
-          }
+          },
         }}
       >
         <Container maxWidth="lg">
@@ -225,9 +233,9 @@ const CourseDetailPage = () => {
             <Grid item xs={12} md={8}>
               <Chip
                 label={course.Level || "BEGINNER"}
-                sx={{ 
-                  bgcolor: "rgba(255,255,255,0.25)", 
-                  color: "white", 
+                sx={{
+                  bgcolor: "rgba(255,255,255,0.25)",
+                  color: "white",
                   mb: 3,
                   fontWeight: 600,
                   fontSize: "0.875rem",
@@ -251,9 +259,9 @@ const CourseDetailPage = () => {
               </Typography>
               <Typography
                 variant="h6"
-                sx={{ 
-                  opacity: 0.95, 
-                  mb: 4, 
+                sx={{
+                  opacity: 0.95,
+                  mb: 4,
                   maxWidth: 650,
                   lineHeight: 1.6,
                   fontWeight: 400,
@@ -265,8 +273,8 @@ const CourseDetailPage = () => {
 
               <Grid container spacing={3} sx={{ mb: 4 }}>
                 <Grid item xs={6} sm={4}>
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       bgcolor: "rgba(255,255,255,0.15)",
                       borderRadius: 2,
                       p: 2,
@@ -283,8 +291,8 @@ const CourseDetailPage = () => {
                   </Box>
                 </Grid>
                 <Grid item xs={6} sm={4}>
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       bgcolor: "rgba(255,255,255,0.15)",
                       borderRadius: 2,
                       p: 2,
@@ -301,8 +309,8 @@ const CourseDetailPage = () => {
                   </Box>
                 </Grid>
                 <Grid item xs={6} sm={4}>
-                  <Box 
-                    sx={{ 
+                  <Box
+                    sx={{
                       bgcolor: "rgba(255,255,255,0.15)",
                       borderRadius: 2,
                       p: 2,
@@ -320,86 +328,88 @@ const CourseDetailPage = () => {
                 </Grid>
               </Grid>
 
-                   <Card
-  sx={{ 
-    display: "flex", 
-    alignItems: "center",
-    bgcolor: "rgba(255,255,255,0.18)",
-    borderRadius: 4,
-    p: 3,
-    backdropFilter: "blur(12px)",
-    cursor: "pointer",
-    transition: "all 0.3s ease",
-    position: "relative",
-    zIndex: 2,
-    color: "white",
-    border: "1px solid rgba(255,255,255,0.1)",
-    "&:hover": {
-      bgcolor: "rgba(255,255,255,0.25)",
-      transform: "translateY(-2px)",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
-    },
-    "&:active": {
-      transform: "translateY(0)",
-    },
-  }}
-  onClick={() => navigate(`/instructors/${course.InstructorID}`)}
->
-  <CardContent sx={{ 
-    display: "flex", 
-    alignItems: "center", 
-    width: "100%",
-    p: "0 !important",
-    "&:last-child": { pb: 0 }
-  }}>
-    <Avatar
-      src={course.InstructorAvatar}
-      sx={{ 
-        width: 84, 
-        height: 84, 
-        mr: 3,
-        border: "4px solid rgba(255,255,255,0.35)",
-        fontSize: "2rem",
-      }}
-      alt={course.InstructorName}
-    >
-      {course.InstructorName?.charAt(0)}
-    </Avatar>
+              <Card
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  bgcolor: "rgba(255,255,255,0.18)",
+                  borderRadius: 4,
+                  p: 3,
+                  backdropFilter: "blur(12px)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  zIndex: 2,
+                  color: "white",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  "&:hover": {
+                    bgcolor: "rgba(255,255,255,0.25)",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.1)",
+                  },
+                  "&:active": {
+                    transform: "translateY(0)",
+                  },
+                }}
+                onClick={() => navigate(`/instructors/${course.InstructorID}`)}
+              >
+                <CardContent
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    width: "100%",
+                    p: "0 !important",
+                    "&:last-child": { pb: 0 },
+                  }}
+                >
+                  <Avatar
+                    src={course.InstructorAvatar}
+                    sx={{
+                      width: 84,
+                      height: 84,
+                      mr: 3,
+                      border: "4px solid rgba(255,255,255,0.35)",
+                      fontSize: "2rem",
+                    }}
+                    alt={course.InstructorName}
+                  >
+                    {course.InstructorName?.charAt(0)}
+                  </Avatar>
 
-    <Box>
-      <Typography 
-        variant="body1" 
-        sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
-      >
-        Giảng viên
-      </Typography>
+                  <Box>
+                    <Typography
+                      variant="body1"
+                      sx={{ opacity: 0.85, mb: 0.8, fontSize: "1rem" }}
+                    >
+                      Giảng viên
+                    </Typography>
 
-      <Typography 
-        variant="h5" 
-        sx={{ 
-          fontWeight: 700, 
-          mb: 0.8, 
-          fontSize: "1.8rem",
-        }}
-      >
-        {course.InstructorName}
-      </Typography>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        mb: 0.8,
+                        fontSize: "1.8rem",
+                      }}
+                    >
+                      {course.InstructorName}
+                    </Typography>
 
-      <Typography 
-        variant="body1" 
-        sx={{ opacity: 0.9, fontSize: "1.1rem" }}
-      >
-        {course.InstructorJob} • {course.InstructorMajor}
-      </Typography>
-    </Box>
-  </CardContent>
-</Card>
+                    <Typography
+                      variant="body1"
+                      sx={{ opacity: 0.9, fontSize: "1.1rem" }}
+                    >
+                      {course.InstructorJob} • {course.InstructorMajor}
+                    </Typography>
+                  </Box>
+                </CardContent>
+              </Card>
             </Grid>
 
             <Grid item xs={12} md={4}>
-              <Card 
-                sx={{ 
-                  position: "relative", 
+              <Card
+                sx={{
+                  position: "relative",
                   top: { md: 40 },
                   borderRadius: 3,
                   boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
@@ -408,7 +418,8 @@ const CourseDetailPage = () => {
               >
                 <Box
                   sx={{
-                    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                    background:
+                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                     color: "white",
                     p: 3,
                     textAlign: "center",
@@ -423,21 +434,23 @@ const CourseDetailPage = () => {
                 </Box>
 
                 <CardContent sx={{ p: 3 }}>
-                  <Typography 
-                    variant="subtitle1" 
-                    sx={{ 
-                      fontWeight: 700, 
+                  <Typography
+                    variant="subtitle1"
+                    sx={{
+                      fontWeight: 700,
                       mb: 2.5,
                       color: "#1f2937",
                     }}
                   >
                     Khóa học bao gồm:
                   </Typography>
-                  
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                    <Box 
-                      sx={{ 
-                        display: "flex", 
+
+                  <Box
+                    sx={{ display: "flex", flexDirection: "column", gap: 2 }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
                         alignItems: "center",
                         p: 2,
                         bgcolor: "#f8fafc",
@@ -446,7 +459,10 @@ const CourseDetailPage = () => {
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600, color: "#1f2937" }}
+                        >
                           {course.UnitCount || 0} chương học
                         </Typography>
                         <Typography variant="caption" sx={{ color: "#6b7280" }}>
@@ -455,9 +471,9 @@ const CourseDetailPage = () => {
                       </Box>
                     </Box>
 
-                    <Box 
-                      sx={{ 
-                        display: "flex", 
+                    <Box
+                      sx={{
+                        display: "flex",
                         alignItems: "center",
                         p: 2,
                         bgcolor: "#f8fafc",
@@ -466,7 +482,10 @@ const CourseDetailPage = () => {
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600, color: "#1f2937" }}
+                        >
                           Học mọi lúc mọi nơi
                         </Typography>
                         <Typography variant="caption" sx={{ color: "#6b7280" }}>
@@ -475,9 +494,9 @@ const CourseDetailPage = () => {
                       </Box>
                     </Box>
 
-                    <Box 
-                      sx={{ 
-                        display: "flex", 
+                    <Box
+                      sx={{
+                        display: "flex",
                         alignItems: "center",
                         p: 2,
                         bgcolor: "#f8fafc",
@@ -486,7 +505,10 @@ const CourseDetailPage = () => {
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600, color: "#1f2937" }}
+                        >
                           Chứng chỉ hoàn thành
                         </Typography>
                         <Typography variant="caption" sx={{ color: "#6b7280" }}>
@@ -495,9 +517,9 @@ const CourseDetailPage = () => {
                       </Box>
                     </Box>
 
-                    <Box 
-                      sx={{ 
-                        display: "flex", 
+                    <Box
+                      sx={{
+                        display: "flex",
                         alignItems: "center",
                         p: 2,
                         bgcolor: "#f8fafc",
@@ -506,7 +528,10 @@ const CourseDetailPage = () => {
                       }}
                     >
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600, color: "#1f2937" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{ fontWeight: 600, color: "#1f2937" }}
+                        >
                           Hỗ trợ trực tuyến
                         </Typography>
                         <Typography variant="caption" sx={{ color: "#6b7280" }}>
@@ -557,8 +582,8 @@ const CourseDetailPage = () => {
 
         {/* Class List Tab */}
         <TabPanel value={tabValue} index={0}>
-          <ClassList 
-            classes={classes} 
+          <ClassList
+            classes={classes}
             loading={loadingClasses}
             courseId={course.CourseID}
             onEnrollmentChange={checkEnrollment}
@@ -567,7 +592,7 @@ const CourseDetailPage = () => {
 
         {/* Curriculum Tab */}
         <TabPanel value={tabValue} index={1}>
-          <CourseCurriculum 
+          <CourseCurriculum
             courseId={course.CourseID}
             isEnrolled={isEnrolledInCourse}
           />

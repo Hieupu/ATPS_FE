@@ -1,4 +1,11 @@
-import React, { useState, useEffect, memo, useMemo, useCallback, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  memo,
+  useMemo,
+  useCallback,
+  useRef,
+} from "react";
 import {
   Container,
   Grid,
@@ -32,13 +39,22 @@ import { searchInstructorsApi } from "../../apiServices/instructorService";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../../components/Header/AppHeader";
 
-
 const TYPE_LABELS = {
   fulltime: "Giảng viên toàn thời gian",
   parttime: "Giảng viên bán thời gian",
 };
 
 const InstructorCard = ({ instructor }) => {
+  console.log("[InstructorCard] Instructor data:", {
+    InstructorID: instructor?.InstructorID,
+    FullName: instructor?.FullName,
+    TotalCourses: instructor?.TotalCourses,
+    TotalStudents: instructor?.TotalStudents,
+    InstructorFee: instructor?.InstructorFee,
+    Certificates: instructor?.Certificates,
+    allKeys: instructor ? Object.keys(instructor) : [],
+  });
+
   const navigate = useNavigate();
 
   const handleViewProfile = () => {
@@ -157,7 +173,7 @@ const InstructorCard = ({ instructor }) => {
               {instructor.Job || "Giảng viên"}
             </Typography>
           </Box>
-              {/* Certificates */}
+          {/* Certificates */}
           {instructor.Certificates && instructor.Certificates.length > 0 && (
             <Box
               sx={{
@@ -204,8 +220,6 @@ const InstructorCard = ({ instructor }) => {
             </Box>
           )}
         </Box>
-
-
 
         {/* Stats */}
         <Box
@@ -263,29 +277,30 @@ const InstructorCard = ({ instructor }) => {
           </Box>
         </Box>
 
-<Box
-  sx={{
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 1,
-    py: 1,
-    bgcolor: "rgba(99,102,241,0.08)",
-    borderRadius: 2,
-    border: "1px solid rgba(99,102,241,0.15)",
-  }}
->
-  <Typography
-    variant="body2"
-    sx={{
-      fontWeight: 700,
-      color: "primary.main",
-      fontSize: "0.9rem",
-    }}
-  >
-    Phí: {(instructor.InstructorFee || 0).toLocaleString('vi-VN')} VND/buổi
-  </Typography>
-</Box>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: 1,
+            py: 1,
+            bgcolor: "rgba(99,102,241,0.08)",
+            borderRadius: 2,
+            border: "1px solid rgba(99,102,241,0.15)",
+          }}
+        >
+          <Typography
+            variant="body2"
+            sx={{
+              fontWeight: 700,
+              color: "primary.main",
+              fontSize: "0.9rem",
+            }}
+          >
+            Phí: {(instructor.InstructorFee || 0).toLocaleString("vi-VN")}{" "}
+            VND/buổi
+          </Typography>
+        </Box>
 
         {/* View Profile Button */}
         <Button
@@ -353,7 +368,7 @@ const InstructorsPage = () => {
   // Ref to scroll to instructors container
   const instructorContainerRef = useRef(null);
 
-    const timeslotOptions = [
+  const timeslotOptions = [
     { value: "1", label: "Thứ 2 - 8h-10h" },
     { value: "2", label: "Thứ 2 - 10h20-12h20" },
     { value: "3", label: "Thứ 2 - 13h-15h" },
@@ -399,44 +414,51 @@ const InstructorsPage = () => {
   ];
 
   // Trong useEffect fetch instructors, thêm log để debug
-useEffect(() => {
-  const fetch = async () => {
-    try {
-      console.log("Filter params:", {
-        search: debouncedSearchTerm,
-        major: filterByMajor,
-        type: filterByType,
-        timeslots: selectedTimeslots,
-        minFee: feeRange[0],
-        maxFee: feeRange[1],
-        page,
-        pageSize: instructorsPerPage,
-      });
-      
-      const { items, total: t } = await searchInstructorsApi({
-        search: debouncedSearchTerm,
-        major: filterByMajor,
-        type: filterByType,
-        timeslots: selectedTimeslots,
-        minFee: feeRange[0],
-        maxFee: feeRange[1],
-        page,
-        pageSize: instructorsPerPage,
-      });
-      
-      console.log("API response:", items);
-      setInstructors(items || []);
-      setTotal(t || 0);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching instructors:", error);
-      setInstructors([]);
-      setTotal(0);
-      setLoading(false);
-    }
-  };
-  fetch();
-}, [debouncedSearchTerm, filterByMajor, filterByType, selectedTimeslots, feeRange, page]);
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        console.log("Filter params:", {
+          search: debouncedSearchTerm,
+          major: filterByMajor,
+          type: filterByType,
+          timeslots: selectedTimeslots,
+          minFee: feeRange[0],
+          maxFee: feeRange[1],
+          page,
+          pageSize: instructorsPerPage,
+        });
+
+        const { items, total: t } = await searchInstructorsApi({
+          search: debouncedSearchTerm,
+          major: filterByMajor,
+          type: filterByType,
+          timeslots: selectedTimeslots,
+          minFee: feeRange[0],
+          maxFee: feeRange[1],
+          page,
+          pageSize: instructorsPerPage,
+        });
+
+        console.log("API response:", items);
+        setInstructors(items || []);
+        setTotal(t || 0);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching instructors:", error);
+        setInstructors([]);
+        setTotal(0);
+        setLoading(false);
+      }
+    };
+    fetch();
+  }, [
+    debouncedSearchTerm,
+    filterByMajor,
+    filterByType,
+    selectedTimeslots,
+    feeRange,
+    page,
+  ]);
 
   // Debounce search term
   useEffect(() => {
@@ -494,7 +516,8 @@ useEffect(() => {
       {/* Hero Section - Enhanced Premium Design */}
       <Box
         sx={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
+          background:
+            "linear-gradient(135deg, #667eea 0%, #764ba2 50%, #667eea 100%)",
           color: "white",
           py: { xs: 3, md: 4 },
           mb: 5,
@@ -636,7 +659,8 @@ useEffect(() => {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              boxShadow: "0 35px 90px rgba(0,0,0,0.35), 0 0 80px rgba(255,255,255,0.35), inset 0 1px 1px rgba(255,255,255,0.5)",
+              boxShadow:
+                "0 35px 90px rgba(0,0,0,0.35), 0 0 80px rgba(255,255,255,0.35), inset 0 1px 1px rgba(255,255,255,0.5)",
               backdropFilter: "blur(25px)",
               fontSize: "2.5rem",
               border: "3px solid rgba(255,255,255,0.35)",
@@ -813,11 +837,13 @@ useEffect(() => {
                   }}
                 >
                   <MenuItem value="">Tất cả chuyên ngành</MenuItem>
-                  {majors.filter(m => m).map((major) => (
-                    <MenuItem key={major} value={major}>
-                      {major}
-                    </MenuItem>
-                  ))}
+                  {majors
+                    .filter((m) => m)
+                    .map((major) => (
+                      <MenuItem key={major} value={major}>
+                        {major}
+                      </MenuItem>
+                    ))}
                 </Select>
               </FormControl>
             </Grid>
@@ -862,128 +888,139 @@ useEffect(() => {
               </FormControl>
             </Grid>
 
-<Grid item xs={12} sm={6} md={2.5}>
-  <FormControl fullWidth>
-    <InputLabel>Khung giờ trống</InputLabel>
-    <Select
-      multiple
-      value={selectedTimeslots}
-      label="Khung giờ trống"
-      onChange={(e) => {
-        setSelectedTimeslots(e.target.value);
-        setPage(1);
-      }}
-      renderValue={(selected) => {
-        if (selected.length === 0) {
-          return "Tất cả khung giờ";
-        }
-        if (selected.length === 1) {
-          const option = timeslotOptions.find(opt => opt.value === selected[0]);
-          return option?.shortLabel || option?.label || selected[0]; // Sử dụng shortLabel
-        }
-        return `${selected.length} khung giờ`;
-      }}
-      sx={{
-        borderRadius: 8, // Border tròn hơn
-        bgcolor: "#f5f6ff",
-        "&:hover": {
-          bgcolor: "#eef0ff",
-        },
-        "&.Mui-focused": {
-          bgcolor: "white",
-          boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
-        },
-      }}
-    >
-      {timeslotOptions.map((option) => (
-        <MenuItem key={option.value} value={option.value}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Box
-              sx={{
-                width: 16,
-                height: 16,
-                border: '2px solid',
-                borderColor: selectedTimeslots.includes(option.value) ? 'primary.main' : 'grey.400',
-                borderRadius: 2, // Border tròn hơn
-                mr: 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: selectedTimeslots.includes(option.value) ? 'primary.main' : 'transparent',
-              }}
-            >
-              {selectedTimeslots.includes(option.value) && (
-                <Box
-                  sx={{
-                    width: 8,
-                    height: 8,
-                    backgroundColor: 'white',
-                    borderRadius: 1, // Border tròn hơn
+            <Grid item xs={12} sm={6} md={2.5}>
+              <FormControl fullWidth>
+                <InputLabel>Khung giờ trống</InputLabel>
+                <Select
+                  multiple
+                  value={selectedTimeslots}
+                  label="Khung giờ trống"
+                  onChange={(e) => {
+                    setSelectedTimeslots(e.target.value);
+                    setPage(1);
                   }}
-                />
+                  renderValue={(selected) => {
+                    if (selected.length === 0) {
+                      return "Tất cả khung giờ";
+                    }
+                    if (selected.length === 1) {
+                      const option = timeslotOptions.find(
+                        (opt) => opt.value === selected[0]
+                      );
+                      return option?.shortLabel || option?.label || selected[0]; // Sử dụng shortLabel
+                    }
+                    return `${selected.length} khung giờ`;
+                  }}
+                  sx={{
+                    borderRadius: 8, // Border tròn hơn
+                    bgcolor: "#f5f6ff",
+                    "&:hover": {
+                      bgcolor: "#eef0ff",
+                    },
+                    "&.Mui-focused": {
+                      bgcolor: "white",
+                      boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
+                    },
+                  }}
+                >
+                  {timeslotOptions.map((option) => (
+                    <MenuItem key={option.value} value={option.value}>
+                      <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Box
+                          sx={{
+                            width: 16,
+                            height: 16,
+                            border: "2px solid",
+                            borderColor: selectedTimeslots.includes(
+                              option.value
+                            )
+                              ? "primary.main"
+                              : "grey.400",
+                            borderRadius: 2, // Border tròn hơn
+                            mr: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backgroundColor: selectedTimeslots.includes(
+                              option.value
+                            )
+                              ? "primary.main"
+                              : "transparent",
+                          }}
+                        >
+                          {selectedTimeslots.includes(option.value) && (
+                            <Box
+                              sx={{
+                                width: 8,
+                                height: 8,
+                                backgroundColor: "white",
+                                borderRadius: 1, // Border tròn hơn
+                              }}
+                            />
+                          )}
+                        </Box>
+                        {option.shortLabel || option.label}{" "}
+                        {/* Hiển thị shortLabel */}
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              {selectedTimeslots.length > 0 && (
+                <Button
+                  variant="text"
+                  size="small"
+                  onClick={() => setSelectedTimeslots([])}
+                  sx={{
+                    textTransform: "none",
+                    color: "error.main",
+                    fontWeight: 600,
+                    fontSize: "0.75rem",
+                    mt: 0.5,
+                  }}
+                >
+                  Xóa khung giờ
+                </Button>
               )}
-            </Box>
-            {option.shortLabel || option.label} {/* Hiển thị shortLabel */}
-          </Box>
-        </MenuItem>
-      ))}
-    </Select>
-  </FormControl>
-  {selectedTimeslots.length > 0 && (
-    <Button
-      variant="text"
-      size="small"
-      onClick={() => setSelectedTimeslots([])}
-      sx={{
-        textTransform: "none",
-        color: "error.main",
-        fontWeight: 600,
-        fontSize: "0.75rem",
-        mt: 0.5,
-      }}
-    >
-      Xóa khung giờ
-    </Button>
-  )}
-</Grid>
+            </Grid>
 
-         <Grid item xs={12} sm={6} md={2}>
-  <FormControl fullWidth>
-    <InputLabel>Mức phí (VND/buổi)</InputLabel>
-    <Select
-      value={feeRange.join(',')}
-      label="Mức phí (VND/buổi)"
-      onChange={(e) => {
-        const range = e.target.value.split(',').map(Number);
-        setFeeRange(range);
-        setPage(1);
-      }}
-      sx={{
-        borderRadius: 999,
-        bgcolor: "#f5f6ff",
-        "&:hover": {
-          bgcolor: "#eef0ff",
-        },
-        "& .MuiSelect-select": {
-          borderRadius: 999,
-          py: 1.2,
-        },
-        "&.Mui-focused": {
-          bgcolor: "white",
-          boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
-        },
-      }}
-    >
-      <MenuItem value="0,1000000">Tất cả mức phí</MenuItem>
-      <MenuItem value="0,200000">Dưới 200k</MenuItem>
-      <MenuItem value="200000,400000">200k - 400k</MenuItem>
-      <MenuItem value="400000,600000">400k - 600k</MenuItem>
-      <MenuItem value="600000,800000">600k - 800k</MenuItem>
-      <MenuItem value="800000,1000000">800k - 1tr</MenuItem>
-      <MenuItem value="1000000,5000000">Trên 1tr</MenuItem>
-    </Select>
-  </FormControl>
-</Grid>
+            <Grid item xs={12} sm={6} md={2}>
+              <FormControl fullWidth>
+                <InputLabel>Mức phí (VND/buổi)</InputLabel>
+                <Select
+                  value={feeRange.join(",")}
+                  label="Mức phí (VND/buổi)"
+                  onChange={(e) => {
+                    const range = e.target.value.split(",").map(Number);
+                    setFeeRange(range);
+                    setPage(1);
+                  }}
+                  sx={{
+                    borderRadius: 999,
+                    bgcolor: "#f5f6ff",
+                    "&:hover": {
+                      bgcolor: "#eef0ff",
+                    },
+                    "& .MuiSelect-select": {
+                      borderRadius: 999,
+                      py: 1.2,
+                    },
+                    "&.Mui-focused": {
+                      bgcolor: "white",
+                      boxShadow: "0 0 0 4px rgba(124,58,237,0.12)",
+                    },
+                  }}
+                >
+                  <MenuItem value="0,1000000">Tất cả mức phí</MenuItem>
+                  <MenuItem value="0,200000">Dưới 200k</MenuItem>
+                  <MenuItem value="200000,400000">200k - 400k</MenuItem>
+                  <MenuItem value="400000,600000">400k - 600k</MenuItem>
+                  <MenuItem value="600000,800000">600k - 800k</MenuItem>
+                  <MenuItem value="800000,1000000">800k - 1tr</MenuItem>
+                  <MenuItem value="1000000,5000000">Trên 1tr</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
 
             <Grid item xs={12} md={1}>
               <Box
@@ -1079,7 +1116,8 @@ useEffect(() => {
                   borderRadius: 2,
                   px: 4,
                   py: 1.5,
-                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                   textTransform: "none",
                   fontWeight: 600,
                   boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
@@ -1147,7 +1185,8 @@ useEffect(() => {
                       boxShadow: "0 6px 12px rgba(15,23,42,0.08)",
                     },
                     "& .MuiPaginationItem-root.Mui-selected": {
-                      background: "linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%)",
+                      background:
+                        "linear-gradient(135deg, #6d28d9 0%, #8b5cf6 100%)",
                       color: "white",
                       border: "none",
                       boxShadow: "0 12px 25px rgba(109,40,217,0.35)",

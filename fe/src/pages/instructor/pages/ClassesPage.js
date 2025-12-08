@@ -3,7 +3,7 @@ import axios from "axios";
 import { Box } from "@mui/material";
 import ClassesLayout from "../components/class/ClassesLayout";
 
-const BASE_URL = "http://localhost:9999/api/instructor";
+const BASE_URL = `${process.env.REACT_APP_API_URL}/instructor`;
 const apiClient = axios.create({
   baseURL: BASE_URL,
 });

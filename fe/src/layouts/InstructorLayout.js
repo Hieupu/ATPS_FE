@@ -7,14 +7,14 @@ export default function InstructorLayout() {
   const [activeNav, setActiveNav] = useState("dashboard");
 
   return (
-    <div style={{ display: "flex" }}>
-      <InstructorSidebar activeNav={activeNav} onNavChange={setActiveNav} />
-      <div style={{ marginLeft: "250px", width: "100%" }}>
+    <div className="instructor-page">
+      <InstructorSidebar />
+      <main style={{ marginLeft: "250px", minHeight: "100vh" }}>
         <HeaderInstructor />
         <div style={{ padding: "80px 0" }}>
           <Outlet />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

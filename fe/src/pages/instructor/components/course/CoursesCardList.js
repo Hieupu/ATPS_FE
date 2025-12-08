@@ -8,7 +8,6 @@ import {
   Typography,
   Chip,
   Stack,
-  LinearProgress,
   IconButton,
   Menu,
   MenuItem,
@@ -23,6 +22,33 @@ import MenuBookIcon from "@mui/icons-material/MenuBook";
 import MenuOpenIcon from "@mui/icons-material/MenuOpen";
 import DescriptionIcon from "@mui/icons-material/Description";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+
+// --- CẤU HÌNH DỊCH & MÀU SẮC ---
+
+// 1. Dịch trạng thái sang tiếng Việt
+const STATUS_LABELS = {
+  DRAFT: "Bản nháp",
+  IN_REVIEW: "Chờ duyệt",
+  APPROVED: "Đã duyệt",
+  PUBLISHED: "Đã xuất bản",
+  DELETED: "Đã xóa",
+};
+
+// 2. Cấu hình màu sắc cho trạng thái
+const STATUS_COLORS = {
+  PUBLISHED: "success.main",
+  IN_REVIEW: "warning.main",
+  APPROVED: "info.main",
+  DRAFT: "grey.700",
+  DELETED: "error.main",
+};
+
+// 3. Dịch cấp độ sang tiếng Việt
+const LEVEL_LABELS = {
+  BEGINNER: "Cơ bản",
+  INTERMEDIATE: "Trung cấp",
+  ADVANCED: "Nâng cao",
+};
 
 export default function CoursesCardList({
   courses,
@@ -78,13 +104,7 @@ export default function CoursesCardList({
           const lessons = LessonCount ?? 0;
           const missingMaterials = MaterialMissingCount ?? 0;
 
-          const progressPercent =
-            lessons > 0 && missingMaterials >= 0
-              ? Math.max(
-                  0,
-                  Math.min(100, ((lessons - missingMaterials) / lessons) * 100)
-                )
-              : 0;
+          // Xóa biến progressPercent thừa
 
           return (
             <Grid item xs={12} sm={6} md={4} key={CourseID}>
@@ -96,6 +116,8 @@ export default function CoursesCardList({
                   flexDirection: "column",
                   borderRadius: 2,
                   overflow: "hidden",
+                  transform: "none",
+                  transition: "none",
                 }}
               >
                 {/* IMAGE TRÊN ĐẦU */}
@@ -110,22 +132,18 @@ export default function CoursesCardList({
                     />
                   )}
 
+                  {/* CHIP TRẠNG THÁI (Đã sửa hiển thị tiếng Việt) */}
                   {Status && (
                     <Chip
                       size="small"
-                      label={Status}
+                      // Lấy text tiếng Việt từ STATUS_LABELS, nếu không có thì hiện nguyên gốc
+                      label={STATUS_LABELS[Status] || Status}
                       sx={{
                         position: "absolute",
                         top: 8,
                         left: 8,
-                        backgroundColor:
-                          Status === "PUBLISHED"
-                            ? "success.main"
-                            : Status === "IN_REVIEW"
-                            ? "warning.main"
-                            : Status === "APPROVED"
-                            ? "info.main"
-                            : "grey.700",
+                        // Lấy màu từ STATUS_COLORS
+                        backgroundColor: STATUS_COLORS[Status] || "grey.700",
                         color: "#fff",
                       }}
                     />
@@ -182,10 +200,12 @@ export default function CoursesCardList({
                       )}
                     </Box>
 
+                    {/* CHIP CẤP ĐỘ (Đã sửa hiển thị tiếng Việt) */}
                     {Level && (
                       <Chip
                         size="small"
-                        label={Level}
+                        // Lấy text tiếng Việt từ LEVEL_LABELS
+                        label={LEVEL_LABELS[Level] || Level}
                         color="primary"
                         variant="outlined"
                       />

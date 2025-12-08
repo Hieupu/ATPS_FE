@@ -176,7 +176,12 @@ export default function InstructorDashboard() {
   // Sinh viên xuất sắc
   const topStudents = [
     { name: "Emma Johnson", course: "Web Dev", score: 98, avatar: "EJ" },
-    { name: "Michael Chen", course: "Data Structures", score: 96, avatar: "MC" },
+    {
+      name: "Michael Chen",
+      course: "Data Structures",
+      score: 96,
+      avatar: "MC",
+    },
     { name: "Sarah Williams", course: "Mobile Dev", score: 95, avatar: "SW" },
     { name: "David Kim", course: "ML Basics", score: 94, avatar: "DK" },
   ];
@@ -184,7 +189,9 @@ export default function InstructorDashboard() {
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       {/* Quick Actions */}
-      <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)", mb: 3 }}>
+      <Card
+        sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)", mb: 3 }}
+      >
         <CardContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
             Quick Actions
@@ -261,7 +268,13 @@ export default function InstructorDashboard() {
               }}
             >
               <CardContent>
-                <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}
+                >
                   <Box
                     sx={{
                       width: 56,
@@ -295,7 +308,11 @@ export default function InstructorDashboard() {
                     }}
                   />
                 </Box>
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 0.5 }}
+                >
                   {stat.title}
                 </Typography>
                 <Typography variant="h4" sx={{ fontWeight: 700 }}>
@@ -310,9 +327,13 @@ export default function InstructorDashboard() {
       <Grid container spacing={3}>
         {/* Active Courses */}
         <Grid item xs={12} md={8}>
-          <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+          >
             <CardContent>
-              <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
+              <Box
+                sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}
+              >
                 <Typography variant="h6" sx={{ fontWeight: 700 }}>
                   Active Courses
                 </Typography>
@@ -337,18 +358,41 @@ export default function InstructorDashboard() {
                       },
                     }}
                   >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 2,
+                      }}
+                    >
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+                        <Typography
+                          variant="subtitle1"
+                          sx={{ fontWeight: 600, mb: 0.5 }}
+                        >
                           {course.name}
                         </Typography>
-                        <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
+                        <Box
+                          sx={{ display: "flex", gap: 2, alignItems: "center" }}
+                        >
                           <Typography variant="body2" color="text.secondary">
-                            <People sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }} />
+                            <People
+                              sx={{
+                                fontSize: 14,
+                                mr: 0.5,
+                                verticalAlign: "middle",
+                              }}
+                            />
                             {course.students} students
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
-                            <Schedule sx={{ fontSize: 14, mr: 0.5, verticalAlign: "middle" }} />
+                            <Schedule
+                              sx={{
+                                fontSize: 14,
+                                mr: 0.5,
+                                verticalAlign: "middle",
+                              }}
+                            />
                             {course.lessons} lessons
                           </Typography>
                         </Box>
@@ -365,7 +409,13 @@ export default function InstructorDashboard() {
                       />
                     </Box>
                     <Box>
-                      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 0.5 }}>
+                      <Box
+                        sx={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          mb: 0.5,
+                        }}
+                      >
                         <Typography variant="body2" color="text.secondary">
                           Progress
                         </Typography>
@@ -430,7 +480,8 @@ export default function InstructorDashboard() {
                       sx={{
                         width: 44,
                         height: 44,
-                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        background:
+                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                         fontWeight: 600,
                       }}
                     >
@@ -460,7 +511,9 @@ export default function InstructorDashboard() {
           </Card>
 
           {/* Pending Assignments */}
-          <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+          <Card
+            sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}
+          >
             <CardContent>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
                 Pending Reviews
@@ -481,7 +534,13 @@ export default function InstructorDashboard() {
                       },
                     }}
                   >
-                    <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        mb: 1,
+                      }}
+                    >
                       <Typography variant="caption" color="text.secondary">
                         {assignment.course}
                       </Typography>
@@ -507,14 +566,26 @@ export default function InstructorDashboard() {
                         }}
                       />
                     </Box>
-                    <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                    <Typography
+                      variant="subtitle2"
+                      sx={{ fontWeight: 600, mb: 1 }}
+                    >
                       {assignment.title}
                     </Typography>
-                    <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
                       <Typography variant="body2" color="text.secondary">
                         {assignment.submissions} submissions
                       </Typography>
-                      <Typography variant="caption" sx={{ color: "#f59e0b", fontWeight: 600 }}>
+                      <Typography
+                        variant="caption"
+                        sx={{ color: "#f59e0b", fontWeight: 600 }}
+                      >
                         {assignment.deadline}
                       </Typography>
                     </Box>
