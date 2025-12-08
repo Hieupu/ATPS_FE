@@ -76,7 +76,7 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
       const data = await getSectionsApi(exam.ExamID);
       setSections(data);
     } catch (error) {
-      showSnackbar(error.message || "Không thể tải danh sách phần thi", "error");
+      showSnackbar(error.message || "Không thể tải danh sách phần bài tập", "error");
     } finally {
       setLoading(false);
     }
@@ -125,14 +125,14 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
       setLoading(true);
       if (sectionFormMode === "create") {
         await createExamSectionApi(exam.ExamID, sectionFormData);
-        showSnackbar("Tạo phần thi thành công!", "success");
+        showSnackbar("Tạo phần bài tập thành công!", "success");
       } else {
         await updateExamSectionApi(
           exam.ExamID,
           selectedSection.SectionID,
           sectionFormData
         );
-        showSnackbar("Cập nhật phần thi thành công!", "success");
+        showSnackbar("Cập nhật phần bài tập thành công!", "success");
       }
       setOpenSectionForm(false);
       loadSections();
@@ -151,10 +151,10 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
     try {
       setLoading(true);
       await deleteExamSectionApi(exam.ExamID, section.SectionID);
-      showSnackbar("Xóa phần thi thành công!", "success");
+      showSnackbar("Xóa phần bài tập thành công!", "success");
       loadSections();
     } catch (error) {
-      showSnackbar(error.message || "Không thể xóa phần thi", "error");
+      showSnackbar(error.message || "Không thể xóa phần bài tập", "error");
     } finally {
       setLoading(false);
     }
@@ -186,7 +186,7 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
   };
 
   const handleRemoveQuestion = async (section, questionId) => {
-    if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này khỏi phần thi?")) {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này khỏi bài tập?")) {
       return;
     }
 
@@ -222,21 +222,21 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
         <DialogTitle>
           <Box display="flex" justifyContent="space-between" alignItems="center">
             <Typography variant="h6">
-              Quản lý phần thi - {exam?.Title}
+              Quản lý phần bài tập - {exam?.Title}
             </Typography>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={handleCreateSection}
             >
-              Thêm phần thi
+              Thêm phần bài tập
             </Button>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
           {sections.length === 0 ? (
             <Alert severity="info">
-              Chưa có phần thi nào. Hãy tạo phần thi đầu tiên!
+              Chưa có phần bài tập nào. Hãy tạo phần bài tập đầu tiên!
             </Alert>
           ) : (
             <List>
@@ -368,7 +368,7 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
         fullWidth
       >
         <DialogTitle>
-          {sectionFormMode === "create" ? "Tạo phần thi mới" : "Chỉnh sửa phần thi"}
+          {sectionFormMode === "create" ? "Tạo bài tập" : "Chỉnh sửa bài tập"}
         </DialogTitle>
         <DialogContent dividers>
           <Box display="flex" flexDirection="column" gap={2}>
