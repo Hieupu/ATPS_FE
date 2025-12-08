@@ -9,50 +9,20 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        // Endpoint chưa có hoặc không có quyền, dùng mock data
-        return [
-          {
-            ClassID: 1,
-            Name: "JavaScript Fundamentals 2024",
-            Status: "DRAFT",
-            Fee: 2500000,
-            CourseID: 1,
-            InstructorID: 1,
-            Instructor: {
-              InstructorID: 1,
-              FullName: "Nguyễn Văn A",
-              Major: "Full Stack Development",
-            },
-            description: "Khóa học JavaScript cơ bản cho người mới bắt đầu",
-            startDate: "2024-02-01",
-            endDate: "2024-04-30",
-            enrolledStudents: [],
-            maxStudents: 30,
-          },
-          {
-            ClassID: 2,
-            Name: "React Advanced Techniques",
-            Status: "WAITING",
-            Fee: 3000000,
-            CourseID: 2,
-            InstructorID: 2,
-            Instructor: {
-              InstructorID: 2,
-              FullName: "Trần Thị B",
-              Major: "Frontend Development",
-            },
-            description: "Khóa học React nâng cao với hooks và context",
-            startDate: "2024-03-01",
-            endDate: "2024-05-30",
-            enrolledStudents: [1, 2],
-            maxStudents: 25,
-          },
-        ];
-      }
-      // Log other errors
       console.error("Get classes error:", error);
       return [];
+    }
+  },
+
+  createZoomMeeting: async (meetingData) => {
+    try {
+      const response = await apiClient.post("/zoom/create-meeting", meetingData,
+        {
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Create Zoom meeting error:", error);
+      throw error.response?.data || { message: "Failed to create Zoom meeting" };
     }
   },
 
@@ -106,26 +76,6 @@ const classService = {
       const response = await apiClient.get("/classes/instructors");
       return response.data?.data || response.data || [];
     } catch (error) {
-      // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            InstructorID: 1,
-            FullName: "Nguyễn Văn A",
-            Major: "Full Stack Development",
-          },
-          {
-            InstructorID: 2,
-            FullName: "Trần Thị B",
-            Major: "Frontend Development",
-          },
-          {
-            InstructorID: 3,
-            FullName: "Lê Văn C",
-            Major: "Backend Development",
-          },
-        ];
-      }
       console.error("Get instructors error:", error);
       return [];
     }
@@ -155,26 +105,6 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            CourseID: 1,
-            Title: "JavaScript Fundamentals",
-            Description: "Khóa học JavaScript cơ bản",
-            Duration: 40,
-            Fee: 2000000,
-            Status: "active",
-          },
-          {
-            CourseID: 2,
-            Title: "React Advanced",
-            Description: "Khóa học React nâng cao",
-            Duration: 50,
-            Fee: 2500000,
-            Status: "active",
-          },
-        ];
-      }
       console.error("Get courses error:", error);
       return [];
     }
@@ -223,47 +153,7 @@ const classService = {
       };
     } catch (error) {
       const status = error.response?.status;
-
-      if (status === 404 || status === 403) {
-        console.warn("Timeslots endpoint not available, using fallback data");
-        const fallback = [
-          {
-            TimeslotID: 1,
-            StartTime: "08:00:00",
-            EndTime: "10:00:00",
-            Day: "T2",
-          },
-          {
-            TimeslotID: 2,
-            StartTime: "14:00:00",
-            EndTime: "16:00:00",
-            Day: "T3",
-          },
-          {
-            TimeslotID: 3,
-            StartTime: "19:00:00",
-            EndTime: "21:00:00",
-            Day: "T4",
-          },
-        ];
-        return {
-          data: fallback,
-          pagination: {
-            page: 1,
-            limit: fallback.length,
-            total: fallback.length,
-            totalPages: 1,
-          },
-        };
-      }
-
       if (status === 500) {
-        console.error(
-          "Get timeslots error (500): Backend server error. Possible causes:"
-        );
-        console.error("1. Backend chưa hỗ trợ trường 'Day' mới trong timeslot");
-        console.error("2. Database chưa được cập nhật lên dbver5");
-        console.error("3. Backend có lỗi khi query timeslots");
         console.error("Error details:", error.response?.data || error.message);
         return {
           data: [],
@@ -352,20 +242,6 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            LearnerID: 1,
-            FullName: "Học viên Một",
-            Email: "hocvien1@example.com",
-          },
-          {
-            LearnerID: 2,
-            FullName: "Học viên Hai",
-            Email: "hocvien2@example.com",
-          },
-        ];
-      }
       console.error("Get learners error:", error);
       return [];
     }
@@ -775,8 +651,8 @@ const classService = {
         try {
           // Map action thành Status
           let status = "DRAFT";
-          if (action === "APPROVE") {
-            status = "APPROVED";
+          if (action === "ACTIVE") {
+            status = "ACTIVE";
           } else if (action === "REJECT") {
             status = "REJECTED";
           }

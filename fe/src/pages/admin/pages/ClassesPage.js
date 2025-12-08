@@ -262,8 +262,6 @@ const ClassesPage = () => {
 
   const handleSubmitClassForm = async (formData) => {
     try {
-      // Map formData sang format API theo dbver5
-      // Gửi cả trường mới và trường cũ để tương thích với backend (backward compatibility)
       const apiData = {
         Name: formData.title,
         Fee:
@@ -307,7 +305,6 @@ const ClassesPage = () => {
     try {
       // Tách sessions ra khỏi classData để gửi riêng
       const { sessions, ...classData } = formData;
-
       // Tạo class trước
       const createdClass = await classService.createClass(classData);
       const classId =

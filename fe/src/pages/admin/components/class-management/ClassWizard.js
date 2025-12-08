@@ -69,8 +69,6 @@ const ClassWizard = ({
     CourseID: null, // Thêm CourseID
     Fee: "",
     Maxstudent: "", // Đổi từ MaxLearners
-    ZoomID: "", // Mới
-    Zoompass: "", // Mới
     // Step 2: Schedule Info
     schedule: {
       OpendatePlan: "", // Đổi từ StartDate
@@ -1184,8 +1182,6 @@ const ClassWizard = ({
           classData.MaxLearners ||
           classData.maxLearners ||
           "",
-        ZoomID: classData.ZoomID || classData.zoomID || "",
-        Zoompass: classData.Zoompass || classData.zoompass || "",
         schedule: {
           OpendatePlan:
             classData.OpendatePlan ||
@@ -3129,22 +3125,6 @@ const ClassWizard = ({
       return;
     }
 
-    if (!formData.ZoomID || !formData.ZoomID.trim()) {
-      setErrors({
-        ZoomID: "Zoom ID là bắt buộc",
-      });
-      setCurrentStep(1);
-      return;
-    }
-
-    if (!formData.Zoompass || !formData.Zoompass.trim()) {
-      setErrors({
-        Zoompass: "Mật khẩu Zoom là bắt buộc",
-      });
-      setCurrentStep(1);
-      return;
-    }
-
     // Validate sessions trước khi submit
     if (!formData.sessions || formData.sessions.length === 0) {
       setErrors({
@@ -3181,8 +3161,6 @@ const ClassWizard = ({
       OpendatePlan: formData.schedule.OpendatePlan,
       Numofsession: parseInt(formData.schedule.Numofsession),
       Maxstudent: parseInt(formData.Maxstudent),
-      ZoomID: formData.ZoomID.trim(),
-      Zoompass: formData.Zoompass.trim(),
       EnddatePlan: formData.scheduleDetail.EnddatePlan,
       Status: "DRAFT",
       // Luôn gửi sessions khi lưu nháp - với đầy đủ thông tin bao gồm InstructorID

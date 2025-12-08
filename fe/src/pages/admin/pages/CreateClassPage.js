@@ -423,13 +423,53 @@ const CreateClassPage = () => {
     }
   };
 
-  const handleSubmit = async (submitData) => {
+  const handleSubmit = async (submitData) => { 
     setSubmitting(true);
     setError("");
     conflictContextRef.current = null;
     submissionRef.current = submitData;
     try {
-      const isEdit = !!classId; // Kiểm tra xem đang edit hay create
+    const first = submitData.sessions[0];
+
+    const start_time = `${first.Date}T${first.TimeslotStart}`;
+
+    const [h1, m1] = first.TimeslotStart.split(":").map(Number);
+    const [h2, m2] = first.TimeslotEnd.split(":").map(Number);
+    const duration = (h2 * 60 + m2) - (h1 * 60 + m1);
+
+    const dayStringToNumber = {
+      MONDAY: 2,
+      TUESDAY: 3,
+      WEDNESDAY: 4,
+      THURSDAY: 5,
+      FRIDAY: 6,
+      SATURDAY: 7,
+      SUNDAY: 8
+    };
+
+    const weekly_days = [
+      ...new Set(submitData.sessions.map(s => dayStringToNumber[s.TimeslotDay]))
+    ]
+    .sort((a, b) => a - b)
+    .join(",");
+
+    const result = {
+      start_time,
+      weekly_days,
+      duration
+    };
+
+      const zoomPayload = {
+          topic: submitData.Name,
+          start_time: result.start_time ,
+          duration: result.duration || 120,
+          weekly_days: result.weekly_days,
+          end_times: submitData.sessions.length,
+        };
+        const zoomResponse = await classService.createZoomMeeting(zoomPayload);
+        console.log("Zoom meeting created:", zoomResponse);
+
+      const isEdit = !!classId;
       const classPayload = {
         Name: submitData.Name,
         InstructorID: submitData.InstructorID,
@@ -439,10 +479,11 @@ const CreateClassPage = () => {
         EnddatePlan: submitData.EnddatePlan,
         Numofsession: submitData.Numofsession,
         Maxstudent: submitData.Maxstudent,
-        ZoomID: submitData.ZoomID,
-        Zoompass: submitData.Zoompass,
+        ZoomID: zoomResponse.id,
+        Zoompass: zoomResponse.password,
         Status: submitData.Status || "DRAFT",
         CourseID: submitData.CourseID || null,
+        
         // Trường cũ (backward compatibility - sẽ bỏ khi backend cập nhật)
         StartDate: submitData.StartDate || submitData.OpendatePlan,
         ExpectedSessions:
@@ -451,13 +492,14 @@ const CreateClassPage = () => {
       };
 
       let resultClass;
-      let classIdToUse = classId; // Dùng classId từ URL nếu đang edit
+      let classIdToUse = classId; 
 
       if (isEdit) {
         // Update existing class (metadata)
         resultClass = await classService.updateClass(classId, classPayload);
         classIdToUse = classId; // Giữ nguyên classId khi edit
       } else {
+        
         // Create new class
         resultClass = await classService.createClass(classPayload);
         classIdToUse =
@@ -530,6 +572,22 @@ const CreateClassPage = () => {
               return null;
             }
 
+            const matchedZoom = zoomResponse.occurrences.find((z) => {
+              const zoomDate = new Date(z.start_time);
+              zoomDate.setHours(zoomDate.getHours() + 7); // Zoom UTC → GMT+7
+
+              const zDate = zoomDate.toISOString().split("T")[0];
+
+              return (
+                zDate === dateStr
+              );
+            }); 
+            console.log( matchedZoom);
+            localStorage.setItem("zoomCreateResult", JSON.stringify(zoomResponse));
+
+            const saved = localStorage.getItem("zoomCreateResult");
+            const zoomData = saved ? JSON.parse(saved) : null;
+
             const mappedSession = {
               Title: s.Title || `Session ${s.number || index + 1}`,
               Description: s.Description || "",
@@ -537,6 +595,7 @@ const CreateClassPage = () => {
               TimeslotID: timeslotId, // Integer
               InstructorID: submitData.InstructorID, // Integer
               ClassID: finalClassId, // Integer
+              ZoomUUID: zoomData.occurrence_id || null,
             };
             return mappedSession;
           })
@@ -602,6 +661,9 @@ const CreateClassPage = () => {
           } else {
             // CREATE MODE: dùng bulkCreateSessions như hiện tại
             bulkResult = await classService.bulkCreateSessions(sessionsPayload);
+            setTimeout(() => {
+              localStorage.removeItem("zoomCreateResult");
+            }, 10000);
           }
 
           // Kiểm tra kết quả
