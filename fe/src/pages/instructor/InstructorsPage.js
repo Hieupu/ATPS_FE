@@ -40,10 +40,8 @@ import { useNavigate } from "react-router-dom";
 import AppHeader from "../../components/Header/AppHeader";
 
 const TYPE_LABELS = {
-  fulltime: "Giảng viên làm việc toàn thời gian",
-  parttime: "Giảng viên làm việc bán thời gian",
-  fulltime_tutor: "Gia sư toàn thời gian",
-  parttime_tutor: "Gia sư bán thời gian",
+  fulltime: "Giảng viên toàn thời gian",
+  parttime: "Giảng viên bán thời gian",
 };
 
 const InstructorCard = ({ instructor }) => {
