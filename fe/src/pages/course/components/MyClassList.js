@@ -9,20 +9,35 @@ import {
   CircularProgress,
   Alert,
   Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Snackbar,
 } from '@mui/material';
-import { Schedule, People, Assignment } from '@mui/icons-material';
-import { getMyClassesInCourseApi } from '../../../apiServices/courseService';
+import { Schedule, People, Assignment, SwapHoriz } from '@mui/icons-material';
+import { getMyClassesInCourseApi, getClassesByCourseApi, transferClassApi } from '../../../apiServices/courseService';
+import TransferClassModal from './TransferClassModal'; 
 
 const MyClassList = ({ courseId }) => {
   const [classes, setClasses] = useState([]);
+  const [classesInCourse, setClassesInCourse] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [transferLoading, setTransferLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [transferModalOpen, setTransferModalOpen] = useState(false);
+  const [selectedClass, setSelectedClass] = useState(null);
+  const [transferResult, setTransferResult] = useState(null);
+  const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [transferData, setTransferData] = useState({ fromClassId: null, toClassId: null });
 
   useEffect(() => {
     const fetchMyClasses = async () => {
       try {
         setLoading(true);
         const response = await getMyClassesInCourseApi(courseId);
+        console.log("getMyClassesInCourseApi", response);
         setClasses(response.classes || []);
       } catch (error) {
         console.error("Error fetching my classes:", error);
@@ -36,6 +51,74 @@ const MyClassList = ({ courseId }) => {
       fetchMyClasses();
     }
   }, [courseId]);
+
+  useEffect(() => {
+    const fetchClassesInCourse = async () => {
+      try {
+        setLoading(true);
+        const response = await getClassesByCourseApi(courseId);
+        console.log("getClassesByCourseApi", response);
+        setClassesInCourse(response.classes || []);
+      } catch (error) {
+        console.error("Error fetching classes in course:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (courseId) {
+      fetchClassesInCourse();
+    }
+  }, [courseId]);
+
+  const handleOpenTransferModal = (classItem) => {
+    setSelectedClass(classItem);
+    setTransferModalOpen(true);
+  };
+
+  const handleCloseTransferModal = () => {
+    setTransferModalOpen(false);
+    setSelectedClass(null);
+  };
+
+  const handleConfirmTransfer = (fromClassId, toClassId) => {
+    setTransferData({ fromClassId, toClassId });
+    setConfirmDialogOpen(true);
+  };
+
+  const handleTransferClass = async () => {
+    try {
+      setTransferLoading(true);
+      setConfirmDialogOpen(false);
+      
+      const response = await transferClassApi(
+        transferData.fromClassId,
+        transferData.toClassId,
+        courseId
+      );
+      
+      setTransferResult({
+        success: true,
+        message: response.message || 'Chuyển lớp thành công!'
+      });
+      
+      // Refresh data
+      const myClassesResponse = await getMyClassesInCourseApi(courseId);
+      setClasses(myClassesResponse.classes || []);
+      
+      // Close modal
+      handleCloseTransferModal();
+      
+    } catch (error) {
+      console.error("Transfer class error:", error);
+      setTransferResult({
+        success: false,
+        message: error.message || 'Chuyển lớp thất bại. Vui lòng thử lại.'
+      });
+    } finally {
+      setTransferLoading(false);
+    }
+  };
 
   const formatTime = (timeString) => {
     if (!timeString) return '';
@@ -57,6 +140,15 @@ const MyClassList = ({ courseId }) => {
       'Sunday': 'Chủ nhật'
     };
     return dayMap[day] || day;
+  };
+
+  // Filter available classes for transfer (ACTIVE and not full)
+  const getAvailableClassesForTransfer = () => {
+    return classesInCourse.filter(cls => 
+      cls.Status === 'ACTIVE' && 
+      cls.StudentCount < cls.Maxstudent &&
+      (!selectedClass || cls.ClassID !== selectedClass.ClassID)
+    );
   };
 
   if (loading) {
@@ -85,29 +177,87 @@ const MyClassList = ({ courseId }) => {
 
   return (
     <Box>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            fontFamily: "'Poppins', sans-serif",
-          }}
+      {/* Transfer Result Snackbar */}
+      <Snackbar
+        open={!!transferResult}
+        autoHideDuration={6000}
+        onClose={() => setTransferResult(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert 
+          severity={transferResult?.success ? "success" : "error"} 
+          onClose={() => setTransferResult(null)}
         >
-          👥 Lớp học của bạn
-        </Typography>
-        <Chip
-          label={`${classes.length} lớp`}
-          size="small"
-          sx={{
-            bgcolor: "primary.main",
-            color: "white",
-            fontWeight: 600,
-          }}
-        />
+          {transferResult?.message}
+        </Alert>
+      </Snackbar>
+
+      {/* Confirm Transfer Dialog */}
+      <Dialog
+        open={confirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+      >
+        <DialogTitle>Xác nhận chuyển lớp</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc chắn muốn chuyển lớp không? Việc này sẽ:
+            <ul>
+              <li>Chuyển bạn sang lớp học mới</li>
+              <li>Hủy đăng ký khỏi lớp hiện tại</li>
+              <li>Cần được quản trị viên xác nhận</li>
+            </ul>
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDialogOpen(false)}>Hủy</Button>
+          <Button 
+            onClick={handleTransferClass} 
+            variant="contained"
+            disabled={transferLoading}
+          >
+            {transferLoading ? <CircularProgress size={24} /> : 'Xác nhận'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Transfer Class Modal */}
+      <TransferClassModal
+        open={transferModalOpen}
+        onClose={handleCloseTransferModal}
+        currentClass={selectedClass}
+        availableClasses={getAvailableClassesForTransfer()}
+        onTransfer={handleConfirmTransfer}
+        loading={transferLoading}
+      />
+
+      {/* Header */}
+      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              fontFamily: "'Poppins', sans-serif",
+            }}
+          >
+            Lớp học của bạn
+          </Typography>
+          <Chip
+            label={`${classes.length} lớp`}
+            size="small"
+            sx={{
+              bgcolor: "primary.main",
+              color: "white",
+              fontWeight: 600,
+            }}
+          />
+        </Box>
       </Box>
+
+      {/* Classes List */}
       <Grid container spacing={3}>
         {classes.map((classItem) => (
-          <Grid item xs={12} key={classItem.ClassID}>
+          <Grid item xs={12} md={6} key={classItem.ClassID}>
             <Card 
               elevation={0}
               sx={{ 
@@ -140,15 +290,61 @@ const MyClassList = ({ courseId }) => {
                       👨‍🏫 Giảng viên: <strong>{classItem.InstructorName}</strong>
                     </Typography>
                   </Box>
-                  <Chip 
-                    label={classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'Đang hoạt động' : classItem.Status} 
-                    sx={{
-                      bgcolor: classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'success.light' : 'grey.200',
-                      color: classItem.Status === 'active' || classItem.Status === 'Ongoing' ? 'success.dark' : 'text.secondary',
-                      fontWeight: 600,
-                    }}
-                    size="small"
-                  />
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                   <Chip
+  label={
+    classItem.Status?.toLowerCase() === "active"
+      ? "Đang mở"
+      : classItem.Status?.toLowerCase() === "ongoing"
+      ? "Đang học"
+      : classItem.Status?.toLowerCase() === "close" || classItem.Status?.toLowerCase() === "closed"
+      ? "Đã kết thúc"
+      : classItem.Status
+  }
+  sx={{
+    bgcolor: "white",
+    border: "1.5px solid",
+    borderColor:
+      classItem.Status?.toLowerCase() === "active"
+        ? "success.main"
+        : classItem.Status?.toLowerCase() === "ongoing"
+        ? "info.main"
+        : classItem.Status?.toLowerCase() === "close" ||
+          classItem.Status?.toLowerCase() === "closed"
+        ? "grey.500"
+        : "grey.400",
+    color:
+      classItem.Status?.toLowerCase() === "active"
+        ? "success.main"
+        : classItem.Status?.toLowerCase() === "ongoing"
+        ? "info.main"
+        : classItem.Status?.toLowerCase() === "close" ||
+          classItem.Status?.toLowerCase() === "closed"
+        ? "grey.700"
+        : "text.secondary",
+    fontWeight: 600,
+  }}
+  size="small"
+/>
+
+                    
+                    {/* Transfer Button - Only show for ACTIVE classes */}
+                    {(classItem.Status === 'ACTIVE' || classItem.Status === 'active' || classItem.Status === 'Ongoing') && (
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<SwapHoriz />}
+                        onClick={() => handleOpenTransferModal(classItem)}
+                        sx={{
+                          fontSize: '0.75rem',
+                          py: 0.5,
+                          borderRadius: 2,
+                        }}
+                      >
+                        Chuyển lớp
+                      </Button>
+                    )}
+                  </Box>
                 </Box>
                 
                 <Box
@@ -190,36 +386,44 @@ const MyClassList = ({ courseId }) => {
                   )}
                 </Box>
 
-                {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      gutterBottom
-                      sx={{
-                        fontWeight: 700,
-                        color: "text.primary",
-                        mb: 1.5,
-                      }}
-                    >
-                      📅 Lịch học hàng tuần:
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                      {classItem.weeklySchedule.map((schedule, index) => (
-                        <Chip
-                          key={index}
-                          label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
-                          sx={{
-                            bgcolor: "rgba(102,126,234,0.1)",
-                            color: "primary.main",
-                            fontWeight: 600,
-                            borderRadius: 2,
-                          }}
-                          size="small"
-                        />
-                      ))}
-                    </Box>
-                  </Box>
-                )}
+               {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
+  <Box>
+    <Typography
+      variant="subtitle2"
+      gutterBottom
+      sx={{
+        fontWeight: 700,
+        color: "text.primary",
+        mb: 1.5,
+      }}
+    >
+      📅 Lịch học hàng tuần:
+    </Typography>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+      {Array.from(
+        new Map(
+          classItem.weeklySchedule.map(schedule => [
+            // Tạo key duy nhất từ ngày + giờ bắt đầu + giờ kết thúc
+            `${schedule.Day}-${schedule.StartTime}-${schedule.EndTime}`,
+            schedule
+          ])
+        ).values()
+      ).map((schedule, index) => (
+        <Chip
+          key={index}
+          label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
+          sx={{
+            bgcolor: "rgba(102,126,234,0.1)",
+            color: "primary.main",
+            fontWeight: 600,
+            borderRadius: 2,
+          }}
+          size="small"
+        />
+      ))}
+    </Box>
+  </Box>
+)}
               </CardContent>
             </Card>
           </Grid>

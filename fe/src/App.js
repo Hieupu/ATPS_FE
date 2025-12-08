@@ -54,7 +54,7 @@ import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
 import InstructorClasses from "./pages/instructor/pages/ClassesPage";
 import ClassDetailPage from "./pages/instructor/pages/ClassDetailPage";
-import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
@@ -81,7 +81,7 @@ import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
 import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
 import InstructorClassesPage from "./pages/instructor/pages/ClassesPage";
-import InstructorAssignmentsPage from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExamsPage from "./pages/instructor/pages/ExamsPage";
 import InstructorGradesPage from "./pages/instructor/pages/GradesPage";
 import InstructorSettingsPage from "./pages/instructor/pages/SettingsPage";
@@ -92,6 +92,7 @@ import { useTokenExpiry } from "./hooks/useTokenExpiry";
 import CreateExamPage from "./pages/instructor/components/exam/CreateExamPage";
 import EditExamPage from "./pages/instructor/components/exam/EditExamPage";
 
+import ContactPage from "./pages/common/Contact/ContactPage";
 function AppRoutes() {
   useTokenExpiry();
 
@@ -117,11 +118,11 @@ function AppRoutes() {
 
       <Route path="/instructors" element={<InstructorsPage />} />
       <Route path="/instructors/:id" element={<InstructorDetailPage />} />
-
+        <Route path="/contact" element={<ContactPage />} />
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
-      <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
-      <Route path="/exam/:examId/result" element={<ExamResultPage />} />
+      <Route path="/exam/:instanceId/take" element={<ExamTakingPage />} />
+      <Route path="/exam/:instanceId/result" element={<ExamResultPage />} />
 
       {/* Learner Routes */}
       <Route path="/schedule" element={<SchedulePage />} />
@@ -190,7 +191,7 @@ function AppRoutes() {
           <Route path="classes" element={<InstructorClasses />} />
           <Route path="classes/:classId" element={<ClassDetailPage />} />
 
-          <Route path="assignments" element={<InstructorAssignments />} />
+
           <Route path="exams" element={<InstructorExams />} />
           <Route path="grades" element={<InstructorGrades />} />
           <Route path="schedule" element={<InstructorSchedulePage />} />

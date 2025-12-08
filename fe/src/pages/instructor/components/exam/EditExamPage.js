@@ -19,6 +19,7 @@ import { getCoursesApi } from "../../../../apiServices/assignmentService";
 const EditExamPage = () => {
   const { examId } = useParams();
   const navigate = useNavigate();
+
   const [exam, setExam] = React.useState(null);
   const [courses, setCourses] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
@@ -30,15 +31,22 @@ const EditExamPage = () => {
           getExamDetailApi(examId),
           getCoursesApi(),
         ]);
+
         const sectionsData = await getSectionsApi(examId, true);
         for (const parentSection of sectionsData) {
-          if (parentSection.childSections && parentSection.childSections.length > 0) {
+          if (parentSection.childSections?.length) {
             for (const childSection of parentSection.childSections) {
               try {
-                const sectionDetail = await getSectionDetailApi(examId, childSection.SectionId);
-                childSection.questions = sectionDetail.questions || [];
+                const detail = await getSectionDetailApi(
+                  examId,
+                  childSection.SectionId
+                );
+                childSection.questions = detail.questions || [];
               } catch (err) {
-                console.error(`  ❌ Error loading questions for section ${childSection.SectionId}:`, err);
+                console.error(
+                  `❌ Error loading questions for section ${childSection.SectionId}:`,
+                  err
+                );
                 childSection.questions = [];
               }
             }
@@ -46,37 +54,30 @@ const EditExamPage = () => {
         }
 
         examData.sections = sectionsData;
+
         const formattedCourses = (courseData || []).map((c, index) => {
           const id = c.value;
-
-          if (id) {
-            return {
-              label: c.label || `Khóa học ${index + 1}`,
-              value: `${id}-idx${index}`,
-              originalId: id,
-            };
-          } else {
-            const tempId = `temp-${Date.now()}-${index}`;
-            return {
-              label: c.label || `Khóa học ${index + 1}`,
-              value: tempId,
-              originalId: tempId,
-            };
-          }
+          return id
+            ? {
+                label: c.label || `Khóa học ${index + 1}`,
+                value: `${id}-idx${index}`,
+                originalId: id,
+              }
+            : {
+                label: c.label || `Khóa học ${index + 1}`,
+                value: `temp-${Date.now()}-${index}`,
+                originalId: null,
+              };
         });
-        if (examData && examData.CourseID) {
-          const courseId = examData.CourseID;
-          const matchedCourse = formattedCourses.find(
-            (c) => c.originalId === courseId
-          );
 
-          if (matchedCourse) {
-            examData.courseId = matchedCourse.value;
+        if (examData.CourseID) {
+          const found = formattedCourses.find(
+            (c) => c.originalId === examData.CourseID
+          );
+          if (found) {
+            examData.courseId = found.value;
           } else {
-            console.warn(
-              "⚠️ Không tìm thấy course match với CourseID:",
-              courseId
-            );
+            console.warn("⚠ Course not found for CourseID:", examData.CourseID);
           }
         }
 
@@ -89,25 +90,9 @@ const EditExamPage = () => {
         setLoading(false);
       }
     };
+
     loadData();
   }, [examId]);
-  const handleSave = async (dataToSave) => {
-    try {
-      navigate("/instructor/exams", {
-        state: {
-          message: "Cập nhật bài thi thành công!",
-          severity: "success",
-        },
-      });
-    } catch (error) {
-      navigate("/instructor/exams", {
-        state: {
-          message: "Có lỗi xảy ra khi cập nhật",
-          severity: "error",
-        },
-      });
-    }
-  };
 
   if (loading) {
     return (
@@ -123,11 +108,10 @@ const EditExamPage = () => {
       </Box>
     );
   }
-
   if (!exam) {
     return (
       <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Alert severity="error">Không tìm thấy bài thi!</Alert>
+        <Alert severity="error">Không tìm thấy bài tập!</Alert>
         <Button
           variant="contained"
           onClick={() => navigate("/instructor/exams")}
@@ -138,7 +122,6 @@ const EditExamPage = () => {
       </Container>
     );
   }
-
   return (
     <Box sx={{ bgcolor: "#f8fafc", minHeight: "100vh", py: 4 }}>
       <Container
@@ -155,15 +138,10 @@ const EditExamPage = () => {
             Quay lại danh sách
           </Button>
         </Box>
-
         <ExamWizard
           open={true}
           onClose={() => navigate("/instructor/exams")}
-          onSave={handleSave}
-          courses={courses}
-          mode="edit"
-          initialData={exam}
-          examId={examId}
+          exam={exam}      
         />
       </Container>
     </Box>

@@ -46,7 +46,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
   const [checkingEnrollment, setCheckingEnrollment] = useState(false);
   const [scheduleConflict, setScheduleConflict] = useState(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
-
+   console.log("classItem" , classItem)
   const { user, isLearner } = useAuth();
   const navigate = useNavigate();
 
@@ -304,17 +304,34 @@ const ClassCard = ({ classItem, onEnroll }) => {
 
           {/* Thông tin lớp */}
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2.5 }}>
-            <Chip
-              icon={<People sx={{ fontSize: 16 }} />}
-              label={`${classItem.StudentCount || 0} HV`}
-              size="small"
-              sx={{ 
-                bgcolor: '#f5f5f5',
-                border: '1px solid #e0e0e0',
-                fontSize: '0.8rem',
-                height: 28
-              }}
-            />
+              <Chip
+    icon={<People sx={{ fontSize: 16 }} />}
+    label={
+      classItem.Maxstudent - (classItem.StudentCount || 0) > 0 
+        ? `Còn ${classItem.Maxstudent - (classItem.StudentCount || 0)} chỗ`
+        : "Hết chỗ"
+    }
+    size="small"
+    sx={{ 
+      fontSize: '0.8rem',
+      height: 28,
+      // Đổi màu khi hết chỗ
+      ...(classItem.Maxstudent - (classItem.StudentCount || 0) <= 0 ? {
+        bgcolor: '#fef2f2',
+        border: '1px solid #fecaca',
+        color: '#dc2626',
+        fontWeight: 600
+      } : classItem.Maxstudent - (classItem.StudentCount || 0) <= 3 ? {
+        bgcolor: '#fffbeb',
+        border: '1px solid #fde68a',
+        color: '#d97706',
+        fontWeight: 600
+      } : {
+        bgcolor: '#f5f5f5',
+        border: '1px solid #e0e0e0',
+      })
+    }}
+  />
             <Chip
               icon={<Schedule sx={{ fontSize: 16 }} />}
               label={`${classItem.TotalSessions || 0} buổi`}
@@ -343,30 +360,35 @@ const ClassCard = ({ classItem, onEnroll }) => {
             )}
           </Box>
 
-          {/* Nút đăng ký */}
-          <Button
-            fullWidth
-            variant="contained"
-            size="medium"
-            onClick={handleEnrollClick}
-            disabled={checkingEnrollment}
-            startIcon={checkingEnrollment ? <CircularProgress size={16} /> : null}
-            sx={{ 
-              fontWeight: 600,
-              bgcolor: '#667eea',
-              py: 1.2,
-              borderRadius: 1.5,
-              textTransform: 'none',
-              fontSize: '0.95rem',
-              boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
-              '&:hover': {
-                bgcolor: '#5a67d8',
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
-              }
-            }}
-          >
-            {checkingEnrollment ? 'Đang kiểm tra...' : (isEnrolled ? 'Vào học ngay' : 'Đăng ký ngay')}
-          </Button>
+         <Button
+  fullWidth
+  variant="contained"
+  size="medium"
+  onClick={handleEnrollClick}
+  disabled={checkingEnrollment || classItem.Maxstudent - (classItem.StudentCount || 0) <= 0}
+  startIcon={checkingEnrollment ? <CircularProgress size={16} /> : null}
+  sx={{ 
+    fontWeight: 600,
+    bgcolor: '#667eea',
+    py: 1.2,
+    borderRadius: 1.5,
+    textTransform: 'none',
+    fontSize: '0.95rem',
+    boxShadow: '0 2px 8px rgba(102, 126, 234, 0.2)',
+    '&:hover': {
+      bgcolor: '#5a67d8',
+      boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+    },
+    // Style khi disabled vì hết chỗ
+    '&.Mui-disabled': {
+      bgcolor: '#e5e7eb',
+      color: '#9ca3af',
+      boxShadow: 'none'
+    }
+  }}
+>
+  {checkingEnrollment ? 'Đang kiểm tra...' : (isEnrolled ? 'Vào học ngay' : 'Đăng ký ngay')}
+</Button>
         </CardContent>
       </Card>
 

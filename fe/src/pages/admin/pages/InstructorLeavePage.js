@@ -121,9 +121,7 @@ const InstructorLeavePage = () => {
         params.EndDate = appliedFilters.endDate;
       }
 
-      console.log("[InstructorLeavePage] Fetching leaves with params:", params);
       const result = await classService.getInstructorLeaves(params);
-      console.log("[InstructorLeavePage] Leaves response:", result);
       setLeaves(result?.items || []);
       setPagination(result?.pagination || pagination);
       setPage(result?.pagination?.page || pageToLoad);
@@ -167,7 +165,6 @@ const InstructorLeavePage = () => {
     )
       return;
     try {
-      console.log("[InstructorLeavePage] Deleting leaves for date:", date);
       const result = await classService.deleteLeavesByDate(date, "HOLIDAY");
       alert(result?.message || `Đã xóa ${result?.deleted || 0} lịch nghỉ`);
       fetchLeaves(page);

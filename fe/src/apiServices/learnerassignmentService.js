@@ -33,12 +33,10 @@ export const submitAssignmentApi = async (assignmentId, submissionData) => {
   try {
     const formData = new FormData();
     
-    console.log("Submitting assignment - ID:", assignmentId, "Data:", submissionData);
 
     // Thêm answers (đảm bảo là object, không phải array)
     if (submissionData.answers && Object.keys(submissionData.answers).length > 0) {
       formData.append('answers', JSON.stringify(submissionData.answers));
-      console.log("Answers added:", submissionData.answers);
     }
 
     // Thêm các trường khác
@@ -47,13 +45,11 @@ export const submitAssignmentApi = async (assignmentId, submissionData) => {
     }
     if (submissionData.durationSec) {
       formData.append('durationSec', submissionData.durationSec.toString());
-      console.log("Duration added:", submissionData.durationSec);
     }
 
     // Thêm file audio nếu có
     if (submissionData.audioFile) {
       formData.append('audioFile', submissionData.audioFile);
-      console.log("Audio file added");
     }
 
     const response = await apiClient.post(`/learnerassignments/${assignmentId}/submit`, formData, {
@@ -62,7 +58,6 @@ export const submitAssignmentApi = async (assignmentId, submissionData) => {
       },
     });
 
-    console.log("Submission API response:", response.data);
     return response.data;
   } catch (error) {
     console.error("Submit assignment API error:", error);

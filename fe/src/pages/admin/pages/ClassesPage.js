@@ -105,27 +105,7 @@ const ClassesPage = () => {
       // Đảm bảo dữ liệu là array
       let classesArray = Array.isArray(classesData) ? classesData : [];
 
-      // Debug: Log mẫu class để kiểm tra cấu trúc dữ liệu
-      if (classesArray.length > 0) {
-        console.log("Sample class data from API:", {
-          ClassID: classesArray[0].ClassID || classesArray[0].id,
-          Name: classesArray[0].Name || classesArray[0].title,
-          InstructorID:
-            classesArray[0].InstructorID || classesArray[0].instructorId,
-          Instructor: classesArray[0].Instructor,
-          instructorName: classesArray[0].instructorName,
-        });
-      }
-
-      // Debug: Log instructors data
-      if (instructorsData && instructorsData.length > 0) {
-        console.log("Instructors loaded:", instructorsData.length);
-        console.log("Sample instructor:", {
-          InstructorID:
-            instructorsData[0].InstructorID || instructorsData[0].id,
-          FullName: instructorsData[0].FullName || instructorsData[0].fullName,
-        });
-      }
+      
 
       // Cảnh báo nếu không có timeslots (có thể do backend lỗi)
       const timeslotsArray = Array.isArray(timeslotResponse?.data)
@@ -340,7 +320,6 @@ const ClassesPage = () => {
         throw new Error("Không thể lấy ClassID sau khi tạo lớp học");
       }
 
-      console.log("Created class with ID:", classId);
 
       // Tạo sessions sau khi class đã được tạo
       if (sessions && Array.isArray(sessions) && sessions.length > 0) {
@@ -355,7 +334,6 @@ const ClassesPage = () => {
             Date: session.Date,
           }));
 
-          console.log("Creating sessions:", sessionsWithClassId);
 
           // Validate sessions trước khi gửi
           const invalidSessions = sessionsWithClassId.filter(
@@ -402,7 +380,6 @@ const ClassesPage = () => {
               );
             }
           } else {
-            console.log(` Đã tạo ${sessionsWithClassId.length} buổi học!`);
           }
         } catch (sessionError) {
           console.error("Lỗi khi tạo sessions:", sessionError);

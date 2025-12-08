@@ -2,7 +2,7 @@ import React from "react";
 
 /**
  * ClassWizardStep1 - Component cho Step 1: Thông tin cơ bản
- * 
+ *
  * Props:
  * - formData: Object chứa dữ liệu form
  * - setFormData: Function để cập nhật formData
@@ -73,17 +73,13 @@ const ClassWizardStep1 = ({
           type="text"
           id="Name"
           value={formData.Name}
-          onChange={(e) =>
-            setFormData({ ...formData, Name: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, Name: e.target.value })}
           placeholder="Nhập tên lớp học"
           className={errors.Name ? "error" : ""}
           disabled={readonly}
           readOnly={readonly}
         />
-        {errors.Name && (
-          <span className="error-message">{errors.Name}</span>
-        )}
+        {errors.Name && <span className="error-message">{errors.Name}</span>}
       </div>
 
       {/* Search Dropdown cho Giảng viên */}
@@ -99,11 +95,8 @@ const ClassWizardStep1 = ({
               instructorSearchTerm ||
               (selectedInstructor
                 ? `${
-                    selectedInstructor.FullName ||
-                    selectedInstructor.fullName
-                  } - ${
-                    selectedInstructor.Major || selectedInstructor.major
-                  }`
+                    selectedInstructor.FullName || selectedInstructor.fullName
+                  } - ${selectedInstructor.Major || selectedInstructor.major}`
                 : "")
             }
             onChange={(e) => {
@@ -164,43 +157,18 @@ const ClassWizardStep1 = ({
                     const fallbackValue = instructor.id;
                     const finalValue =
                       value ||
-                      (fallbackValue &&
-                      fallbackValue !== instructor.AccID
+                      (fallbackValue && fallbackValue !== instructor.AccID
                         ? fallbackValue
                         : null);
 
-                    console.log("[ClassWizard] Selected instructor:", {
-                      instructor,
-                      InstructorID: instructor.InstructorID,
-                      id: instructor.id,
-                      AccID: instructor.AccID,
-                      selectedValue: finalValue,
-                      isAccID: fallbackValue === instructor.AccID,
-                    });
-
                     if (!finalValue) {
-                      console.error(
-                        "[ClassWizard] Cannot find InstructorID in instructor object:",
-                        instructor
-                      );
                       alert(
                         "Lỗi: Không tìm thấy InstructorID. Vui lòng thử lại."
                       );
                       return;
                     }
 
-                    if (
-                      instructor.AccID &&
-                      finalValue === instructor.AccID
-                    ) {
-                      console.error(
-                        "[ClassWizard] ERROR: Selected AccID instead of InstructorID!",
-                        {
-                          AccID: instructor.AccID,
-                          InstructorID: instructor.InstructorID,
-                          selectedValue: finalValue,
-                        }
-                      );
+                    if (instructor.AccID && finalValue === instructor.AccID) {
                       alert(
                         "Lỗi: Đã chọn nhầm AccID thay vì InstructorID. Vui lòng thử lại."
                       );
@@ -308,9 +276,7 @@ const ClassWizardStep1 = ({
               border: "1px solid #e2e8f0",
               borderRadius: "6px",
               fontSize: "14px",
-              backgroundColor: formData.InstructorID
-                ? "#fff"
-                : "#f8fafc",
+              backgroundColor: formData.InstructorID ? "#fff" : "#f8fafc",
               cursor: formData.InstructorID ? "text" : "not-allowed",
             }}
           />
@@ -379,11 +345,8 @@ const ClassWizardStep1 = ({
                         e.target.style.backgroundColor = "#fff";
                       }}
                     >
-                      {course.Title ||
-                        course.title ||
-                        course.CourseTitle}
-                      {(course.Description ||
-                        course.CourseDescription) && (
+                      {course.Title || course.title || course.CourseTitle}
+                      {(course.Description || course.CourseDescription) && (
                         <div
                           style={{
                             fontSize: "12px",
@@ -391,8 +354,7 @@ const ClassWizardStep1 = ({
                             marginTop: "2px",
                           }}
                         >
-                          {course.Description ||
-                            course.CourseDescription}
+                          {course.Description || course.CourseDescription}
                         </div>
                       )}
                     </div>
@@ -415,18 +377,14 @@ const ClassWizardStep1 = ({
           type="number"
           id="Fee"
           value={formData.Fee}
-          onChange={(e) =>
-            setFormData({ ...formData, Fee: e.target.value })
-          }
+          onChange={(e) => setFormData({ ...formData, Fee: e.target.value })}
           placeholder="Nhập học phí (để trống nếu miễn phí)"
           min="0"
           className={errors.Fee ? "error" : ""}
           disabled={readonly}
           readOnly={readonly}
         />
-        {errors.Fee && (
-          <span className="error-message">{errors.Fee}</span>
-        )}
+        {errors.Fee && <span className="error-message">{errors.Fee}</span>}
       </div>
 
       <div className="form-group">
@@ -528,4 +486,3 @@ const ClassWizardStep1 = ({
 };
 
 export default ClassWizardStep1;
-

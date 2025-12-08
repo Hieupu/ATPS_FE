@@ -11,77 +11,90 @@ import {
   IconButton,
   Typography,
 } from "@mui/material";
+
 import CloseIcon from "@mui/icons-material/Close";
+
 import CreateQuestionTab from "./CreateQuestionTab";
 import QuestionBankTab from "./QuestionBankTab";
+import QuestionUploadTab from "./QuestionUploadTab";
 
-const AddQuestionDialog = ({ open, onClose, onSave, parentSectionId, childSectionId }) => {
+const AddQuestionDialog = ({
+  open,
+  onClose,
+  onSave,
+  examId,
+  parentSectionId,
+  childSectionId
+}) => {
   const [activeTab, setActiveTab] = useState(0);
-  const [newQuestions, setNewQuestions] = useState([]);
-  const [selectedQuestions, setSelectedQuestions] = useState([]);
+
+  const [newQuestions, setNewQuestions] = useState([]);          
+  const [selectedQuestions, setSelectedQuestions] = useState([]); 
+  const [uploadedQuestions, setUploadedQuestions] = useState([]); 
 
   useEffect(() => {
     if (open) {
       setActiveTab(0);
       setNewQuestions([]);
       setSelectedQuestions([]);
+      setUploadedQuestions([]);
     }
   }, [open]);
+  const normalizeQuestions = (questions) => {
+    return questions.map((q) => {
+      let realId = null;
 
-  const handleSave = () => {
-    const questionsToSave =
-      activeTab === 0
-        ? newQuestions // From Create New tab
-        : selectedQuestions; // From Question Bank tab
+   
+      if (
+        Number.isInteger(Number(q.QuestionID)) &&
+        Number(q.QuestionID) > 0 &&
+        Number(q.QuestionID) <= 2147483647
+      ) {
+        realId = Number(q.QuestionID);
+      }
 
-    if (questionsToSave.length === 0) {
-      alert("Vui lòng tạo hoặc chọn ít nhất một câu hỏi");
-      return;
-    }
-
-    onSave(questionsToSave);
-    onClose();
+      return {
+        ...q,
+        QuestionID: realId, 
+        id: q.id            
+      };
+    });
   };
 
-  const handleTabChange = (event, newValue) => {
-    setActiveTab(newValue);
+  const handleSave = () => {
+    let result = [];
+
+    if (activeTab === 0) result = newQuestions;
+    if (activeTab === 1) result = selectedQuestions;
+    if (activeTab === 2) result = uploadedQuestions;
+
+    if (result.length === 0) {
+      alert("Vui lòng thêm hoặc chọn ít nhất một câu hỏi");
+      return;
+    }
+    const normalized = normalizeQuestions(result);
+
+    onSave(normalized);
+    onClose();
   };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle>
-        <Box display="flex" alignItems="center" justifyContent="space-between">
-          <Typography variant="h6" fontWeight={600}>
-            Thêm câu hỏi vào phân mục
-          </Typography>
-          <IconButton onClick={onClose} size="small">
+        <Box display="flex" justifyContent="space-between">
+          <Typography variant="h6">Thêm câu hỏi vào phân mục</Typography>
+          <IconButton onClick={onClose}>
             <CloseIcon />
           </IconButton>
         </Box>
       </DialogTitle>
-
-      {/* Tabs */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
-        <Tabs value={activeTab} onChange={handleTabChange}>
-          <Tab
-            label="Tạo câu hỏi mới"
-            sx={{
-              textTransform: "none",
-              fontSize: "1rem",
-              fontWeight: activeTab === 0 ? 600 : 400,
-            }}
-          />
-          <Tab
-            label="Ngân hàng câu hỏi"
-            sx={{
-              textTransform: "none",
-              fontSize: "1rem",
-              fontWeight: activeTab === 1 ? 600 : 400,
-            }}
-          />
+        <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
+          <Tab label="Tạo câu hỏi mới" />
+          <Tab label="Ngân hàng câu hỏi" />
+          <Tab label="Upload file Excel" />
         </Tabs>
       </Box>
-
       <DialogContent sx={{ minHeight: 500, p: 0 }}>
         {activeTab === 0 && (
           <CreateQuestionTab
@@ -89,37 +102,39 @@ const AddQuestionDialog = ({ open, onClose, onSave, parentSectionId, childSectio
             setQuestions={setNewQuestions}
           />
         )}
+
         {activeTab === 1 && (
           <QuestionBankTab
             selectedQuestions={selectedQuestions}
             setSelectedQuestions={setSelectedQuestions}
           />
         )}
+
+        {activeTab === 2 && (
+          <QuestionUploadTab
+            examId={examId}
+            sectionId={childSectionId}
+            uploadedQuestions={uploadedQuestions}
+            setUploadedQuestions={setUploadedQuestions}
+          />
+        )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, borderTop: "1px solid #e0e0e0" }}>
-        <Box flex={1}>
-          {activeTab === 0 ? (
-            <Typography variant="body2" color="text.secondary">
-              {newQuestions.length > 0
-                ? `Đã tạo ${newQuestions.length} câu hỏi`
-                : "Chưa có câu hỏi nào"}
-            </Typography>
-          ) : (
-            <Typography variant="body2" color="text.secondary">
-              {selectedQuestions.length > 0
-                ? `Đã chọn ${selectedQuestions.length} câu hỏi`
-                : "Chưa chọn câu hỏi nào"}
-            </Typography>
-          )}
-        </Box>
+      <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={onClose} variant="outlined">
           Hủy
         </Button>
-        <Button onClick={handleSave} variant="contained" disabled={
-          activeTab === 0 ? newQuestions.length === 0 : selectedQuestions.length === 0
-        }>
-          Lưu & Thêm vào phần thi
+
+        <Button
+          onClick={handleSave}
+          variant="contained"
+          disabled={
+            (activeTab === 0 && newQuestions.length === 0) ||
+            (activeTab === 1 && selectedQuestions.length === 0) ||
+            (activeTab === 2 && uploadedQuestions.length === 0)
+          }
+        >
+          Lưu
         </Button>
       </DialogActions>
     </Dialog>

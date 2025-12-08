@@ -1,19 +1,13 @@
-// PaymentTable.jsx - Phiên bản tối ưu
 import React from "react";
 import {
   Card,
   CardContent,
   Box,
-  Typography,
-  Button
+  Typography
 } from "@mui/material";
 import PaymentTableRow from "./PaymentTableRow";
 
-const PaymentTable = ({ 
-  payments, 
-  onRefundRequest, 
-  onActionMenuOpen 
-}) => {
+const PaymentTable = ({ payments }) => {
   return (
     <Card sx={{ 
       boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06)",
@@ -21,7 +15,7 @@ const PaymentTable = ({
       overflow: 'hidden'
     }}>
       <CardContent sx={{ p: 0 }}>
-        {/* Table Header với filter controls */}
+        {/* Table Header */}
         <Box sx={{ 
           display: "flex", 
           alignItems: "center", 
@@ -41,24 +35,6 @@ const PaymentTable = ({
               Tất cả giao dịch ({payments.length})
             </Typography>
           </Box>
-          <Button 
-            variant="outlined" 
-            size="medium"
-            sx={{ 
-              textTransform: 'none',
-              color: '#475569',
-              borderColor: '#cbd5e1',
-              borderRadius: 2,
-              px: 3,
-              fontWeight: 500,
-              '&:hover': {
-                borderColor: '#94a3b8',
-                bgcolor: '#f8fafc'
-              }
-            }}
-          >
-            Xuất báo cáo
-          </Button>
         </Box>
 
         {/* Table Content */}
@@ -66,7 +42,7 @@ const PaymentTable = ({
           {/* Table Headers */}
           <Box sx={{ 
             display: "grid",
-            gridTemplateColumns: "1fr 1fr 2fr 1fr 1fr 120px",
+            gridTemplateColumns: "1fr 1fr 2fr 1fr 1fr",
             gap: 3,
             px: 3,
             py: 2.5,
@@ -88,9 +64,6 @@ const PaymentTable = ({
             <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#475569", fontSize: '0.875rem' }}>
               TRẠNG THÁI
             </Typography>
-            <Typography variant="subtitle2" sx={{ fontWeight: 700, color: "#475569", fontSize: '0.875rem', textAlign: 'center' }}>
-              THAO TÁC
-            </Typography>
           </Box>
 
           {/* Table Rows */}
@@ -98,8 +71,6 @@ const PaymentTable = ({
             <PaymentTableRow
               key={payment.PaymentID}
               payment={payment}
-              onRefundRequest={onRefundRequest}
-              onActionMenuOpen={onActionMenuOpen}
               isLast={index === payments.length - 1}
             />
           ))}

@@ -44,6 +44,8 @@ const CourseProgressCard = ({ item, index }) => {
       <Card
         elevation={0}
         sx={{
+             width: { xs: "100%", md: "80%" }, 
+             margin: "0 auto",
           borderRadius: 4,
           border: "1px solid rgba(99,102,241,0.15)",
           boxShadow: "0 15px 40px rgba(15,23,42,0.08)",

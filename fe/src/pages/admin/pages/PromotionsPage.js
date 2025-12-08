@@ -125,7 +125,6 @@ export default function PromotionsPage() {
       }
 
       const response = await promotionService.getPromotions(params);
-      console.log("[PromotionsPage] API response:", response);
 
       // Backend trả về: { success: true, data: [...], pagination: {...} }
       // promotionService.getPromotions() trả về response.data (axios wrap)
@@ -139,9 +138,6 @@ export default function PromotionsPage() {
       // Lấy items từ response
       const items = response?.data || response?.items || [];
       const paginationInfo = response?.pagination || {};
-
-      console.log("[PromotionsPage] Parsed items count:", items?.length || 0);
-      console.log("[PromotionsPage] Parsed pagination:", paginationInfo);
 
       // Đảm bảo items là array
       if (!Array.isArray(items)) {

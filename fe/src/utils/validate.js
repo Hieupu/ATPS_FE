@@ -339,13 +339,13 @@ export const validateSessionsForm = (
  */
 export const dayOfWeekToDay = (dayOfWeek) => {
   const dayMap = {
-    0: "CN", // Chủ Nhật
-    1: "T2", // Thứ Hai
-    2: "T3", // Thứ Ba
-    3: "T4", // Thứ Tư
-    4: "T5", // Thứ Năm
-    5: "T6", // Thứ Sáu
-    6: "T7", // Thứ Bảy
+    0: "SUNDAY", // Chủ Nhật
+    1: "MONDAY", // Thứ Hai
+    2: "TUESDAY", // Thứ Ba
+    3: "WEDNESDAY", // Thứ Tư
+    4: "THURSDAY", // Thứ Năm
+    5: "FRIDAY", // Thứ Sáu
+    6: "SATURDAY", // Thứ Bảy
   };
   return dayMap[dayOfWeek] || null;
 };

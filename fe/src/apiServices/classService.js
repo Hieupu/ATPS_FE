@@ -134,11 +134,17 @@ const classService = {
   // Lấy danh sách lớp học theo instructor ID
   getClassesByInstructorId: async (instructorId) => {
     try {
-      const response = await apiClient.get(`/classes/instructor/${instructorId}`);
+      const response = await apiClient.get(
+        `/classes/instructor/${instructorId}`
+      );
       return response.data?.data || response.data || [];
     } catch (error) {
       console.error("Get classes by instructor error:", error);
-      throw error.response?.data || { message: "Failed to fetch classes by instructor" };
+      throw (
+        error.response?.data || {
+          message: "Failed to fetch classes by instructor",
+        }
+      );
     }
   },
 
@@ -175,6 +181,17 @@ const classService = {
   },
 
   // ========== TIMESLOT APIs ==========
+
+  // Lấy danh sách distinct StartTime và EndTime
+  getDistinctTimeRanges: async () => {
+    try {
+      const response = await apiClient.get("/timeslots/distinct-time-ranges");
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error("Error getting distinct time ranges:", error);
+      throw error;
+    }
+  },
 
   // Lấy danh sách ca học (timeslots)
   getAllTimeslots: async (params = {}) => {
@@ -471,7 +488,6 @@ const classService = {
         throw new Error(`Invalid SessionID: ${sessionId}`);
       }
 
-      console.log("Calling delete session API with ID:", sessionIdNum);
       const response = await apiClient.delete(`/sessions/${sessionIdNum}`);
       return response.data?.data || response.data;
     } catch (error) {
@@ -483,35 +499,14 @@ const classService = {
   // Bulk Create Sessions - Tạo nhiều sessions cùng lúc
   bulkCreateSessions: async (sessionsData) => {
     try {
-      console.log(
-        "Sending bulk create request with",
-        sessionsData.length,
-        "sessions"
-      );
-      console.log("First 3 sessions:", sessionsData.slice(0, 3));
-
       const response = await apiClient.post(`/sessions/bulk`, {
         sessions: sessionsData, // Array of session objects
       });
 
       // Trả về toàn bộ response để xử lý conflicts
-      console.log(
-        "Bulk create API response (full):",
-        JSON.stringify(response.data, null, 2)
-      );
-      console.log(
-        "Bulk create API response keys:",
-        Object.keys(response.data || {})
-      );
-      console.log("Bulk create API response.data:", response.data?.data);
-      console.log("Bulk create API response.status:", response.status);
-
       return response.data || response.data?.data;
     } catch (error) {
       console.error("Bulk create sessions error:", error);
-      console.error("Error response data:", error.response?.data);
-      console.error("Error message:", error.message);
-
       const errorData = error.response?.data || {};
       // Lấy error message từ nhiều nguồn: error.response.data.error, error.response.data.message, hoặc error.message
       const errorMessage =
@@ -670,17 +665,7 @@ const classService = {
         params.append("excludeClassId", excludeClassId);
       }
       const url = `/classes/instructor/available-slots?${params.toString()}`;
-      console.log(`[findInstructorAvailableSlots] Gọi API: ${url}`);
-      console.log(`[findInstructorAvailableSlots] Params:`, {
-        InstructorID,
-        TimeslotID,
-        Day,
-        startDate,
-        numSuggestions,
-        excludeClassId,
-      });
       const response = await apiClient.get(url);
-      console.log(`[findInstructorAvailableSlots] Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error("Find instructor slots error:", error);
@@ -747,7 +732,6 @@ const classService = {
     } catch (error) {
       // Nếu endpoint /status không tồn tại (404), thử dùng updateClass
       if (error.response?.status === 404) {
-        console.log("Endpoint /status không tồn tại, thử dùng updateClass");
         try {
           const response = await apiClient.put(`/classes/${classId}`, {
             Status: "APPROVED",
@@ -787,8 +771,7 @@ const classService = {
       return response.data?.data || response.data;
     } catch (error) {
       // Nếu endpoint /review không tồn tại (404), thử dùng updateClass
-      if (error.response?.status === 404) {
-        console.log("Endpoint /review không tồn tại, thử dùng updateClass");
+      if (error.response?.status === 404) { 
         try {
           // Map action thành Status
           let status = "DRAFT";
@@ -839,7 +822,6 @@ const classService = {
     } catch (error) {
       // Nếu endpoint /publish không tồn tại (404), thử dùng updateClass
       if (error.response?.status === 404) {
-        console.log("Endpoint /publish không tồn tại, thử dùng updateClass");
         try {
           const response = await apiClient.put(`/classes/${classId}`, {
             Status: "PUBLISHED",
@@ -973,9 +955,10 @@ const classService = {
   // Lấy lý do chi tiết tại sao một timeslot bị khóa
   getTimeslotLockReasons: async (params) => {
     try {
-      const response = await apiClient.get("/classes/timeslot-lock-reasons", {
-        params,
-      });
+      const response = await apiClient.post(
+        "/classes/timeslot-lock-reasons",
+        params
+      );
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get timeslot lock reasons error:", error);
@@ -1010,7 +993,6 @@ const classService = {
   // Thêm lịch nghỉ hàng loạt cho giảng viên
   addBulkInstructorLeave: async (leaveData) => {
     try {
-      console.log("[classService] addBulkInstructorLeave payload:", leaveData);
       const response = await apiClient.post(
         "/classes/instructor/leave/bulk",
         leaveData
@@ -1027,14 +1009,10 @@ const classService = {
   // Lấy danh sách lịch nghỉ giảng viên
   getInstructorLeaves: async (params) => {
     try {
-      console.log("[classService] getInstructorLeaves params:", params);
       const response = await apiClient.get("/classes/instructor/leave", {
         params,
       });
-      console.log(
-        "[classService] getInstructorLeaves response:",
-        response.data
-      );
+     
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get instructor leave error:", error);
@@ -1047,7 +1025,6 @@ const classService = {
   // Xóa lịch nghỉ giảng viên
   deleteInstructorLeave: async (leaveId) => {
     try {
-      console.log("[classService] deleteInstructorLeave id:", leaveId);
       const response = await apiClient.delete(
         `/classes/instructor/leave/${leaveId}`
       );
@@ -1063,7 +1040,7 @@ const classService = {
   // Xóa tất cả lịch nghỉ của một ngày
   deleteLeavesByDate: async (date, status = "HOLIDAY") => {
     try {
-      console.log("[classService] deleteLeavesByDate date:", date, "status:", status);
+      
       const response = await apiClient.delete(
         `/classes/instructor/leave/date/${date}?status=${status}`
       );
@@ -1216,8 +1193,9 @@ const classService = {
     } catch (error) {
       console.error("Add holiday for all instructors error:", error);
       throw (
-        error.response?.data ||
-        { message: "Failed to add holiday for all instructors" }
+        error.response?.data || {
+          message: "Failed to add holiday for all instructors",
+        }
       );
     }
   },
@@ -1232,8 +1210,9 @@ const classService = {
     } catch (error) {
       console.error("Sync holiday for instructor error:", error);
       throw (
-        error.response?.data ||
-        { message: "Failed to sync holiday for instructor" }
+        error.response?.data || {
+          message: "Failed to sync holiday for instructor",
+        }
       );
     }
   },
@@ -1241,13 +1220,13 @@ const classService = {
   // Lấy danh sách unique DATE có Status = HOLIDAY
   getHolidayDates: async () => {
     try {
-      const response = await apiClient.get("/classes/instructor/leave/holiday-dates");
+      const response = await apiClient.get(
+        "/classes/instructor/leave/holiday-dates"
+      );
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get holiday dates error:", error);
-      throw (
-        error.response?.data || { message: "Failed to get holiday dates" }
-      );
+      throw error.response?.data || { message: "Failed to get holiday dates" };
     }
   },
 };

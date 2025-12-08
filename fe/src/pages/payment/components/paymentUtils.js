@@ -19,7 +19,6 @@ export const formatDate = (dateString) => {
 };
 
 export const getStatusDisplay = (payment) => {
-  // Ưu tiên hiển thị trạng thái hoàn tiền nếu có
   if (payment.RefundID && payment.RefundStatus) {
     return {
       text: getRefundStatusText(payment.RefundStatus),
@@ -27,14 +26,15 @@ export const getStatusDisplay = (payment) => {
       type: 'refund'
     };
   }
-  
-  // Nếu không có hoàn tiền, hiển thị trạng thái thanh toán
+
+  // Nếu không có gì thì hiện "..."
   return {
-    text: getPaymentStatusText(payment.PaymentStatus || payment.Status),
-    color: getPaymentStatusColor(payment.PaymentStatus || payment.Status),
-    type: 'payment'
+    text: "...",
+    color: "default",
+    type: "none"
   };
 };
+
 
 export const getPaymentStatusText = (status) => {
   const statusLower = status?.toLowerCase();
@@ -90,8 +90,10 @@ export const getPaymentStatusColor = (status) => {
 };
 
 export const canRequestRefund = (payment) => {
-  // Kiểm tra nếu đã có yêu cầu hoàn tiền rồi thì không thể yêu cầu lại
-  if (payment.RefundID) return false;
+  // Kiểm tra nếu có yêu cầu hoàn tiền ĐANG HOẠT ĐỘNG (pending hoặc approved)
+  if (payment.RefundID && ['pending', 'approved'].includes(payment.RefundStatus?.toLowerCase())) {
+    return false;
+  }
 
   // Chỉ cho phép hoàn tiền nếu thanh toán thành công
   const paymentStatus = payment.PaymentStatus || payment.Status;
@@ -100,8 +102,6 @@ export const canRequestRefund = (payment) => {
   }
 
   const currentDate = new Date();
-  
-  // Sử dụng Opendate hoặc OpendatePlan để kiểm tra
   const startDate = new Date(payment.Opendate || payment.OpendatePlan);
   
   // Chỉ cho phép hoàn tiền nếu lớp chưa bắt đầu

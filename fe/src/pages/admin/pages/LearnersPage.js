@@ -85,10 +85,6 @@ const LearnersPage = () => {
       setLoading(true);
       // Gọi API để lấy danh sách học viên từ database
       const learnersList = await learnerService.getAllLearners();
-      console.log("Đã tải danh sách học viên từ DB:", learnersList.length);
-      console.log("Sample learner data:", learnersList[0]);
-      console.log("Sample AccountStatus:", learnersList[0]?.AccountStatus);
-
       // Map Status từ account - backend trả về AccountStatus từ JOIN với account table
       const mappedLearners = learnersList.map((learner) => {
         const mappedStatus =
@@ -103,12 +99,8 @@ const LearnersPage = () => {
         };
       });
 
-      console.log("Mapped learners sample:", mappedLearners[0]);
-      console.log("Mapped Status:", mappedLearners[0]?.Status);
       setLearners(mappedLearners);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách học viên:", error);
-      console.error("Error response:", error.response);
       setLearners([]);
       alert("Không thể tải danh sách học viên từ database!");
     } finally {
@@ -137,8 +129,6 @@ const LearnersPage = () => {
         learner.LearnerID
       );
 
-      console.log("[LearnersPage] getLearnerWithClasses response:", data);
-
       // Backend trả về: { success: true, data: { ...learner, enrollments: [...] } }
       // Hoặc có thể là: { ...learner, enrollments: [...] }
       let enrollments = [];
@@ -153,8 +143,6 @@ const LearnersPage = () => {
       } else if (data?.data && Array.isArray(data.data)) {
         enrollments = data.data;
       }
-
-      console.log("[LearnersPage] Parsed enrollments:", enrollments);
 
       // Map dữ liệu từ enrollments để hiển thị thông tin lớp học
       // Backend enrollmentRepository.findByLearnerId trả về:
@@ -186,8 +174,6 @@ const LearnersPage = () => {
 
       setLearnerClasses(mappedClasses);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách lớp học:", error);
-      console.error("Error details:", error.response?.data || error.message);
       setLearnerClasses([]);
       alert(
         error?.response?.data?.message ||
@@ -252,9 +238,6 @@ const LearnersPage = () => {
           accountData.Password = formData.Password;
         }
 
-        console.log("Account data to update:", accountData);
-        console.log("Current Status:", currentStatus, "New Status:", newStatus);
-
         // Update learner (chỉ các trường hợp lệ)
         await learnerService.updateLearner(
           selectedLearner.LearnerID,
@@ -265,26 +248,19 @@ const LearnersPage = () => {
         // Fallback: nếu endpoint không tồn tại, thử gửi account data cùng với learner data
         let accountUpdated = false;
         if (selectedLearner.AccID && Object.keys(accountData).length > 0) {
-          console.log("Bắt đầu cập nhật account với data:", accountData);
           try {
             await accountService.updateAccount(
               selectedLearner.AccID,
               accountData
             );
             accountUpdated = true;
-            console.log(
-              "Đã cập nhật account thành công qua /accounts endpoint"
-            );
+            
           } catch (accountError) {
-            console.error("Lỗi khi cập nhật account:", accountError);
             // Nếu endpoint không tồn tại, thử gửi account data cùng với learner data
             if (
               accountError.isEndpointNotFound ||
               accountError.response?.status === 404
             ) {
-              console.warn(
-                "Endpoint /accounts không tồn tại, thử gửi account data cùng với learner data"
-              );
               // Thử gửi account data cùng với learner data
               // Backend whitelist sẽ lọc Email, Phone ra, nhưng có thể backend có logic đặc biệt
               // để update account khi nhận Email, Phone, Status trong request
@@ -294,14 +270,7 @@ const LearnersPage = () => {
                   ...accountData, // Gửi Email, Phone, Status cùng với learner data
                 });
                 accountUpdated = true;
-                console.log(
-                  "Đã cập nhật account thông qua learner endpoint (fallback)"
-                );
               } catch (fallbackError) {
-                console.error(
-                  "Không thể cập nhật account: backend không hỗ trợ update account",
-                  fallbackError
-                );
                 // Thông báo cho user biết account không được update
                 alert(
                   "Cập nhật học viên thành công, nhưng không thể cập nhật thông tin tài khoản (Email, Phone, Status).\n\nVui lòng liên hệ backend để bổ sung endpoint PUT /api/accounts/:accId"
@@ -309,7 +278,6 @@ const LearnersPage = () => {
               }
             } else {
               // Các lỗi khác (400, 500, etc.)
-              console.error("Lỗi khi cập nhật account:", accountError);
               const errorMessage =
                 accountError.response?.data?.message ||
                 accountError.message ||
@@ -324,9 +292,6 @@ const LearnersPage = () => {
           selectedLearner.AccID &&
           Object.keys(accountData).length === 0
         ) {
-          console.log(
-            "Không có thay đổi nào trong account data, bỏ qua update account"
-          );
         }
 
         if (accountUpdated) {
@@ -362,8 +327,7 @@ const LearnersPage = () => {
       // Reload danh sách sau khi lưu
       await loadLearners();
       setShowLearnerForm(false);
-    } catch (error) {
-      console.error("Lỗi khi lưu học viên:", error);
+    } catch (error) { 
       const errorMessage =
         error?.message ||
         error.response?.data?.message ||
@@ -972,8 +936,6 @@ const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
     if (learnerData) {
       // Status đã được map từ AccountStatus trong loadLearners
       const normalizedStatus = normalizeStatusValue(learnerData.Status);
-      console.log("[LearnerForm] learnerData.Status:", learnerData.Status);
-      console.log("[LearnerForm] normalizedStatus:", normalizedStatus);
       setFormData({
         FullName: learnerData.FullName || "",
         Email: learnerData.Email || "",

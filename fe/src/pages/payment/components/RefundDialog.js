@@ -78,7 +78,6 @@ const RefundDialog = ({
             }}
           >
             <MenuItem value="">Chọn lý do...</MenuItem>
-            <MenuItem value="Tôi muốn đổi sang khóa học khác">Tôi muốn đổi sang khóa học khác</MenuItem>
             <MenuItem value="Tôi không thể tham gia lớp học">Tôi không thể tham gia lớp học</MenuItem>
             <MenuItem value="Chất lượng khóa học không như mong đợi">Chất lượng khóa học không như mong đợi</MenuItem>
             <MenuItem value="Lý do khác">Lý do khác</MenuItem>

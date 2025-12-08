@@ -40,9 +40,6 @@ export function HeaderInstructor() {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  console.log(user);
-
-  // Load notifications
   useEffect(() => {
     const load = async () => {
       try {

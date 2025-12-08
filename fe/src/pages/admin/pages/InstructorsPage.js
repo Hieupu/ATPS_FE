@@ -92,14 +92,7 @@ const AdminInstructorsPage = () => {
       // Gọi API admin-specific để lấy danh sách giảng viên từ database
       // Format: { success: true, data: [...] }
       const instructorsList = await instructorService.getAllInstructorsAdmin();
-      console.log("Đã tải danh sách giảng viên từ DB:", instructorsList.length);
-      console.log(
-        "Sample instructor data (raw):",
-        JSON.stringify(instructorsList[0], null, 2)
-      );
-      console.log("Sample instructor Status:", instructorsList[0]?.Status);
-      console.log("Sample instructor Gender:", instructorsList[0]?.Gender);
-
+      
       // Map Status và Gender từ account (đã được SELECT trong query và map trong repository)
       // Repository đã map AccountStatus -> Status và AccountGender -> Gender
       const mappedInstructors = instructorsList.map((instructor) => {
@@ -121,16 +114,11 @@ const AdminInstructorsPage = () => {
           Email: instructor.Email || instructor.account?.Email || "",
           Phone: instructor.Phone || instructor.account?.Phone || "",
         };
-        console.log(
-          `Instructor ${mapped.InstructorID}: Status="${mapped.Status}", Gender="${mapped.Gender}"`
-        );
         return mapped;
       });
 
       setInstructors(mappedInstructors);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách giảng viên:", error);
-      console.error("Error response:", error.response);
       setInstructors([]);
       alert("Không thể tải danh sách giảng viên từ database!");
     } finally {
@@ -183,7 +171,6 @@ const AdminInstructorsPage = () => {
       setInstructorClasses(mappedClasses);
       setShowClassesDialog(true);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách lớp học:", error);
       setInstructorClasses([]);
       alert(
         error?.response?.data?.message ||
@@ -224,7 +211,6 @@ const AdminInstructorsPage = () => {
       setInstructorCourses(mappedCourses);
       setShowCoursesDialog(true);
     } catch (error) {
-      console.error("Lỗi khi tải danh sách khóa học:", error);
       setInstructorCourses([]);
       alert(
         error?.response?.data?.message ||
@@ -287,9 +273,6 @@ const AdminInstructorsPage = () => {
           accountData.Password = formData.Password;
         }
 
-        console.log("Account data to update:", accountData);
-        console.log("Current Status:", currentStatus, "New Status:", newStatus);
-
         // Update instructor (chỉ các trường hợp lệ)
         await instructorService.updateInstructor(
           selectedInstructor.InstructorID,
@@ -300,26 +283,18 @@ const AdminInstructorsPage = () => {
         // Fallback: nếu endpoint không tồn tại, thử gửi account data cùng với instructor data
         let accountUpdated = false;
         if (selectedInstructor.AccID && Object.keys(accountData).length > 0) {
-          console.log("Bắt đầu cập nhật account với data:", accountData);
           try {
             await accountService.updateAccount(
               selectedInstructor.AccID,
               accountData
             );
             accountUpdated = true;
-            console.log(
-              "Đã cập nhật account thành công qua /accounts endpoint"
-            );
           } catch (accountError) {
-            console.error("Lỗi khi cập nhật account:", accountError);
             // Nếu endpoint không tồn tại, thử gửi account data cùng với instructor data
             if (
               accountError.isEndpointNotFound ||
               accountError.response?.status === 404
             ) {
-              console.warn(
-                "Endpoint /accounts không tồn tại, thử gửi account data cùng với instructor data"
-              );
               // Thử gửi account data cùng với instructor data
               // Backend whitelist sẽ lọc Email, Phone ra, nhưng có thể backend có logic đặc biệt
               // để update account khi nhận Email, Phone, Status trong request
@@ -332,14 +307,7 @@ const AdminInstructorsPage = () => {
                   }
                 );
                 accountUpdated = true;
-                console.log(
-                  "Đã cập nhật account thông qua instructor endpoint (fallback)"
-                );
               } catch (fallbackError) {
-                console.error(
-                  "Không thể cập nhật account: backend không hỗ trợ update account",
-                  fallbackError
-                );
                 // Thông báo cho user biết account không được update
                 alert(
                   "Cập nhật giảng viên thành công, nhưng không thể cập nhật thông tin tài khoản (Email, Phone, Status).\n\nVui lòng liên hệ backend để bổ sung endpoint PUT /api/accounts/:accId"
@@ -347,7 +315,6 @@ const AdminInstructorsPage = () => {
               }
             } else {
               // Các lỗi khác (400, 500, etc.)
-              console.error("Lỗi khi cập nhật account:", accountError);
               const errorMessage =
                 accountError.response?.data?.message ||
                 accountError.message ||
