@@ -23,6 +23,7 @@ import CourseMaterials from "./components/CourseMaterials";
 import InstructorInfo from "./components/InstructorInfo";
 import CourseReviews from "./components/CourseReviews";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../contexts/AuthContext";
 // API imports
 import {
   getCourseByIdApi,
@@ -45,6 +46,7 @@ const TabPanel = ({ children, value, index, ...other }) => (
 
 const CourseDetailPage = () => {
   const { id } = useParams();
+  const { user } = useAuth(); // Check if user is authenticated
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -94,7 +96,7 @@ const CourseDetailPage = () => {
     try {
       setLoadingClasses(true);
       const data = await getClassesByCourseApi(id);
-      console.log("getClassesByCourseApi" , data)
+      console.log("getClassesByCourseApi", data);
       setClasses(data.classes || []);
     } catch (error) {
       console.error("Error fetching classes:", error);
@@ -104,9 +106,13 @@ const CourseDetailPage = () => {
     }
   }, [id]);
 
-  // Check enrollment
+  // Check enrollment - Only for authenticated users
   const checkEnrollment = useCallback(async () => {
-    if (!course?.CourseID) return;
+    // Don't check enrollment if user is not authenticated (guest)
+    if (!user || !course?.CourseID) {
+      setIsEnrolledInCourse(false);
+      return;
+    }
     try {
       const res = await getMyEnrolledCourses();
       const list = res?.data || res?.items || res || [];
@@ -115,9 +121,10 @@ const CourseDetailPage = () => {
       );
       setIsEnrolledInCourse(enrolled);
     } catch (e) {
+      // Silently fail for guests or if API error
       setIsEnrolledInCourse(false);
     }
-  }, [course?.CourseID]);
+  }, [user, course?.CourseID]);
 
   useEffect(() => {
     fetchCourse();
