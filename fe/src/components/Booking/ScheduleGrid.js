@@ -92,39 +92,54 @@ const ScheduleGrid = ({
   const [banTimeRemaining, setBanTimeRemaining] = useState(0);
   const [banReason, setBanReason] = useState('');
 
-  // ⭐️ ANTI-SPAM: Check trạng thái ban khi component mount
-  useEffect(() => {
-    const checkBanStatus = () => {
-      const banData = localStorage.getItem('slotReserveBan');
-      if (banData) {
-        try {
-          const { endTime, reason } = JSON.parse(banData);
-          const now = Date.now();
-          
-          if (now < endTime) {
-            setIsBanned(true);
-            setBanEndTime(endTime);
-            setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
-            setBanReason(reason || 'spam');
-          } else {
-            // Hết thời gian ban, xóa và reset
-            localStorage.removeItem('slotReserveBan');
-            setIsBanned(false);
-            setBanEndTime(null);
-            setBanReason('');
-          }
-        } catch {
-          localStorage.removeItem('slotReserveBan');
-        }
-      }
-    };
 
-    checkBanStatus();
-    
-    // Check mỗi giây để update countdown
-    const interval = setInterval(checkBanStatus, 1000);
-    return () => clearInterval(interval);
-  }, []);
+useEffect(() => {
+  const checkBanStatus = () => {
+    const banData = localStorage.getItem('slotReserveBan');
+    if (banData) {
+      try {
+        const { endTime, reason } = JSON.parse(banData);
+        const now = Date.now();
+        
+        if (now < endTime) {
+          // ⭐️ THÊM: Giải phóng tất cả slot khi bị ban
+          if (selectedSlots.length > 0) {
+            slotReservationApi.releaseAllSlots().catch(console.error);
+            // Xóa selected slots
+            selectedSlots.forEach(slot => {
+              const slotDate = normalizeDate(slot.Date);
+              const slotKey = `${slot.TimeslotID}_${slotDate}`;
+              setMyReservedSlots(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(slotKey);
+                return newSet;
+              });
+              handleSlotClick(slot); // Bỏ chọn slot
+            });
+          }
+          
+          setIsBanned(true);
+          setBanEndTime(endTime);
+          setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
+          setBanReason(reason || 'spam');
+        } else {
+          // Hết thời gian ban, xóa và reset
+          localStorage.removeItem('slotReserveBan');
+          setIsBanned(false);
+          setBanEndTime(null);
+          setBanReason('');
+        }
+      } catch {
+        localStorage.removeItem('slotReserveBan');
+      }
+    }
+  };
+
+  checkBanStatus();
+  
+  const interval = setInterval(checkBanStatus, 1000);
+  return () => clearInterval(interval);
+}, [selectedSlots, handleSlotClick]); // ⭐️ THÊM dependencies
 
   // ⭐️ ANTI-SPAM: Cleanup history - tối ưu hơn
   useEffect(() => {
