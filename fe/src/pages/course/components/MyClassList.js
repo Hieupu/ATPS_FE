@@ -386,36 +386,44 @@ const MyClassList = ({ courseId }) => {
                   )}
                 </Box>
 
-                {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
-                  <Box>
-                    <Typography
-                      variant="subtitle2"
-                      gutterBottom
-                      sx={{
-                        fontWeight: 700,
-                        color: "text.primary",
-                        mb: 1.5,
-                      }}
-                    >
-                      📅 Lịch học hàng tuần:
-                    </Typography>
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-                      {classItem.weeklySchedule.map((schedule, index) => (
-                        <Chip
-                          key={index}
-                          label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
-                          sx={{
-                            bgcolor: "rgba(102,126,234,0.1)",
-                            color: "primary.main",
-                            fontWeight: 600,
-                            borderRadius: 2,
-                          }}
-                          size="small"
-                        />
-                      ))}
-                    </Box>
-                  </Box>
-                )}
+               {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
+  <Box>
+    <Typography
+      variant="subtitle2"
+      gutterBottom
+      sx={{
+        fontWeight: 700,
+        color: "text.primary",
+        mb: 1.5,
+      }}
+    >
+      📅 Lịch học hàng tuần:
+    </Typography>
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
+      {Array.from(
+        new Map(
+          classItem.weeklySchedule.map(schedule => [
+            // Tạo key duy nhất từ ngày + giờ bắt đầu + giờ kết thúc
+            `${schedule.Day}-${schedule.StartTime}-${schedule.EndTime}`,
+            schedule
+          ])
+        ).values()
+      ).map((schedule, index) => (
+        <Chip
+          key={index}
+          label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
+          sx={{
+            bgcolor: "rgba(102,126,234,0.1)",
+            color: "primary.main",
+            fontWeight: 600,
+            borderRadius: 2,
+          }}
+          size="small"
+        />
+      ))}
+    </Box>
+  </Box>
+)}
               </CardContent>
             </Card>
           </Grid>

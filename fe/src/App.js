@@ -60,6 +60,7 @@ import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
 
+import ContactPage from "./pages/common/Contact/ContactPage";
 function AppRoutes() {
   useTokenExpiry();
 
@@ -85,7 +86,7 @@ function AppRoutes() {
 
       <Route path="/instructors" element={<InstructorsPage />} />
       <Route path="/instructors/:id" element={<InstructorDetailPage />} />
-
+        <Route path="/contact" element={<ContactPage />} />
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
 
