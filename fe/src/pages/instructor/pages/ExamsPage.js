@@ -119,7 +119,7 @@ const ExamPage = () => {
       setAllExams([...cleanedRegular, ...cleanedArchived]);
     } catch (err) {
       console.error("Load exams error:", err);
-      toast.error("Không thể tải danh sách bài thi");
+      toast.error("Không thể tải danh sách bài tập");
     } finally {
       setLoading(false);
     }
@@ -139,7 +139,7 @@ const ExamPage = () => {
       setSelectedExam(detail);
       setOpenDetailDialog(true);
     } catch {
-      toast.error("Không thể tải chi tiết bài thi");
+      toast.error("Không thể tải chi tiết bài tập");
     }
   };
 
@@ -151,7 +151,7 @@ const ExamPage = () => {
   const confirmDeleteExam = async () => {
     try {
       await deleteExamApi(selectedExam.ExamID);
-      toast.success("Xóa bài thi thành công!");
+      toast.success("Xóa bài tập thành công!");
       loadAllExams();
     } catch {
       toast.error("Xóa thất bại");
@@ -164,7 +164,7 @@ const ExamPage = () => {
   const handleArchive = async (exam) => {
     try {
       await archiveExamApi(exam.ExamID);
-      toast.success("Đã lưu trữ bài thi");
+      toast.success("Đã lưu trữ bài tập");
       loadAllExams();
     } catch {
       toast.error("Lưu trữ thất bại");
@@ -174,7 +174,7 @@ const ExamPage = () => {
   const handleUnarchive = async (exam) => {
     try {
       await unarchiveExamApi(exam.ExamID);
-      toast.success("Đã khôi phục bài thi");
+      toast.success("Đã khôi phục bài tập");
       loadAllExams();
     } catch {
       toast.error("Khôi phục thất bại");
@@ -200,10 +200,10 @@ const ExamPage = () => {
         <Stack direction="row" justifyContent="space-between">
           <Box>
             <Typography variant="h4" fontWeight="700">
-              Quản lý bài thi
+              Quản lý bài tập 
             </Typography>
             <Typography color="text.secondary">
-              Tạo và quản lý các bài kiểm tra cho học viên
+              Tạo và quản lý các bài tập cho học viên
             </Typography>
           </Box>
           <Button
@@ -212,7 +212,7 @@ const ExamPage = () => {
             onClick={handleOpenCreate}
             sx={{ borderRadius: 2, px: 3 }}
           >
-            Tạo bài thi mới
+            Tạo bài tập
           </Button>
         </Stack>
       </Box>
@@ -261,7 +261,7 @@ const ExamPage = () => {
         </Box>
       ) : currentExams.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: "center" }}>
-          <Typography>Chưa có bài thi nào</Typography>
+          <Typography>Chưa có bài tập nào</Typography>
         </Paper>
       ) : (
         <Grid container spacing={3}>
@@ -328,7 +328,7 @@ const ExamPage = () => {
       {/* Delete Dialog */}
       <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
         <DialogTitle>Xác nhận xóa</DialogTitle>
-        <DialogContent>Bạn có chắc muốn xóa bài thi này?</DialogContent>
+        <DialogContent>Bạn có chắc muốn xóa bài tập này?</DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenDeleteConfirm(false)}>Hủy</Button>
           <Button onClick={confirmDeleteExam} color="error">

@@ -238,7 +238,7 @@ const ExamInstanceSettingsStep = ({
         console.log("  - instanceId:", instanceId);
 
         await updateExamInstanceApi(examId, instanceId, payload);
-        alert("Cập nhật bài thi thành công!");
+        alert("Cập nhật bài tập thành công!");
       }
       // ==================== CREATE MODE ====================
       else {
@@ -269,7 +269,7 @@ const ExamInstanceSettingsStep = ({
           sections,
           instance: payload,
         });
-        alert("Tạo bài thi thành công!");
+        alert("Tạo bài tập thành công!");
       }
 
       onDone?.();

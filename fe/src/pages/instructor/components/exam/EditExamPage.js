@@ -9,13 +9,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ExamWizard from "./ExamWizard";
-
 import {
   getExamDetailApi,
   getSectionsApi,
   getSectionDetailApi,
 } from "../../../../apiServices/instructorExamService";
-
 import { getCoursesApi } from "../../../../apiServices/assignmentService";
 
 const EditExamPage = () => {
@@ -29,16 +27,12 @@ const EditExamPage = () => {
   React.useEffect(() => {
     const loadData = async () => {
       try {
-        // Load exam info + course data
         const [examData, courseData] = await Promise.all([
           getExamDetailApi(examId),
           getCoursesApi(),
         ]);
 
-        // Load section list
         const sectionsData = await getSectionsApi(examId, true);
-
-        // Load questions inside each child section
         for (const parentSection of sectionsData) {
           if (parentSection.childSections?.length) {
             for (const childSection of parentSection.childSections) {
@@ -61,7 +55,6 @@ const EditExamPage = () => {
 
         examData.sections = sectionsData;
 
-        // Format courses
         const formattedCourses = (courseData || []).map((c, index) => {
           const id = c.value;
           return id
@@ -77,7 +70,6 @@ const EditExamPage = () => {
               };
         });
 
-        // Auto-select the exam's course
         if (examData.CourseID) {
           const found = formattedCourses.find(
             (c) => c.originalId === examData.CourseID
@@ -102,7 +94,6 @@ const EditExamPage = () => {
     loadData();
   }, [examId]);
 
-  // Loading UI
   if (loading) {
     return (
       <Box
@@ -117,12 +108,10 @@ const EditExamPage = () => {
       </Box>
     );
   }
-
-  // Not found
   if (!exam) {
     return (
       <Container maxWidth="lg" sx={{ py: 8 }}>
-        <Alert severity="error">Không tìm thấy bài thi!</Alert>
+        <Alert severity="error">Không tìm thấy bài tập!</Alert>
         <Button
           variant="contained"
           onClick={() => navigate("/instructor/exams")}
@@ -133,8 +122,6 @@ const EditExamPage = () => {
       </Container>
     );
   }
-
-  // Render Edit Wizard
   return (
     <Box sx={{ bgcolor: "#f8fafc", minHeight: "100vh", py: 4 }}>
       <Container

@@ -59,18 +59,10 @@ const SECTION_ICONS = {
     Writing: <WritingIcon sx={{ color: "#ed6c02" }} />,
 };
 
-/**
- * Chuẩn hóa object câu hỏi về 1 format thống nhất
- * để:
- *  - Hiển thị preview
- *  - Lưu vào sections[].questions
- */
 const normalizeQuestion = (q) => {
-    // FE ID an toàn, luôn là số nhỏ
+
     const tempId = q.id || q.tempId || `temp-${Math.random().toString(36).slice(2, 10)}`;
 
-
-    // QuestionID thật từ DB
     let realQuestionId = null;
 
     if (
@@ -83,8 +75,8 @@ const normalizeQuestion = (q) => {
     }
 
     return {
-        id: tempId,           // FE render
-        QuestionID: realQuestionId,  // chỉ nhận ID thật
+        id: tempId,      
+        QuestionID: realQuestionId, 
         content: q.content || q.Content || "",
         type: q.type || q.Type || "multiple_choice",
         level: q.level || q.Level || "Medium",
@@ -744,7 +736,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                     ? getChildSections(currentParentId).length
                     : parentSections.length,
                 questions: [],
-                fileURL: sectionData.fileURL || null // ← LƯU fileURL TỪ DIALOG
+                fileURL: sectionData.fileURL || null 
             };
 
             setSections((prev) => [...prev, newSection]);
@@ -754,18 +746,14 @@ const Step2Content = ({ examId, sections, setSections }) => {
 
     const handleAddQuestion = (parentId, childId) => {
         setCurrentParentId(parentId);
-        setCurrentChildId(childId); // ← Đảm bảo lưu đúng childId
+        setCurrentChildId(childId); 
         setOpenAddQuestion(true);
     }
 
     const handleSaveQuestions = (questions) => {
-        // Chuẩn hóa câu hỏi
         const normalized = questions.map(q => normalizeQuestion(q));
-
-        // Tìm parent và child để cập nhật đúng
         setSections(prev => {
             return prev.map(section => {
-                // Nếu là parent section
                 if (section.id === currentParentId && section.childSections) {
                     return {
                         ...section,
@@ -780,7 +768,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                         })
                     };
                 }
-                // Nếu dùng cấu trúc phẳng (như hiện tại)
+    
                 if (section.id === currentChildId) {
                     return {
                         ...section,

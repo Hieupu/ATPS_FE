@@ -35,7 +35,7 @@ import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
 import InstructorClasses from "./pages/instructor/pages/ClassesPage";
 import ClassDetailPage from "./pages/instructor/pages/ClassDetailPage";
-import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
@@ -94,8 +94,8 @@ function AppRoutes() {
 
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
-      <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
-      <Route path="/exam/:examId/result" element={<ExamResultPage />} />
+      <Route path="/exam/:instanceId/take" element={<ExamTakingPage />} />
+      <Route path="/exam/:instanceId/result" element={<ExamResultPage />} />
 
       {/* Learner Routes */} 
       <Route path="/schedule" element={<SchedulePage />} />
@@ -130,7 +130,7 @@ function AppRoutes() {
           <Route path="classes" element={<InstructorClasses />} />
           <Route path="classes/:classId" element={<ClassDetailPage />} />
 
-          <Route path="assignments" element={<InstructorAssignments />} />
+
           <Route path="exams" element={<InstructorExams />} />
           <Route path="grades" element={<InstructorGrades />} />
           <Route path="schedule" element={<InstructorSchedulePage />} />

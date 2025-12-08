@@ -13,367 +13,214 @@ import {
   CircularProgress,
   Button,
 } from '@mui/material';
-import { Quiz, AccessTime, EmojiEvents, CheckCircle } from '@mui/icons-material';
+import {
+  Quiz,
+  AccessTime,
+  CheckCircle,
+  History,
+  Refresh,
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '../../components/Header/AppHeader';
-import { 
-  getAllExamsApi,
-  EXAM_STATUS_LABELS,
-  EXAM_STATUS_COLORS,
-  TAB_FILTERS,
-  formatScore
+import {
+  getAllExamInstancesApi,
+  retryExamApi
 } from '../../apiServices/learnerExamService';
 
-const TabPanel = ({ children, value, index, ...other }) => (
-  <div
-    role="tabpanel"
-    hidden={value !== index}
-    id={`exam-tabpanel-${index}`}
-    aria-labelledby={`exam-tab-${index}`}
-    {...other}
-  >
-    {value === index && <Box sx={{ py: 3 }}>{children}</Box>}
-  </div>
-);
+const STATUS_COLOR_MAP = {
+  Open: 'success',
+  Scheduled: 'warning',
+  Closed: 'error',
+  Cancelled: 'default',
+};
 
-const ExamCard = ({ exam, onStartExam, onViewResult }) => {
-  const navigate = useNavigate();
+const STATUS_LABEL_MAP = {
+  Open: 'Đang mở',
+  Scheduled: 'Chưa đến giờ',
+  Closed: 'Đã đóng',
+  Cancelled: 'Đã hủy',
+};
 
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return 'N/A';
-    return new Date(dateTimeString).toLocaleString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+const TAB_FILTERS = [
+  { value: 'all', label: 'Tất cả' },
+  { value: 'Open', label: 'Đang mở' },
+  { value: 'Scheduled', label: 'Chưa đến giờ' },
+  { value: 'Closed', label: 'Đã đóng' },
+];
 
-  const handleCourseClick = () => {
-    if (exam.courseId) {
-      navigate(`/my-courses/${exam.courseId}`);
-    }
-  };
-
-  // Determine button action
-  const canTakeExam = exam.availabilityStatus === 'available' && !exam.isSubmitted;
-  const canViewResult = exam.isSubmitted;
-
-  return (
-    <Card 
-      sx={{ 
-        mb: 2, 
-        transition: 'all 0.3s ease',
-        '&:hover': { 
-          transform: 'translateY(-4px)',
-          boxShadow: 6
-        } 
-      }}
-    >
-      <CardContent>
-        {/* Course Info */}
-        <Box 
-          sx={{ 
-            mb: 2, 
-            p: 2, 
-            bgcolor: 'primary.50', 
-            borderRadius: 1, 
-            cursor: 'pointer',
-            transition: 'all 0.2s',
-            '&:hover': {
-              bgcolor: 'primary.100'
-            }
-          }} 
-          onClick={handleCourseClick}
-        >
-          <Typography variant="subtitle2" color="primary" sx={{ fontWeight: 600 }}>
-            📚 {exam.courseName || 'Khóa học'}
-          </Typography>
-          {exam.className && (
-            <Typography variant="caption" color="text.secondary">
-              Lớp: {exam.className}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Exam Title & Status */}
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-          <Box sx={{ flex: 1 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <Quiz sx={{ color: 'primary.main' }} />
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {exam.title}
-              </Typography>
-            </Box>
-            
-            <Typography variant="body2" color="text.secondary" paragraph>
-              {exam.description || 'Không có mô tả'}
-            </Typography>
-          </Box>
-
-          <Chip 
-            label={EXAM_STATUS_LABELS[exam.availabilityStatus] || exam.availabilityStatus} 
-            color={EXAM_STATUS_COLORS[exam.availabilityStatus] || 'default'} 
-            size="small"
-            sx={{ ml: 2 }}
-          />
-        </Box>
-
-        {/* Time Info */}
-        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
-              Bắt đầu: {formatDateTime(exam.classStartTime || exam.startTime)}
-            </Typography>
-          </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <AccessTime sx={{ fontSize: 16, color: 'text.secondary' }} />
-            <Typography variant="body2" color="text.secondary">
-              Kết thúc: {formatDateTime(exam.classEndTime || exam.endTime)}
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Result Display (if submitted) */}
-        {exam.isSubmitted && exam.score !== null && exam.score !== undefined && (
-          <Box sx={{ 
-            p: 2, 
-            bgcolor: exam.score >= 50 ? 'success.light' : 'error.light',
-            borderRadius: 1, 
-            mb: 2,
-            border: '1px solid',
-            borderColor: exam.score >= 50 ? 'success.main' : 'error.main'
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-              <EmojiEvents sx={{ color: exam.score >= 50 ? 'success.main' : 'error.main' }} />
-              <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                Kết quả
-              </Typography>
-            </Box>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                {formatScore(exam.score)}
-              </Typography>
-              <Chip 
-                icon={<CheckCircle />}
-                label={exam.score >= 50 ? 'Đạt' : 'Chưa đạt'} 
-                color={exam.score >= 50 ? 'success' : 'error'}
-                size="small"
-              />
-              {exam.submissionDate && (
-                <Typography variant="caption" color="text.secondary">
-                  Nộp lúc: {formatDateTime(exam.submissionDate)}
-                </Typography>
-              )}
-            </Box>
-          </Box>
-        )}
-
-        {/* Action Buttons */}
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          {canTakeExam && (
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              startIcon={<Quiz />}
-              onClick={() => onStartExam(exam)}
-              sx={{ fontWeight: 600 }}
-            >
-              Bắt đầu làm bài
-            </Button>
-          )}
-
-          {canViewResult && (
-            <Button
-              variant="contained"
-              color="secondary"
-              fullWidth
-              startIcon={<EmojiEvents />}
-              onClick={() => onViewResult(exam)}
-              sx={{ fontWeight: 600 }}
-            >
-              Xem kết quả
-            </Button>
-          )}
-
-          {exam.availabilityStatus === 'not_started' && (
-            <Button
-              variant="outlined"
-              color="warning"
-              fullWidth
-              disabled
-              sx={{ fontWeight: 600 }}
-            >
-              Chưa đến giờ thi
-            </Button>
-          )}
-
-          {exam.availabilityStatus === 'expired' && !exam.isSubmitted && (
-            <Button
-              variant="outlined"
-              color="error"
-              fullWidth
-              disabled
-              sx={{ fontWeight: 600 }}
-            >
-              Đã hết hạn
-            </Button>
-          )}
-        </Box>
-      </CardContent>
-    </Card>
-  );
+const formatDateTime = (value) => {
+  if (!value) return '—';
+  const d = new Date(value);
+  return d.toLocaleString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 };
 
 const ExamsPage = () => {
   const navigate = useNavigate();
-  const [exams, setExams] = useState([]);
+  const [tab, setTab] = useState('all');
+  const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tabValue, setTabValue] = useState(0);
 
-  useEffect(() => {
-    fetchExams();
-  }, [tabValue]);
-
-  const fetchExams = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      setError(null);
-
-      // Get current tab filter
-      const currentFilter = TAB_FILTERS[tabValue]?.value || 'all';
-      
-      // Fetch exams with filter
-      const examsData = await getAllExamsApi(currentFilter);
-      
-      setExams(examsData);
+      const data = await getAllExamInstancesApi();
+      setInstances(data || []);
     } catch (err) {
-      console.error('Error fetching exams:', err);
-      setError(err.message || 'Không thể tải danh sách bài kiểm tra');
+      setError(err.message || 'Không thể tải danh sách bài thi');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleTabChange = (event, newValue) => {
-    setTabValue(newValue);
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const filteredInstances = instances.filter((inst) => {
+    if (tab === 'all') return true;
+    return inst.status === tab;
+  });
+
+  const handleRetry = async (instanceId) => {
+    if (!window.confirm("Bạn có chắc muốn làm lại bài thi?")) return;
+
+    try {
+      await retryExamApi(instanceId);
+      navigate(`/exam/${instanceId}/take`);
+    } catch (err) {
+      alert(err.message || "Không thể reset bài thi");
+    }
   };
-
-  const handleStartExam = (exam) => {
-    // Navigate to exam taking page
-    navigate(`/exam/${exam.examId}/take`);
-  };
-
-  const handleViewResult = (exam) => {
-    // Navigate to result page
-    navigate(`/exam/${exam.examId}/result`);
-  };
-
-  // Calculate counts for each tab
-  const getCounts = () => {
-    const counts = {
-      all: exams.length,
-      ongoing: 0,
-      upcoming: 0,
-      completed: 0
-    };
-
-    // Note: Backend already filters by tab, so we just show the count
-    // If you want to show total counts, you need to fetch all exams separately
-    return counts;
-  };
-
-  const counts = getCounts();
-
-  if (loading) {
-    return (
-      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
-        <AppHeader />
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
-          <CircularProgress />
-        </Box>
-      </Box>
-    );
-  }
 
   return (
-    <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
+    <>
       <AppHeader />
-      
-      <Container maxWidth="lg" sx={{ py: 4 }}>
-        {/* Header */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h4" component="h1" sx={{ fontWeight: 700, mb: 2 }}>
-            Bài Kiểm Tra Của Tôi
+      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+          <Typography variant="h5" fontWeight={700}>
+            Bài kiểm tra của tôi
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            Quản lý và tham gia tất cả bài kiểm tra từ các khóa học đã đăng ký
-          </Typography>
+          <Button
+            startIcon={<History />}
+            variant="outlined"
+            size="small"
+            onClick={() => navigate('/exams/history')}
+          >
+            Lịch sử làm bài
+          </Button>
         </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-            {error}
-          </Alert>
+        <Tabs
+          value={tab}
+          onChange={(_, value) => setTab(value)}
+          sx={{ mb: 3 }}
+        >
+          {TAB_FILTERS.map((t) => (
+            <Tab key={t.value} label={t.label} value={t.value} />
+          ))}
+        </Tabs>
+
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+            <CircularProgress />
+          </Box>
         )}
 
-        {/* Tabs */}
-        <Card>
-          <CardContent sx={{ p: 0 }}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              aria-label="exam tabs"
-              variant="fullWidth"
+        {!loading && error && <Alert severity="error">{error}</Alert>}
+
+        {!loading && !error && filteredInstances.map((inst) => {
+          const isSubmitted = inst.isSubmitted === true || inst.status === "Closed";
+
+          return (
+            <Card
+              key={inst.instanceId}
               sx={{
-                borderBottom: 1,
-                borderColor: 'divider',
-                '& .MuiTab-root': {
-                  fontWeight: 600
-                }
+                mb: 2,
+                borderLeft: 6,
+                borderColor: STATUS_COLOR_MAP[inst.status] || 'default',
               }}
             >
-              {TAB_FILTERS.map((filter, index) => (
-                <Tab 
-                  key={filter.value}
-                  label={`${filter.label} (${exams.length})`}
-                  id={`exam-tab-${index}`}
-                />
-              ))}
-            </Tabs>
+              <CardContent>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+                  
+                  {/* LEFT SIDE */}
+                  <Box sx={{ flex: 1, minWidth: 250 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Quiz sx={{ mr: 1 }} />
+                      <Typography variant="h6" fontWeight={600}>
+                        {inst.examTitle}
+                      </Typography>
+                    </Box>
 
-            {/* Tab Panels */}
-            <Box sx={{ p: 3, minHeight: 400 }}>
-              {TAB_FILTERS.map((filter, index) => (
-                <TabPanel key={filter.value} value={tabValue} index={index}>
-                  {exams.length === 0 ? (
-                    <Alert severity="info">
-                      {filter.value === 'all' && 'Bạn chưa có bài kiểm tra nào từ các khóa học đã đăng ký.'}
-                      {filter.value === 'ongoing' && 'Hiện không có bài kiểm tra nào đang mở.'}
-                      {filter.value === 'upcoming' && 'Không có bài kiểm tra sắp diễn ra.'}
-                      {filter.value === 'completed' && 'Bạn chưa hoàn thành bài kiểm tra nào.'}
-                    </Alert>
-                  ) : (
-                    exams.map(exam => (
-                      <ExamCard
-                        key={exam.examId}
-                        exam={exam}
-                        onStartExam={handleStartExam}
-                        onViewResult={handleViewResult}
-                      />
-                    ))
-                  )}
-                </TabPanel>
-              ))}
-            </Box>
-          </CardContent>
-        </Card>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Lớp: {inst.className || '—'}
+                    </Typography>
+
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <AccessTime sx={{ mr: 1, fontSize: 18 }} />
+                      <Typography variant="body2">
+                        {formatDateTime(inst.startTime)} → {formatDateTime(inst.endTime)}
+                      </Typography>
+                    </Box>
+
+                    <Chip
+                      label={STATUS_LABEL_MAP[inst.status] || inst.status}
+                      color={STATUS_COLOR_MAP[inst.status] || 'default'}
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    <Chip
+                      label={`Lượt làm tối đa: ${inst.attempt}`}
+                      size="small"
+                      variant="outlined"
+                    />
+                  </Box>
+
+                  {/* RIGHT SIDE BUTTONS */}
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 200 }}>
+
+                    {inst.status === "Open" && !isSubmitted && (
+                      <Button
+                        variant="contained"
+                        onClick={() => navigate(`/exam/${inst.instanceId}/take`)}
+                      >
+                        Vào làm bài
+                      </Button>
+                    )}
+
+                    {isSubmitted && (
+                      <Button
+                        variant="contained"
+                        startIcon={<Refresh />}
+                        onClick={() => handleRetry(inst.instanceId)}
+                      >
+                        Làm lại bài thi
+                      </Button>
+                    )}
+
+                    <Button
+                      variant="outlined"
+                      startIcon={<CheckCircle />}
+                      onClick={() => navigate(`/exam/${inst.instanceId}/result`)}
+                    >
+                      Xem kết quả
+                    </Button>
+                  </Box>
+
+                </Box>
+              </CardContent>
+            </Card>
+          );
+        })}
       </Container>
-    </Box>
+    </>
   );
 };
 

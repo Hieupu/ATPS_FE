@@ -146,24 +146,17 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-  /* ======================================================
-     ⭐ FIX CỰC QUAN TRỌNG:
-     - KHÔNG BAO GIỜ dùng QuestionID = Date.now()
-     - FE chỉ tạo ID tạm (id), còn QuestionID phải = null
-     ====================================================== */
   const handleAddQuestion = () => {
     if (!validate()) return;
 
     const questionToAdd = {
       ...currentQuestion,
-      id: Date.now(),   // 🔥 ID FE-only, an toàn
-      QuestionID: null, // 🔥 FIX: BE sẽ sinh QuestionID thật
+      id: Date.now(),  
+      QuestionID: null,
       createdAt: new Date().toISOString(),
     };
 
     setQuestions((prev) => [...prev, questionToAdd]);
-
-    // Reset form
     setCurrentQuestion({
       content: "",
       type: "multiple_choice",
@@ -188,15 +181,12 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
   return (
     <Box sx={{ p: 3 }}>
       <Grid container spacing={3}>
-        {/* LEFT: Create Question Form */}
         <Grid item xs={12} md={7}>
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography variant="h6" fontWeight={600}>
               Tạo câu hỏi mới
             </Typography>
-
             <Stack spacing={3} mt={2}>
-              {/* Question content */}
               <TextField
                 select
                 fullWidth
@@ -311,8 +301,6 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                   )}
                 </>
               )}
-
-              {/* FILL IN BLANK */}
               {currentQuestion.type === "fill_in_blank" && (
                 <TextField
                   fullWidth
@@ -326,7 +314,6 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                 />
               )}
 
-              {/* MATCHING */}
               {currentQuestion.type === "matching" && (
                 <>
                   <Typography fontWeight={600}>Các cặp ghép *</Typography>
@@ -359,7 +346,6 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                   ))}
 
                   <Button onClick={addMatchingPair} startIcon={<AddIcon />}>
-                    Thêm cặp ghép
                   </Button>
 
                   {errors.matchingPairs && (
@@ -367,8 +353,6 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                   )}
                 </>
               )}
-
-              {/* SAVE BUTTON */}
               <Button
                 fullWidth
                 variant="contained"
@@ -380,8 +364,6 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
             </Stack>
           </Paper>
         </Grid>
-
-        {/* RIGHT: Preview */}
         <Grid item xs={12} md={5}>
           <Paper variant="outlined" sx={{ p: 3 }}>
             <Typography fontWeight={600}>

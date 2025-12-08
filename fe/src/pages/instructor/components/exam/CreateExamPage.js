@@ -11,44 +11,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import ExamWizard from "./ExamWizard";
-import { getCoursesApi } from "../../../../apiServices/assignmentService";
 import { createExamApi } from "../../../../apiServices/instructorExamService";
 
 const CreateExamPage = () => {
   const navigate = useNavigate();
-  const [courses, setCourses] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState("");
-
-  // React.useEffect(() => {
-  //   const loadCourses = async () => {
-  //     try {
-  //       const data = await getCoursesApi();
-  //       const formatted = (data || []).map((c, index) => {
-  //         const id = c.value;
-
-  //         if (id) {
-  //           return {
-  //             label: c.label || `Khóa học ${index + 1}`,
-  //             value: `${id}-idx${index}`,
-  //             originalId: id,
-  //           };
-  //         } else {
-  //           const tempId = `temp-${Date.now()}-${index}`;
-  //           return {
-  //             label: c.label || `Khóa học ${index + 1}`,
-  //             value: tempId,
-  //             originalId: tempId,
-  //           };
-  //         }
-  //       });
-  //       setCourses(formatted);
-  //     } catch (err) {
-  //       setCourses([]);
-  //     }
-  //   };
-  //   loadCourses();
-  // }, []);
 
   const handleSave = async (examData) => {
     setLoading(true);
@@ -58,18 +26,18 @@ const CreateExamPage = () => {
       const response = await createExamApi(examData);
       navigate("/instructor/exams", {
         state: {
-          message: "Tạo bài thi thành công!",
+          message: "Tạo bài tập thành công!",
           severity: "success"
         }
       });
     } catch (err) {
 
-      toast.error(err.message || "Không thể tạo bài thi. Vui lòng thử lại!", {
+      toast.error(err.message || "Không thể tạo bài tập. Vui lòng thử lại!", {
         position: "top-right",
         autoClose: 2500,
       });
 
-      setError(err.message || "Không thể tạo bài thi. Vui lòng thử lại.");
+      setError(err.message || "Không thể tạo bài tập. Vui lòng thử lại.");
       setLoading(false);
     }
   };

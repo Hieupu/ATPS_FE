@@ -14,16 +14,14 @@ const SECTION_TYPES = [
   { value: "Writing", label: "Writing" },
 ];
 
-/** ⭐ Loại bỏ suffix Cloudinary (_abcxyz) để file nhìn đẹp hơn */
 const cleanFileName = (url) => {
   if (!url) return "";
-  const file = url.split("/").pop(); // ExamInstructor_bybcgr.docx
+  const file = url.split("/").pop(); 
   const match = file.match(/(.+?)_\w+\.(\w+)$/);
   if (match) return `${match[1]}.${match[2]}`;
   return file;
 };
 
-/** ⭐ Tạo link preview (Google Docs Viewer cho file Word/PDF) */
 const getPreviewUrl = (url) => {
   if (!url) return "";
   const ext = url.split(".").pop().toLowerCase();
@@ -32,7 +30,7 @@ const getPreviewUrl = (url) => {
   if (docTypes.includes(ext)) {
     return `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
   }
-  return url; // media mở bình thường
+  return url;
 };
 
 const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType }) => {
@@ -44,8 +42,6 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
 
   const [uploading, setUploading] = useState(false);
   const [errors, setErrors] = useState({});
-
-  /** Reset form khi mở dialog */
   useEffect(() => {
     if (open) {
       if (editData) {
@@ -70,17 +66,14 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
       setErrors({});
     }
   }, [open, editData, isChild, parentType]);
-
-  /** Validate */
   const validate = () => {
     const newErrors = {};
-    if (!formData.type) newErrors.type = "Vui lòng chọn loại phần thi";
+    if (!formData.type) newErrors.type = "Vui lòng chọn loại phần bài tập";
     if (!isChild && !formData.title.trim()) newErrors.title = "Tiêu đề là bắt buộc";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  /** Save dữ liệu */
   const handleSave = () => {
     if (!validate()) return;
 
@@ -94,7 +87,6 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
     });
   };
 
-  /** Upload file Cloudinary */
   const handleFileSelect = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -108,7 +100,7 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md" PaperProps={{ sx: { p: 1.5 } }}>
       <DialogTitle>
-        {editData ? "Chỉnh sửa phần thi" : isChild ? "Thêm phân mục" : "Thêm phần thi"}
+        {editData ? "Chỉnh sửa phần bài tập" : isChild ? "Thêm phân mục" : "Thêm phần bài tập"}
         <IconButton onClick={onClose} sx={{ position: "absolute", right: 8, top: 8 }}>
           <CloseIcon />
         </IconButton>
@@ -117,13 +109,11 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
       <DialogContent>
         <Box sx={{ mt: 2 }}>
           <Grid container spacing={3}>
-
-            {/* Loại phần thi */}
             <Grid item xs={12}>
               <TextField
                 select
                 fullWidth
-                label="Loại phần thi *"
+                label="Loại phần bài tập *"
                 value={formData.type}
                 onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                 error={Boolean(errors.type)}
@@ -137,8 +127,6 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                 ))}
               </TextField>
             </Grid>
-
-            {/* Tiêu đề */}
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -148,12 +136,10 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                 error={Boolean(errors.title)}
                 helperText={
                   errors.title ||
-                  (isChild ? "Nếu để trống hệ thống tự tạo tên" : "Nhập tiêu đề phần thi")
+                  (isChild ? "Nếu để trống hệ thống tự tạo tên" : "Nhập tiêu đề phần bài tập")
                 }
               />
             </Grid>
-
-            {/* Upload file cho SECTION CON */}
             {isChild && (
               <Grid item xs={12}>
                 <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -174,8 +160,6 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                     onChange={handleFileSelect}
                   />
                 </Button>
-
-                {/* Hiển thị file đã upload */}
                 {formData.fileURL && (
                   <Box
                     sx={{
@@ -189,7 +173,6 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                       alignItems: "center",
                     }}
                   >
-                    {/* Click xem preview */}
                     <a
                       href={getPreviewUrl(formData.fileURL)}
                       target="_blank"
@@ -200,7 +183,7 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                         fontWeight: 600,
                       }}
                     >
-                      📄 {cleanFileName(formData.fileURL)}
+                      {cleanFileName(formData.fileURL)}
                     </a>
 
                     <IconButton
@@ -214,13 +197,11 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
                 )}
               </Grid>
             )}
-
-            {/* Info box */}
             <Grid item xs={12}>
               <Alert severity="info">
                 {isChild
-                  ? "Phân mục con kế thừa loại phần thi từ phân mục cha."
-                  : "Bạn có thể thêm phân mục con sau khi tạo phần thi."}
+                  ? "Phân mục con kế thừa loại phần bài tập từ phân mục cha."
+                  : "Bạn có thể thêm phân mục con sau khi tạo phần bài tập."}
               </Alert>
             </Grid>
           </Grid>

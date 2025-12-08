@@ -40,18 +40,11 @@ const AddQuestionDialog = ({
       setUploadedQuestions([]);
     }
   }, [open]);
-
-  /** ---------------------------------------------------------
-   *  🔥 FIX QUAN TRỌNG NHẤT
-   *  - Không convert q.id thành QuestionID!
-   *  - Chỉ giữ QuestionID thật nếu nó <= INT(32-bit)
-   *  - Câu hỏi mới hoặc Excel upload phải QuestionID = null
-   * --------------------------------------------------------- */
   const normalizeQuestions = (questions) => {
     return questions.map((q) => {
       let realId = null;
 
-      // Chỉ nhận ID thật từ DB
+   
       if (
         Number.isInteger(Number(q.QuestionID)) &&
         Number(q.QuestionID) > 0 &&
@@ -62,8 +55,8 @@ const AddQuestionDialog = ({
 
       return {
         ...q,
-        QuestionID: realId, // ID thật hoặc null
-        id: q.id             // giữ nguyên ID FE để render UI
+        QuestionID: realId, 
+        id: q.id            
       };
     });
   };
@@ -79,8 +72,6 @@ const AddQuestionDialog = ({
       alert("Vui lòng thêm hoặc chọn ít nhất một câu hỏi");
       return;
     }
-
-    // ⭐ FIX: chuẩn hóa trước khi gửi qua Step 2
     const normalized = normalizeQuestions(result);
 
     onSave(normalized);
@@ -97,8 +88,6 @@ const AddQuestionDialog = ({
           </IconButton>
         </Box>
       </DialogTitle>
-
-      {/* TABS */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", px: 3 }}>
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}>
           <Tab label="Tạo câu hỏi mới" />
@@ -106,8 +95,6 @@ const AddQuestionDialog = ({
           <Tab label="Upload file Excel" />
         </Tabs>
       </Box>
-
-      {/* CONTENT */}
       <DialogContent sx={{ minHeight: 500, p: 0 }}>
         {activeTab === 0 && (
           <CreateQuestionTab
@@ -147,7 +134,7 @@ const AddQuestionDialog = ({
             (activeTab === 2 && uploadedQuestions.length === 0)
           }
         >
-          Lưu & Thêm vào phần thi
+          Lưu
         </Button>
       </DialogActions>
     </Dialog>

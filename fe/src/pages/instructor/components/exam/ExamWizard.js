@@ -15,7 +15,7 @@ import {
 import Step2Content from "./Step2Content";
 import ExamInstanceSettingsStep from "./ExamInstanceSettingsStep";
 
-const steps = ["Thông tin bài thi", "Phần thi & Câu hỏi", "Gắn bài & Cài đặt"];
+const steps = ["Thông tin bài tập", "Cấu trúc & Câu hỏi", "Cài đặt"];
 
 const ExamWizard = ({ open, onClose, exam }) => {
     const [activeStep, setActiveStep] = useState(0);
@@ -143,7 +143,7 @@ useEffect(() => {
         const parents = sections.filter(s => !s.parentSectionId);
 
         if (!parents.length) {
-            alert("Vui lòng thêm ít nhất một phần thi");
+            alert("Vui lòng thêm ít nhất một phần bài tập");
             return false;
         }
 
@@ -151,7 +151,7 @@ useEffect(() => {
             const children = sections.filter(s => s.parentSectionId === p.id);
 
             if (!children.length) {
-                alert(`Phần thi "${p.title}" phải có ít nhất 1 phần thi con`);
+                alert(`Phần bài tập "${p.title}" phải có ít nhất 1 phần bài tập nhỏ`);
                 return false;
             }
 
@@ -245,7 +245,7 @@ useEffect(() => {
             return (
                 <Box>
                     <Typography variant="h5" fontWeight={600} mb={3}>
-                        Thông tin bài thi
+                        Thông tin bài tập
                     </Typography>
 
                     <Grid container spacing={3}>

@@ -44,8 +44,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
   const [loading, setLoading] = useState(false);
   const [questions, setQuestions] = useState([]);
   const [error, setError] = useState("");
-
-  // Filters
   const [filters, setFilters] = useState({
     search: "",
     type: "",
@@ -126,8 +124,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
       options: q.options || [],
       fromBank: true,
     }));
-
-    // Merge with existing selections (avoid duplicates)
     setSelectedQuestions((prev) => {
       const existingIds = new Set(prev.map((q) => q.QuestionID));
       const uniqueNew = newSelections.filter((q) => !existingIds.has(q.QuestionID));
@@ -138,20 +134,13 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
   const handleDeselectAll = () => {
     setSelectedQuestions([]);
   };
-
-  // Apply client-side filters
   const filteredQuestions = questions.filter((q) => {
-    // Search filter
     if (filters.search) {
       const searchLower = filters.search.toLowerCase();
       if (!q.Content?.toLowerCase().includes(searchLower)) {
         return false;
       }
     }
-
-    // Backend already filters Active, no need to check Status
-
-    // Point range filter
     const point = q.Point || 1;
     if (point < filters.pointRange[0] || point > filters.pointRange[1]) {
       return false;
@@ -163,7 +152,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
   return (
     <Box sx={{ p: 3 }}>
       <Grid container spacing={3}>
-        {/* Left Side - Filters */}
         <Grid item xs={12} md={3}>
           <Paper variant="outlined" sx={{ p: 2, position: "sticky", top: 16 }}>
             <Typography variant="h6" gutterBottom fontWeight={600}>
@@ -171,7 +159,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
             </Typography>
 
             <Stack spacing={2} mt={2}>
-              {/* Search */}
               <TextField
                 fullWidth
                 size="small"
@@ -186,8 +173,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                   ),
                 }}
               />
-
-              {/* Type */}
               <TextField
                 select
                 fullWidth
@@ -202,8 +187,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                   </MenuItem>
                 ))}
               </TextField>
-
-              {/* Level */}
               <TextField
                 select
                 fullWidth
@@ -218,8 +201,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                   </MenuItem>
                 ))}
               </TextField>
-
-              {/* Topic */}
               <TextField
                 fullWidth
                 size="small"
@@ -228,8 +209,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                 onChange={(e) => handleFilterChange("topic", e.target.value)}
                 placeholder="Ví dụ: Grammar"
               />
-
-              {/* Point Range */}
               <Box>
                 <Typography variant="body2" gutterBottom>
                   Điểm: {filters.pointRange[0]} - {filters.pointRange[1]}
@@ -249,11 +228,8 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
             </Stack>
           </Paper>
         </Grid>
-
-        {/* Middle - Available Questions */}
         <Grid item xs={12} md={5}>
           <Stack spacing={2}>
-            {/* Header */}
             <Paper variant="outlined" sx={{ p: 2 }}>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
                 <Typography variant="body1" fontWeight={600}>
@@ -272,22 +248,16 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                 </Stack>
               </Stack>
             </Paper>
-
-            {/* Loading */}
             {loading && (
               <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
                 <CircularProgress />
               </Box>
             )}
-
-            {/* Error */}
             {error && (
               <Alert severity="error" onClose={() => setError("")}>
                 {error}
               </Alert>
             )}
-
-            {/* Questions List */}
             {!loading && !error && (
               <Box sx={{ maxHeight: 600, overflowY: "auto" }}>
                 {filteredQuestions.length === 0 ? (
@@ -369,7 +339,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                               </Stack>
                             </Box>
                             
-                            {/* Selected indicator */}
                             {isSelected && (
                               <CheckCircleIcon color="primary" fontSize="small" sx={{ mt: 0.5 }} />
                             )}
@@ -383,8 +352,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
             )}
           </Stack>
         </Grid>
-
-        {/* Right Side - Selected Questions */}
         <Grid item xs={12} md={4}>
           <Paper 
             variant="outlined" 
@@ -431,7 +398,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                 overflowY: "auto", 
                 flex: 1,
                 pr: 1,
-                // Custom scrollbar
                 "&::-webkit-scrollbar": {
                   width: "8px",
                 },
@@ -459,7 +425,7 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                       }}
                     >
                       <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                        {/* Index */}
+
                         <Box
                           sx={{
                             minWidth: 24,

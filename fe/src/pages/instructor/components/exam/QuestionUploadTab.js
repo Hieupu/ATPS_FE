@@ -2,14 +2,11 @@ import React, { useState } from "react";
 import { Box, Button, Typography, CircularProgress } from "@mui/material";
 import * as XLSX from "xlsx";
 
-/* ===========================================
-   🔥 NORMALIZE — TRẢ VỀ ĐÚNG FORMAT BACKEND
-   =========================================== */
+
 const normalizeQuestion = (row, index) => {
   const rawType = (row["Loại"] || "").toString().trim().toLowerCase();
   const tempId = Date.now() + index;
 
-  // === CHUẨN HÓA TYPE ===
   let type = "";
   if (rawType.includes("multiple")) type = "multiple_choice";
   else if (rawType.includes("true") || rawType.includes("false")) type = "true_false";
@@ -17,14 +14,13 @@ const normalizeQuestion = (row, index) => {
   else if (rawType.includes("match")) type = "matching";
   else if (rawType.includes("essay")) type = "essay";
   else if (rawType.includes("speak")) type = "speaking";
-  else return null; // Bỏ dòng lỗi
+  else return null;
 
   const content = row["Nội dung"] || "";
   const level = row["Mức độ"] || "Medium";
   const point = Number(row["Điểm"]) || 1;
   const topic = row["Chủ đề"] || "";
 
-  // === XỬ LÝ THEO TYPE ===
   if (type === "matching") {
     const leftList = (row["Tùy chọn A"] || "").split("\n").map(s => s.trim()).filter(Boolean);
     const rightList = (row["Tùy chọn B"] || "").split("\n").map(s => s.trim()).filter(Boolean);
@@ -92,7 +88,6 @@ const normalizeQuestion = (row, index) => {
     };
   }
 
-  // === MULTIPLE CHOICE (mặc định nếu không khớp) ===
   const rawOptions = [
     row["Tùy chọn A"],
     row["Tùy chọn B"],
@@ -123,9 +118,6 @@ const normalizeQuestion = (row, index) => {
 };
 
 
-/* ===========================================
-   🔥 COMPONENT UPLOAD FILE
-   =========================================== */
 const QuestionUploadTab = ({ uploadedQuestions = [], setUploadedQuestions }) => {
   const [loading, setLoading] = useState(false);
 

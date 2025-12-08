@@ -38,14 +38,8 @@ const navItems = [
     path: "/instructor/schedule",
   },
   {
-    id: "assignments",
-    label: "Bài tập",
-    icon: <AssignmentIcon />,
-    path: "/instructor/assignments",
-  },
-  {
     id: "exams",
-    label: "Bài kiểm tra",
+    label: "Bài tập",
     icon: <QuizIcon />,
     path: "/instructor/exams",
   },
