@@ -81,7 +81,7 @@ import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
 import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
 import InstructorClassesPage from "./pages/instructor/pages/ClassesPage";
-import InstructorAssignmentsPage from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExamsPage from "./pages/instructor/pages/ExamsPage";
 import InstructorGradesPage from "./pages/instructor/pages/GradesPage";
 import InstructorSettingsPage from "./pages/instructor/pages/SettingsPage";
