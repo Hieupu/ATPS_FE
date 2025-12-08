@@ -1,6 +1,207 @@
 import dayjs from "dayjs";
 import { dayOfWeekToDay } from "../../../../utils/validate";
 
+// Utility functions để tính toán - Tránh lặp lại logic
+export const calculateAllSelectedTimeslotIds = (
+  selectedTimeslotIds,
+  timeslotsByDay
+) => {
+  const all = new Set(selectedTimeslotIds);
+  Object.values(timeslotsByDay || {}).forEach((dayTimeslots) => {
+    dayTimeslots.forEach((timeslotId) => {
+      all.add(timeslotId);
+    });
+  });
+  return all;
+};
+
+export const calculateSessionsPerWeek = (daysOfWeek, timeslotsByDay) => {
+  let total = 0;
+  (daysOfWeek || []).forEach((day) => {
+    const dayTimeslots = timeslotsByDay?.[day] || [];
+    total += dayTimeslots.length;
+  });
+  return total;
+};
+
+// Parse date string (YYYY-MM-DD) thành Date object - Tránh timezone issues
+export const parseDateString = (dateString) => {
+  if (!dateString) return null;
+
+  if (typeof dateString === "string") {
+    const parts = dateString.split("-");
+    if (parts.length === 3) {
+      const date = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10)
+      );
+      date.setHours(0, 0, 0, 0);
+      return date;
+    }
+  }
+
+  const date = new Date(dateString);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+// Parse end date string và set time về cuối ngày (23:59:59)
+export const parseEndDateString = (dateString) => {
+  if (!dateString) return null;
+
+  if (typeof dateString === "string") {
+    const parts = dateString.split("-");
+    if (parts.length === 3) {
+      const date = new Date(
+        parseInt(parts[0], 10),
+        parseInt(parts[1], 10) - 1,
+        parseInt(parts[2], 10)
+      );
+      date.setHours(23, 59, 59, 999);
+      return date;
+    }
+  }
+
+  const date = new Date(dateString);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+// Format Date object thành YYYY-MM-DD string
+export const formatDateToString = (date) => {
+  if (!date) return "";
+
+  const dateObj = date instanceof Date ? date : new Date(date);
+  if (!dateObj || isNaN(dateObj.getTime())) return "";
+
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, "0");
+  const day = String(dateObj.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+// Tìm timeslot cho một ngày cụ thể - Logic tìm timeslot có Day khớp hoặc không có Day
+export const findTimeslotForDay = ({
+  timeslots,
+  selectedStartTime,
+  selectedEndTime,
+  targetDay,
+  normalizeTimeString,
+}) => {
+  if (!timeslots || !selectedStartTime || !selectedEndTime) return null;
+
+  // Ưu tiên tìm timeslot có Day khớp với ngày đó
+  let dayTimeslot = timeslots.find((t) => {
+    const startTime = normalizeTimeString(t.StartTime || t.startTime || "");
+    const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
+    const timeslotDay = t.Day || t.day;
+    return (
+      startTime === selectedStartTime &&
+      endTime === selectedEndTime &&
+      timeslotDay === targetDay
+    );
+  });
+
+  // Nếu không tìm thấy timeslot có Day khớp, tìm timeslot không có Day
+  if (!dayTimeslot) {
+    dayTimeslot = timeslots.find((t) => {
+      const startTime = normalizeTimeString(t.StartTime || t.startTime || "");
+      const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
+      const timeslotDay = t.Day || t.day;
+      return (
+        startTime === selectedStartTime &&
+        endTime === selectedEndTime &&
+        !timeslotDay
+      );
+    });
+  }
+
+  return dayTimeslot;
+};
+
+// Tính endDate ước tính dựa trên startDate và số buổi học
+export const estimateEndDate = (startDate, numOfSessions, minWeeks = 12) => {
+  if (!startDate || !numOfSessions) return null;
+
+  const estimatedWeeks = Math.max(numOfSessions, minWeeks);
+  return dayjs(startDate).add(estimatedWeeks, "week").format("YYYY-MM-DD");
+};
+
+// Lọc bỏ các timeslot bị LOCKED khỏi TimeslotsByDay
+export const filterLockedTimeslots = ({
+  timeslotsByDay,
+  daysOfWeek,
+  determineSlotStatus,
+  scheduleStartDate,
+  endDate,
+  blockedDays,
+  instructorBusySchedule,
+  formData,
+  sessionsPerWeek,
+  requiredSlotsPerWeek,
+  instructorType,
+  parttimeAvailableSlotKeySet,
+  lockedTimeslotId,
+  isDraftClass,
+}) => {
+  if (!scheduleStartDate || !timeslotsByDay) {
+    return { timeslotsByDay: {}, changed: false };
+  }
+
+  const newTimeslotsByDay = { ...timeslotsByDay };
+  const currentDaysOfWeekSet = new Set(daysOfWeek || []);
+  let changed = false;
+
+  // Xóa các ca đã chọn cho ngày không còn trong DaysOfWeek
+  Object.keys(newTimeslotsByDay).forEach((dayKey) => {
+    const dayOfWeek = Number(dayKey);
+    if (Number.isNaN(dayOfWeek)) return;
+
+    if (!currentDaysOfWeekSet.has(dayOfWeek)) {
+      // Ngày này không còn trong DaysOfWeek, xóa hết ca đã chọn
+      delete newTimeslotsByDay[dayKey];
+      changed = true;
+    }
+  });
+
+  // Kiểm tra và bỏ chọn các timeslot bị LOCKED
+  Object.entries(newTimeslotsByDay).forEach(([dayKey, slots]) => {
+    const dayOfWeek = Number(dayKey);
+    if (Number.isNaN(dayOfWeek) || !Array.isArray(slots)) return;
+
+    const keptSlots = slots.filter((timeslotId) => {
+      const status = determineSlotStatus({
+        dayOfWeek,
+        timeslotId,
+        startDate: scheduleStartDate,
+        endDate,
+        blockedDays,
+        instructorBusySchedule,
+        formData,
+        sessionsPerWeek,
+        requiredSlotsPerWeek,
+        instructorType,
+        parttimeAvailableSlotKeySet,
+        lockedTimeslotId,
+        isDraftClass,
+      });
+      return status.status !== "LOCKED";
+    });
+
+    if (keptSlots.length !== slots.length) {
+      changed = true;
+      if (keptSlots.length > 0) {
+        newTimeslotsByDay[dayKey] = keptSlots;
+      } else {
+        delete newTimeslotsByDay[dayKey];
+      }
+    }
+  });
+
+  return { timeslotsByDay: newTimeslotsByDay, changed };
+};
+
 export const normalizeBlockedDayValue = (value) => {
   if (Array.isArray(value)) {
     return { isDayBlocked: false, blockedTimeslots: value };
@@ -66,30 +267,12 @@ export const determineSlotStatus = ({
 
   const normalizedTimeslotId = normalizeTimeslotId(timeslotId);
 
-  // Logic mới: Lock các timeslot khác khi đã chốt một timeslot (cho DRAFT hoặc tạo mới)
-  if (isDraftClass && lockedTimeslotId) {
-    const normalizedLockedTimeslotId = normalizeTimeslotId(lockedTimeslotId);
-    if (normalizedTimeslotId !== normalizedLockedTimeslotId) {
-      return {
-        status: "LOCKED",
-        reason: `Lớp này đã chốt ca học. Vui lòng chọn cùng ca học cho tất cả các ngày.`,
-        source: "lockedTimeslot",
-        busyCount: 0,
-      };
-    }
-  }
+
 
   const { isDayBlocked, blockedTimeslots } = normalizeBlockedDayValue(
     blockedDays?.[dayOfWeek]
   );
 
-  // console.log("[determineSlotStatus] START", {
-  //   dayOfWeek,
-  //   timeslotId: normalizedTimeslotId,
-  //   startDate,
-  //   endDate,
-  //   blockedDayRaw: blockedDays?.[dayOfWeek],
-  // });
 
   // Nếu cả ngày bị block (theo phân tích thống kê), disable TẤT CẢ timeslot trong ngày đó
   if (isDayBlocked) {
@@ -99,10 +282,7 @@ export const determineSlotStatus = ({
       source: "blockedDays",
       busyCount: 0,
     };
-    // console.log("[determineSlotStatus] RESULT", {
-    //   ...result,
-    //   reasonSource: "isDayBlocked",
-    // });
+
     return result;
   }
 
@@ -118,10 +298,7 @@ export const determineSlotStatus = ({
       source: "blockedDays",
       busyCount: 0,
     };
-    // console.log("[determineSlotStatus] RESULT", {
-    //   ...result,
-    //   reasonSource: "blockedTimeslots",
-    // });
+
     return result;
   }
 
@@ -139,10 +316,6 @@ export const determineSlotStatus = ({
         source: "parttimeAvailability",
         busyCount: 0,
       };
-      // console.log("[determineSlotStatus] RESULT", {
-      //   ...result,
-      //   reasonSource: "parttimeAvailability",
-      // });
       return result;
     }
   }
@@ -183,7 +356,9 @@ export const determineSlotStatus = ({
       const dateObj = dayjs(session.Date);
       if (!dateObj.isValid()) return;
       const dateKey = dateObj.format("YYYY-MM-DD");
-      const tsKey = normalizeTimeslotId(session.TimeslotID || session.timeslotId);
+      const tsKey = normalizeTimeslotId(
+        session.TimeslotID || session.timeslotId
+      );
       if (dateKey && tsKey) {
         ownSessionKeySet.add(`${dateKey}-${tsKey}`);
       }
@@ -273,7 +448,9 @@ export const determineSlotStatus = ({
       (b) => (b.Status || "").toUpperCase() === "HOLIDAY"
     );
     const hasOther = relevantBusy.some(
-      (b) => (b.Status || "").toUpperCase() === "OTHER" || (b.Status || "").toUpperCase() === "OTHERS"
+      (b) =>
+        (b.Status || "").toUpperCase() === "OTHER" ||
+        (b.Status || "").toUpperCase() === "OTHERS"
     );
 
     let reason = "Giảng viên đã bận ở ca này";
@@ -291,20 +468,11 @@ export const determineSlotStatus = ({
       source: "busySchedule",
       busyCount,
     };
-    // console.log("[determineSlotStatus] RESULT", {
-    //   ...result,
-    //   reasonSource: "busySchedule",
-    //   busyCount,
-    // });
+    
     return result;
   }
 
   const result = { status: "AVAILABLE", reason: "", source: null, busyCount };
-  // console.log("[determineSlotStatus] RESULT", {
-  //   ...result,
-  //   reasonSource: "available",
-  //   busyCount,
-  // });
   return result;
 };
 

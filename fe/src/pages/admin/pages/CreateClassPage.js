@@ -190,19 +190,10 @@ const CreateClassPage = () => {
       return;
     }
     const { sessions, instructorId, classId } = conflictContextRef.current;
-    console.log(`[handleGenerateSuggestions] Bắt đầu với:`, {
-      sessionsCount: sessions?.length,
-      instructorId,
-      classId,
-      conflictsCount: conflictModal.conflicts?.length,
-    });
+
 
     const orderedConflicts = [...(conflictModal.conflicts || [])].sort(
       (a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0)
-    );
-    console.log(
-      `[handleGenerateSuggestions] orderedConflicts:`,
-      orderedConflicts
     );
 
     // Tìm buổi cuối cùng từ tất cả sessions (không chỉ conflict)
@@ -247,9 +238,6 @@ const CreateClassPage = () => {
         if (sessionDate) {
           // Lấy Day từ Date của session gốc
           timeslotDay = getDayFromDate(sessionDate);
-          console.log(
-            `[handleGenerateSuggestions] Conflict ${conflict.sessionIndex}: Lấy Day từ Date ${sessionDate} → ${timeslotDay}`
-          );
         }
 
         // Fallback: Nếu không lấy được từ Date, thử từ sessionInfo hoặc timeslotMeta
@@ -259,9 +247,6 @@ const CreateClassPage = () => {
             timeslotMeta.Day ||
             timeslotMeta.day ||
             null;
-          console.log(
-            `[handleGenerateSuggestions] Conflict ${conflict.sessionIndex}: Fallback lấy Day từ timeslot → ${timeslotDay}`
-          );
         }
 
         if (!timeslotDay || !sessionInfo.TimeslotID) {
@@ -272,10 +257,6 @@ const CreateClassPage = () => {
           });
           continue;
         }
-
-        console.log(
-          `[handleGenerateSuggestions] Conflict ${conflict.sessionIndex}: TimeslotID=${sessionInfo.TimeslotID}, Day=${timeslotDay}, Date=${sessionDate}`
-        );
 
         let searchPointer = rollingStart.clone();
         let suggestion = null;
@@ -294,41 +275,15 @@ const CreateClassPage = () => {
               excludeClassId: classId, // Loại trừ các sessions đã tạo của class này
             });
 
-            console.log(
-              `[handleGenerateSuggestions] Response từ API (TimeslotID=${sessionInfo.TimeslotID}, Day=${timeslotDay}):`,
-              response
-            );
-            console.log(
-              `[handleGenerateSuggestions] response.data?.suggestions:`,
-              response?.data?.suggestions
-            );
-
             // Lấy tất cả suggestions (cả available và busy)
             const allSuggestions = response?.data?.suggestions || [];
-            console.log(
-              `[handleGenerateSuggestions] Tất cả suggestions (${allSuggestions.length}):`,
-              allSuggestions
-            );
 
             // Tìm candidate available đầu tiên
             const candidate =
               allSuggestions.find((item) => item.available) || null;
 
-            console.log(
-              `[handleGenerateSuggestions] Candidate tìm được:`,
-              candidate
-            );
-
             // Nếu không có candidate, log lý do
             if (!candidate && allSuggestions.length > 0) {
-              console.log(
-                `[handleGenerateSuggestions] Có ${allSuggestions.length} suggestions nhưng không có available. Tất cả đều busy:`,
-                allSuggestions.map((s) => ({
-                  date: s.date,
-                  available: s.available,
-                  reason: s.reason,
-                }))
-              );
             }
 
             if (candidate) {
@@ -356,11 +311,6 @@ const CreateClassPage = () => {
               break;
             } else {
               // Không tìm thấy slot rảnh, tăng searchPointer lên 7 ngày (1 tuần) để tìm thứ tiếp theo
-              console.log(
-                `[handleGenerateSuggestions] Không tìm thấy slot cho conflict ${
-                  conflict.sessionIndex
-                }, attempt ${attempt + 1}, tăng searchPointer lên 7 ngày`
-              );
               searchPointer = searchPointer.add(7, "day");
               suggestionError =
                 "Không tìm thấy lịch trống phù hợp cho ca học này.";
@@ -381,23 +331,6 @@ const CreateClassPage = () => {
           error: suggestion ? null : suggestionError,
         });
       }
-
-      console.log(
-        `[handleGenerateSuggestions] Tổng kết suggestionResults:`,
-        suggestionResults
-      );
-      console.log(
-        `[handleGenerateSuggestions] Số lượng suggestions có dữ liệu:`,
-        suggestionResults.filter((r) => r.suggestion).length
-      );
-      console.log(
-        `[handleGenerateSuggestions] Số lượng suggestions lỗi:`,
-        suggestionResults.filter((r) => r.error).length
-      );
-
-      console.log(
-        `[handleGenerateSuggestions] Hoàn thành, mở modal với ${suggestionResults.length} suggestions`
-      );
 
       setSuggestionModal({
         open: true,
@@ -491,20 +424,12 @@ const CreateClassPage = () => {
   };
 
   const handleSubmit = async (submitData) => {
-    console.log("[CreateClassPage] ========== handleSubmit START ==========");
-    console.log(
-      "[CreateClassPage] submitData:",
-      JSON.stringify(submitData, null, 2)
-    );
-    console.log("[CreateClassPage] classId from URL:", classId);
-
     setSubmitting(true);
     setError("");
     conflictContextRef.current = null;
     submissionRef.current = submitData;
     try {
       const isEdit = !!classId; // Kiểm tra xem đang edit hay create
-      console.log("[CreateClassPage] Mode:", isEdit ? "EDIT" : "CREATE");
       const classPayload = {
         Name: submitData.Name,
         InstructorID: submitData.InstructorID,
@@ -525,49 +450,24 @@ const CreateClassPage = () => {
         MaxLearners: submitData.MaxLearners || submitData.Maxstudent,
       };
 
-      console.log(
-        "[CreateClassPage] classPayload:",
-        JSON.stringify(classPayload, null, 2)
-      );
-      console.log(
-        "[CreateClassPage] Sessions count:",
-        submitData.sessions?.length || 0
-      );
-      console.log(
-        "[CreateClassPage] Sessions data:",
-        JSON.stringify(submitData.sessions, null, 2)
-      );
-
       let resultClass;
       let classIdToUse = classId; // Dùng classId từ URL nếu đang edit
 
       if (isEdit) {
         // Update existing class (metadata)
-        console.log("[CreateClassPage] Updating class with ID:", classId);
         resultClass = await classService.updateClass(classId, classPayload);
-        console.log(
-          "[CreateClassPage] Update class result:",
-          JSON.stringify(resultClass, null, 2)
-        );
         classIdToUse = classId; // Giữ nguyên classId khi edit
       } else {
         // Create new class
-        console.log("[CreateClassPage] Creating new class...");
         resultClass = await classService.createClass(classPayload);
-        console.log(
-          "[CreateClassPage] Create class result:",
-          JSON.stringify(resultClass, null, 2)
-        );
         classIdToUse =
           resultClass?.ClassID ||
           resultClass?.id ||
           resultClass?.data?.ClassID ||
           resultClass?.data?.id;
-        console.log("[CreateClassPage] Extracted classIdToUse:", classIdToUse);
       }
 
       const finalClassId = classIdToUse;
-      console.log("[CreateClassPage] finalClassId:", finalClassId);
 
       if (!finalClassId) {
         console.error("[CreateClassPage] ERROR: Cannot get finalClassId!");
@@ -587,32 +487,14 @@ const CreateClassPage = () => {
       }
 
       // 2) Tạo / cập nhật sessions - BẮT BUỘC nếu có sessions
-      console.log("[CreateClassPage] Checking sessions...");
-      console.log(
-        "[CreateClassPage] submitData.sessions:",
-        submitData.sessions
-      );
-      console.log(
-        "[CreateClassPage] Is array?",
-        Array.isArray(submitData.sessions)
-      );
-      console.log(
-        "[CreateClassPage] Length:",
-        submitData.sessions?.length || 0
-      );
 
       if (
         Array.isArray(submitData.sessions) &&
         submitData.sessions.length > 0
       ) {
-        console.log("[CreateClassPage] Processing sessions...");
         // Map và validate sessions data
         const sessionsPayload = submitData.sessions
           .map((s, index) => {
-            console.log(
-              `[CreateClassPage] Processing session ${index + 1}:`,
-              s
-            );
 
             // Đảm bảo Date là string format YYYY-MM-DD
             let dateStr = s.Date;
@@ -656,31 +538,9 @@ const CreateClassPage = () => {
               InstructorID: submitData.InstructorID, // Integer
               ClassID: finalClassId, // Integer
             };
-            console.log(
-              `[CreateClassPage] Mapped session ${index + 1}:`,
-              mappedSession
-            );
             return mappedSession;
           })
           .filter((s) => s !== null); // Loại bỏ sessions không hợp lệ
-
-        console.log(
-          "[CreateClassPage] sessionsPayload after mapping:",
-          JSON.stringify(sessionsPayload, null, 2)
-        );
-        console.log(
-          "[CreateClassPage] Valid sessions count:",
-          sessionsPayload.length
-        );
-
-        console.log(
-          isEdit
-            ? "Updating sessions for class:"
-            : "Creating sessions for class:",
-          classIdToUse,
-          "sessions count:",
-          sessionsPayload.length
-        );
 
         // Validate sessions trước khi gửi
         if (sessionsPayload.length === 0) {
@@ -730,43 +590,19 @@ const CreateClassPage = () => {
         }
 
         try {
-          console.log(
-            "[CreateClassPage] Calling API to create/update sessions..."
-          );
-          console.log(
-            "[CreateClassPage] API mode:",
-            isEdit ? "updateClassSchedule" : "bulkCreateSessions"
-          );
-          console.log("[CreateClassPage] classIdToUse:", classIdToUse);
-          console.log(
-            "[CreateClassPage] sessionsPayload:",
-            JSON.stringify(sessionsPayload, null, 2)
-          );
 
           let bulkResult;
 
           if (isEdit) {
             // EDIT MODE: dùng API updateClassSchedule để xoá buổi cũ + tạo lại buổi mới
-            console.log("[CreateClassPage] Calling updateClassSchedule...");
             bulkResult = await classService.updateClassSchedule(
               classIdToUse,
               sessionsPayload
             );
           } else {
             // CREATE MODE: dùng bulkCreateSessions như hiện tại
-            console.log("[CreateClassPage] Calling bulkCreateSessions...");
             bulkResult = await classService.bulkCreateSessions(sessionsPayload);
           }
-
-          console.log(
-            "[CreateClassPage] Bulk create/update result (full):",
-            JSON.stringify(bulkResult, null, 2)
-          );
-          console.log(
-            "[CreateClassPage] Bulk result keys:",
-            Object.keys(bulkResult || {})
-          );
-          console.log("[CreateClassPage] Bulk result type:", typeof bulkResult);
 
           // Kiểm tra kết quả
           if (
@@ -783,11 +619,6 @@ const CreateClassPage = () => {
               bulkResult?.created?.length ??
               0;
             const totalAttempted = sessionsPayload.length;
-
-            console.warn(
-              `Sessions created with conflicts: ${createdCount} created, ${rawConflicts.length} conflicts`
-            );
-            console.warn("Conflict details:", rawConflicts);
 
             conflictContextRef.current = {
               sessions: submitData.sessions,
@@ -860,30 +691,9 @@ const CreateClassPage = () => {
             return;
           } else {
             // Không có conflicts - tất cả sessions đã được tạo thành công
-            console.log(
-              "All sessions created successfully:",
-              sessionsPayload.length
-            );
           }
         } catch (sessionError) {
           // Lỗi khi tạo sessions - hiển thị modal lỗi chi tiết
-          console.error(
-            "[CreateClassPage] ERROR creating sessions:",
-            sessionError
-          );
-          console.error("[CreateClassPage] Error stack:", sessionError?.stack);
-          console.error(
-            "[CreateClassPage] Error response:",
-            sessionError?.response
-          );
-          console.error(
-            "[CreateClassPage] Error response data:",
-            sessionError?.response?.data
-          );
-          console.error(
-            "[CreateClassPage] Error response status:",
-            sessionError?.response?.status
-          );
 
           const errorData = sessionError?.response?.data || {};
           const errorMessage =
@@ -891,9 +701,6 @@ const CreateClassPage = () => {
             sessionError?.message ||
             "Không thể tạo buổi học";
           const status = sessionError?.response?.status;
-
-          console.error("[CreateClassPage] Parsed errorMessage:", errorMessage);
-          console.error("[CreateClassPage] Parsed status:", status);
 
           // Parse error để hiển thị trong modal
           let fieldErrors = {};
@@ -942,14 +749,6 @@ const CreateClassPage = () => {
         // Không có sessions - cảnh báo nhưng vẫn cho phép tạo lớp DRAFT
         // Logic mới: Lớp DRAFT có thể được tạo không có sessions khi lưu nháp ở bước 1-2
         // Nhưng khi đến Step 4 (lưu nháp), đã phải có sessions rồi
-        console.warn(
-          "[CreateClassPage] WARNING: No sessions provided. Class created without sessions."
-        );
-        console.warn(
-          "[CreateClassPage] submitData.sessions:",
-          submitData.sessions
-        );
-        console.warn("[CreateClassPage] submitData.Status:", submitData.Status);
         setErrorModal({
           open: true,
           title: "Cảnh Báo",
@@ -974,14 +773,6 @@ const CreateClassPage = () => {
       }
 
       // 3) Thành công → quay lại trang danh sách
-      console.log("[CreateClassPage] ========== SUCCESS ==========");
-      console.log("[CreateClassPage] Class created/updated successfully!");
-      console.log("[CreateClassPage] Final classId:", finalClassId);
-      console.log(
-        "[CreateClassPage] Sessions count:",
-        submitData.sessions?.length || 0
-      );
-
       navigate("/admin/classes", {
         state: {
           message: isEdit

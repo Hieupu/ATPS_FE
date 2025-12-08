@@ -5,7 +5,6 @@ const instructorService = {
   getAllInstructors: async () => {
     try {
       const response = await apiClient.get("/instructors");
-      console.log("Instructors API raw response:", response.data);
 
       let instructorsList = [];
 
@@ -24,7 +23,6 @@ const instructorService = {
         }
       }
 
-      console.log("Instructors list sample:", instructorsList[0]);
       return instructorsList;
     } catch (error) {
       console.error("Get instructors error:", error);
@@ -37,7 +35,6 @@ const instructorService = {
   getAllInstructorsAdmin: async () => {
     try {
       const response = await apiClient.get("/instructors/admin/all");
-      console.log("Admin Instructors API raw response:", response.data);
 
       const instructorsList = response.data?.data || [];
 
@@ -49,7 +46,6 @@ const instructorService = {
         return [];
       }
 
-      console.log("Admin instructors list sample:", instructorsList[0]);
       return instructorsList;
     } catch (error) {
       console.error("Get admin instructors error:", error);
@@ -125,15 +121,6 @@ const instructorService = {
   // Lấy giảng viên kèm danh sách khóa học với validation
   getInstructorWithCourses: async (instructorId) => {
     try {
-      console.log(
-        "[instructorService] getInstructorWithCourses called with instructorId:",
-        instructorId
-      );
-      console.log(
-        "[instructorService] instructorId type:",
-        typeof instructorId
-      );
-
       const numericId = parseInt(instructorId);
       if (isNaN(numericId) || numericId <= 0) {
         console.error(
@@ -146,24 +133,8 @@ const instructorService = {
       }
 
       const response = await apiClient.get(`/instructors/${numericId}/courses`);
-      console.log("[instructorService] Full API response:", response);
-      console.log("[instructorService] response.data:", response.data);
-      console.log(
-        "[instructorService] response.data.data:",
-        response.data?.data
-      );
 
       const result = response.data?.data || response.data;
-      console.log("[instructorService] Final result:", result);
-      console.log(
-        "[instructorService] Result InstructorID:",
-        result?.InstructorID
-      );
-      console.log("[instructorService] Courses in result:", result?.courses);
-      console.log(
-        "[instructorService] Courses count:",
-        result?.courses?.length || 0
-      );
 
       return result;
     } catch (error) {
@@ -250,22 +221,9 @@ const instructorService = {
       }
 
       const response = await apiClient.get(`/instructors?${params.toString()}`);
-      console.log("[searchInstructors] Raw API response:", {
-        data: response.data,
-        dataType: typeof response.data,
-        isArray: Array.isArray(response.data),
-        hasItems: response.data?.items !== undefined,
-        hasData: response.data?.data !== undefined,
-        hasInstructors: response.data?.instructors !== undefined,
-        keys: response.data ? Object.keys(response.data) : [],
-      });
 
       // Xử lý nhiều format response từ backend
       if (response.data?.items !== undefined) {
-        console.log("[searchInstructors] Returning format: { items, total }", {
-          itemsCount: response.data.items?.length || 0,
-          total: response.data.total || 0,
-        });
         return response.data;
       } else if (response.data?.data?.items !== undefined) {
         return response.data.data;
@@ -300,17 +258,10 @@ const instructorService = {
   // Upload ảnh đại diện với logging chi tiết
   uploadAvatar: async (file) => {
     try {
-      console.log("[instructorService] uploadAvatar called with file:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-
       const formData = new FormData();
       formData.append("image", file);
 
       const url = "/instructors/upload-avatar";
-      console.log("[instructorService] Uploading to:", url);
 
       const response = await apiClient.post(url, formData, {
         headers: {
@@ -318,7 +269,6 @@ const instructorService = {
         },
       });
 
-      console.log("[instructorService] Upload response:", response.data);
       return response.data?.data || response.data;
     } catch (error) {
       console.error("[instructorService] Upload avatar error:", error);
@@ -335,17 +285,10 @@ const instructorService = {
   // Upload CV với logging chi tiết
   uploadCV: async (file) => {
     try {
-      console.log("[instructorService] uploadCV called with file:", {
-        name: file.name,
-        size: file.size,
-        type: file.type,
-      });
-
       const formData = new FormData();
       formData.append("file", file);
 
       const url = "/instructors/upload-cv";
-      console.log("[instructorService] Uploading to:", url);
 
       const response = await apiClient.post(url, formData, {
         headers: {
@@ -353,7 +296,6 @@ const instructorService = {
         },
       });
 
-      console.log("[instructorService] Upload CV response:", response.data);
       return response.data?.data || response.data;
     } catch (error) {
       console.error("[instructorService] Upload CV error:", error);
@@ -408,6 +350,24 @@ const instructorService = {
       throw (
         error.response?.data || {
           message: "Failed to save availability",
+        }
+      );
+    }
+  },
+
+  // Check timeslot availability
+  checkTimeslotAvailability: async (params) => {
+    try {
+      const response = await apiClient.post(
+        "/instructors/check-timeslot-availability",
+        params
+      );
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Check timeslot availability error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to check timeslot availability",
         }
       );
     }
