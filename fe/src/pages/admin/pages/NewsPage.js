@@ -43,6 +43,7 @@ import {
   UploadFile,
 } from "@mui/icons-material";
 import newsService from "../../../apiServices/newsService";
+import { cloudinaryUpload } from "../../../utils/cloudinaryUpload";
 import "./style.css";
 
 const BASE_API_URL =
@@ -59,7 +60,9 @@ const STATUS_FILTERS = [
 
 const buildImageUrl = (path) => {
   if (!path) return "";
+  // Nếu đã là URL đầy đủ (Cloudinary hoặc http/https), trả về trực tiếp
   if (path.startsWith("http")) return path;
+  // Nếu là path tương đối, build URL từ API host (cho backward compatibility)
   return `${API_HOST}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
@@ -187,16 +190,16 @@ export default function NewsPage() {
     try {
       setUploadingImage(true);
       setImageUploadError(null);
-      const formDataToUpload = new FormData();
-      formDataToUpload.append("image", file);
-      const response = await newsService.uploadImage(formDataToUpload);
-      const imagePath = response?.data?.path || response?.path;
-      if (!imagePath) {
-        throw new Error("Không nhận được đường dẫn ảnh từ server");
+      
+      const imageUrl = await cloudinaryUpload(file, setUploadingImage);
+      
+      if (!imageUrl) {
+        throw new Error("Không thể tải ảnh lên Cloudinary");
       }
+      
       setFormData((prev) => ({
         ...prev,
-        Image: imagePath,
+        Image: imageUrl,
       }));
     } catch (uploadError) {
       console.error("Error uploading image:", uploadError);

@@ -33,6 +33,7 @@ import {
   InputLabel,
   Select,
   Autocomplete,
+  Grid,
 } from "@mui/material";
 import {
   Add,
@@ -48,9 +49,142 @@ import {
 import emailTemplateService from "../../../apiServices/emailTemplateService";
 import "./style.css";
 
+// Template mẫu cho từng loại sự kiện
+const EVENT_TEMPLATES = {
+  ACCOUNT_STATUS_CHANGED: {
+    subject: "Thông báo thay đổi trạng thái tài khoản",
+    body: `Kính chào {{userName}},
+
+Chúng tôi xin thông báo rằng trạng thái tài khoản của bạn đã được thay đổi.
+
+Trạng thái cũ: {{oldStatus}}
+Trạng thái mới: {{newStatus}}
+
+Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "oldStatus", "newStatus"],
+  },
+  CLASS_CANCELLED_TO_LEARNER: {
+    subject: "Thông báo hủy lớp học: {{className}}",
+    body: `Kính chào {{userName}},
+
+Chúng tôi rất tiếc phải thông báo rằng lớp học "{{className}}" ({{classCode}}) đã bị hủy.
+
+Lý do: {{reason}}
+
+Chúng tôi sẽ liên hệ với bạn để xử lý việc hoàn tiền hoặc chuyển sang lớp học khác.
+
+Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "className", "classCode", "reason"],
+  },
+  CLASS_CANCELLED_TO_INSTRUCTOR: {
+    subject: "Thông báo hủy lớp học: {{className}}",
+    body: `Kính chào {{userName}},
+
+Chúng tôi xin thông báo rằng lớp học "{{className}}" ({{classCode}}) mà bạn đang giảng dạy đã bị hủy.
+
+Lý do: {{reason}}
+
+Lịch giảng dạy của bạn sẽ được cập nhật. Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "className", "classCode", "reason"],
+  },
+  REFUND_CREATED: {
+    subject: "Yêu cầu hoàn tiền đã được tạo: {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Yêu cầu hoàn tiền của bạn đã được tạo thành công.
+
+Mã yêu cầu: {{refundCode}}
+Lớp học: {{className}}
+Số tiền: {{refundAmount}}
+Lý do: {{reason}}
+
+Yêu cầu của bạn đang được xem xét. Chúng tôi sẽ thông báo kết quả trong thời gian sớm nhất.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: [
+      "userName",
+      "className",
+      "refundCode",
+      "refundAmount",
+      "reason",
+    ],
+  },
+  REFUND_APPROVED: {
+    subject: "Yêu cầu hoàn tiền đã được duyệt: {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Yêu cầu hoàn tiền của bạn đã được duyệt.
+
+Mã yêu cầu: {{refundCode}}
+Lớp học: {{className}}
+Số tiền: {{refundAmount}}
+
+Số tiền sẽ được hoàn lại vào tài khoản của bạn trong vòng 5-7 ngày làm việc.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "refundCode", "refundAmount", "className"],
+  },
+  REFUND_REJECTED: {
+    subject: "Yêu cầu hoàn tiền đã bị từ chối: {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Rất tiếc, yêu cầu hoàn tiền của bạn đã bị từ chối.
+
+Mã yêu cầu: {{refundCode}}
+Lý do từ chối: {{rejectionReason}}
+
+Nếu bạn có bất kỳ thắc mắc nào về quyết định này, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "refundCode", "rejectionReason"],
+  },
+  REFUND_COMPLETED: {
+    subject: "Hoàn tiền đã hoàn tất: {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Yêu cầu hoàn tiền của bạn đã được xử lý hoàn tất.
+
+Mã yêu cầu: {{refundCode}}
+Lớp học: {{className}}
+Số tiền: {{refundAmount}}
+Ngày hoàn tất: {{completedDate}}
+
+Số tiền đã được hoàn lại vào tài khoản của bạn. Vui lòng kiểm tra lại.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: [
+      "userName",
+      "refundCode",
+      "refundAmount",
+      "className",
+      "completedDate",
+    ],
+  },
+};
+
 const EVENT_TYPES = [
-  { value: "ACCOUNT_STATUS_CHANGE", label: "Thay đổi trạng thái tài khoản" },
-  { value: "CLASS_CANCELLED", label: "Hủy lớp học" },
+  { value: "ACCOUNT_STATUS_CHANGED", label: "Thay đổi trạng thái tài khoản" },
+  {
+    value: "CLASS_CANCELLED_TO_LEARNER",
+    label: "Hủy lớp học - Gửi tới học viên",
+  },
+  {
+    value: "CLASS_CANCELLED_TO_INSTRUCTOR",
+    label: "Hủy lớp học - Gửi tới giảng viên",
+  },
   { value: "REFUND_CREATED", label: "Tạo yêu cầu hoàn tiền" },
   { value: "REFUND_APPROVED", label: "Duyệt yêu cầu hoàn tiền" },
   { value: "REFUND_REJECTED", label: "Từ chối yêu cầu hoàn tiền" },
@@ -65,6 +199,11 @@ export default function EmailTemplatePage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
+  // Input states (chưa apply)
+  const [searchInput, setSearchInput] = useState("");
+  const [eventTypeInput, setEventTypeInput] = useState("all");
+  const [isActiveInput, setIsActiveInput] = useState("all");
+  // Filter states (đã apply)
   const [searchQuery, setSearchQuery] = useState("");
   const [eventTypeFilter, setEventTypeFilter] = useState("all");
   const [isActiveFilter, setIsActiveFilter] = useState("all");
@@ -95,10 +234,40 @@ export default function EmailTemplatePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [availableVariables, setAvailableVariables] = useState([]);
+  const [loadingVariables, setLoadingVariables] = useState(false);
 
   useEffect(() => {
     loadTemplates();
-  }, [page, searchQuery, eventTypeFilter, isActiveFilter]);
+  }, [page, searchQuery, eventTypeFilter, isActiveFilter]); // Chỉ load khi filter state thay đổi
+
+  // Hàm áp dụng filter
+  const applyFilters = () => {
+    setSearchQuery(searchInput);
+    setEventTypeFilter(eventTypeInput);
+    setIsActiveFilter(isActiveInput);
+    setPage(1); // Reset về trang đầu khi filter
+  };
+
+  // Hàm xóa filter
+  const resetFilters = () => {
+    setSearchInput("");
+    setEventTypeInput("all");
+    setIsActiveInput("all");
+    setSearchQuery("");
+    setEventTypeFilter("all");
+    setIsActiveFilter("all");
+    setPage(1);
+  };
+
+  // Load available variables khi EventType thay đổi
+  useEffect(() => {
+    if (formData.EventType && !isEditing) {
+      loadAvailableVariables(formData.EventType);
+    } else {
+      setAvailableVariables([]);
+    }
+  }, [formData.EventType, isEditing]);
 
   const loadTemplates = async () => {
     try {
@@ -121,10 +290,20 @@ export default function EmailTemplatePage() {
       }
 
       const response = await emailTemplateService.getAllTemplates(params);
-      const templatesData = response.data || response.templates || [];
-      const pagination = response.pagination || response;
+      // Backend trả về: { success: true, data: templates[], pagination: {...} }
+      console.log("EmailTemplatePage - Response from API:", response);
+      const templatesData = response.data || [];
+      const pagination = response.pagination || {
+        total: 0,
+        totalPages: 1,
+        page: 1,
+        limit: PAGE_SIZE,
+      };
 
-      setTemplates(templatesData);
+      console.log("EmailTemplatePage - Templates data:", templatesData);
+      console.log("EmailTemplatePage - Pagination:", pagination);
+
+      setTemplates(Array.isArray(templatesData) ? templatesData : []);
       setTotalPages(pagination.totalPages || 1);
       setTotal(pagination.total || 0);
     } catch (error) {
@@ -140,6 +319,66 @@ export default function EmailTemplatePage() {
       setTemplates([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAvailableVariables = async (eventType) => {
+    try {
+      setLoadingVariables(true);
+      const variables = await emailTemplateService.getAvailableVariables(
+        eventType
+      );
+      setAvailableVariables(Array.isArray(variables) ? variables : []);
+
+      // Nếu có template mẫu và đang tạo mới, tự động điền (luôn cập nhật khi chọn lại EventType)
+      if (!isEditing && EVENT_TEMPLATES[eventType]) {
+        const template = EVENT_TEMPLATES[eventType];
+        setFormData((prev) => ({
+          ...prev,
+          EventType: eventType,
+          Subject: template.subject, // Luôn cập nhật theo template mới
+          Body: template.body, // Luôn cập nhật theo template mới
+          Variables: variables.length > 0 ? variables : template.variables,
+          TemplateCode: eventType, // Luôn cập nhật theo EventType
+          TemplateName:
+            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
+        }));
+      } else if (!isEditing) {
+        // Nếu không có template mẫu nhưng có biến từ DB, chỉ cập nhật Variables
+        setFormData((prev) => ({
+          ...prev,
+          EventType: eventType,
+          Variables: variables.length > 0 ? variables : [],
+          TemplateCode: eventType, // Luôn cập nhật theo EventType
+          TemplateName:
+            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
+        }));
+      }
+    } catch (error) {
+      console.error("Error loading available variables:", error);
+      // Fallback về template mẫu nếu có
+      if (EVENT_TEMPLATES[eventType]) {
+        setAvailableVariables(EVENT_TEMPLATES[eventType].variables);
+        // Nếu đang tạo mới, vẫn cập nhật form data với template mẫu
+        if (!isEditing) {
+          const template = EVENT_TEMPLATES[eventType];
+          setFormData((prev) => ({
+            ...prev,
+            EventType: eventType,
+            Subject: template.subject,
+            Body: template.body,
+            Variables: template.variables,
+            TemplateCode: eventType,
+            TemplateName:
+              EVENT_TYPES.find((e) => e.value === eventType)?.label ||
+              eventType,
+          }));
+        }
+      } else {
+        setAvailableVariables([]);
+      }
+    } finally {
+      setLoadingVariables(false);
     }
   };
 
@@ -169,8 +408,32 @@ export default function EmailTemplatePage() {
     setDialogOpen(true);
   };
 
-  const handleEdit = (template) => {
+  // Xử lý khi chọn EventType - tự động điền template mẫu
+  const handleEventTypeChange = async (eventType) => {
+    // Tự động set TemplateCode = EventType khi tạo mới
+    const newTemplateCode = !isEditing ? eventType : formData.TemplateCode;
+
+    setFormData({
+      ...formData,
+      EventType: eventType,
+      TemplateCode: newTemplateCode,
+    });
+
+    // Load lại templates với filter theo EventType đang chọn
+    if (!isEditing) {
+      setEventTypeFilter(eventType);
+      setPage(1); // Reset về trang đầu
+    }
+  };
+
+  const handleEdit = async (template) => {
     setIsEditing(true);
+    const variables = Array.isArray(template.Variables)
+      ? template.Variables
+      : typeof template.Variables === "string"
+      ? JSON.parse(template.Variables || "[]")
+      : [];
+
     setFormData({
       TemplateCode: template.TemplateCode || "",
       TemplateName: template.TemplateName || "",
@@ -179,16 +442,27 @@ export default function EmailTemplatePage() {
       Description: template.Description || "",
       EventType: template.EventType || "",
       IsActive: template.IsActive !== undefined ? template.IsActive : true,
-      Variables: Array.isArray(template.Variables)
-        ? template.Variables
-        : typeof template.Variables === "string"
-        ? JSON.parse(template.Variables || "[]")
-        : [],
+      Variables: variables,
     });
     setFormErrors({});
     setSelectedTemplate(template);
     setDialogOpen(true);
     handleMenuClose();
+
+    // Load available variables từ database để hiển thị
+    if (template.EventType) {
+      try {
+        const availableVars = await emailTemplateService.getAvailableVariables(
+          template.EventType
+        );
+        setAvailableVariables(
+          Array.isArray(availableVars) ? availableVars : []
+        );
+      } catch (error) {
+        console.error("Error loading variables for edit:", error);
+        setAvailableVariables(variables);
+      }
+    }
   };
 
   const handleDelete = async () => {
@@ -290,11 +564,55 @@ export default function EmailTemplatePage() {
     }
   };
 
-  const validateForm = () => {
+  const validateForm = async () => {
     const errors = {};
 
-    if (!formData.TemplateCode.trim()) {
+    if (!formData.EventType) {
+      errors.EventType = "Vui lòng chọn loại sự kiện";
+    }
+
+    // Validate TemplateCode
+    const templateCode = formData.TemplateCode.trim();
+
+    if (!templateCode) {
       errors.TemplateCode = "Vui lòng nhập mã mẫu email";
+    } else {
+      // Kiểm tra khoảng trắng đầu cuối (đã trim rồi nên không cần)
+      // Kiểm tra khoảng trắng giữa các chữ
+      if (/\s/.test(templateCode)) {
+        errors.TemplateCode = "Mã mẫu email không được chứa khoảng trắng";
+      }
+      // Kiểm tra chỉ cho phép chữ cái, số, dấu gạch dưới, dấu gạch ngang
+      // Không cho phép dấu câu
+      if (!/^[A-Za-z0-9_-]+$/.test(templateCode)) {
+        errors.TemplateCode =
+          "Mã mẫu email chỉ được chứa chữ cái, số, dấu gạch dưới (_) và dấu gạch ngang (-)";
+      }
+
+      // Check trùng TemplateCode (chỉ khi tạo mới hoặc khi chỉnh sửa và TemplateCode thay đổi)
+      if (!isEditing) {
+        const existingTemplate = templates.find(
+          (t) => t.TemplateCode === templateCode
+        );
+        if (existingTemplate) {
+          errors.TemplateCode = "Mã mẫu email này đã tồn tại";
+        }
+      } else {
+        // Khi chỉnh sửa, chỉ check trùng nếu TemplateCode khác với TemplateCode cũ
+        if (
+          selectedTemplate &&
+          selectedTemplate.TemplateCode !== templateCode
+        ) {
+          const existingTemplate = templates.find(
+            (t) =>
+              t.TemplateCode === templateCode &&
+              t.TemplateID !== selectedTemplate.TemplateID
+          );
+          if (existingTemplate) {
+            errors.TemplateCode = "Mã mẫu email này đã tồn tại";
+          }
+        }
+      }
     }
 
     if (!formData.TemplateName.trim()) {
@@ -309,16 +627,13 @@ export default function EmailTemplatePage() {
       errors.Body = "Vui lòng nhập nội dung email";
     }
 
-    if (!formData.EventType) {
-      errors.EventType = "Vui lòng chọn loại sự kiện";
-    }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    const isValid = await validateForm();
+    if (!isValid) return;
 
     try {
       setSaving(true);
@@ -340,12 +655,41 @@ export default function EmailTemplatePage() {
           message: "Tạo mẫu email thành công",
           severity: "success",
         });
+        // Reset filter về "all" để hiển thị tất cả templates sau khi tạo mới
+        setEventTypeFilter("all");
+        setPage(1);
       }
 
       setDialogOpen(false);
-      loadTemplates();
+      // Reset form data
+      setFormData({
+        TemplateCode: "",
+        TemplateName: "",
+        Subject: "",
+        Body: "",
+        Description: "",
+        EventType: "",
+        IsActive: true,
+        Variables: [],
+      });
+      setFormErrors({});
+      setAvailableVariables([]);
+
+      // Load lại danh sách templates (sẽ tự động load khi eventTypeFilter và page thay đổi)
+      // Nhưng để đảm bảo, gọi trực tiếp loadTemplates
+      await loadTemplates();
     } catch (error) {
       console.error("Error saving template:", error);
+      // Nếu lỗi do trùng TemplateCode từ backend
+      if (
+        error?.response?.data?.message?.includes("đã tồn tại") ||
+        error?.response?.data?.message?.includes("duplicate")
+      ) {
+        setFormErrors({
+          ...formErrors,
+          TemplateCode: "Mã mẫu email này đã tồn tại",
+        });
+      }
       setSnackbar({
         open: true,
         message:
@@ -386,8 +730,13 @@ export default function EmailTemplatePage() {
           <TextField
             placeholder="Tìm kiếm mẫu email..."
             size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === "Enter") {
+                applyFilters();
+              }
+            }}
             sx={{ flex: 1, minWidth: 250 }}
             InputProps={{
               startAdornment: (
@@ -400,9 +749,9 @@ export default function EmailTemplatePage() {
           <FormControl size="small" sx={{ minWidth: 200 }}>
             <InputLabel>Loại sự kiện</InputLabel>
             <Select
-              value={eventTypeFilter}
+              value={eventTypeInput}
               label="Loại sự kiện"
-              onChange={(e) => setEventTypeFilter(e.target.value)}
+              onChange={(e) => setEventTypeInput(e.target.value)}
             >
               <MenuItem value="all">Tất cả</MenuItem>
               {EVENT_TYPES.map((event) => (
@@ -415,15 +764,37 @@ export default function EmailTemplatePage() {
           <FormControl size="small" sx={{ minWidth: 150 }}>
             <InputLabel>Trạng thái</InputLabel>
             <Select
-              value={isActiveFilter}
+              value={isActiveInput}
               label="Trạng thái"
-              onChange={(e) => setIsActiveFilter(e.target.value)}
+              onChange={(e) => setIsActiveInput(e.target.value)}
             >
               <MenuItem value="all">Tất cả</MenuItem>
               <MenuItem value="active">Đang hoạt động</MenuItem>
               <MenuItem value="inactive">Không hoạt động</MenuItem>
             </Select>
           </FormControl>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              size="small"
+              onClick={applyFilters}
+              sx={{ textTransform: "none" }}
+            >
+              Áp dụng
+            </Button>
+            {(searchQuery ||
+              eventTypeFilter !== "all" ||
+              isActiveFilter !== "all") && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={resetFilters}
+                sx={{ textTransform: "none" }}
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </Stack>
           <Button
             variant="contained"
             startIcon={<Add />}
@@ -509,7 +880,9 @@ export default function EmailTemplatePage() {
                       </TableCell>
                       <TableCell>
                         <Chip
-                          label={template.IsActive ? "Hoạt động" : "Không hoạt động"}
+                          label={
+                            template.IsActive ? "Hoạt động" : "Không hoạt động"
+                          }
                           color={getStatusColor(template.IsActive)}
                           size="small"
                         />
@@ -594,123 +967,226 @@ export default function EmailTemplatePage() {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}>
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
           {isEditing ? "Chỉnh sửa mẫu email" : "Thêm mẫu email mới"}
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
-          <Stack spacing={2}>
-            <TextField
-              label="Mã mẫu email *"
-              value={formData.TemplateCode}
-              onChange={(e) =>
-                setFormData({ ...formData, TemplateCode: e.target.value })
-              }
-              error={!!formErrors.TemplateCode}
-              helperText={formErrors.TemplateCode}
-              placeholder="Ví dụ: ACCOUNT_STATUS_CHANGED"
-              disabled={isEditing}
-              fullWidth
-            />
-            <TextField
-              label="Tên mẫu email *"
-              value={formData.TemplateName}
-              onChange={(e) =>
-                setFormData({ ...formData, TemplateName: e.target.value })
-              }
-              error={!!formErrors.TemplateName}
-              helperText={formErrors.TemplateName}
-              fullWidth
-            />
-            <FormControl fullWidth error={!!formErrors.EventType}>
-              <InputLabel>Loại sự kiện *</InputLabel>
-              <Select
-                value={formData.EventType}
-                label="Loại sự kiện *"
-                onChange={(e) =>
-                  setFormData({ ...formData, EventType: e.target.value })
-                }
-              >
-                {EVENT_TYPES.map((event) => (
-                  <MenuItem key={event.value} value={event.value}>
-                    {event.label}
-                  </MenuItem>
-                ))}
-              </Select>
-              {formErrors.EventType && (
-                <Typography variant="caption" sx={{ color: "#ef4444", mt: 0.5, ml: 1.75 }}>
-                  {formErrors.EventType}
-                </Typography>
-              )}
-            </FormControl>
-            <TextField
-              label="Tiêu đề email *"
-              value={formData.Subject}
-              onChange={(e) =>
-                setFormData({ ...formData, Subject: e.target.value })
-              }
-              error={!!formErrors.Subject}
-              helperText={formErrors.Subject}
-              placeholder="Có thể dùng biến: {{userName}}, {{className}}, ..."
-              fullWidth
-            />
-            <TextField
-              label="Nội dung email *"
-              value={formData.Body}
-              onChange={(e) =>
-                setFormData({ ...formData, Body: e.target.value })
-              }
-              error={!!formErrors.Body}
-              helperText={formErrors.Body}
-              placeholder="Có thể dùng biến: {{userName}}, {{className}}, ..."
-              multiline
-              minRows={8}
-              fullWidth
-            />
-            <TextField
-              label="Mô tả"
-              value={formData.Description}
-              onChange={(e) =>
-                setFormData({ ...formData, Description: e.target.value })
-              }
-              multiline
-              minRows={2}
-              fullWidth
-            />
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={formData.IsActive}
-                  onChange={(e) =>
-                    setFormData({ ...formData, IsActive: e.target.checked })
+          <Grid container spacing={3}>
+            {/* Cột trái: Form nhập liệu */}
+            <Grid item xs={12} md={7}>
+              <Stack spacing={2}>
+                {/* Loại sự kiện - đặt lên đầu */}
+                <FormControl fullWidth error={!!formErrors.EventType}>
+                  <InputLabel>Loại sự kiện *</InputLabel>
+                  <Select
+                    value={formData.EventType}
+                    label="Loại sự kiện *"
+                    onChange={(e) => handleEventTypeChange(e.target.value)}
+                  >
+                    {EVENT_TYPES.map((event) => (
+                      <MenuItem key={event.value} value={event.value}>
+                        {event.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  {formErrors.EventType && (
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "#ef4444", mt: 0.5, ml: 1.75 }}
+                    >
+                      {formErrors.EventType}
+                    </Typography>
+                  )}
+                  {formData.EventType && (
+                    <Typography
+                      variant="caption"
+                      sx={{ color: "#64748b", mt: 0.5, ml: 1.75 }}
+                    >
+                      {loadingVariables
+                        ? "Đang tải danh sách biến từ database..."
+                        : "Vui lòng chọn loại sự kiện để xem các biến có thể sử dụng"}
+                    </Typography>
+                  )}
+                </FormControl>
+
+                {/* Mã mẫu email - tự động = EventType khi tạo mới, nhưng vẫn cho phép chỉnh sửa */}
+                <TextField
+                  label="Mã mẫu email *"
+                  value={formData.TemplateCode}
+                  onChange={(e) => {
+                    // Tự động loại bỏ khoảng trắng và chỉ cho phép chữ cái, số, dấu gạch dưới, dấu gạch ngang
+                    let value = e.target.value;
+                    // Loại bỏ khoảng trắng
+                    value = value.replace(/\s/g, "");
+                    // Chỉ giữ lại chữ cái, số, dấu gạch dưới, dấu gạch ngang
+                    value = value.replace(/[^A-Za-z0-9_-]/g, "");
+                    setFormData({ ...formData, TemplateCode: value });
+                  }}
+                  error={!!formErrors.TemplateCode}
+                  helperText={
+                    formErrors.TemplateCode ||
+                    (!isEditing && formData.EventType
+                      ? "Mã mẫu email tự động lấy theo loại sự kiện. Chỉ được chứa chữ cái, số, dấu gạch dưới (_) và dấu gạch ngang (-)"
+                      : "Chỉ được chứa chữ cái, số, dấu gạch dưới (_) và dấu gạch ngang (-), không có khoảng trắng")
                   }
+                  placeholder="Ví dụ: ACCOUNT_STATUS_CHANGED"
+                  fullWidth
                 />
-              }
-              label="Đang hoạt động"
-            />
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Biến có thể sử dụng (tùy chọn):
-              </Typography>
-              <TextField
-                placeholder='Nhập các biến, cách nhau bởi dấu phẩy. Ví dụ: ["userName", "className", "refundAmount"]'
-                value={
-                  Array.isArray(formData.Variables)
-                    ? formData.Variables.join(", ")
-                    : ""
-                }
-                onChange={(e) => {
-                  const vars = e.target.value
-                    .split(",")
-                    .map((v) => v.trim())
-                    .filter((v) => v);
-                  setFormData({ ...formData, Variables: vars });
+
+                <TextField
+                  label="Tên mẫu email *"
+                  value={formData.TemplateName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, TemplateName: e.target.value })
+                  }
+                  error={!!formErrors.TemplateName}
+                  helperText={formErrors.TemplateName}
+                  fullWidth
+                />
+                <TextField
+                  label="Tiêu đề email *"
+                  value={formData.Subject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, Subject: e.target.value })
+                  }
+                  error={!!formErrors.Subject}
+                  fullWidth
+                />
+                <TextField
+                  label="Nội dung email *"
+                  value={formData.Body}
+                  onChange={(e) =>
+                    setFormData({ ...formData, Body: e.target.value })
+                  }
+                  error={!!formErrors.Body}
+                  multiline
+                  minRows={10}
+                  fullWidth
+                />
+                <TextField
+                  label="Mô tả"
+                  value={formData.Description}
+                  onChange={(e) =>
+                    setFormData({ ...formData, Description: e.target.value })
+                  }
+                  multiline
+                  minRows={2}
+                  fullWidth
+                />
+                <FormControlLabel
+                  control={
+                    <Switch
+                      checked={formData.IsActive}
+                      onChange={(e) =>
+                        setFormData({ ...formData, IsActive: e.target.checked })
+                      }
+                    />
+                  }
+                  label="Đang hoạt động"
+                />
+              </Stack>
+            </Grid>
+
+            {/* Cột phải: Biến có thể sử dụng */}
+            <Grid item xs={12} md={5}>
+              <Box
+                sx={{
+                  position: "sticky",
+                  top: 20,
+                  maxHeight: "calc(100vh - 200px)",
+                  overflowY: "auto",
                 }}
-                fullWidth
-                size="small"
-                helperText="Các biến này sẽ được thay thế trong Subject và Body khi gửi email"
-              />
-            </Box>
-          </Stack>
+              >
+                <Typography variant="body2" sx={{ mb: 2, fontWeight: 600 }}>
+                  Biến có thể sử dụng:
+                </Typography>
+                {formData.EventType ? (
+                  loadingVariables ? (
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        p: 2,
+                      }}
+                    >
+                      <CircularProgress size={16} />
+                      <Typography variant="body2" sx={{ color: "#64748b" }}>
+                        Đang tải danh sách biến từ database...
+                      </Typography>
+                    </Box>
+                  ) : availableVariables.length > 0 ? (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        bgcolor: "#f8fafc",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography
+                        variant="body2"
+                        sx={{ mb: 1, color: "#64748b" }}
+                      >
+                        Các biến có thể sử dụng cho loại sự kiện này (lấy từ
+                        database):
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+                        {availableVariables.map((variable) => (
+                          <Chip
+                            key={variable}
+                            label={`{{${variable}}}`}
+                            size="small"
+                            sx={{
+                              fontFamily: "monospace",
+                              backgroundColor: "#e0e7ff",
+                              color: "#4338ca",
+                            }}
+                          />
+                        ))}
+                      </Box>
+                      <Typography
+                        variant="caption"
+                        sx={{ display: "block", mt: 1, color: "#64748b" }}
+                      >
+                        Các biến này được lấy từ template đã có trong database
+                        hoặc mặc định theo EventType.
+                      </Typography>
+                    </Paper>
+                  ) : (
+                    <Paper
+                      sx={{
+                        p: 2,
+                        bgcolor: "#fef2f2",
+                        border: "1px solid #fee2e2",
+                        borderRadius: 2,
+                      }}
+                    >
+                      <Typography variant="body2" sx={{ color: "#dc2626" }}>
+                        Không tìm thấy biến nào cho loại sự kiện này. Vui lòng
+                        kiểm tra lại.
+                      </Typography>
+                    </Paper>
+                  )
+                ) : (
+                  <Paper
+                    sx={{
+                      p: 2,
+                      bgcolor: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 2,
+                    }}
+                  >
+                    <Typography variant="body2" sx={{ color: "#64748b" }}>
+                      Vui lòng chọn loại sự kiện để xem các biến có thể sử dụng
+                    </Typography>
+                  </Paper>
+                )}
+              </Box>
+            </Grid>
+          </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
           <Button
@@ -742,7 +1218,9 @@ export default function EmailTemplatePage() {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}>
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
           Xem trước mẫu email
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -800,7 +1278,9 @@ export default function EmailTemplatePage() {
           },
         }}
       >
-        <DialogTitle sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}>
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
           Gửi email test
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
@@ -874,4 +1354,3 @@ export default function EmailTemplatePage() {
     </Box>
   );
 }
-
