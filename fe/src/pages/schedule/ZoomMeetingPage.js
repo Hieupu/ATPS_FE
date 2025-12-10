@@ -62,15 +62,21 @@ const ZoomMeetingPage = () => {
 
         const { signature } = await getSignature(meetingNumber, role);
 
+        let leaveUrl = "";
+
+        if (zoomData.userRole === "instructor") {
+          leaveUrl = `${process.env.REACT_APP_FRONTEND_URL}/instructor`;
+        } else {
+          leaveUrl = `${process.env.REACT_APP_FRONTEND_URL}`;
+        }
         ZoomMtg.preLoadWasm();
         ZoomMtg.prepareWebSDK();
 
         ZoomMtg.init({
-          leaveUrl: "http://localhost:3000",
+          leaveUrl: leaveUrl,
           success: (success) => {
             console.log("Init success:", success);
             
-
             ZoomMtg.join({
               signature: signature,
               meetingNumber: meetingNumber,
