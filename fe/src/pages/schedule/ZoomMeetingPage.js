@@ -11,15 +11,18 @@ const ZoomMeetingPage = () => {
   const raw1 = localStorage.getItem("user");
   const user = raw1 ? JSON.parse(raw1) : null;
   console.log("Zoom data:", zoomData);
-  
+
   // Lấy signature từ backend
   const getSignature = async (meetingNumber, role) => {
     try {
-      const res = await fetch("http://localhost:9999/api/zoom/signature", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ meetingNumber, role }),
-      });
+      const res = await fetch(
+        `${process.env.REACT_APP_API_URL}/zoom/signature`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ meetingNumber, role }),
+        }
+      );
 
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
@@ -56,7 +59,11 @@ const ZoomMeetingPage = () => {
           throw new Error("Thiếu meeting number");
         }
 
-        if (!userName || typeof userName !== 'string' || userName.trim() === '') {
+        if (
+          !userName ||
+          typeof userName !== "string" ||
+          userName.trim() === ""
+        ) {
           throw new Error("Username không hợp lệ");
         }
 
@@ -66,16 +73,15 @@ const ZoomMeetingPage = () => {
         ZoomMtg.prepareWebSDK();
 
         ZoomMtg.init({
-          leaveUrl: "http://localhost:3000",
+          leaveUrl: `${process.env.REACT_APP_FRONTEND_URL}`,
           success: (success) => {
             console.log("Init success:", success);
-            
 
             ZoomMtg.join({
               signature: signature,
               meetingNumber: meetingNumber,
               passWord: passWord,
-              userName: userName, 
+              userName: userName,
               userEmail: userEmail,
               success: (success) => {
                 console.log("Join success:", success);
@@ -105,30 +111,33 @@ const ZoomMeetingPage = () => {
 
     const handleBeforeUnload = () => {
       if (!zoomData) return;
-      localStorage.setItem('zoomData', JSON.stringify({
-        sessionId: zoomData.schedule.SessionID,
-        accId: userId,
-        timestamp: new Date().toISOString(),
-      }));
+      localStorage.setItem(
+        "zoomData",
+        JSON.stringify({
+          sessionId: zoomData.schedule.SessionID,
+          accId: userId,
+          timestamp: new Date().toISOString(),
+        })
+      );
 
       sendZoomLeftPayload();
     };
 
     const sendZoomLeftPayload = async () => {
-      const raw = localStorage.getItem('zoomData');
+      const raw = localStorage.getItem("zoomData");
       if (!raw) return;
 
       const payload = JSON.parse(raw);
 
       try {
-        await fetch('http://localhost:9999/api/zoom/webhook', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        await fetch(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
           keepalive: true,
         });
 
-        localStorage.removeItem('zoomData');
+        localStorage.removeItem("zoomData");
       } catch (err) {
         console.error("Failed to send Zoom LEFT payload:", err);
       }
@@ -139,8 +148,7 @@ const ZoomMeetingPage = () => {
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
-    
-  }, [user, zoomData, hasInitialized ]);
+  }, [user, zoomData, hasInitialized]);
 
   if (error) {
     return (
