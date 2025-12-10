@@ -55,11 +55,13 @@ import {
   MoreVert,
   CalendarToday,
   EventBusy,
+  Verified,
 } from "@mui/icons-material";
 import "../pages/style.css";
 import instructorService from "../../../apiServices/instructorServicead";
 import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
+import certificateService from "../../../apiServices/certificateService";
 
 const AdminInstructorsPage = () => {
   const navigate = useNavigate();
@@ -92,7 +94,7 @@ const AdminInstructorsPage = () => {
       // Gọi API admin-specific để lấy danh sách giảng viên từ database
       // Format: { success: true, data: [...] }
       const instructorsList = await instructorService.getAllInstructorsAdmin();
-      
+
       // Map Status và Gender từ account (đã được SELECT trong query và map trong repository)
       // Repository đã map AccountStatus -> Status và AccountGender -> Gender
       const mappedInstructors = instructorsList.map((instructor) => {
@@ -733,6 +735,9 @@ const AdminInstructorsPage = () => {
                 <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
                   Trạng thái
                 </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  Chứng chỉ
+                </TableCell>
                 <TableCell
                   sx={{ fontWeight: 700, color: "#1e293b" }}
                   align="right"
@@ -787,6 +792,29 @@ const AdminInstructorsPage = () => {
                           size="small"
                           sx={{
                             backgroundColor: isActive ? "#10b981" : "#94a3b8",
+                            color: "white",
+                            fontWeight: 600,
+                            fontSize: "11px",
+                          }}
+                        />
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      // "Đã có" khi có ít nhất một chứng chỉ APPROVED
+                      // "Chưa có" khi không có chứng chỉ nào, hoặc chỉ có PENDING/REJECTED
+                      const hasApproved =
+                        instructor.HasApprovedCertificate === true;
+
+                      return (
+                        <Chip
+                          label={hasApproved ? "Đã có" : "Chưa có"}
+                          size="small"
+                          sx={{
+                            backgroundColor: hasApproved
+                              ? "#10b981"
+                              : "#94a3b8",
                             color: "white",
                             fontWeight: 600,
                             fontSize: "11px",
@@ -906,6 +934,38 @@ const AdminInstructorsPage = () => {
         >
           <EventBusy sx={{ fontSize: 18, mr: 1.5 }} />
           Quản lý lịch nghỉ
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (selectedRow && selectedRow.InstructorID) {
+              const instructorId = selectedRow.InstructorID;
+              navigate(
+                `/admin/instructor-certificates?instructorId=${instructorId}`
+              );
+            } else {
+              alert("Không tìm thấy thông tin giảng viên");
+            }
+            setAnchorEl(null);
+          }}
+        >
+          <Verified sx={{ fontSize: 18, mr: 1.5 }} />
+          Quản lý chứng chỉ
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (selectedRow && selectedRow.InstructorID) {
+              const instructorId = selectedRow.InstructorID;
+              navigate(
+                `/admin/session-change-requests?instructorId=${instructorId}`
+              );
+            } else {
+              alert("Không tìm thấy thông tin giảng viên");
+            }
+            setAnchorEl(null);
+          }}
+        >
+          <Verified sx={{ fontSize: 18, mr: 1.5 }} />
+          Yêu cầu chuyển lịch
         </MenuItem>
       </Menu>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
   Grid,
@@ -30,6 +31,7 @@ import {
   Snackbar,
   Alert,
   Autocomplete,
+  Stack,
 } from "@mui/material";
 import {
   Search,
@@ -54,13 +56,17 @@ import instructorService from "../../../apiServices/instructorServicead";
 import "./style.css";
 
 export default function CoursesPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlInstructorId = searchParams.get("instructorId");
+
   const [tabValue, setTabValue] = useState(0);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showClassesDialog, setShowClassesDialog] = useState(false);
   const [courseClasses, setCourseClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
@@ -70,13 +76,28 @@ export default function CoursesPage() {
     severity: "success",
   });
   const [instructors, setInstructors] = useState([]);
-  const [selectedInstructor, setSelectedInstructor] = useState(null);
-  const [appliedInstructor, setAppliedInstructor] = useState(null);
+  const [instructorInput, setInstructorInput] = useState(
+    urlInstructorId || "all"
+  );
+  const [instructorFilter, setInstructorFilter] = useState(
+    urlInstructorId || "all"
+  );
 
   useEffect(() => {
     loadCourses();
     loadInstructors();
   }, []);
+
+  // Sync filters with URL params
+  useEffect(() => {
+    if (urlInstructorId) {
+      setInstructorFilter(urlInstructorId);
+      setInstructorInput(urlInstructorId);
+    } else {
+      setInstructorFilter("all");
+      setInstructorInput("all");
+    }
+  }, [urlInstructorId]);
 
   const loadInstructors = async () => {
     try {
@@ -124,13 +145,42 @@ export default function CoursesPage() {
   const getStatus = (course) =>
     (course.Status || course.status || "").toUpperCase();
 
+  // Handle search and filters
+  const applyFilters = () => {
+    setSearchTerm(searchInput);
+    setInstructorFilter(instructorInput);
+
+    // Update URL with filters
+    const newParams = new URLSearchParams();
+    if (instructorInput && instructorInput !== "all") {
+      newParams.set("instructorId", instructorInput);
+    }
+    setSearchParams(newParams);
+  };
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setSearchTerm("");
+    setInstructorInput("all");
+    setInstructorFilter("all");
+
+    // Navigate to base URL without query params
+    navigate("/admin/courses");
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === "Enter") {
+      applyFilters();
+    }
+  };
+
   // Filter courses by tab
   const getFilteredCourses = () => {
     let filtered = displayCourses;
 
-    // Apply search filter (chỉ áp dụng khi có appliedSearchQuery)
-    if (appliedSearchQuery.trim()) {
-      const query = appliedSearchQuery.toLowerCase();
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (c) =>
           (c.Title || c.title || "").toLowerCase().includes(query) ||
@@ -141,10 +191,9 @@ export default function CoursesPage() {
       );
     }
 
-    // Apply instructor filter (chỉ áp dụng khi có appliedInstructor)
-    if (appliedInstructor) {
-      const instructorId =
-        appliedInstructor.InstructorID || appliedInstructor.instructorId;
+    // Apply instructor filter
+    if (instructorFilter && instructorFilter !== "all") {
+      const instructorId = parseInt(instructorFilter);
       filtered = filtered.filter((c) => {
         const courseInstructorId =
           c.InstructorID ||
@@ -369,12 +418,21 @@ export default function CoursesPage() {
         </Box>
 
         {/* Search & Filter */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            mb: 3,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
           <TextField
-            placeholder="Tra cứu theo tên khóa học..."
+            placeholder="Tìm kiếm khóa học (tên, mô tả)..."
             size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyPress={handleSearchKeyPress}
             sx={{
               flex: 1,
               minWidth: 250,
@@ -392,75 +450,77 @@ export default function CoursesPage() {
             }}
           />
           <Autocomplete
-            options={instructors}
-            getOptionLabel={(option) =>
-              `${option.FullName || option.fullName || ""} - ${
-                option.Major || option.major || ""
-              }`
-            }
-            value={selectedInstructor}
-            onChange={(event, newValue) => {
-              setSelectedInstructor(newValue);
-            }}
             size="small"
-            sx={{
-              minWidth: 250,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: "#fff",
-              },
+            options={[
+              { InstructorID: "all", FullName: "Tất cả giảng viên" },
+              ...instructors,
+            ]}
+            getOptionLabel={(option) =>
+              typeof option === "string"
+                ? option
+                : option.FullName || option.fullName || ""
+            }
+            value={
+              instructorInput === "all"
+                ? { InstructorID: "all", FullName: "Tất cả giảng viên" }
+                : instructors.find(
+                    (i) => i.InstructorID === parseInt(instructorInput)
+                  ) || { InstructorID: "all", FullName: "Tất cả giảng viên" }
+            }
+            onChange={(event, newValue) => {
+              if (newValue) {
+                setInstructorInput(
+                  newValue.InstructorID === "all"
+                    ? "all"
+                    : newValue.InstructorID.toString()
+                );
+              } else {
+                setInstructorInput("all");
+              }
             }}
             renderInput={(params) => (
               <TextField
                 {...params}
-                placeholder="Chọn giảng viên..."
                 label="Giảng viên"
+                placeholder="Tìm kiếm giảng viên..."
+                sx={{
+                  minWidth: 200,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                    backgroundColor: "#fff",
+                  },
+                }}
               />
             )}
             isOptionEqualToValue={(option, value) =>
-              option.InstructorID === value?.InstructorID
+              option.InstructorID === value.InstructorID
             }
           />
-          <Button
-            variant="outlined"
-            startIcon={<FilterList />}
-            onClick={() => {
-              // Áp dụng filter khi nhấn nút "Lọc"
-              setAppliedSearchQuery(searchQuery);
-              setAppliedInstructor(selectedInstructor);
-            }}
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              borderColor: "#e2e8f0",
-              color: "#64748b",
-              "&:hover": {
-                borderColor: "#667eea",
-                backgroundColor: "#f0f4ff",
-              },
-            }}
-          >
-            Lọc
-          </Button>
-          {(appliedInstructor || appliedSearchQuery.trim()) && (
+          <Stack direction="row" spacing={1}>
             <Button
-              variant="outlined"
-              color="secondary"
-              onClick={() => {
-                // Xóa cả input và applied filter
-                setSelectedInstructor(null);
-                setSearchQuery("");
-                setAppliedInstructor(null);
-                setAppliedSearchQuery("");
-              }}
+              variant="contained"
+              onClick={applyFilters}
               sx={{
                 borderRadius: 2,
                 textTransform: "none",
+                px: 3,
               }}
             >
-              Xóa lọc
+              Áp dụng
             </Button>
-          )}
+            {(searchTerm || instructorFilter !== "all") && (
+              <Button
+                variant="outlined"
+                onClick={resetFilters}
+                sx={{
+                  borderRadius: 2,
+                  textTransform: "none",
+                }}
+              >
+                Xóa lọc
+              </Button>
+            )}
+          </Stack>
         </Box>
 
         {/* Tabs */}
@@ -506,7 +566,7 @@ export default function CoursesPage() {
             No courses found
           </Typography>
           <Typography variant="body2" sx={{ color: "#94a3b8", mb: 3 }}>
-            {searchQuery
+            {searchTerm
               ? "Thử điều chỉnh từ khóa tìm kiếm"
               : "Chưa có khóa học nào"}
           </Typography>
