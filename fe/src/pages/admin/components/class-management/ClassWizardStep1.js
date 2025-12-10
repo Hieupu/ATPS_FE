@@ -1,38 +1,4 @@
 import React from "react";
-
-/**
- * ClassWizardStep1 - Component cho Step 1: Thông tin cơ bản
- *
- * Props:
- * - formData: Object chứa dữ liệu form
- * - setFormData: Function để cập nhật formData
- * - errors: Object chứa lỗi validation
- * - readonly: Boolean - chế độ chỉ đọc
- * - instructors: Array - danh sách giảng viên
- * - filteredInstructors: Array - danh sách giảng viên đã filter
- * - instructorSearchTerm: String - từ khóa tìm kiếm giảng viên
- * - setInstructorSearchTerm: Function
- * - instructorDropdownOpen: Boolean
- * - setInstructorDropdownOpen: Function
- * - selectedInstructor: Object - giảng viên đã chọn
- * - setSelectedInstructor: Function
- * - setInstructorType: Function
- * - setParttimeAvailableSlotKeys: Function
- * - setParttimeAvailableEntriesCount: Function
- * - setParttimeAvailabilityError: Function
- * - setBlockedDays: Function
- * - setSelectedTimeslotIds: Function
- * - setAlternativeStartDateSearch: Function
- * - availableCourses: Array - danh sách khóa học
- * - filteredCourses: Array - danh sách khóa học đã filter
- * - courseSearchTerm: String
- * - setCourseSearchTerm: Function
- * - courseDropdownOpen: Boolean
- * - setCourseDropdownOpen: Function
- * - selectedCourse: Object
- * - setSelectedCourse: Function
- * - loadingInstructorData: Boolean
- */
 const ClassWizardStep1 = ({
   formData,
   setFormData,

@@ -33,6 +33,8 @@ import RefundPage from "./pages/admin/pages/RefundPage";
 import PromotionsPage from "./pages/admin/pages/PromotionsPage";
 import EmailTemplatePage from "./pages/admin/pages/EmailTemplatePage";
 import EmailLogPage from "./pages/admin/pages/EmailLogPage";
+import PayrollPage from "./pages/admin/pages/PayrollPage";
+import PaymentHistoryAdminPage from "./pages/admin/pages/PaymentHistoryAdminPage";
 import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import AdminInstructorsPage from "./pages/admin/pages/InstructorsPage";
@@ -180,11 +182,11 @@ function AppRoutes() {
           {/* Finance Routes */}
           <Route
             path="finance/payment-history"
-            element={<AdminReportsPage />}
+            element={<PaymentHistoryAdminPage />}
           />
           <Route path="finance/refunds" element={<RefundPage />} />
           <Route path="finance/promotions" element={<PromotionsPage />} />
-          <Route path="finance/payroll" element={<AdminReportsPage />} />
+          <Route path="finance/payroll" element={<PayrollPage />} />
           {/* System Routes */}
           <Route
             path="system/payment-gateways"
@@ -192,7 +194,7 @@ function AppRoutes() {
           />
           <Route
             path="system/email-templates"
-            element={<EmailTemplatePage />}
+            element={<PaymentHistoryAdminPage />}
           />
           <Route path="system/email-logs" element={<EmailLogPage />} />
           <Route path="system/timeslots" element={<TimeslotManagerPage />} />

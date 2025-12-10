@@ -43,9 +43,6 @@ import {
 } from "@mui/icons-material";
 import classService from "../../../apiServices/classService";
 import {
-  validateSessionsForm,
-  isTimeOverlap,
-  timeToMinutes,
   dayOfWeekToDay,
   getDayFromDate,
 } from "../../../utils/validate";
@@ -1321,12 +1318,6 @@ const SchedulePage = () => {
                 message: result.message || result.error || "Ca học bị trùng",
               });
             }
-            console.log(
-              ` Bulk session ${
-                i + 1
-              }/${totalSessions} có conflict trong response:`,
-              result
-            );
           } else if (result?.success !== false && result?.SessionID) {
             // Thành công thật sự - phải có SessionID và success !== false
             created.push({
@@ -1334,12 +1325,6 @@ const SchedulePage = () => {
               sessionData: session,
               result: result,
             });
-            console.log(
-              ` Bulk session ${
-                i + 1
-              }/${totalSessions} created successfully with ID:`,
-              result.SessionID
-            );
           } else {
             // Response không rõ ràng - coi như conflict để an toàn
             console.warn(
@@ -1370,11 +1355,6 @@ const SchedulePage = () => {
           const errorMessage =
             errorData?.error || errorData?.message || error?.message || "";
 
-          console.log(
-            ` Bulk session ${i + 1}/${totalSessions} error message:`,
-            errorMessage
-          );
-
           // Kiểm tra nhiều cách để phát hiện conflict
           const isConflictError =
             errorMessage.includes("trùng") ||
@@ -1388,15 +1368,6 @@ const SchedulePage = () => {
             errorMessage.includes("đã có session") ||
             error.response?.status === 400 || // Conflict thường trả về 400
             error.response?.status === 409; // Hoặc 409 Conflict
-
-          console.log(
-            ` Bulk session ${i + 1}/${totalSessions} isConflictError:`,
-            isConflictError
-          );
-          console.log(
-            ` Bulk session ${i + 1}/${totalSessions} error status:`,
-            error.response?.status
-          );
 
           // LUÔN thêm vào conflicts nếu có error - KHÔNG BAO GIỜ coi error là thành công
           if (isConflictError) {

@@ -17,11 +17,9 @@ import instructorService from "../../../../apiServices/instructorServicead";
 import "./ClassWizard.css";
 import {
   determineSlotStatus,
-  // normalizeBlockedDayValue, // Không dùng
   normalizeTimeslotId,
   buildSchedulePatternFromSessions,
   computeLostSessions,
-  computeScheduleDiff,
   calculateAllSelectedTimeslotIds,
   calculateSessionsPerWeek,
   parseDateString,
@@ -616,13 +614,6 @@ const ClassWizard = ({
   //     )}`
   //   : ""; // Không dùng
 
-  // So sánh sessions cũ và previewSessions để xác định buổi "mất" / "bù thêm" theo diff
-  // const scheduleDiff = useMemo(() => {
-  //   if (!isEditMode || !originalSessions.length || !previewSessions.length) {
-  //     return { lostSessions: [], newSessions: [] };
-  //   }
-  //   return computeScheduleDiff(originalSessions, previewSessions);
-  // }, [isEditMode, originalSessions, previewSessions]); // Không dùng
 
   useEffect(() => {
     // Chỉ kiểm tra khi đã có thông tin instructor type
@@ -1179,8 +1170,7 @@ const ClassWizard = ({
         CourseID: classData.CourseID || classData.courseId || null, // Thêm CourseID
         Maxstudent:
           classData.Maxstudent ||
-          classData.MaxLearners ||
-          classData.maxLearners ||
+      
           "",
         schedule: {
           OpendatePlan:

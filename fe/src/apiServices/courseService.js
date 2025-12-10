@@ -68,6 +68,20 @@ export const getCourseByIdApi = async (courseId) => {
   }
 };
 
+// Get course by ID for admin (có thể xem tất cả trạng thái)
+// Lưu ý: Admin không có quyền truy cập endpoint instructor
+// Nên sử dụng dữ liệu từ danh sách courses đã có thay vì gọi API mới
+export const getCourseByIdForAdmin = async (courseId) => {
+  try {
+    // Thử endpoint thường (có thể chỉ trả về PUBLISHED)
+    const response = await apiClient.get(`/courses/${courseId}`);
+    return response.data?.data || response.data;
+  } catch (error) {
+    console.error("Get course for admin error:", error);
+    throw error.response?.data || { message: "Failed to fetch course" };
+  }
+};
+
 // Keep existing enrollCourseApi for backward compatibility
 export const enrollCourseApi = async (courseId) => {
   try {
@@ -144,9 +158,9 @@ export const updateCourseStatus = async (courseId, status, action = null) => {
 export const getCourseClasses = async (courseId) => {
   try {
     const response = await apiClient.get(`/courses/${courseId}/classes`);
-    return response.data?.data || response.data || [];
+    // Backend trả về { classes: [...] }
+    return response.data?.classes || response.data?.data || response.data || [];
   } catch (error) {
-    console.error("Get course classes error:", error);
     throw error.response?.data || { message: "Failed to fetch course classes" };
   }
 };
@@ -174,10 +188,13 @@ export const getClassesByCourseApi = async (courseId) => {
 
 export const transferClassApi = async (fromClassId, toClassId, courseId) => {
   try {
-    const response = await apiClient.post(`/courses/${courseId}/transfer-class`, {
-      fromClassId,
-      toClassId
-    });
+    const response = await apiClient.post(
+      `/courses/${courseId}/transfer-class`,
+      {
+        fromClassId,
+        toClassId,
+      }
+    );
     return response.data;
   } catch (error) {
     console.error("Transfer class error:", error);
@@ -187,11 +204,15 @@ export const transferClassApi = async (fromClassId, toClassId, courseId) => {
 
 export const getScheduleClassesApi = async (filters = {}) => {
   try {
-    const response = await apiClient.get('/courses/schedule/all-classes', { params: filters });
+    const response = await apiClient.get("/courses/schedule/all-classes", {
+      params: filters,
+    });
     return response.data;
   } catch (error) {
     console.error("Get schedule classes error:", error);
-    throw error.response?.data || { message: "Failed to fetch schedule classes" };
+    throw (
+      error.response?.data || { message: "Failed to fetch schedule classes" }
+    );
   }
 };
 

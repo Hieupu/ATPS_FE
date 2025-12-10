@@ -16,13 +16,17 @@ const classService = {
 
   createZoomMeeting: async (meetingData) => {
     try {
-      const response = await apiClient.post("/zoom/create-meeting", meetingData,
-        {
-      });
+      const response = await apiClient.post(
+        "/zoom/create-meeting",
+        meetingData,
+        {}
+      );
       return response.data;
     } catch (error) {
       console.error("Create Zoom meeting error:", error);
-      throw error.response?.data || { message: "Failed to create Zoom meeting" };
+      throw (
+        error.response?.data || { message: "Failed to create Zoom meeting" }
+      );
     }
   },
 
@@ -647,7 +651,7 @@ const classService = {
       return response.data?.data || response.data;
     } catch (error) {
       // Nếu endpoint /review không tồn tại (404), thử dùng updateClass
-      if (error.response?.status === 404) { 
+      if (error.response?.status === 404) {
         try {
           // Map action thành Status
           let status = "DRAFT";
@@ -888,7 +892,7 @@ const classService = {
       const response = await apiClient.get("/classes/instructor/leave", {
         params,
       });
-     
+
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get instructor leave error:", error);
@@ -916,7 +920,6 @@ const classService = {
   // Xóa tất cả lịch nghỉ của một ngày
   deleteLeavesByDate: async (date, status = "HOLIDAY") => {
     try {
-      
       const response = await apiClient.delete(
         `/classes/instructor/leave/date/${date}?status=${status}`
       );

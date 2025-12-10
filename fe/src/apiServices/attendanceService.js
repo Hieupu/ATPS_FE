@@ -19,31 +19,57 @@ export const getAttendanceStatsApi = async (learnerId, sessionId = null) => {
     return response.data;
   } catch (error) {
     console.error("Get attendance stats error:", error);
-    throw error.response?.data || { message: "Failed to fetch attendance stats" };
+    throw (
+      error.response?.data || { message: "Failed to fetch attendance stats" }
+    );
   }
 };
 
 export const getAttendanceByClassApi = async (learnerId) => {
   try {
-    const response = await apiClient.get(`/attendance/learner/${learnerId}/by-class`);
+    const response = await apiClient.get(
+      `/attendance/learner/${learnerId}/by-class`
+    );
     return response.data;
   } catch (error) {
     console.error("Get attendance by class error:", error);
-    throw error.response?.data || { message: "Failed to fetch attendance by class" };
+    throw (
+      error.response?.data || { message: "Failed to fetch attendance by class" }
+    );
   }
 };
 
 export const getAttendanceCalendarApi = async (learnerId, month, year) => {
   try {
     const params = new URLSearchParams();
-    if (month) params.append('month', month);
-    if (year) params.append('year', year);
-    
-    const url = `/attendance/learner/${learnerId}/calendar${params.toString() ? '?' + params.toString() : ''}`;
+    if (month) params.append("month", month);
+    if (year) params.append("year", year);
+
+    const url = `/attendance/learner/${learnerId}/calendar${
+      params.toString() ? "?" + params.toString() : ""
+    }`;
     const response = await apiClient.get(url);
     return response.data;
   } catch (error) {
     console.error("Get attendance calendar error:", error);
-    throw error.response?.data || { message: "Failed to fetch attendance calendar" };
+    throw (
+      error.response?.data || { message: "Failed to fetch attendance calendar" }
+    );
+  }
+};
+
+export const getAttendanceByInstructorApi = async (instructorId) => {
+  try {
+    const response = await apiClient.get(
+      `/attendance/instructor/${instructorId}`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Get attendance by instructor error:", error);
+    throw (
+      error.response?.data || {
+        message: "Failed to fetch attendance by instructor",
+      }
+    );
   }
 };

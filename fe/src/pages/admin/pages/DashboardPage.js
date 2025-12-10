@@ -49,40 +49,36 @@ export default function DashboardPage() {
   // Quick Actions
   const quickActions = [
     {
-      title: "Create Class",
-      description: "Start a new class",
+      title: "Tạo lớp mới",
+
       icon: <Add />,
       color: "#667eea",
       bgColor: "#f0f4ff",
       link: "/admin/classes",
     },
     {
-      title: "Manage Courses",
-      description: "Manage templates",
+      title: "Quản lý khóa học",
       icon: <Description />,
       color: "#10b981",
       bgColor: "#f0fdf4",
       link: "/admin/courses",
     },
     {
-      title: "Add Instructor",
-      description: "Enroll new instructor",
+      title: "Quản lý giảng viên",
       icon: <PersonAdd />,
       color: "#f59e0b",
       bgColor: "#fffbeb",
       link: "/admin/instructors",
     },
     {
-      title: "Manage Learners",
-      description: "View all students",
+      title: "Quản lý học viên",
       icon: <People />,
       color: "#ec4899",
       bgColor: "#fdf2f8",
       link: "/admin/learners",
     },
     {
-      title: "View Reports",
-      description: "Check analytics",
+      title: "Thống kê",
       icon: <Assessment />,
       color: "#06b6d4",
       bgColor: "#f0fdfa",
@@ -107,7 +103,6 @@ export default function DashboardPage() {
       setStats(statsResponse.data);
       setRecentActivities(activitiesResponse.data || []);
     } catch (error) {
-      console.error("Error loading dashboard data:", error);
       setError("Không thể tải dữ liệu dashboard");
     } finally {
       setLoading(false);
@@ -284,7 +279,7 @@ export default function DashboardPage() {
       >
         <CardContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
-            Quick Actions
+            Chuyển hướng nhanh
           </Typography>
           <Grid container spacing={2}>
             {quickActions.map((action, index) => (
@@ -425,7 +420,7 @@ export default function DashboardPage() {
       <Card sx={{ borderRadius: 3, boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
         <CardContent>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3 }}>
-            Recent Activities
+            Hoạt động gần đây
           </Typography>
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
             {recentActivities.length === 0 ? (

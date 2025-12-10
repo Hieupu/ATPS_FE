@@ -254,7 +254,6 @@ const LearnersPage = () => {
               accountData
             );
             accountUpdated = true;
-            
           } catch (accountError) {
             // Nếu endpoint không tồn tại, thử gửi account data cùng với learner data
             if (
@@ -327,7 +326,7 @@ const LearnersPage = () => {
       // Reload danh sách sau khi lưu
       await loadLearners();
       setShowLearnerForm(false);
-    } catch (error) { 
+    } catch (error) {
       const errorMessage =
         error?.message ||
         error.response?.data?.message ||
@@ -519,7 +518,7 @@ const LearnersPage = () => {
             }}
           />
           <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Status</InputLabel>
+            <InputLabel>Trạng thái</InputLabel>
             <Select
               value={statusInput}
               label="Status"
@@ -608,7 +607,7 @@ const LearnersPage = () => {
             <TableHead>
               <TableRow sx={{ backgroundColor: "#f8fafc" }}>
                 <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
-                  Name
+                  Họ và tên
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
                   Email
@@ -629,7 +628,7 @@ const LearnersPage = () => {
                   sx={{ fontWeight: 700, color: "#1e293b" }}
                   align="right"
                 >
-                  Actions
+                  Hoạt động
                 </TableCell>
               </TableRow>
             </TableHead>

@@ -120,37 +120,6 @@ Trân trọng,
     ],
   },
   REFUND_APPROVED: {
-    subject: "Yêu cầu hoàn tiền đã được duyệt: {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Yêu cầu hoàn tiền của bạn đã được duyệt.
-
-Mã yêu cầu: {{refundCode}}
-Lớp học: {{className}}
-Số tiền: {{refundAmount}}
-
-Số tiền sẽ được hoàn lại vào tài khoản của bạn trong vòng 5-7 ngày làm việc.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "refundCode", "refundAmount", "className"],
-  },
-  REFUND_REJECTED: {
-    subject: "Yêu cầu hoàn tiền đã bị từ chối: {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Rất tiếc, yêu cầu hoàn tiền của bạn đã bị từ chối.
-
-Mã yêu cầu: {{refundCode}}
-Lý do từ chối: {{rejectionReason}}
-
-Nếu bạn có bất kỳ thắc mắc nào về quyết định này, vui lòng liên hệ với chúng tôi.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "refundCode", "rejectionReason"],
-  },
-  REFUND_COMPLETED: {
     subject: "Hoàn tiền đã hoàn tất: {{refundCode}}",
     body: `Kính chào {{userName}},
 
@@ -173,6 +142,39 @@ Trân trọng,
       "completedDate",
     ],
   },
+  REFUND_REJECTED: {
+    subject: "Yêu cầu hoàn tiền đã bị từ chối: {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Rất tiếc, yêu cầu hoàn tiền của bạn đã bị từ chối.
+
+Mã yêu cầu: {{refundCode}}
+Lý do từ chối: {{rejectionReason}}
+
+Nếu bạn có bất kỳ thắc mắc nào về quyết định này, vui lòng liên hệ với chúng tôi.
+
+Trân trọng,
+Đội ngũ hỗ trợ`,
+    variables: ["userName", "refundCode", "rejectionReason"],
+  },
+
+  REFUND_ACCOUNT_INFO_REQUEST: {
+    subject:
+      "Vui lòng cung cấp thông tin tài khoản để hoàn tiền {{refundCode}}",
+    body: `Kính chào {{userName}},
+
+Yêu cầu hoàn tiền {{refundCode}} đã được duyệt. Vui lòng cung cấp thông tin chuyển khoản để chúng tôi thực hiện hoàn tiền:
+- Tên ngân hàng:
+- Số tài khoản:
+- Chủ tài khoản:
+- Nội dung nhận tiền (nếu có):
+
+Số tiền hoàn: {{refundAmount}}
+Lớp học: {{className}}
+
+Nếu bạn đã cung cấp trước đó, vui lòng bỏ qua email này. Cảm ơn bạn!`,
+    variables: ["userName", "refundCode", "refundAmount", "className"],
+  },
 };
 
 const EVENT_TYPES = [
@@ -189,6 +191,14 @@ const EVENT_TYPES = [
   { value: "REFUND_APPROVED", label: "Duyệt yêu cầu hoàn tiền" },
   { value: "REFUND_REJECTED", label: "Từ chối yêu cầu hoàn tiền" },
   { value: "REFUND_COMPLETED", label: "Hoàn tiền hoàn tất" },
+  {
+    value: "REFUND_ACCOUNT_INFO_REQUEST",
+    label: "Yêu cầu thông tin chuyển khoản",
+  },
+  {
+    value: "REFUND_ACCOUNT_SUCCESS",
+    label: "Thông báo đã chuyển khoản hoàn tiền",
+  },
 ];
 
 const PAGE_SIZE = 10;
@@ -290,8 +300,6 @@ export default function EmailTemplatePage() {
       }
 
       const response = await emailTemplateService.getAllTemplates(params);
-      // Backend trả về: { success: true, data: templates[], pagination: {...} }
-      console.log("EmailTemplatePage - Response from API:", response);
       const templatesData = response.data || [];
       const pagination = response.pagination || {
         total: 0,
@@ -300,14 +308,10 @@ export default function EmailTemplatePage() {
         limit: PAGE_SIZE,
       };
 
-      console.log("EmailTemplatePage - Templates data:", templatesData);
-      console.log("EmailTemplatePage - Pagination:", pagination);
-
       setTemplates(Array.isArray(templatesData) ? templatesData : []);
       setTotalPages(pagination.totalPages || 1);
       setTotal(pagination.total || 0);
     } catch (error) {
-      console.error("Error loading templates:", error);
       setSnackbar({
         open: true,
         message:
@@ -328,7 +332,13 @@ export default function EmailTemplatePage() {
       const variables = await emailTemplateService.getAvailableVariables(
         eventType
       );
-      setAvailableVariables(Array.isArray(variables) ? variables : []);
+      const varsArray = Array.isArray(variables) ? variables : [];
+      // Fallback: nếu không có biến từ DB, dùng template mẫu (nếu có)
+      if (varsArray.length === 0 && EVENT_TEMPLATES[eventType]) {
+        setAvailableVariables(EVENT_TEMPLATES[eventType].variables || []);
+      } else {
+        setAvailableVariables(varsArray);
+      }
 
       // Nếu có template mẫu và đang tạo mới, tự động điền (luôn cập nhật khi chọn lại EventType)
       if (!isEditing && EVENT_TEMPLATES[eventType]) {
@@ -338,7 +348,8 @@ export default function EmailTemplatePage() {
           EventType: eventType,
           Subject: template.subject, // Luôn cập nhật theo template mới
           Body: template.body, // Luôn cập nhật theo template mới
-          Variables: variables.length > 0 ? variables : template.variables,
+          Variables:
+            varsArray.length > 0 ? varsArray : template.variables || varsArray,
           TemplateCode: eventType, // Luôn cập nhật theo EventType
           TemplateName:
             EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
@@ -348,7 +359,7 @@ export default function EmailTemplatePage() {
         setFormData((prev) => ({
           ...prev,
           EventType: eventType,
-          Variables: variables.length > 0 ? variables : [],
+          Variables: varsArray.length > 0 ? varsArray : [],
           TemplateCode: eventType, // Luôn cập nhật theo EventType
           TemplateName:
             EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
@@ -418,42 +429,74 @@ export default function EmailTemplatePage() {
       EventType: eventType,
       TemplateCode: newTemplateCode,
     });
-
-    // Load lại templates với filter theo EventType đang chọn
-    if (!isEditing) {
-      setEventTypeFilter(eventType);
-      setPage(1); // Reset về trang đầu
-    }
   };
 
   const handleEdit = async (template) => {
-    setIsEditing(true);
-    const variables = Array.isArray(template.Variables)
-      ? template.Variables
-      : typeof template.Variables === "string"
-      ? JSON.parse(template.Variables || "[]")
+    // Ưu tiên template được truyền vào, fallback về template đã chọn trong state
+    const targetTemplate =
+      template && template.TemplateID ? template : selectedTemplate;
+
+    if (!targetTemplate) {
+      setSnackbar({
+        open: true,
+        message: "Không tìm thấy dữ liệu mẫu email để chỉnh sửa",
+        severity: "error",
+      });
+      handleMenuClose();
+      return;
+    }
+
+    // Luôn cố lấy dữ liệu mới nhất từ server; nếu lỗi thì thông báo và dừng
+    let templateData = targetTemplate;
+    try {
+      const apiTemplate = await emailTemplateService.getTemplateById(
+        targetTemplate.TemplateID
+      );
+      if (apiTemplate) {
+        templateData = apiTemplate;
+      }
+    } catch (error) {
+      console.error("Error fetching template for edit:", error);
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không tải được dữ liệu mẫu email từ máy chủ",
+        severity: "error",
+      });
+      setAnchorEl(null); // đóng menu nếu đang mở
+      return;
+    }
+
+    const variables = Array.isArray(templateData.Variables)
+      ? templateData.Variables
+      : typeof templateData.Variables === "string"
+      ? JSON.parse(templateData.Variables || "[]")
       : [];
 
+    setIsEditing(true);
     setFormData({
-      TemplateCode: template.TemplateCode || "",
-      TemplateName: template.TemplateName || "",
-      Subject: template.Subject || "",
-      Body: template.Body || "",
-      Description: template.Description || "",
-      EventType: template.EventType || "",
-      IsActive: template.IsActive !== undefined ? template.IsActive : true,
+      TemplateCode: templateData.TemplateCode || "",
+      TemplateName: templateData.TemplateName || "",
+      Subject: templateData.Subject || "",
+      Body: templateData.Body || "",
+      Description: templateData.Description || "",
+      EventType: templateData.EventType || "",
+      IsActive:
+        templateData.IsActive !== undefined ? templateData.IsActive : true,
       Variables: variables,
     });
     setFormErrors({});
-    setSelectedTemplate(template);
+    setSelectedTemplate(templateData);
     setDialogOpen(true);
-    handleMenuClose();
+    setAnchorEl(null); // chỉ đóng menu, giữ selectedTemplate để lưu
 
     // Load available variables từ database để hiển thị
-    if (template.EventType) {
+    if (templateData.EventType) {
       try {
         const availableVars = await emailTemplateService.getAvailableVariables(
-          template.EventType
+          templateData.EventType
         );
         setAvailableVariables(
           Array.isArray(availableVars) ? availableVars : []

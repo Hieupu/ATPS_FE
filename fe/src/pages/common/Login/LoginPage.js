@@ -77,6 +77,8 @@ const LoginPage = () => {
           navigate("/");
         } else if (data.user.role === "instructor") {
           navigate("/instructor");
+        } else if (data.user.role === "admin") {
+          navigate("/admin");
         } else {
           navigate("/");
         }
@@ -111,7 +113,6 @@ const LoginPage = () => {
             backgroundColor: "white",
           }}
         >
-
           <Box sx={{ textAlign: "center", mb: 4 }}>
             <Typography variant="h4" gutterBottom sx={{ fontWeight: 700 }}>
               Đăng nhập
