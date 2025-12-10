@@ -190,11 +190,11 @@ function AppRoutes() {
           {/* System Routes */}
           <Route
             path="system/payment-gateways"
-            element={<AdminReportsPage />}
+            element={<PaymentHistoryAdminPage />}
           />
           <Route
             path="system/email-templates"
-            element={<PaymentHistoryAdminPage />}
+            element={<EmailTemplatePage />}
           />
           <Route path="system/email-logs" element={<EmailLogPage />} />
           <Route path="system/timeslots" element={<TimeslotManagerPage />} />
