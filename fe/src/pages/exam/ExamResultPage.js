@@ -1,5 +1,5 @@
 // pages/ExamResultPage.js
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   Box,
   Container,
@@ -11,23 +11,23 @@ import {
   Chip,
   LinearProgress,
   Grid,
-} from '@mui/material';
+} from "@mui/material";
 import {
   EmojiEvents,
   CheckCircle,
   Cancel,
   ArrowBack,
   Refresh,
-} from '@mui/icons-material';
-import { useNavigate, useParams } from 'react-router-dom';
-import AppHeader from '../../components/Header/AppHeader';
+} from "@mui/icons-material";
+import { useNavigate, useParams } from "react-router-dom";
+import AppHeader from "../../components/Header/AppHeader";
 import {
   getExamResultApi,
   retryExamApi,
-} from '../../apiServices/learnerExamService';
+} from "../../apiServices/learnerExamService";
 
 const formatPercent = (val) => {
-  if (val === null || val === undefined) return '—';
+  if (val === null || val === undefined) return "—";
   const n = Number(val);
   if (Number.isNaN(n)) return val;
   return `${n.toFixed(2)}%`;
@@ -49,7 +49,7 @@ const ExamResultPage = () => {
       const data = await getExamResultApi(instanceId);
       setResult(data);
     } catch (err) {
-      setError(err.message || 'Không thể tải kết quả bài thi');
+      setError(err.message || "Không thể tải kết quả bài thi");
     } finally {
       setLoading(false);
     }
@@ -60,13 +60,13 @@ const ExamResultPage = () => {
   }, [instanceId]);
 
   const handleRetry = async () => {
-    if (!window.confirm('Bạn muốn làm lại bài thi này?')) return;
+    if (!window.confirm("Bạn muốn làm lại bài thi này?")) return;
     try {
       setRetrying(true);
       await retryExamApi(instanceId);
       navigate(`/exam/${instanceId}/take`, { replace: true });
     } catch (err) {
-      alert(err.message || 'Không thể reset bài thi');
+      alert(err.message || "Không thể reset bài thi");
     } finally {
       setRetrying(false);
     }
@@ -80,7 +80,7 @@ const ExamResultPage = () => {
       <Container maxWidth="md" sx={{ mt: 4, mb: 4 }}>
         <Button
           startIcon={<ArrowBack />}
-          onClick={() => navigate(-1)}
+          onClick={() => navigate("/exam")}
           sx={{ mb: 2 }}
         >
           Quay lại
@@ -94,16 +94,14 @@ const ExamResultPage = () => {
           </Card>
         )}
 
-        {!loading && error && (
-          <Alert severity="error">{error}</Alert>
-        )}
+        {!loading && error && <Alert severity="error">{error}</Alert>}
 
         {!loading && !error && result && (
           <>
             {/* Summary */}
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                   <EmojiEvents sx={{ mr: 1 }} color="warning" />
                   <Typography variant="h6" fontWeight={600}>
                     {result.examTitle || result.instance?.examTitle}
@@ -129,7 +127,8 @@ const ExamResultPage = () => {
                       Số câu đúng
                     </Typography>
                     <Typography variant="h5">
-                      {result.correctCount ?? '—'} / {result.totalQuestions ?? '—'}
+                      {result.correctCount ?? "—"} /{" "}
+                      {result.totalQuestions ?? "—"}
                     </Typography>
                   </Grid>
                   <Grid item xs={12} sm={4}>
@@ -137,12 +136,12 @@ const ExamResultPage = () => {
                       Tổng điểm
                     </Typography>
                     <Typography variant="h5">
-                      {result.totalScore ?? '—'} / {result.maxScore ?? '—'}
+                      {result.totalScore ?? "—"} / {result.maxScore ?? "—"}
                     </Typography>
                   </Grid>
                 </Grid>
 
-                <Box sx={{ mt: 3, display: 'flex', gap: 1 }}>
+                <Box sx={{ mt: 3, display: "flex", gap: 1 }}>
                   <Button
                     variant="contained"
                     startIcon={<Refresh />}
@@ -159,14 +158,21 @@ const ExamResultPage = () => {
             {questions.length > 0 && (
               <Card>
                 <CardContent>
-                  <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={600}
+                    sx={{ mb: 2 }}
+                  >
                     Chi tiết câu trả lời
                   </Typography>
 
                   {questions.map((q, idx) => {
                     const isCorrect = q.isCorrect;
-                    const isObjective =
-                      ['multiple_choice', 'true_false', 'fill_in_blank'].includes(q.type);
+                    const isObjective = [
+                      "multiple_choice",
+                      "true_false",
+                      "fill_in_blank",
+                    ].includes(q.type);
                     return (
                       <Box
                         key={q.examQuestionId || idx}
@@ -174,21 +180,29 @@ const ExamResultPage = () => {
                           mb: 2,
                           p: 2,
                           borderRadius: 2,
-                          border: '1px solid',
-                          borderColor: isCorrect ? 'success.main' : 'error.main',
+                          border: "1px solid",
+                          borderColor: isCorrect
+                            ? "success.main"
+                            : "error.main",
                         }}
                       >
                         <Box
                           sx={{
-                            display: 'flex',
-                            alignItems: 'center',
+                            display: "flex",
+                            alignItems: "center",
                             mb: 1,
                             gap: 1,
                           }}
                         >
                           <Chip
                             label={`Câu ${idx + 1}`}
-                            color={isCorrect ? 'success' : isObjective ? 'error' : 'default'}
+                            color={
+                              isCorrect
+                                ? "success"
+                                : isObjective
+                                ? "error"
+                                : "default"
+                            }
                             size="small"
                           />
                           {isCorrect ? (

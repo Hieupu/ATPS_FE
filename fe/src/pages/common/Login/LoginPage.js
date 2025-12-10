@@ -71,6 +71,7 @@ const LoginPage = () => {
       toast.success(`Xin chào ${userName}! Đăng nhập thành công`, {
         autoClose: 2000,
       });
+      console.log(data.user.role, "check role");
 
       setTimeout(() => {
         if (data.user.role === "learner") {
