@@ -386,7 +386,7 @@ const MyClassList = ({ courseId }) => {
                   )}
                 </Box>
 
-               {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
+                 {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
   <Box>
     <Typography
       variant="subtitle2"
@@ -422,6 +422,56 @@ const MyClassList = ({ courseId }) => {
         />
       ))}
     </Box>
+    
+    {/* Thêm phần hiển thị ngày bắt đầu và kết thúc */}
+    {(() => {
+      // Tính ngày bắt đầu và kết thúc từ weeklySchedule
+      const sortedSchedule = [...classItem.weeklySchedule].sort((a, b) => 
+        new Date(a.Date) - new Date(b.Date)
+      );
+      const startDate = sortedSchedule[0]?.Date;
+      const endDate = sortedSchedule[sortedSchedule.length - 1]?.Date;
+      
+      return startDate && endDate && (
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography
+            variant="caption"
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              color: 'text.secondary',
+            }}
+          >
+            <span role="img" aria-label="calendar">📅</span>
+            <span>
+              <strong>Thời gian khóa học:</strong>{' '}
+              {new Date(startDate).toLocaleDateString('vi-VN')} - {new Date(endDate).toLocaleDateString('vi-VN')}
+            </span>
+          </Typography>
+          
+          {/* Tùy chọn: Tính tổng số tuần học */}
+          {(() => {
+            const start = new Date(startDate);
+            const end = new Date(endDate);
+            const diffTime = Math.abs(end - start);
+            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
+            return (
+              <Chip
+                label={`${diffWeeks} tuần`}
+                size="small"
+                sx={{
+                  bgcolor: 'rgba(255,193,7,0.1)',
+                  color: '#ff9800',
+                  fontWeight: 600,
+                  fontSize: '0.7rem',
+                }}
+              />
+            );
+          })()}
+        </Box>
+      );
+    })()}
   </Box>
 )}
               </CardContent>

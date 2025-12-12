@@ -5,7 +5,6 @@ import {
   CardContent,
   Box,
   Typography,
-  Grid,
   TextField,
   Button,
   InputAdornment,
@@ -30,166 +29,145 @@ const SecuritySection = ({
   return (
     <Card
       sx={{
-        borderRadius: "24px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-        color: "white",
+        borderRadius: "16px",
+        background: "#ffffff",
+        boxShadow: "0 4px 12px rgba(13, 37, 77, 0.05)",
+        border: "1px solid #e2e8f0",
       }}
     >
-      <CardContent sx={{ p: 4 }}>
-        <SectionHeader
-          icon={<LockIcon />}
-          title="Security"
-          subtitle="Keep your account secure"
-        />
+      <CardContent sx={{ p: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
+          <Box
+            sx={{
+              width: 48,
+              height: 48,
+              borderRadius: "12px",
+              background: "#0d254d",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <LockIcon sx={{ color: "white", fontSize: 24 }} />
+          </Box>
+          <Box>
+            <Typography variant="h6" fontWeight="600" sx={{ color: "#0d254d" }}>
+              Bảo mật
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#64748b" }}>
+              Quản lý mật khẩu
+            </Typography>
+          </Box>
+        </Box>
 
         {!isChangingPassword ? (
-          <PasswordOverview onPasswordToggle={onPasswordToggle} />
+          <Box>
+            <Button
+              variant="contained"
+              fullWidth
+              onClick={onPasswordToggle}
+              sx={{
+                borderRadius: "10px",
+                py: 1.5,
+                background: "#0d254d",
+                color: "white",
+                textTransform: "none",
+                fontSize: "15px",
+                fontWeight: 500,
+                "&:hover": {
+                  background: "#1a3b6b",
+                },
+              }}
+            >
+              Đổi mật khẩu
+            </Button>
+          </Box>
         ) : (
-          <PasswordChangeForm
-            showPassword={showPassword}
-            passwordData={passwordData}
-            loading={loading}
-            onPasswordChange={onPasswordChange}
-            onShowPasswordToggle={onShowPasswordToggle}
-            onChangePassword={onChangePassword}
-            onCancel={onPasswordToggle}
-          />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <PasswordField
+              label="Mật khẩu hiện tại"
+              name="currentPassword"
+              showPassword={showPassword.current}
+              value={passwordData.currentPassword}
+              onChange={onPasswordChange}
+              onToggleShowPassword={() =>
+                onShowPasswordToggle("current", !showPassword.current)
+              }
+            />
+
+            <PasswordField
+              label="Mật khẩu mới"
+              name="newPassword"
+              showPassword={showPassword.new}
+              value={passwordData.newPassword}
+              onChange={onPasswordChange}
+              onToggleShowPassword={() =>
+                onShowPasswordToggle("new", !showPassword.new)
+              }
+            />
+
+            <PasswordField
+              label="Xác nhận mật khẩu"
+              name="confirmPassword"
+              showPassword={showPassword.confirm}
+              value={passwordData.confirmPassword}
+              onChange={onPasswordChange}
+              onToggleShowPassword={() =>
+                onShowPasswordToggle("confirm", !showPassword.confirm)
+              }
+            />
+
+            <Typography variant="caption" sx={{ color: "#64748b" }}>
+              Mật khẩu: 8+ ký tự, chữ hoa/thường, số
+            </Typography>
+
+            <Box sx={{ display: "flex", gap: 1 }}>
+              <Button
+                variant="contained"
+                fullWidth
+                onClick={onChangePassword}
+                disabled={loading}
+                sx={{
+                  borderRadius: "10px",
+                  py: 1.5,
+                  background: "#0d254d",
+                  textTransform: "none",
+                  fontSize: "15px",
+                  fontWeight: 500,
+                  "&:hover": {
+                    background: "#1a3b6b",
+                  },
+                }}
+              >
+                Cập nhật
+              </Button>
+              <Button
+                variant="outlined"
+                fullWidth
+                onClick={onPasswordToggle}
+                sx={{
+                  borderRadius: "10px",
+                  py: 1.5,
+                  borderColor: "#e2e8f0",
+                  color: "#64748b",
+                  textTransform: "none",
+                  fontSize: "15px",
+                  fontWeight: 500,
+                  "&:hover": {
+                    borderColor: "#cbd5e1",
+                    background: "#f8fafc",
+                  },
+                }}
+              >
+                Hủy
+              </Button>
+            </Box>
+          </Box>
         )}
       </CardContent>
     </Card>
   );
 };
-
-const SectionHeader = ({ icon, title, subtitle }) => (
-  <Box
-    sx={{
-      display: "flex",
-      alignItems: "center",
-      gap: 2,
-      mb: 3,
-    }}
-  >
-    <Box
-      sx={{
-        width: 48,
-        height: 48,
-        borderRadius: "12px",
-        background: "rgba(255,255,255,0.2)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      {React.cloneElement(icon, { sx: { color: "white", fontSize: 28 } })}
-    </Box>
-    <Box>
-      <Typography variant="h5" fontWeight="700">
-        {title}
-      </Typography>
-      <Typography variant="body2" sx={{ opacity: 0.9 }}>
-        {subtitle}
-      </Typography>
-    </Box>
-  </Box>
-);
-
-const PasswordOverview = ({ onPasswordToggle }) => (
-  <Box>
-    <Typography variant="body2" sx={{ mb: 3, opacity: 0.9 }}>
-      Regular password updates help protect your account from unauthorized access.
-    </Typography>
-    <Button
-      variant="contained"
-      fullWidth
-      onClick={onPasswordToggle}
-      sx={{
-        borderRadius: "12px",
-        py: 1.5,
-        background: "white",
-        color: "#667eea",
-        boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-        textTransform: "none",
-        fontSize: "16px",
-        fontWeight: 600,
-        "&:hover": {
-          background: "rgba(255,255,255,0.95)",
-          boxShadow: "0 6px 20px rgba(0,0,0,0.3)",
-        },
-      }}
-    >
-      Change Password
-    </Button>
-  </Box>
-);
-
-const PasswordChangeForm = ({
-  showPassword,
-  passwordData,
-  loading,
-  onPasswordChange,
-  onShowPasswordToggle,
-  onChangePassword,
-  onCancel,
-}) => (
-  <Grid container spacing={2}>
-    <Grid item xs={12}>
-      <PasswordField
-        label="Current Password"
-        name="currentPassword"
-        showPassword={showPassword.current}
-        value={passwordData.currentPassword}
-        onChange={onPasswordChange}
-        onToggleShowPassword={() =>
-          onShowPasswordToggle("current", !showPassword.current)
-        }
-      />
-    </Grid>
-
-    <Grid item xs={12}>
-      <PasswordField
-        label="New Password"
-        name="newPassword"
-        showPassword={showPassword.new}
-        value={passwordData.newPassword}
-        onChange={onPasswordChange}
-        onToggleShowPassword={() =>
-          onShowPasswordToggle("new", !showPassword.new)
-        }
-      />
-    </Grid>
-
-    <Grid item xs={12}>
-      <PasswordField
-        label="Confirm Password"
-        name="confirmPassword"
-        showPassword={showPassword.confirm}
-        value={passwordData.confirmPassword}
-        onChange={onPasswordChange}
-        onToggleShowPassword={() =>
-          onShowPasswordToggle("confirm", !showPassword.confirm)
-        }
-      />
-    </Grid>
-
-    <Grid item xs={12}>
-      <Typography
-        variant="caption"
-        sx={{ opacity: 0.9, display: "block", mb: 2 }}
-      >
-        Password must be at least 8 characters with uppercase, lowercase, and numbers.
-      </Typography>
-    </Grid>
-
-    <Grid item xs={12}>
-      <ActionButtons
-        loading={loading}
-        onChangePassword={onChangePassword}
-        onCancel={onCancel}
-      />
-    </Grid>
-  </Grid>
-);
 
 const PasswordField = ({
   label,
@@ -206,10 +184,15 @@ const PasswordField = ({
     type={showPassword ? "text" : "password"}
     value={value}
     onChange={onChange}
+    size="small"
     InputProps={{
       endAdornment: (
         <InputAdornment position="end">
-          <IconButton onClick={onToggleShowPassword} sx={{ color: "#667eea" }}>
+          <IconButton 
+            onClick={onToggleShowPassword} 
+            size="small"
+            sx={{ color: "#64748b" }}
+          >
             {showPassword ? <VisibilityOff /> : <Visibility />}
           </IconButton>
         </InputAdornment>
@@ -217,66 +200,23 @@ const PasswordField = ({
     }}
     sx={{
       "& .MuiOutlinedInput-root": {
-        borderRadius: "12px",
-        bgcolor: "white",
+        borderRadius: "10px",
+        background: "#f8fafc",
         "& fieldset": {
-          borderColor: "transparent",
+          borderColor: "#e2e8f0",
         },
         "&:hover fieldset": {
-          borderColor: "#667eea",
+          borderColor: "#cbd5e1",
         },
         "&.Mui-focused fieldset": {
-          borderColor: "#667eea",
+          borderColor: "#0d254d",
         },
+      },
+      "& .MuiInputLabel-root": {
+        color: "#64748b",
       },
     }}
   />
-);
-
-const ActionButtons = ({ loading, onChangePassword, onCancel }) => (
-  <Box sx={{ display: "flex", gap: 1, flexDirection: "column" }}>
-    <Button
-      variant="contained"
-      fullWidth
-      onClick={onChangePassword}
-      disabled={loading}
-      sx={{
-        borderRadius: "12px",
-        py: 1.5,
-        background: "white",
-        color: "#667eea",
-        boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-        textTransform: "none",
-        fontSize: "16px",
-        fontWeight: 600,
-        "&:hover": {
-          background: "rgba(255,255,255,0.95)",
-        },
-      }}
-    >
-      Update Password
-    </Button>
-    <Button
-      variant="outlined"
-      fullWidth
-      onClick={onCancel}
-      sx={{
-        borderRadius: "12px",
-        py: 1.5,
-        borderColor: "white",
-        color: "white",
-        textTransform: "none",
-        fontSize: "16px",
-        fontWeight: 600,
-        "&:hover": {
-          borderColor: "white",
-          background: "rgba(255,255,255,0.1)",
-        },
-      }}
-    >
-      Cancel
-    </Button>
-  </Box>
 );
 
 export default SecuritySection;
