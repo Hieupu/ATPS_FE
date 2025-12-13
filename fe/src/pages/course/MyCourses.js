@@ -144,6 +144,7 @@ const MyCourseCard = ({ course }) => {
             height: "56px",
             overflow: "hidden",
             display: "-webkit-box",
+            mb:-3,
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             lineHeight: 1.35,
@@ -159,7 +160,6 @@ const MyCourseCard = ({ course }) => {
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 1,
             height: "42px",
             overflow: "hidden",
             display: "-webkit-box",
@@ -231,7 +231,7 @@ const MyCourseCard = ({ course }) => {
             display: "flex",
             justifyContent: "space-around",
             gap: 1,
-            pb: 2.5,
+            pb: 1,
             borderBottom: "2px solid",
             borderColor: "divider",
           }}
@@ -316,8 +316,8 @@ const MyCourseCard = ({ course }) => {
           fullWidth
           sx={{
             borderRadius: 2,
-            px: 3,
-            py: 1.5,
+            // px: 3,
+            // py: 1.5,
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             transition: "all 0.3s ease",
             textTransform: "none",

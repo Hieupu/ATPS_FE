@@ -96,6 +96,9 @@ import { useTokenExpiry } from "./hooks/useTokenExpiry";
 import CreateExamPage from "./pages/instructor/components/exam/CreateExamPage";
 import EditExamPage from "./pages/instructor/components/exam/EditExamPage";
 
+import NewsPages from "./pages/new/NewsPage";
+import NewsDetailPage from "./pages/new/NewsDetailPage";
+
 import ContactPage from "./pages/common/Contact/ContactPage";
 function AppRoutes() {
   useTokenExpiry();
@@ -136,6 +139,8 @@ function AppRoutes() {
       <Route path="/progress" element={<ProgressPage />} />
       <Route path="/materials" element={<MaterialsPage />} />
 
+       <Route path="/new" element={<NewsPages />} />
+       <Route path="/new/:newsId" element={<NewsDetailPage />} />
       {/* Admin Routes */}
       <Route element={<RequireAuth allowedRoles={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
