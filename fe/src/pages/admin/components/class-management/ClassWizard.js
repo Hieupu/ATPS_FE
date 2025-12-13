@@ -349,19 +349,14 @@ const ClassWizard = ({
       return;
     }
 
-    // ==============================================
-    //       CHECK MỖI NGÀY TRONG TUẦN (MULTI TIMESLOTS)
-    //       LẤY GIAO CỦA CÁC MẢNG KẾT QUẢ
-    // ==============================================
     const checkDays = async () => {
       const daysToCheck = [1, 2, 3, 4, 5, 6, 0];
       const instructorId =
         formData.InstructorID || selectedInstructor?.InstructorID;
 
-      // ✅ Lưu kết quả available days cho từng timeslot
+      
       const availableDaysPerTimeslot = [];
 
-      // ✅ Thêm các ngày đã được user chọn (auto enable cho tất cả timeslot)
       const userSelectedDaysSet = new Set(selectedDays);
 
       //  Duyệt qua từng timeslot được chọn
@@ -406,7 +401,6 @@ const ClassWizard = ({
               continue;
             }
           }
-          // TRƯỜNG HỢP 2: selectedTimeslotId là string "HH:mm-HH:mm" → parse trực tiếp
           else if (
             typeof selectedTimeslotId === "string" &&
             selectedTimeslotId.includes("-")
@@ -417,7 +411,7 @@ const ClassWizard = ({
           } else {
           }
 
-          // ✅ QUAN TRỌNG: Kiểm tra Day của timeslot đã chọn
+         
           if (selectedTimeslotDay) {
             const expectedDayFormat = dayOfWeekToDay(dayOfWeek);
 
@@ -429,7 +423,7 @@ const ClassWizard = ({
 
           const dayFormat = dayOfWeekToDay(dayOfWeek);
 
-          // ✅ Tìm dayTimeslot từ DB
+      
           dayTimeslot = findTimeslotForDay({
             timeslots,
             selectedStartTime,
@@ -577,19 +571,6 @@ const ClassWizard = ({
     return map;
   }, [timeslots]);
 
-  // const impactedSlotKeySet = useMemo(() => {
-  //   if (!impactedSessions.length) return new Set();
-  //   const set = new Set();
-  //   impactedSessions.forEach((session) => {
-  //     if (!session.Date) return;
-  //     const dayNum = dayjs(session.Date).day();
-  //     const key = `${dayNum}-${normalizeTimeslotId(
-  //       session.TimeslotID || session.timeslotId
-  //     )}`;
-  //     set.add(key);
-  //   });
-  //   return set;
-  // }, [impactedSessions]); // Không dùng
 
   const impactedSessionMessages = useMemo(() => {
     return impactedSessions.map((session) => {
@@ -608,11 +589,7 @@ const ClassWizard = ({
     });
   }, [impactedSessions, timeslotMap]);
 
-  // const impactedSessionsErrorMessage = impactedSessionMessages.length
-  //   ? `Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải chọn lại: ${impactedSessionMessages.join(
-  //       "; "
-  //     )}`
-  //   : ""; // Không dùng
+
 
 
   useEffect(() => {
@@ -622,8 +599,7 @@ const ClassWizard = ({
       return;
     }
 
-    // Chờ parttimeAvailableEntriesCount được load (có thể là null khi đang load)
-    // Nếu đã load xong (không phải null) và có requiredSessions
+
     if (
       parttimeAvailableEntriesCount !== null &&
       parttimeAvailableEntriesCount !== undefined &&
@@ -977,7 +953,7 @@ const ClassWizard = ({
   // Khi blockedDays / lịch bận / ngày bắt đầu / DaysOfWeek thay đổi,
   // tự động bỏ chọn các timeslot đã chọn nhưng hiện tại bị LOCKED
   // Và xóa các ca đã chọn cho ngày không còn trong DaysOfWeek
-  // ✅ Dùng utility function để tránh lặp lại logic
+  // Dùng utility function để tránh lặp lại logic
   useEffect(() => {
     if (!scheduleStartDate) return;
 
@@ -1460,7 +1436,7 @@ const ClassWizard = ({
       if (daysOfWeek.includes(dayOfWeek)) {
         const dayTimeslotIDs = timeslotsByDay[dayOfWeek] || [];
         // Format date string đúng cách (YYYY-MM-DD) để tránh timezone issues
-        // ✅ Dùng utility function để tránh lặp lại logic
+        // Dùng utility function để tránh lặp lại logic
         const currentDateStr = formatDateToString(currentDate);
         const currentDateDay = getDayFromDate(currentDateStr);
 
@@ -1469,7 +1445,7 @@ const ClassWizard = ({
         for (let i = 0; i < dayTimeslotIDs.length; i++) {
           const timeslotID = dayTimeslotIDs[i];
           const normalizedTimeslotID = normalizeTimeslotId(timeslotID);
-          // ✅ Tìm timeslot: có thể là TimeslotID số hoặc string "HH:mm-HH:mm"
+          // Tìm timeslot: có thể là TimeslotID số hoặc string "HH:mm-HH:mm"
           let originalTimeslot = null;
 
           // Thử tìm theo TimeslotID số trước
@@ -1518,7 +1494,7 @@ const ClassWizard = ({
             originalTimeslot.TimeslotID || originalTimeslot.id;
 
           // Tìm timeslot cho ngày này có cùng StartTime-EndTime (để check conflict)
-          // ✅ Dùng utility function để tránh lặp lại logic
+          // Dùng utility function để tránh lặp lại logic
           const dayTimeslot = findTimeslotForDay({
             timeslots,
             selectedStartTime,

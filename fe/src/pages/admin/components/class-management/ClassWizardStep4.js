@@ -2,17 +2,6 @@ import React from "react";
 import dayjs from "dayjs";
 import { formatDateForDisplay } from "./ClassWizard.constants";
 
-/**
- * ClassWizardStep4 - Component cho Step 4: Review
- * 
- * Props:
- * - formData: Object chứa dữ liệu form
- * - selectedInstructor: Object - giảng viên đã chọn
- * - selectedCourse: Object - khóa học đã chọn
- * - previewSessions: Array - danh sách buổi học preview
- * - timeslots: Array - danh sách timeslots
- * - formatDateForDisplay: Function - format ngày để hiển thị
- */
 const ClassWizardStep4 = ({
   formData,
   selectedInstructor,

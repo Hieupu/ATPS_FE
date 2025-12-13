@@ -184,42 +184,6 @@ const classService = {
     }
   },
 
-  // Tạo ca học mới
-  createTimeslot: async (timeslotData) => {
-    try {
-      const response = await apiClient.post("/timeslots", timeslotData);
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Create timeslot error:", error);
-      throw error.response?.data || { message: "Failed to create timeslot" };
-    }
-  },
-
-  // Cập nhật ca học
-  updateTimeslot: async (timeslotId, timeslotData) => {
-    try {
-      const response = await apiClient.put(
-        `/timeslots/${timeslotId}`,
-        timeslotData
-      );
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Update timeslot error:", error);
-      throw error.response?.data || { message: "Failed to update timeslot" };
-    }
-  },
-
-  // Xóa ca học
-  deleteTimeslot: async (timeslotId) => {
-    try {
-      const response = await apiClient.delete(`/timeslots/${timeslotId}`);
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Delete timeslot error:", error);
-      throw error.response?.data || { message: "Failed to delete timeslot" };
-    }
-  },
-
   // Lấy lịch học của lớp (format cho frontend) - API đặc biệt
   getClassSessionsForFrontend: async (classId) => {
     try {
@@ -528,6 +492,7 @@ const classService = {
     startDate,
     numSuggestions,
     excludeClassId,
+    ClassID,
   }) => {
     try {
       const params = new URLSearchParams({
@@ -544,6 +509,9 @@ const classService = {
       if (excludeClassId) {
         params.append("excludeClassId", excludeClassId);
       }
+      if (ClassID) {
+        params.append("ClassID", ClassID);
+      }
       const url = `/classes/instructor/available-slots?${params.toString()}`;
       const response = await apiClient.get(url);
       return response.data;
@@ -553,18 +521,6 @@ const classService = {
     }
   },
 
-  addMakeupSession: async (classId, payload) => {
-    try {
-      const response = await apiClient.post(
-        `/classes/${classId}/sessions/makeup`,
-        payload
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Add makeup session error:", error);
-      throw error.response?.data || { message: "Failed to add makeup session" };
-    }
-  },
 
   // Get Sessions by Date Range
   getSessionsByDateRange: async (startDate, endDate) => {

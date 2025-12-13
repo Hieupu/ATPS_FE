@@ -33,7 +33,6 @@ import {
   Divider,
 } from "@mui/material";
 import {
-  Add,
   Search,
   School,
   CheckCircle,
@@ -44,15 +43,21 @@ import {
   EmojiEvents,
   TrendingUp,
   Edit,
-  Visibility,
   MoreVert,
 } from "@mui/icons-material";
 import "./style.css";
 import learnerService from "../../../apiServices/learnerService";
 import accountService from "../../../apiServices/accountService";
-import uploadService from "../../../apiServices/uploadService";
+import {
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateFullName,
+  validateConfirmPassword,
+} from "../../../utils/validate";
+import UserFormModal from "../components/UserFormModal";
 
-// Helper function - dùng chung cho cả LearnersPage và LearnerForm
+// Helper function để normalize status value
 const normalizeStatusValue = (status) => {
   const lower = (status || "active").toLowerCase();
   if (lower === "banned" || lower === "inactive") return "banned";
@@ -75,6 +80,20 @@ const LearnersPage = () => {
   const [loadingClasses, setLoadingClasses] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [formData, setFormData] = useState({
+    FullName: "",
+    Email: "",
+    Phone: "",
+    Password: "",
+    Status: "active",
+    Address: "",
+    DateOfBirth: "",
+    ProfilePicture: "",
+    Gender: "other",
+    Job: "",
+  });
+  const [newErrors, setNewErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadLearners();
@@ -93,9 +112,10 @@ const LearnersPage = () => {
           ...learner,
           // AccountStatus là trường từ account table qua JOIN
           Status: mappedStatus,
-          // Đảm bảo Email và Phone có sẵn
+          // Đảm bảo Email, Phone và Gender có sẵn từ account table
           Email: learner.Email || learner.account?.Email || "",
           Phone: learner.Phone || learner.account?.Phone || "",
+          Gender: learner.Gender || learner.account?.Gender || "other",
         };
       });
 
@@ -108,14 +128,49 @@ const LearnersPage = () => {
     }
   };
 
-  const handleAddLearner = () => {
-    setSelectedLearner(null);
+  const openLearnerModal = (learner) => {
+    setSelectedLearner(learner);
+    const normalizedStatus = normalizeStatusValue(learner?.Status);
+    // Lấy Gender từ learner object (đã được map từ account trong loadLearners)
+    // Gender đã được map trực tiếp vào learner object trong loadLearners()
+    const learnerGender =
+      learner?.Gender || learner?.account?.Gender || "other";
+    setFormData({
+      FullName: learner?.FullName || "",
+      Email: learner?.Email || "",
+      Phone: learner?.Phone || "",
+      Password: "",
+      ConfirmPassword: "",
+      Status: normalizedStatus === "banned" ? "banned" : "active",
+      Address: learner?.Address || "",
+      DateOfBirth: learner?.DateOfBirth
+        ? learner.DateOfBirth.split("T")[0]
+        : "",
+      ProfilePicture: learner?.ProfilePicture || "",
+      Gender: learnerGender,
+      Job: learner?.Job || "",
+    });
+    setNewErrors({});
     setShowLearnerForm(true);
   };
 
-  const handleEditLearner = (learner) => {
-    setSelectedLearner(learner);
-    setShowLearnerForm(true);
+  const closeLearnerModal = () => {
+    setShowLearnerForm(false);
+    setSelectedLearner(null);
+    setFormData({
+      FullName: "",
+      Email: "",
+      Phone: "",
+      Password: "",
+      ConfirmPassword: "",
+      Status: "active",
+      Address: "",
+      DateOfBirth: "",
+      ProfilePicture: "",
+      Gender: "other",
+      Job: "",
+    });
+    setNewErrors({});
   };
 
   const handleViewClasses = async (learner) => {
@@ -157,7 +212,6 @@ const LearnersPage = () => {
           Instructor:
             enrollment.InstructorName || enrollment.Instructor || "N/A",
           Status: enrollment.ClassStatus || enrollment.Status || "N/A",
-          Progress: enrollment.Progress || 0,
           ExpectedSessions:
             enrollment.Numofsession || enrollment.ExpectedSessions || 0,
           StartDate:
@@ -185,153 +239,134 @@ const LearnersPage = () => {
     }
   };
 
-  const handleSubmitLearner = async (formData) => {
+  const handleSubmitLearner = async () => {
+    const errors = {};
+
+    const fullNameError = validateFullName(formData.FullName);
+    if (fullNameError) {
+      errors.FullName = fullNameError;
+    }
+
+    const emailError = validateEmail(formData.Email);
+    if (emailError) {
+      errors.Email = emailError;
+    }
+
+    if (formData.Phone) {
+      const phoneError = validatePhone(formData.Phone);
+      if (phoneError) {
+        errors.Phone = phoneError;
+      }
+    }
+
+    if (formData.Password) {
+      const passwordError = validatePassword(formData.Password, false);
+      if (passwordError) {
+        errors.Password = passwordError;
+      }
+      // Validate confirm password when updating (if password is provided)
+      const confirmPasswordError = validateConfirmPassword(
+        formData.Password,
+        formData.ConfirmPassword,
+        false
+      );
+      if (confirmPasswordError) {
+        errors.ConfirmPassword = confirmPasswordError;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setNewErrors(errors);
+      return;
+    }
+
+    setNewErrors({});
+
     try {
-      if (selectedLearner) {
-        // CẬP NHẬT học viên và account
-        // Backend whitelist cho learner update: FullName, DateOfBirth, ProfilePicture, Job, Address
-        // KHÔNG được gửi: Email, Phone, Status, Level, Bio, Interests (không có trong bảng learner)
-        const learnerData = {
-          FullName: formData.FullName,
-          DateOfBirth: formData.DateOfBirth || null,
-          ProfilePicture: formData.ProfilePicture || null,
-          Job: formData.Job || null,
-          Address: formData.Address || null,
-        };
+      setSaving(true);
+      if (!selectedLearner) {
+        alert("Không tìm thấy thông tin học viên!");
+        return;
+      }
 
-        // Account data (Email, Phone, Status từ account table) - gửi riêng qua accountService
-        // Chỉ gửi Email và Phone nếu chúng thay đổi (tránh lỗi unique constraint khi giữ nguyên)
-        const accountData = {};
+      // CẬP NHẬT học viên và account
+      const learnerData = {
+        FullName: formData.FullName.trim(),
+        DateOfBirth: formData.DateOfBirth || null,
+        ProfilePicture: formData.ProfilePicture || null,
+        Job: formData.Job?.trim() || null,
+        Address: formData.Address?.trim() || null,
+      };
 
-        // Chỉ gửi Email nếu thay đổi
-        if (formData.Email !== selectedLearner.Email) {
-          accountData.Email = formData.Email;
-        }
+      await learnerService.updateLearner(
+        selectedLearner.LearnerID,
+        learnerData
+      );
 
-        // Chỉ gửi Phone nếu thay đổi
-        const currentPhone = selectedLearner.Phone || null;
-        const newPhone = formData.Phone || null;
-        if (newPhone !== currentPhone) {
-          accountData.Phone = newPhone;
-        }
+      // Account data (Email, Phone, Status từ account table)
+      const accountData = {};
 
-        // Luôn gửi Status nếu có thay đổi hoặc cần update
-        const currentStatus = selectedLearner.Status || "active";
-        const newStatus = formData.Status || "active";
-        // Normalize status để so sánh (active vs ACTIVE)
-        const normalizedCurrentStatus = currentStatus.toLowerCase();
-        const sanitizedCurrentStatus =
-          normalizedCurrentStatus === "inactive" ||
-          normalizedCurrentStatus === "banned"
-            ? "banned"
-            : normalizedCurrentStatus;
-        const normalizedNewStatus = newStatus.toLowerCase();
-        if (normalizedNewStatus !== sanitizedCurrentStatus) {
-          accountData.Status = formData.Status;
-        } else if (Object.keys(accountData).length === 0) {
-          // Nếu không có field nào thay đổi nhưng Status vẫn cần được gửi để đảm bảo
-          accountData.Status = formData.Status;
-        }
+      const normalizedEmail = formData.Email.trim().toLowerCase();
+      if (normalizedEmail !== (selectedLearner.Email || "").toLowerCase()) {
+        accountData.Email = normalizedEmail;
+      }
 
-        // Nếu có password mới, thêm vào accountData
-        if (formData.Password && formData.Password.trim()) {
-          accountData.Password = formData.Password;
-        }
+      const currentPhone = (selectedLearner.Phone || "").trim();
+      const newPhone = (formData.Phone || "").trim();
+      if (newPhone && newPhone !== currentPhone) {
+        accountData.Phone = newPhone;
+      }
 
-        // Update learner (chỉ các trường hợp lệ)
-        await learnerService.updateLearner(
-          selectedLearner.LearnerID,
-          learnerData
-        );
+      const currentStatus = normalizeStatusValue(selectedLearner.Status);
+      const newStatus = normalizeStatusValue(formData.Status);
+      if (newStatus !== currentStatus) {
+        accountData.Status = formData.Status;
+      }
 
-        // Update account (nếu có AccID và có data cần update)
-        // Fallback: nếu endpoint không tồn tại, thử gửi account data cùng với learner data
-        let accountUpdated = false;
-        if (selectedLearner.AccID && Object.keys(accountData).length > 0) {
-          try {
-            await accountService.updateAccount(
-              selectedLearner.AccID,
-              accountData
-            );
-            accountUpdated = true;
-          } catch (accountError) {
-            // Nếu endpoint không tồn tại, thử gửi account data cùng với learner data
-            if (
-              accountError.isEndpointNotFound ||
-              accountError.response?.status === 404
-            ) {
-              // Thử gửi account data cùng với learner data
-              // Backend whitelist sẽ lọc Email, Phone ra, nhưng có thể backend có logic đặc biệt
-              // để update account khi nhận Email, Phone, Status trong request
-              try {
-                await learnerService.updateLearner(selectedLearner.LearnerID, {
-                  ...learnerData,
-                  ...accountData, // Gửi Email, Phone, Status cùng với learner data
-                });
-                accountUpdated = true;
-              } catch (fallbackError) {
-                // Thông báo cho user biết account không được update
-                alert(
-                  "Cập nhật học viên thành công, nhưng không thể cập nhật thông tin tài khoản (Email, Phone, Status).\n\nVui lòng liên hệ backend để bổ sung endpoint PUT /api/accounts/:accId"
-                );
-              }
-            } else {
-              // Các lỗi khác (400, 500, etc.)
-              const errorMessage =
-                accountError.response?.data?.message ||
-                accountError.message ||
-                "Lỗi không xác định";
-              // Thông báo cho user biết account không được update
-              alert(
-                `Cập nhật học viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}\n\nVui lòng kiểm tra lại.`
-              );
-            }
-          }
-        } else if (
-          selectedLearner.AccID &&
-          Object.keys(accountData).length === 0
-        ) {
-        }
+      if (formData.Password && formData.Password.trim()) {
+        accountData.Password = formData.Password;
+      }
 
-        if (accountUpdated) {
+      // Cập nhật Gender nếu có thay đổi
+      // Lấy Gender hiện tại từ selectedLearner (đã được map từ account trong loadLearners)
+      // Gender đã được map trực tiếp vào learner object trong loadLearners()
+      const currentGender = (
+        selectedLearner.Gender ||
+        selectedLearner.account?.Gender ||
+        "other"
+      ).toLowerCase();
+      const newGender = (formData.Gender || "other").toLowerCase();
+      if (newGender !== currentGender) {
+        accountData.Gender = formData.Gender;
+      }
+
+      if (selectedLearner.AccID && Object.keys(accountData).length > 0) {
+        try {
+          await accountService.updateAccount(
+            selectedLearner.AccID,
+            accountData
+          );
           alert("Cập nhật học viên và tài khoản thành công!");
-        } else {
-          // Learner đã được update, chỉ account chưa
-          // Alert đã được hiển thị ở trên
+        } catch (accountError) {
+          const errorMessage =
+            accountError.response?.data?.message ||
+            accountError.message ||
+            "Lỗi không xác định";
+          alert(
+            `Cập nhật học viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}`
+          );
         }
       } else {
-        // TẠO MỚI học viên và account
-        if (!formData.Password || !formData.Password.trim()) {
-          alert("Vui lòng nhập mật khẩu để tạo tài khoản!");
-          return;
-        }
-
-        // Tạo learner với account data (backend sẽ tự tạo account)
-        const learnerData = {
-          FullName: formData.FullName,
-          Job: formData.Job || null,
-          Address: formData.Address || null,
-          DateOfBirth: formData.DateOfBirth || null,
-          ProfilePicture: formData.ProfilePicture || null,
-          // Account fields để backend tạo account
-          Email: formData.Email,
-          Phone: formData.Phone || null,
-          Password: formData.Password,
-          Status: formData.Status || "active",
-        };
-
-        await learnerService.createLearner(learnerData);
-        alert("Tạo học viên mới thành công!");
+        alert("Cập nhật học viên thành công!");
       }
-      // Reload danh sách sau khi lưu
+
+      closeLearnerModal();
       await loadLearners();
-      setShowLearnerForm(false);
     } catch (error) {
-      const errorMessage =
-        error?.message ||
-        error.response?.data?.message ||
-        "Không thể lưu học viên!";
-      alert(errorMessage);
+      console.error("Save error:", error);
+      alert(error?.message || "Không thể lưu dữ liệu");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -579,20 +614,6 @@ const LearnersPage = () => {
           <Typography variant="body2" sx={{ color: "#94a3b8", mb: 3 }}>
             Try adjusting your search or add a new learner
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={handleAddLearner}
-            sx={{
-              backgroundColor: "#667eea",
-              textTransform: "none",
-              "&:hover": {
-                backgroundColor: "#5568d3",
-              },
-            }}
-          >
-            Add First Learner
-          </Button>
         </Paper>
       ) : (
         <TableContainer
@@ -744,7 +765,7 @@ const LearnersPage = () => {
       >
         <MenuItem
           onClick={() => {
-            handleEditLearner(selectedRow);
+            openLearnerModal(selectedRow);
             setAnchorEl(null);
           }}
         >
@@ -809,7 +830,6 @@ const LearnersPage = () => {
                     <TableCell sx={{ fontWeight: 700 }}>Tên lớp</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Giảng viên</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Trạng thái</TableCell>
-                    <TableCell sx={{ fontWeight: 700 }}>Tiến độ</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Số buổi</TableCell>
                     <TableCell sx={{ fontWeight: 700 }}>Ngày bắt đầu</TableCell>
                   </TableRow>
@@ -851,35 +871,6 @@ const LearnersPage = () => {
                         />
                       </TableCell>
                       <TableCell>
-                        <Box
-                          sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                        >
-                          <Box
-                            sx={{
-                              width: 80,
-                              height: 8,
-                              backgroundColor: "#e2e8f0",
-                              borderRadius: 1,
-                              overflow: "hidden",
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                width: `${classItem.Progress || 0}%`,
-                                height: "100%",
-                                backgroundColor: "#667eea",
-                              }}
-                            />
-                          </Box>
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "#64748b" }}
-                          >
-                            {classItem.Progress || 0}%
-                          </Typography>
-                        </Box>
-                      </TableCell>
-                      <TableCell>
                         {classItem.ExpectedSessions || 0} buổi
                       </TableCell>
                       <TableCell>{classItem.StartDate}</TableCell>
@@ -904,334 +895,21 @@ const LearnersPage = () => {
       </Dialog>
 
       {/* Learner Form Modal */}
-      {showLearnerForm && (
-        <LearnerForm
-          learnerData={selectedLearner}
-          onSubmit={handleSubmitLearner}
-          onCancel={() => setShowLearnerForm(false)}
-        />
-      )}
+      <UserFormModal
+        open={showLearnerForm}
+        onClose={closeLearnerModal}
+        onSubmit={handleSubmitLearner}
+        title="Chỉnh sửa học viên"
+        formData={formData}
+        setFormData={setFormData}
+        errors={newErrors}
+        setErrors={setNewErrors}
+        saving={saving}
+        isEditing={true}
+        showInstructorFields={false}
+        showLearnerStatus={true}
+      />
     </Box>
-  );
-};
-
-// Learner Form Component
-const LearnerForm = ({ learnerData, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({
-    FullName: "",
-    Email: "",
-    Password: "",
-    Phone: "",
-    Job: "",
-    Address: "",
-    DateOfBirth: "",
-    ProfilePicture: "",
-    Status: "active",
-  });
-
-  const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (learnerData) {
-      // Status đã được map từ AccountStatus trong loadLearners
-      const normalizedStatus = normalizeStatusValue(learnerData.Status);
-      setFormData({
-        FullName: learnerData.FullName || "",
-        Email: learnerData.Email || "",
-        Password: "", // Don't populate password for edit
-        Phone: learnerData.Phone || "",
-        Job: learnerData.Job || "",
-        Address: learnerData.Address || "",
-        DateOfBirth: learnerData.DateOfBirth || "",
-        ProfilePicture: learnerData.ProfilePicture || "",
-        Status: normalizedStatus === "banned" ? "banned" : "active",
-      });
-    } else {
-      // Reset form when creating new
-      setFormData({
-        FullName: "",
-        Email: "",
-        Password: "",
-        Phone: "",
-        Job: "",
-        Address: "",
-        DateOfBirth: "",
-        ProfilePicture: "",
-        Status: "active",
-      });
-    }
-  }, [learnerData]);
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.FullName.trim()) {
-      newErrors.FullName = "Vui lòng nhập họ tên";
-    }
-
-    if (!formData.Email.trim()) {
-      newErrors.Email = "Vui lòng nhập email";
-    } else if (!/\S+@\S+\.\S+/.test(formData.Email)) {
-      newErrors.Email = "Email không hợp lệ";
-    }
-
-    // Password is required only when creating new learner
-    if (!learnerData && !formData.Password.trim()) {
-      newErrors.Password = "Vui lòng nhập mật khẩu";
-    } else if (formData.Password && formData.Password.length < 6) {
-      newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự";
-    }
-
-    if (!formData.Phone.trim()) {
-      newErrors.Phone = "Vui lòng nhập số điện thoại";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      // Only include password in submission if it was provided or if creating new
-      const submitData = { ...formData };
-      if (learnerData && !submitData.Password) {
-        // Remove password field if editing and password is empty
-        delete submitData.Password;
-      }
-      onSubmit(submitData);
-    }
-  };
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-container">
-        <div className="modal-header">
-          <h2>{learnerData ? " Chỉnh sửa học viên" : " Thêm học viên mới"}</h2>
-          <button className="close-btn" onClick={onCancel}>
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="user-form">
-          <div className="form-group">
-            <label htmlFor="FullName">Họ và tên *</label>
-            <input
-              type="text"
-              id="FullName"
-              value={formData.FullName}
-              onChange={(e) =>
-                setFormData({ ...formData, FullName: e.target.value })
-              }
-              className={errors.FullName ? "error" : ""}
-              placeholder="Nhập họ và tên"
-            />
-            {errors.FullName && (
-              <span className="error-message">{errors.FullName}</span>
-            )}
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Email">Email *</label>
-              <input
-                type="email"
-                id="Email"
-                value={formData.Email}
-                onChange={(e) =>
-                  setFormData({ ...formData, Email: e.target.value })
-                }
-                className={errors.Email ? "error" : ""}
-                placeholder="Nhập email"
-              />
-              {errors.Email && (
-                <span className="error-message">{errors.Email}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="Password">
-                Mật khẩu {!learnerData ? "*" : ""}
-              </label>
-              <input
-                type="password"
-                id="Password"
-                value={formData.Password}
-                onChange={(e) =>
-                  setFormData({ ...formData, Password: e.target.value })
-                }
-                className={errors.Password ? "error" : ""}
-                placeholder={
-                  learnerData
-                    ? "Để trống nếu không đổi mật khẩu"
-                    : "Nhập mật khẩu (tối thiểu 6 ký tự)"
-                }
-              />
-              {errors.Password && (
-                <span className="error-message">{errors.Password}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Phone">Số điện thoại *</label>
-              <input
-                type="tel"
-                id="Phone"
-                value={formData.Phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, Phone: e.target.value })
-                }
-                className={errors.Phone ? "error" : ""}
-                placeholder="Nhập số điện thoại"
-              />
-              {errors.Phone && (
-                <span className="error-message">{errors.Phone}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Job">Nghề nghiệp</label>
-              <input
-                type="text"
-                id="Job"
-                value={formData.Job || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, Job: e.target.value })
-                }
-                placeholder="Ví dụ: Sinh viên, Developer"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="Address">Địa chỉ</label>
-              <input
-                type="text"
-                id="Address"
-                value={formData.Address || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, Address: e.target.value })
-                }
-                placeholder="Nhập địa chỉ"
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="DateOfBirth">Ngày sinh</label>
-              <input
-                type="date"
-                id="DateOfBirth"
-                value={formData.DateOfBirth || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, DateOfBirth: e.target.value })
-                }
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="ProfilePicture">Ảnh đại diện</label>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                {formData.ProfilePicture && (
-                  <div style={{ marginBottom: "10px" }}>
-                    <img
-                      src={formData.ProfilePicture}
-                      alt="Avatar preview"
-                      style={{
-                        width: "150px",
-                        height: "150px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid #ddd",
-                      }}
-                    />
-                  </div>
-                )}
-                <input
-                  type="file"
-                  id="learnerAvatarFile"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      const loadingMsg = document.createElement("div");
-                      loadingMsg.textContent = "Đang tải ảnh lên...";
-                      loadingMsg.style.cssText =
-                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
-                      document.body.appendChild(loadingMsg);
-
-                      try {
-                        const result = await uploadService.uploadAvatar(file);
-                        setFormData({
-                          ...formData,
-                          ProfilePicture: result.url || result.data?.url,
-                        });
-                        document.body.removeChild(loadingMsg);
-                        alert("Tải ảnh thành công!");
-                      } catch (error) {
-                        if (document.body.contains(loadingMsg)) {
-                          document.body.removeChild(loadingMsg);
-                        }
-                        alert(
-                          error?.message || "Lỗi khi tải ảnh. Vui lòng thử lại."
-                        );
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  component="label"
-                  htmlFor="learnerAvatarFile"
-                  size="small"
-                  fullWidth
-                >
-                  Chọn ảnh đại diện
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="Status">Trạng thái tài khoản *</label>
-            <select
-              id="Status"
-              value={formData.Status}
-              onChange={(e) =>
-                setFormData({ ...formData, Status: e.target.value })
-              }
-            >
-              <option value="active">Hoạt động</option>
-              <option value="banned">Bị khóa</option>
-            </select>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onCancel}
-            >
-              Hủy
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {learnerData ? " Cập nhật" : " Tạo mới"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 };
 

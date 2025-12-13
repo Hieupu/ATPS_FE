@@ -39,13 +39,9 @@ import {
   ArrowForward,
   Add,
   CalendarToday,
-  AutoFixHigh,
 } from "@mui/icons-material";
 import classService from "../../../apiServices/classService";
-import {
-  dayOfWeekToDay,
-  getDayFromDate,
-} from "../../../utils/validate";
+import { dayOfWeekToDay, getDayFromDate } from "../../../utils/validate";
 import SessionSuggestionModal from "../components/class-management/SessionSuggestionModal";
 import dayjs from "dayjs";
 import "./style.css";
@@ -58,9 +54,25 @@ const SchedulePage = () => {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [schedules, setSchedules] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [timeslots, setTimeslots] = useState([]);
+
+  // Reschedule modal state
+  const [rescheduleModal, setRescheduleModal] = useState({
+    open: false,
+    session: null,
+    currentTimeslot: null,
+    currentDate: null,
+    currentDayOfWeek: null,
+    suggestions: [],
+    selectedDate: null,
+    selectedTimeslotId: null,
+    loading: false,
+    fromDate: null,
+    toDate: null,
+    filterTimeslotId: null, // null => ca hiện tại, "ANY" => ca nào cũng được
+    filterDay: null, // "MONDAY"... hoặc null để lấy theo ngày đã chọn
+  });
 
   // Conflict modal state
   const [conflictModal, setConflictModal] = useState({
@@ -82,14 +94,6 @@ const SchedulePage = () => {
 
   // Multiple sessions input for selected date - sử dụng TimeslotID
   const [sessions, setSessions] = useState([{ TimeslotID: "" }]);
-
-  // Bulk add state - Sử dụng logic giống bước 3
-  const [bulkConfig, setBulkConfig] = useState({
-    startDate: "",
-    endDate: "",
-    DaysOfWeek: [], // Array of dayOfWeek (0-6) - giống bước 3
-    TimeslotsByDay: {}, // Object với key là dayOfWeek, value là array timeslotIDs - giống bước 3
-  });
 
   useEffect(() => {
     loadData();
@@ -126,15 +130,6 @@ const SchedulePage = () => {
 
       const classData = await classService.getClassById(courseId);
       setCourse(classData);
-
-      // Auto-fill bulk config với thời gian từ lớp học
-      if (classData) {
-        setBulkConfig((prev) => ({
-          ...prev,
-          startDate: classData.StartDate || classData.startDate || "",
-          endDate: classData.EndDate || classData.endDate || "",
-        }));
-      }
 
       // Load schedules từ API - sử dụng API đặc biệt cho frontend
       try {
@@ -220,12 +215,135 @@ const SchedulePage = () => {
     return timeslots.find((ts) => (ts.TimeslotID || ts.id) === timeslotId);
   };
 
+  const sanitizeFutureDate = (dateStr) => {
+    if (!dateStr) return null;
+    const d = new Date(dateStr);
+    if (isNaN(d)) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    d.setHours(0, 0, 0, 0);
+    return d < today ? today : d;
+  };
+
+  const fetchRescheduleSuggestions = async ({
+    timeslotId,
+    fromDate,
+    toDate,
+    filterDay,
+    ClassID,
+  }) => {
+    if (!course) return;
+    const instructorId = getInstructorIdFromCourse(course);
+    if (!instructorId) return;
+
+    const start = sanitizeFutureDate(fromDate) || addDays(new Date(), 1);
+    const startStr = format(start, "yyyy-MM-dd");
+
+    setRescheduleModal((prev) => ({ ...prev, loading: true }));
+    const suggestionResults = [];
+
+    const dayParam =
+      filterDay ||
+      dayOfWeekToDay(start.getDay()) ||
+      (rescheduleModal.currentDayOfWeek !== null
+        ? dayOfWeekToDay(rescheduleModal.currentDayOfWeek)
+        : null);
+
+    const collectSuggestions = async (tsId, limit = 10) => {
+      try {
+        const response = await classService.findInstructorAvailableSlots({
+          InstructorID: instructorId,
+          TimeslotID: tsId,
+          Day: dayParam,
+          startDate: startStr,
+          numSuggestions: limit,
+          excludeClassId: parseInt(courseId),
+          ClassID: ClassID || parseInt(courseId),
+        });
+        const all = response?.data?.suggestions || [];
+        all.forEach((item) => {
+          if (item.available) {
+            const tsMeta =
+              timeslots.find((t) => (t.TimeslotID || t.id) === tsId) ||
+              rescheduleModal.currentTimeslot;
+            suggestionResults.push({
+              date: item.date,
+              timeslotId: tsId,
+              timeslot: tsMeta,
+              type: "auto",
+            });
+          }
+        });
+      } catch (err) {
+        console.warn("fetchRescheduleSuggestions error", err);
+      }
+    };
+
+    if (timeslotId === "ANY") {
+      const uniqueTs = Array.from(
+        new Set(timeslots.map((t) => t.TimeslotID || t.id))
+      ).slice(0, 8);
+      for (const ts of uniqueTs) {
+        if (suggestionResults.length >= 15) break;
+        await collectSuggestions(ts, 3);
+      }
+    } else {
+      await collectSuggestions(timeslotId, 10);
+    }
+
+    setRescheduleModal((prev) => ({
+      ...prev,
+      loading: false,
+      suggestions: suggestionResults,
+    }));
+  };
+
   const isDatePast = (date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
     compareDate.setHours(0, 0, 0, 0);
     return compareDate < today;
+  };
+
+  const handleRescheduleFilterChange = async (updates) => {
+    const next = {
+      ...rescheduleModal,
+      ...updates,
+    };
+
+    // Đảm bảo from/to không ở quá khứ và toDate >= fromDate
+    const normalizedFrom =
+      sanitizeFutureDate(next.fromDate) || addDays(new Date(), 1);
+    const normalizedToRaw =
+      sanitizeFutureDate(next.toDate) || addDays(normalizedFrom, 30);
+    const normalizedTo =
+      normalizedToRaw < normalizedFrom ? normalizedFrom : normalizedToRaw;
+
+    next.fromDate = format(normalizedFrom, "yyyy-MM-dd");
+    next.toDate = format(normalizedTo, "yyyy-MM-dd");
+
+    // Khi đổi filter, reset lựa chọn
+    next.selectedDate = null;
+    next.selectedTimeslotId =
+      next.filterTimeslotId && next.filterTimeslotId !== "ANY"
+        ? next.filterTimeslotId
+        : null;
+
+    setRescheduleModal((prev) => ({
+      ...prev,
+      ...next,
+      loading: true,
+      suggestions: [],
+    }));
+
+    await fetchRescheduleSuggestions({
+      timeslotId: next.filterTimeslotId,
+      fromDate: next.fromDate,
+      toDate: next.toDate,
+      filterDay: next.filterDay,
+      ClassID: parseInt(courseId),
+    });
   };
 
   // Helper function để parse conflict từ error message
@@ -1006,542 +1124,128 @@ const SchedulePage = () => {
     }
   };
 
-  const handleRemoveSession = async (schedule) => {
+  const handleOpenRescheduleModal = async (schedule) => {
     // Check xem buổi học đã qua chưa
     if (isDatePast(schedule.date)) {
-      alert(" Không thể xóa lịch học đã qua hoặc đang diễn ra!");
+      alert(" Không thể đổi lịch học đã qua hoặc đang diễn ra!");
       return;
     }
 
-    if (!window.confirm(" Xóa lịch học này?")) return;
+    // Lấy thông tin session hiện tại
+    const currentTimeslot = getTimeslotById(schedule.timeslotId);
+    const currentDate = new Date(schedule.date);
+    const currentDayOfWeek = currentDate.getDay();
+    const currentDayName = dayOfWeekToDay(currentDayOfWeek);
 
-    try {
-      // Lấy sessionId từ nhiều nguồn có thể
-      const sessionId = schedule.sessionId || schedule.id || schedule.SessionID;
-
-      // Validate sessionId
-      if (!sessionId) {
-        console.error("Schedule object:", schedule);
-        alert(" Lỗi: Không tìm thấy ID của session để xóa. Vui lòng thử lại!");
-        return;
-      }
-
-      // Đảm bảo sessionId là số nguyên
-      const sessionIdNum = parseInt(sessionId);
-      if (isNaN(sessionIdNum) || sessionIdNum <= 0) {
-        console.error("Invalid sessionId:", sessionId);
-        alert(" Lỗi: ID session không hợp lệ. Vui lòng thử lại!");
-        return;
-      }
-
-      console.log("Deleting session with ID:", sessionIdNum);
-
-      // Xóa session qua API
-      await classService.deleteSession(sessionIdNum);
-
-      // Reload schedules
-      await loadData();
-      alert(" Đã xóa lịch học!");
-    } catch (error) {
-      console.error("Lỗi khi xóa session:", error);
-      const errorMessage =
-        error?.message ||
-        error?.response?.data?.message ||
-        "Không thể xóa lịch học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
-    }
-  };
-
-  const handleBulkAdd = async () => {
-    // Kiểm tra course đã được load chưa
-    if (!course) {
-      alert(" Đang tải thông tin lớp học. Vui lòng đợi...");
-      return;
-    }
-
-    if (!bulkConfig.startDate || !bulkConfig.endDate) {
-      alert(" Vui lòng chọn khoảng thời gian!");
-      return;
-    }
-
-    // Validate: phải chọn ít nhất một ngày và mỗi ngày phải có ít nhất một ca
-    if (bulkConfig.DaysOfWeek.length === 0) {
-      alert(" Vui lòng chọn ít nhất một ngày trong tuần!");
-      return;
-    }
-
-    let hasAnyTimeslot = false;
-    bulkConfig.DaysOfWeek.forEach((dayOfWeek) => {
-      const dayTimeslots = bulkConfig.TimeslotsByDay?.[dayOfWeek] || [];
-      if (dayTimeslots.length > 0) {
-        hasAnyTimeslot = true;
-      }
-    });
-
-    if (!hasAnyTimeslot) {
-      alert(" Vui lòng chọn ít nhất một ca học cho các ngày đã chọn!");
-      return;
-    }
-
-    // Kiểm tra số buổi dự kiến trước khi tạo sessions
-    const numofsession = course?.Numofsession || 0;
-    const currentSessionsCount = schedules?.length || 0;
-    const maxSessionsToAdd =
-      numofsession > 0 ? numofsession - currentSessionsCount : Infinity;
-
-    if (numofsession > 0 && currentSessionsCount >= numofsession) {
-      alert(
-        ` Lớp học đã đủ số buổi dự kiến!\n\n` +
-          `Số buổi dự kiến: ${numofsession}\n` +
-          `Số buổi hiện tại: ${currentSessionsCount}\n\n` +
-          `Không thể thêm buổi học nữa.`
-      );
-      return;
-    }
-
-    const start = new Date(bulkConfig.startDate);
-    const end = new Date(bulkConfig.endDate);
-    const sessionsToCreate = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Logic tạo sessions giống bước 3: lặp lại mỗi tuần theo DaysOfWeek và TimeslotsByDay
-    // Nhưng giới hạn số buổi không vượt quá Numofsession
-    let current = start;
-    while (current <= end && sessionsToCreate.length < maxSessionsToAdd) {
-      // Skip ngày đã qua
-      if (current < today) {
-        current = addDays(current, 1);
-        continue;
-      }
-
-      const dayOfWeek = current.getDay();
-
-      // Nếu là ngày học trong tuần
-      if (bulkConfig.DaysOfWeek.includes(dayOfWeek)) {
-        const dayTimeslotIDs = bulkConfig.TimeslotsByDay[dayOfWeek] || [];
-
-        // Tạo session cho mỗi ca học trong ngày này (nhưng không vượt quá giới hạn)
-        for (const timeslotID of dayTimeslotIDs) {
-          if (sessionsToCreate.length >= maxSessionsToAdd) {
-            break; // Đã đủ số buổi, dừng lại
-          }
-          sessionsToCreate.push({
-            TimeslotID: timeslotID,
-            Date: format(current, "yyyy-MM-dd"),
-            Title: `Session ${format(current, "dd/MM/yyyy")}`,
-            Description: "",
-          });
-        }
-      }
-
-      current = addDays(current, 1);
-    }
-
-    // Cảnh báo nếu bị giới hạn
-    if (
-      numofsession > 0 &&
-      sessionsToCreate.length < maxSessionsToAdd &&
-      current <= end
-    ) {
-      alert(
-        ` Đã tạo ${sessionsToCreate.length} buổi học (giới hạn theo số buổi dự kiến: ${numofsession}).\n\n` +
-          `Số buổi hiện tại: ${currentSessionsCount}\n` +
-          `Số buổi sẽ thêm: ${sessionsToCreate.length}\n` +
-          `Tổng sau khi thêm: ${currentSessionsCount + sessionsToCreate.length}`
-      );
-    }
-
-    if (sessionsToCreate.length === 0) {
-      alert(" Không có lịch nào được tạo!");
-      return;
-    }
-
-    // Kiểm tra ClassID
-    if (!courseId || isNaN(parseInt(courseId))) {
-      alert(" Lỗi: Không có thông tin lớp học. Vui lòng thử lại!");
-      return;
-    }
-
-    // Kiểm tra lại số buổi dự kiến (đã được kiểm tra ở trên, nhưng kiểm tra lại để chắc chắn)
-    const totalAfterBulk = currentSessionsCount + sessionsToCreate.length;
-
-    if (numofsession > 0 && totalAfterBulk > numofsession) {
-      alert(
-        ` Số buổi học vượt quá số buổi dự kiến!\n\n` +
-          `Số buổi dự kiến: ${numofsession}\n` +
-          `Số buổi hiện tại: ${currentSessionsCount}\n` +
-          `Số buổi sẽ thêm: ${sessionsToCreate.length}\n` +
-          `Tổng sau khi thêm: ${totalAfterBulk}\n\n` +
-          `Vui lòng giảm số buổi cần thêm xuống còn tối đa ${
-            numofsession - currentSessionsCount
-          } buổi.`
-      );
-      return;
-    }
-
-    // Lấy InstructorID từ course object
+    // Lấy InstructorID từ course
     const instructorId = getInstructorIdFromCourse(course);
     if (!instructorId) {
-      console.error("Course object:", course);
-      alert(
-        " Lỗi: Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại thông tin lớp học!\n\nLớp học cần có InstructorID để tạo session."
-      );
+      alert(" Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!");
+        return;
+      }
+
+    const defaultFrom = format(addDays(currentDate, 1), "yyyy-MM-dd");
+    const defaultTo = format(addDays(currentDate, 30), "yyyy-MM-dd");
+
+    setRescheduleModal((prev) => ({
+      ...prev,
+      open: true,
+      session: schedule,
+      currentTimeslot: currentTimeslot,
+      currentDate: currentDate,
+      currentDayOfWeek: currentDayOfWeek,
+      suggestions: [],
+      selectedDate: null,
+      selectedTimeslotId: schedule.timeslotId,
+      loading: true,
+      fromDate: defaultFrom,
+      toDate: defaultTo,
+      filterTimeslotId: schedule.timeslotId,
+      filterDay: currentDayName,
+    }));
+
+    await fetchRescheduleSuggestions({
+      timeslotId: schedule.timeslotId,
+      fromDate: defaultFrom,
+      toDate: defaultTo,
+      filterDay: currentDayName,
+      ClassID: parseInt(courseId),
+    });
+  };
+
+  const handleRescheduleSession = async () => {
+    if (!rescheduleModal.selectedDate || !rescheduleModal.selectedTimeslotId) {
+      alert(" Vui lòng chọn ngày và ca học mới!");
+      return;
+    }
+
+    if (!rescheduleModal.session) {
+      alert(" Lỗi: Không tìm thấy thông tin session. Vui lòng thử lại!");
+      return;
+    }
+
+    const sessionId =
+      rescheduleModal.session.sessionId ||
+      rescheduleModal.session.id ||
+      rescheduleModal.session.SessionID;
+    if (!sessionId) {
+      alert(" Lỗi: Không tìm thấy ID của session. Vui lòng thử lại!");
       return;
     }
 
     try {
-      // Chuẩn bị data cho bulk create
-      const sessionsForBulk = sessionsToCreate.map((sessionData, index) => {
-        // Validate từng trường
-        const title = sessionData.Title || `Session ${sessionData.Date || ""}`;
-        const description = sessionData.Description || "";
-        const classId = parseInt(courseId);
-        const timeslotId = sessionData.TimeslotID;
-        const date = sessionData.Date;
+      // Check learner conflict trước khi đổi lịch
+      const learnerCheck =
+        (await classService.checkLearnerConflicts(
+          parseInt(courseId),
+          format(rescheduleModal.selectedDate, "yyyy-MM-dd"),
+          rescheduleModal.selectedTimeslotId
+        )) || {};
+      if (learnerCheck?.conflicts?.length > 0 || learnerCheck?.hasConflicts) {
+      alert(
+          learnerCheck?.message ||
+            "Học viên của lớp có buổi trùng lịch với ca học mới. Vui lòng chọn lịch khác."
+      );
+      return;
+    }
 
-        // Logging chi tiết cho từng session
-        console.log(`Validating bulk session ${index + 1}:`, {
-          Title: title,
-          Description: description,
-          ClassID: classId,
-          TimeslotID: timeslotId,
-          InstructorID: instructorId,
-          Date: date,
-        });
+      setRescheduleModal((prev) => ({ ...prev, loading: true }));
 
-        // Kiểm tra tất cả các trường bắt buộc
-        const missingFields = [];
-        if (!title) missingFields.push("Title");
-        if (!classId || isNaN(classId)) missingFields.push("ClassID");
-        if (!timeslotId) missingFields.push("TimeslotID");
-        if (!instructorId || isNaN(instructorId))
-          missingFields.push("InstructorID");
-        if (!date) missingFields.push("Date");
-
-        if (missingFields.length > 0) {
-          const errorMsg = `Bulk session ${
-            index + 1
-          } thiếu các trường bắt buộc: ${missingFields.join(", ")}`;
-          console.error(errorMsg, {
-            Title: title,
-            ClassID: classId,
-            TimeslotID: timeslotId,
-            InstructorID: instructorId,
-            Date: date,
-          });
-          throw new Error(errorMsg);
-        }
-
-        return {
-          Title: title,
-          Description: description,
-          ClassID: classId,
-          TimeslotID: timeslotId,
-          InstructorID: instructorId,
-          Date: date,
-        };
-      });
-
-      // Log dữ liệu trước khi gửi
-      console.log("Sending bulk sessions data:", sessionsForBulk);
-
-      // Xử lý từng session một để không bị dừng khi gặp conflict
-      const created = [];
-      const conflicts = [];
-
-      // Hiển thị progress nếu có nhiều sessions
-      const totalSessions = sessionsForBulk.length;
-      let processedCount = 0;
-
-      for (let i = 0; i < sessionsForBulk.length; i++) {
-        const session = sessionsForBulk[i];
-        processedCount++;
-
-        // Validate session trước khi gửi
-        if (
-          !session.InstructorID ||
-          !session.ClassID ||
-          !session.TimeslotID ||
-          !session.Date
-        ) {
-          console.error(
-            ` Bulk session ${i + 1}/${totalSessions} missing required fields:`,
-            session
-          );
-          conflicts.push({
-            sessionIndex: i + 1,
-            sessionData: session,
-            conflictInfo: {
-              message: `Session thiếu thông tin bắt buộc: ${
-                !session.InstructorID ? "InstructorID, " : ""
-              }${!session.ClassID ? "ClassID, " : ""}${
-                !session.TimeslotID ? "TimeslotID, " : ""
-              }${!session.Date ? "Date" : ""}`,
-            },
-            message: "Session thiếu thông tin bắt buộc",
-          });
-          continue;
-        }
-
-        try {
-          // Tạo từng session một
-          const result = await classService.createSession(session);
-
-          // Kiểm tra response có conflict không (trường hợp backend trả về 200 nhưng có conflict)
-          if (
-            result?.hasConflicts ||
-            result?.conflicts?.length > 0 ||
-            result?.success === false
-          ) {
-            // Backend trả về thành công nhưng có conflict hoặc failed - không thêm vào created
-            const resultConflicts =
-              result.conflicts || result.data?.conflicts || [];
-
-            if (resultConflicts.length > 0) {
-              resultConflicts.forEach((conflict) => {
-                conflicts.push({
-                  sessionIndex: i + 1,
-                  sessionData: session,
-                  conflictInfo: conflict.conflictInfo || conflict,
-                  message: conflict.message || "Ca học bị trùng",
-                });
-              });
-            } else {
-              // Nếu không có conflict array nhưng success = false, vẫn là conflict
-              conflicts.push({
-                sessionIndex: i + 1,
-                sessionData: session,
-                conflictInfo: {
-                  message: result.message || result.error || "Ca học bị trùng",
-                },
-                message: result.message || result.error || "Ca học bị trùng",
-              });
-            }
-          } else if (result?.success !== false && result?.SessionID) {
-            // Thành công thật sự - phải có SessionID và success !== false
-            created.push({
-              sessionIndex: i + 1,
-              sessionData: session,
-              result: result,
-            });
-          } else {
-            // Response không rõ ràng - coi như conflict để an toàn
-            console.warn(
-              ` Bulk session ${i + 1}/${totalSessions} response không rõ ràng:`,
-              result
-            );
-            conflicts.push({
-              sessionIndex: i + 1,
-              sessionData: session,
-              conflictInfo: {
-                message: "Không thể xác định kết quả tạo session",
-              },
-              message: "Không thể xác định kết quả tạo session",
-            });
-          }
-        } catch (error) {
-          console.error(
-            ` Bulk session ${i + 1}/${totalSessions} failed:`,
-            error
-          );
-          console.error(
-            ` Bulk session ${i + 1}/${totalSessions} error response:`,
-            error.response?.data
-          );
-
-          // Kiểm tra nếu là conflict error - LUÔN thêm vào conflicts
-          const errorData = error.response?.data || error;
-          const errorMessage =
-            errorData?.error || errorData?.message || error?.message || "";
-
-          // Kiểm tra nhiều cách để phát hiện conflict
-          const isConflictError =
-            errorMessage.includes("trùng") ||
-            errorMessage.includes("trùng thời gian") ||
-            errorMessage.includes("trùng lịch") ||
-            errorMessage.includes("conflict") ||
-            errorMessage.includes("đã có ca học") ||
-            errorMessage.includes("đã có session") ||
-            errorMessage.includes("Instructor đã có") ||
-            errorMessage.includes("Lớp") ||
-            errorMessage.includes("đã có session") ||
-            error.response?.status === 400 || // Conflict thường trả về 400
-            error.response?.status === 409; // Hoặc 409 Conflict
-
-          // LUÔN thêm vào conflicts nếu có error - KHÔNG BAO GIỜ coi error là thành công
-          if (isConflictError) {
-            // Parse conflict info
-            const parsedConflicts = parseConflictFromMessage(errorMessage, 1);
-
-            if (parsedConflicts.length > 0) {
-              conflicts.push({
-                sessionIndex: i + 1,
-                sessionData: session,
-                conflictInfo: parsedConflicts[0].conflictInfo,
-                message: errorMessage,
-              });
-            } else {
-              conflicts.push({
-                sessionIndex: i + 1,
-                sessionData: session,
-                conflictInfo: {
-                  message: errorMessage || "Ca học bị trùng",
-                },
-                message: errorMessage || "Ca học bị trùng",
-              });
-            }
-          } else {
-            // Lỗi khác, cũng thêm vào conflicts để không báo thành công
-            conflicts.push({
-              sessionIndex: i + 1,
-              sessionData: session,
-              conflictInfo: {
-                message: errorMessage || "Lỗi không xác định",
-              },
-              message: errorMessage || "Lỗi không xác định",
-            });
-          }
-
-          // Đảm bảo không được thêm vào created
-          console.log(
-            ` Bulk session ${
-              i + 1
-            }/${totalSessions} đã được thêm vào conflicts, KHÔNG thêm vào created`
-          );
-        }
-      }
-
-      // Log kết quả để debug
-      console.log(" Kết quả tạo bulk sessions:", {
-        total: sessionsForBulk.length,
-        created: created.length,
-        conflicts: conflicts.length,
-        createdSessions: created,
-        conflictedSessions: conflicts,
-      });
-
-      // Hiển thị kết quả - ĐẢM BẢO chỉ báo thành công khi KHÔNG có conflict nào
-      if (conflicts.length > 0) {
-        // Có conflicts - LUÔN hiển thị modal và KHÔNG báo thành công 100%
-        console.log(" Có conflicts, hiển thị modal với:", conflicts);
-        console.log(
-          " Created:",
-          created.length,
-          "Conflicts:",
-          conflicts.length
-        );
-
-        setConflictModal({
-          open: true,
-          type: "bulk",
-          conflicts: conflicts,
-          created: created,
-          summary: {
-            total: sessionsForBulk.length,
-            success: created.length,
-            conflicts: conflicts.length,
-          },
-        });
-
-        // Hiển thị thông báo - CHỈ báo thành công nếu có sessions thật sự được tạo
-        if (created.length > 0) {
-          alert(
-            ` Kết quả: ${created.length} lịch học thành công, ${conflicts.length} lịch học bị trùng/lỗi.\n\nVui lòng xem chi tiết trong modal.`
-          );
-        } else {
-          // TẤT CẢ đều bị conflict - KHÔNG có gì được tạo
-          alert(
-            ` Không có lịch học nào được tạo!\n\n Tất cả ${conflicts.length} lịch học đều bị trùng hoặc lỗi.\n\nVui lòng xem chi tiết trong modal.`
-          );
-        }
-      } else if (created.length > 0) {
-        // CHỈ khi không có conflict VÀ có sessions được tạo - mới báo thành công
-        console.log(" Tất cả bulk sessions thành công, không có conflicts");
-        alert(` Đã thêm ${created.length} lịch học thành công!`);
-      } else {
-        // Không có gì được tạo (trường hợp hiếm)
-        console.log(" Không có bulk sessions nào được tạo");
-        alert(` Không có lịch học nào được tạo.`);
-      }
+      // Gọi API reschedule
+      await classService.rescheduleSession(
+        parseInt(sessionId),
+        format(rescheduleModal.selectedDate, "yyyy-MM-dd"),
+        rescheduleModal.selectedTimeslotId
+      );
 
       // Reload schedules
       await loadData();
-      setShowBulkModal(false);
-      // Reset bulk config
-      setBulkConfig({
-        startDate: "",
-        endDate: "",
-        DaysOfWeek: [],
-        TimeslotsByDay: {},
+
+      setRescheduleModal({
+        open: false,
+        session: null,
+        currentTimeslot: null,
+        currentDate: null,
+        currentDayOfWeek: null,
+        suggestions: [],
+        selectedDate: null,
+        selectedTimeslotId: null,
+        loading: false,
       });
-    } catch (error) {
-      // Lỗi validation hoặc lỗi khác trước khi xử lý sessions
-      console.error("Lỗi khi tạo bulk sessions:", error);
-      const errorMessage =
-        error?.message || "Không thể thêm lịch học. Vui lòng thử lại!";
+
+      alert(" Đã đổi lịch học thành công!");
+        } catch (error) {
+      console.error("Lỗi khi đổi lịch session:", error);
+          const errorMessage =
+        error?.message ||
+        error?.response?.data?.message ||
+        "Không thể đổi lịch học. Vui lòng thử lại!";
       alert(` Lỗi: ${errorMessage}`);
+      setRescheduleModal((prev) => ({ ...prev, loading: false }));
     }
   };
 
-  // Handler để toggle chọn ngày học trong tuần (giống bước 3)
-  const handleWeekdayToggle = (dayOfWeek) => {
-    const isCurrentlySelected = bulkConfig.DaysOfWeek.includes(dayOfWeek);
-    const newDays = isCurrentlySelected
-      ? bulkConfig.DaysOfWeek.filter((d) => d !== dayOfWeek)
-      : [...bulkConfig.DaysOfWeek, dayOfWeek].sort();
-
-    // Nếu bỏ chọn ngày, xóa các ca học của ngày đó
-    const newTimeslotsByDay = { ...bulkConfig.TimeslotsByDay };
-    if (isCurrentlySelected) {
-      delete newTimeslotsByDay[dayOfWeek];
-    }
-
-    setBulkConfig({
-      ...bulkConfig,
-      DaysOfWeek: newDays,
-      TimeslotsByDay: newTimeslotsByDay,
-    });
-  };
-
-  // Handler để toggle chọn ca học cho một ngày cụ thể (giống bước 3)
-  const handleTimeslotToggle = (dayOfWeek, timeslotId) => {
-    const currentDayTimeslots = bulkConfig.TimeslotsByDay?.[dayOfWeek] || [];
-    const isSelected = currentDayTimeslots.includes(timeslotId);
-
-    const newDayTimeslots = isSelected
-      ? currentDayTimeslots.filter((id) => id !== timeslotId)
-      : [...currentDayTimeslots, timeslotId];
-
-    setBulkConfig({
-      ...bulkConfig,
-      TimeslotsByDay: {
-        ...bulkConfig.TimeslotsByDay,
-        [dayOfWeek]: newDayTimeslots,
-      },
-    });
-  };
-
-  // Lọc timeslots theo Day cho từng ngày trong tuần (giống bước 3)
-  const timeslotsByDayOfWeek = useMemo(() => {
-    if (!timeslots || timeslots.length === 0) return {};
-
-    const result = {};
-
-    if (bulkConfig.DaysOfWeek && bulkConfig.DaysOfWeek.length > 0) {
-      bulkConfig.DaysOfWeek.forEach((dayOfWeek) => {
-        const dayFormat = dayOfWeekToDay(dayOfWeek);
-        const dayTimeslots = timeslots.filter((timeslot) => {
-          const timeslotDay = timeslot.Day || timeslot.day;
-          return timeslotDay === dayFormat;
-        });
-
-        result[dayOfWeek] = dayTimeslots;
-      });
-    }
-
-    return result;
-  }, [timeslots, bulkConfig.DaysOfWeek]);
+  // REMOVED: handleBulkAdd và các hàm liên quan - không còn cần thiết vì khi tạo lớp đã tạo sessions tự động
 
   if (loading) {
     return (
@@ -1605,7 +1309,17 @@ const SchedulePage = () => {
   }
 
   const days = getDaysInMonth();
-  const weekDays = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
+  const weekDays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+  const dayFilterOptions = [
+    { value: "", label: "Theo ngày đã chọn" },
+    { value: "MONDAY", label: "Thứ 2" },
+    { value: "TUESDAY", label: "Thứ 3" },
+    { value: "WEDNESDAY", label: "Thứ 4" },
+    { value: "THURSDAY", label: "Thứ 5" },
+    { value: "FRIDAY", label: "Thứ 6" },
+    { value: "SATURDAY", label: "Thứ 7" },
+    { value: "SUNDAY", label: "Chủ nhật" },
+  ];
 
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
@@ -1628,39 +1342,6 @@ const SchedulePage = () => {
             </Typography>
           </Box>
           <Box sx={{ display: "flex", gap: 2 }}>
-            <Button
-              variant="contained"
-              startIcon={<AutoFixHigh />}
-              onClick={handleAutoMakeup}
-              disabled={suggestionFetching || !course}
-              sx={{
-                backgroundColor: "#8b5cf6",
-                textTransform: "none",
-                borderRadius: 2,
-                "&:hover": {
-                  backgroundColor: "#7c3aed",
-                },
-                "&:disabled": {
-                  backgroundColor: "#cbd5e1",
-                },
-              }}
-            >
-              {suggestionFetching ? "Đang tìm..." : "Bù tự động"}
-            </Button>
-            <Button
-              variant="contained"
-              onClick={() => setShowBulkModal(true)}
-              sx={{
-                backgroundColor: "#10b981",
-                textTransform: "none",
-                borderRadius: 2,
-                "&:hover": {
-                  backgroundColor: "#059669",
-                },
-              }}
-            >
-              Thêm lịch hàng loạt
-            </Button>
             <Button
               variant="outlined"
               startIcon={<ArrowBack />}
@@ -1806,10 +1487,10 @@ const SchedulePage = () => {
                       </div>
                       {!isPast && (
                         <button
-                          className="btn btn-danger btn-sm"
-                          onClick={() => handleRemoveSession(sch)}
+                          className="btn btn-primary btn-sm"
+                          onClick={() => handleOpenRescheduleModal(sch)}
                         >
-                          Xóa
+                          Đổi lịch
                         </button>
                       )}
                     </div>
@@ -1924,285 +1605,350 @@ const SchedulePage = () => {
         </div>
       )}
 
-      {/* Modal Bulk Add */}
-      {showBulkModal && (
-        <div className="modal-overlay">
-          <div className="modal-container">
-            <div className="modal-header">
-              <h2> Thêm lịch hàng loạt</h2>
-              <button
-                className="close-btn"
-                onClick={() => setShowBulkModal(false)}
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="modal-body">
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Từ ngày:</label>
-                  <input
-                    type="date"
-                    value={bulkConfig.startDate}
-                    onChange={(e) =>
-                      setBulkConfig({
-                        ...bulkConfig,
-                        startDate: e.target.value,
-                      })
-                    }
-                  />
-                  <small className="help-text">Ngày bắt đầu tạo lịch</small>
-                </div>
-
-                <div className="form-group">
-                  <label>Đến ngày:</label>
-                  <input
-                    type="date"
-                    value={bulkConfig.endDate}
-                    onChange={(e) =>
-                      setBulkConfig({ ...bulkConfig, endDate: e.target.value })
-                    }
-                  />
-                  <small className="help-text">Ngày kết thúc tạo lịch</small>
-                </div>
-              </div>
-
-              {/* Chọn ngày học trong tuần (giống bước 3) */}
-              <div className="form-group">
-                <label>
-                  Ngày học trong tuần <span className="required">*</span>
-                </label>
-                <div className="weekday-selector">
-                  {[
-                    { value: 1, label: "Thứ 2" },
-                    { value: 2, label: "Thứ 3" },
-                    { value: 3, label: "Thứ 4" },
-                    { value: 4, label: "Thứ 5" },
-                    { value: 5, label: "Thứ 6" },
-                    { value: 6, label: "Thứ 7" },
-                    { value: 0, label: "CN" },
-                  ].map((day) => (
-                    <button
-                      key={day.value}
-                      type="button"
-                      className={`weekday-btn ${
-                        bulkConfig.DaysOfWeek.includes(day.value)
-                          ? "active"
-                          : ""
-                      }`}
-                      onClick={() => handleWeekdayToggle(day.value)}
-                    >
-                      {day.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Hiển thị số ca học mỗi tuần (tự động tính) */}
-              {bulkConfig.DaysOfWeek.length > 0 && (
-                <div className="form-group">
-                  <label>Thông tin lịch học</label>
-                  <div
-                    style={{
-                      padding: "12px",
-                      backgroundColor: "#f0f4ff",
-                      borderRadius: "8px",
-                      fontSize: "14px",
-                    }}
+      {/* Reschedule Modal */}
+      <Dialog
+        open={rescheduleModal.open}
+        onClose={() =>
+          setRescheduleModal({
+            ...rescheduleModal,
+            open: false,
+          })
+        }
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ pb: 1, fontWeight: 600 }}>Đổi lịch học</DialogTitle>
+        <DialogContent>
+          {rescheduleModal.loading ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              {/* Thông tin lịch hiện tại */}
+              {rescheduleModal.session && rescheduleModal.currentTimeslot && (
+                <Card sx={{ p: 2, mb: 3, backgroundColor: "#f0f4ff" }}>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 600, mb: 1 }}
                   >
-                    <div style={{ marginBottom: "4px" }}>
-                      <strong>Số ca học mỗi tuần:</strong>{" "}
-                      {(() => {
-                        let totalSessions = 0;
-                        bulkConfig.DaysOfWeek.forEach((dayOfWeek) => {
-                          const dayTimeslots =
-                            bulkConfig.TimeslotsByDay?.[dayOfWeek] || [];
-                          totalSessions += dayTimeslots.length;
-                        });
-                        return totalSessions || 0;
-                      })()}{" "}
-                      ca/tuần
-                    </div>
-                  </div>
-                </div>
+                    Lịch hiện tại:
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Ngày:</strong>{" "}
+                    {format(rescheduleModal.currentDate, "dd/MM/yyyy", {
+                      locale: vi,
+                    })}{" "}
+                    ({dayOfWeekToDay(rescheduleModal.currentDayOfWeek)})
+                  </Typography>
+                  <Typography variant="body2">
+                    <strong>Ca học:</strong>{" "}
+                    {rescheduleModal.currentTimeslot.StartTime?.substring(
+                      0,
+                      5
+                    ) || ""}{" "}
+                    -{" "}
+                    {rescheduleModal.currentTimeslot.EndTime?.substring(0, 5) ||
+                      ""}
+                  </Typography>
+                </Card>
               )}
 
-              {/* Chọn ca học cho từng ngày (giống bước 3) */}
-              <div className="form-group">
-                <label>
-                  Chọn ca học cho từng ngày <span className="required">*</span>
-                </label>
-
-                {bulkConfig.DaysOfWeek.length === 0 && (
-                  <div
-                    style={{
-                      padding: "12px",
-                      backgroundColor: "#fef3c7",
-                      borderRadius: "8px",
-                      marginBottom: "12px",
-                      fontSize: "14px",
-                      color: "#92400e",
-                    }}
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: { md: "1fr 1fr" },
+                  gap: 2,
+                  mb: 2,
+                }}
+              >
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 600, mb: 1 }}
                   >
-                    💡 Vui lòng chọn ngày học trong tuần trước để xem các ca học
-                    phù hợp
-                  </div>
-                )}
+                    Chọn ca học & khoảng thời gian
+                  </Typography>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Chọn ca học</InputLabel>
+                    <Select
+                      value={rescheduleModal.filterTimeslotId || ""}
+                      label="Chọn ca học"
+                      onChange={(e) =>
+                        handleRescheduleFilterChange({
+                          filterTimeslotId: e.target.value,
+                        })
+                      }
+                    >
+                      {rescheduleModal.session?.timeslotId && (
+                        <MenuItem value={rescheduleModal.session.timeslotId}>
+                          Ca hiện tại (
+                          {rescheduleModal.currentTimeslot?.StartTime?.substring(
+                            0,
+                            5
+                          ) || ""}{" "}
+                          -{" "}
+                          {rescheduleModal.currentTimeslot?.EndTime?.substring(
+                            0,
+                            5
+                          ) || ""}
+                          )
+                        </MenuItem>
+                      )}
+                      <MenuItem value="ANY">Ca nào cũng được</MenuItem>
+                      {timeslots.map((ts) => {
+                        const id = ts.TimeslotID || ts.id;
+                        return (
+                          <MenuItem key={id} value={id}>
+                            {(ts.StartTime || ts.startTime || "").substring(
+                              0,
+                              5
+                            )}{" "}
+                            - {(ts.EndTime || ts.endTime || "").substring(0, 5)}
+                            {ts.Day || ts.day ? ` (${ts.Day || ts.day})` : ""}
+                          </MenuItem>
+                        );
+                      })}
+                    </Select>
+                  </FormControl>
 
-                {/* Hiển thị ca học theo cột (mỗi cột là một ngày) - giống bước 3 */}
-                {bulkConfig.DaysOfWeek.length > 0 && (
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: `repeat(${bulkConfig.DaysOfWeek.length}, 1fr)`,
-                      gap: "16px",
-                      marginTop: "12px",
-                    }}
+                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        Từ ngày
+                      </Typography>
+                  <input
+                    type="date"
+                        value={rescheduleModal.fromDate || ""}
+                    onChange={(e) =>
+                          handleRescheduleFilterChange({
+                            fromDate: e.target.value,
+                          })
+                        }
+                        min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" sx={{ mb: 0.5 }}>
+                        Đến ngày
+                      </Typography>
+                  <input
+                    type="date"
+                        value={rescheduleModal.toDate || ""}
+                    onChange={(e) =>
+                          handleRescheduleFilterChange({
+                            toDate: e.target.value,
+                          })
+                        }
+                        min={
+                          rescheduleModal.fromDate ||
+                          format(addDays(new Date(), 1), "yyyy-MM-dd")
+                        }
+                        style={{
+                          width: "100%",
+                          padding: "10px",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "6px",
+                        }}
+                      />
+                    </Box>
+                  </Box>
+
+                  <FormControl fullWidth sx={{ mb: 1.5 }}>
+                    <InputLabel>Lọc theo thứ</InputLabel>
+                    <Select
+                      value={rescheduleModal.filterDay || ""}
+                      label="Lọc theo thứ"
+                      onChange={(e) =>
+                        handleRescheduleFilterChange({
+                          filterDay: e.target.value || null,
+                        })
+                      }
+                    >
+                      {dayFilterOptions.map((d) => (
+                        <MenuItem key={d.value || "any"} value={d.value}>
+                          {d.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Typography variant="caption" sx={{ color: "#64748b" }}>
+                    Chỉ gợi ý các lịch chưa qua (từ ngày hiện tại trở đi).
+                  </Typography>
+                </Box>
+
+                <Box>
+                  <Typography
+                    variant="subtitle2"
+                    sx={{ fontWeight: 600, mb: 1 }}
                   >
-                    {bulkConfig.DaysOfWeek.map((dayOfWeek) => {
-                      const dayLabel =
-                        [
-                          { value: 0, label: "CN" },
-                          { value: 1, label: "Thứ 2" },
-                          { value: 2, label: "Thứ 3" },
-                          { value: 3, label: "Thứ 4" },
-                          { value: 4, label: "Thứ 5" },
-                          { value: 5, label: "Thứ 6" },
-                          { value: 6, label: "Thứ 7" },
-                        ].find((d) => d.value === dayOfWeek)?.label ||
-                        `Thứ ${dayOfWeek + 2}`;
-                      const dayTimeslots =
-                        timeslotsByDayOfWeek[dayOfWeek] || [];
-                      const selectedTimeslotIds =
-                        bulkConfig.TimeslotsByDay?.[dayOfWeek] || [];
+                    Chọn lịch mới
+                  </Typography>
+                  <FormControl fullWidth sx={{ mb: 2 }}>
+                    <InputLabel>Chọn ngày (từ gợi ý)</InputLabel>
+                    <Select
+                      value={
+                        rescheduleModal.selectedDate
+                          ? format(rescheduleModal.selectedDate, "yyyy-MM-dd")
+                          : ""
+                      }
+                      label="Chọn ngày (từ gợi ý)"
+                      onChange={(e) => {
+                        const selectedDate = new Date(e.target.value);
+                        setRescheduleModal((prev) => ({
+                          ...prev,
+                          selectedDate: selectedDate,
+                          selectedTimeslotId: null,
+                        }));
+                      }}
+                    >
+                      {rescheduleModal.suggestions.map((suggestion, idx) => (
+                        <MenuItem key={idx} value={suggestion.date}>
+                          {format(new Date(suggestion.date), "dd/MM/yyyy", {
+                            locale: vi,
+                          })}{" "}
+                          ({dayOfWeekToDay(new Date(suggestion.date).getDay())})
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
 
+                  {rescheduleModal.selectedDate && (
+                    <FormControl fullWidth>
+                      <InputLabel>Chọn ca học</InputLabel>
+                      <Select
+                        value={rescheduleModal.selectedTimeslotId || ""}
+                        label="Chọn ca học"
+                        onChange={(e) =>
+                          setRescheduleModal((prev) => ({
+                            ...prev,
+                            selectedTimeslotId:
+                              e.target.value === "ANY"
+                                ? null
+                                : parseInt(e.target.value),
+                          }))
+                        }
+                      >
+                        {rescheduleModal.suggestions
+                          .filter(
+                            (s) =>
+                              format(new Date(s.date), "yyyy-MM-dd") ===
+                              format(rescheduleModal.selectedDate, "yyyy-MM-dd")
+                          )
+                          .map((suggestion, idx) => {
+                            const timeslot = suggestion.timeslot;
                       return (
-                        <div
-                          key={dayOfWeek}
-                          style={{
-                            border: "1px solid #e2e8f0",
-                            borderRadius: "8px",
-                            padding: "12px",
-                            backgroundColor: "#fff",
-                          }}
-                        >
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              fontSize: "14px",
-                              marginBottom: "12px",
-                              color: "#1e293b",
-                              textAlign: "center",
-                              paddingBottom: "8px",
-                              borderBottom: "2px solid #e2e8f0",
-                            }}
-                          >
-                            {dayLabel}
-                          </div>
-                          {dayTimeslots.length === 0 ? (
-                            <div
-                              style={{
-                                padding: "12px",
-                                textAlign: "center",
-                                color: "#64748b",
-                                fontSize: "12px",
-                              }}
-                            >
-                              Không có ca học cho ngày này
-                            </div>
-                          ) : (
-                            <div
-                              style={{
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: "8px",
-                              }}
-                            >
-                              {dayTimeslots.map((timeslot) => {
-                                const timeslotId =
-                                  timeslot.TimeslotID || timeslot.id;
+                              <MenuItem key={idx} value={suggestion.timeslotId}>
+                                {timeslot.StartTime?.substring(0, 5) || ""} -{" "}
+                                {timeslot.EndTime?.substring(0, 5) || ""}
+                              </MenuItem>
+                            );
+                          })}
+                      </Select>
+                    </FormControl>
+                  )}
+                </Box>
+              </Box>
+
+              {/* Gợi ý buổi bù tự động */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Gợi ý buổi bù tự động:
+                </Typography>
+                <Box sx={{ maxHeight: 260, overflowY: "auto" }}>
+                  {rescheduleModal.suggestions.length === 0 && (
+                    <Typography variant="body2" sx={{ color: "#64748b" }}>
+                      Không tìm thấy gợi ý phù hợp. Hãy thử đổi ca hoặc khoảng
+                      thời gian.
+                    </Typography>
+                  )}
+                  {rescheduleModal.suggestions.map((suggestion, idx) => {
+                    const timeslot = suggestion.timeslot || {};
                                 const isSelected =
-                                  selectedTimeslotIds.includes(timeslotId);
+                      rescheduleModal.selectedDate &&
+                      format(new Date(suggestion.date), "yyyy-MM-dd") ===
+                        format(rescheduleModal.selectedDate, "yyyy-MM-dd") &&
+                      rescheduleModal.selectedTimeslotId ===
+                        suggestion.timeslotId;
                                 return (
-                                  <label
-                                    key={timeslotId}
-                                    style={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                      padding: "10px",
-                                      border: `2px solid ${
-                                        isSelected ? "#667eea" : "#e2e8f0"
-                                      }`,
-                                      borderRadius: "6px",
+                      <Card
+                        key={idx}
+                        sx={{
+                          p: 1.5,
+                          mb: 1,
                                       cursor: "pointer",
-                                      backgroundColor: isSelected
-                                        ? "#f0f4ff"
-                                        : "#fff",
-                                      transition: "all 0.2s",
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={isSelected}
-                                      onChange={() =>
-                                        handleTimeslotToggle(
-                                          dayOfWeek,
-                                          timeslotId
-                                        )
-                                      }
-                                      style={{
-                                        marginRight: "8px",
-                                        width: "16px",
-                                        height: "16px",
-                                        cursor: "pointer",
-                                      }}
-                                    />
-                                    <div style={{ flex: 1, fontSize: "13px" }}>
-                                      <div style={{ fontWeight: 600 }}>
-                                        {timeslot.StartTime ||
-                                          timeslot.startTime}{" "}
-                                        - {timeslot.EndTime || timeslot.endTime}
-                                      </div>
-                                      {timeslot.Description && (
-                                        <div
-                                          style={{
-                                            fontSize: "11px",
-                                            color: "#64748b",
-                                            marginTop: "2px",
-                                          }}
-                                        >
-                                          {timeslot.Description}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </label>
+                          border: isSelected
+                            ? "2px solid #667eea"
+                            : "1px solid #e2e8f0",
+                          backgroundColor: isSelected ? "#f0f4ff" : "#fff",
+                        }}
+                        onClick={() => {
+                          setRescheduleModal((prev) => ({
+                            ...prev,
+                            selectedDate: new Date(suggestion.date),
+                            selectedTimeslotId: suggestion.timeslotId,
+                          }));
+                        }}
+                      >
+                        <Typography variant="body2">
+                          <strong>
+                            {format(new Date(suggestion.date), "dd/MM/yyyy", {
+                              locale: vi,
+                            })}{" "}
+                            (
+                            {dayOfWeekToDay(new Date(suggestion.date).getDay())}
+                            )
+                          </strong>
+                        </Typography>
+                        <Typography variant="body2" sx={{ color: "#64748b" }}>
+                          {timeslot.StartTime?.substring(0, 5) || ""} -{" "}
+                          {timeslot.EndTime?.substring(0, 5) || ""}
+                        </Typography>
+                      </Card>
                                 );
                               })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="modal-footer">
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowBulkModal(false)}
-              >
-                Hủy
-              </button>
-              <button className="btn btn-primary" onClick={handleBulkAdd}>
-                Thêm lịch
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() =>
+              setRescheduleModal({
+                ...rescheduleModal,
+                open: false,
+              })
+            }
+            disabled={rescheduleModal.loading}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleRescheduleSession}
+            variant="contained"
+            disabled={
+              rescheduleModal.loading ||
+              !rescheduleModal.selectedDate ||
+              !rescheduleModal.selectedTimeslotId
+            }
+            sx={{
+              backgroundColor: "#667eea",
+              "&:hover": {
+                backgroundColor: "#5568d3",
+              },
+            }}
+          >
+            {rescheduleModal.loading ? "Đang xử lý..." : "Đổi lịch"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Conflict Modal */}
       <Dialog

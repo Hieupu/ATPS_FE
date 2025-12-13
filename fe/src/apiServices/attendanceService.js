@@ -61,7 +61,7 @@ export const getAttendanceCalendarApi = async (learnerId, month, year) => {
 export const getAttendanceByInstructorApi = async (instructorId) => {
   try {
     const response = await apiClient.get(
-      `/attendance/instructor/${instructorId}`
+      `/attendances/instructor/${instructorId}`
     );
     return response.data;
   } catch (error) {
