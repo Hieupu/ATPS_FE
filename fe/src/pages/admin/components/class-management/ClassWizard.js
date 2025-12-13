@@ -17,11 +17,17 @@ import instructorService from "../../../../apiServices/instructorServicead";
 import "./ClassWizard.css";
 import {
   determineSlotStatus,
-  // normalizeBlockedDayValue, // Không dùng
   normalizeTimeslotId,
   buildSchedulePatternFromSessions,
   computeLostSessions,
-  computeScheduleDiff,
+  calculateAllSelectedTimeslotIds,
+  calculateSessionsPerWeek,
+  parseDateString,
+  parseEndDateString,
+  formatDateToString,
+  findTimeslotForDay,
+  estimateEndDate,
+  filterLockedTimeslots,
 } from "./ClassWizard.utils";
 // Import các Step components
 import ClassWizardStep1 from "./ClassWizardStep1";
@@ -61,8 +67,6 @@ const ClassWizard = ({
     CourseID: null, // Thêm CourseID
     Fee: "",
     Maxstudent: "", // Đổi từ MaxLearners
-    ZoomID: "", // Mới
-    Zoompass: "", // Mới
     // Step 2: Schedule Info
     schedule: {
       OpendatePlan: "", // Đổi từ StartDate
@@ -169,6 +173,7 @@ const ClassWizard = ({
   const [availableDaysForTimeslot, setAvailableDaysForTimeslot] = useState([]); // Các ngày có timeslot giống và không bị trùng
   const [selectedTimeslotIds, setSelectedTimeslotIds] = useState(new Set()); // Các ca đã chọn (không cần ngày)
   const [shouldShowPreview, setShouldShowPreview] = useState(false); // Đã nhấn nút tính toán chưa
+  const [reloadAvailableDays, setReloadAvailableDays] = useState(0); // Trigger reload availableDaysForTimeslot khi chọn/bỏ chọn timeslot
   // Loading / error tối thiểu cho analyzeBlockedDays ở Step 3
   const [loadingBlockedDays, setLoadingBlockedDays] = useState(false);
   const [blockedDaysError, setBlockedDaysError] = useState(null);
@@ -206,17 +211,15 @@ const ClassWizard = ({
 
   // Memo hóa tập tất cả TimeslotID đã chọn (dùng chung cho nhiều chỗ)
   // Phải định nghĩa trước khi sử dụng trong hasInsufficientSlots
-  const allSelectedTimeslotIdsMemo = useMemo(() => {
-    const all = new Set(selectedTimeslotIds);
-    Object.values(formData.scheduleDetail.TimeslotsByDay || {}).forEach(
-      (dayTimeslots) => {
-        dayTimeslots.forEach((timeslotId) => {
-          all.add(timeslotId);
-        });
-      }
-    );
-    return all;
-  }, [selectedTimeslotIds, formData.scheduleDetail.TimeslotsByDay]);
+  // ✅ Dùng utility function để tránh lặp lại logic
+  const allSelectedTimeslotIdsMemo = useMemo(
+    () =>
+      calculateAllSelectedTimeslotIds(
+        selectedTimeslotIds,
+        formData.scheduleDetail.TimeslotsByDay
+      ),
+    [selectedTimeslotIds, formData.scheduleDetail.TimeslotsByDay]
+  );
 
   // Chỉ hiển thị cảnh báo khi:
   // 1. Đã chọn đủ ngày học (ít nhất 1 ngày)
@@ -276,12 +279,10 @@ const ClassWizard = ({
   // Logic mới: Tính toán các ngày hợp lệ dựa trên tất cả các ca đã chọn
   // KHÔNG tính toán khi đang ở chế độ tìm kiếm ca mong muốn
   useEffect(() => {
-    // Không tính toán khi đang ở chế độ tìm kiếm
     if (alternativeStartDateSearch.showResults) {
       return;
     }
 
-    // Nếu chưa chọn ca nào, disable tất cả các ngày
     if (
       allSelectedTimeslotIdsMemo.size === 0 ||
       !timeslots ||
@@ -301,246 +302,238 @@ const ClassWizard = ({
       return;
     }
 
-    // Tính endDate - nếu chưa có thì ước tính dựa trên số buổi học
     let endDate = formData.scheduleDetail.EnddatePlan;
+
     if (!endDate) {
-      // Tính sessionsPerWeek từ TimeslotsByDay
-      let sessionsPerWeekCalc = 0;
-      Object.values(formData.scheduleDetail.TimeslotsByDay || {}).forEach(
-        (dayTimeslots) => {
-          sessionsPerWeekCalc += dayTimeslots.length;
-        }
-      );
+      const numOfSessions = formData.schedule?.Numofsession || 0;
+      const timeslotsByDay = formData.scheduleDetail.TimeslotsByDay || {};
+      const daysOfWeek = formData.scheduleDetail.DaysOfWeek || [];
 
-      // Nếu chưa có TimeslotsByDay, tính từ tập allSelectedTimeslotIdsMemo và DaysOfWeek
-      if (sessionsPerWeekCalc === 0 && allSelectedTimeslotIdsMemo.size > 0) {
-        sessionsPerWeekCalc =
-          allSelectedTimeslotIdsMemo.size *
-          (formData.scheduleDetail.DaysOfWeek?.length || 1);
+      // ✅ Dùng calculateEndDate để tính: endDatePlan = startDatePlan + (Numofsession / số ca/tuần, tối thiểu 2)
+      if (numOfSessions > 0 && startDate) {
+        endDate = calculateEndDate(
+          startDate,
+          numOfSessions,
+          timeslotsByDay,
+          daysOfWeek
+        );
+      } else {
+        // Fallback: nếu chưa có đủ thông tin, trả về rỗng
+        endDate = "";
       }
+    }
 
-      // Fallback: ít nhất 1 session/tuần
-      if (sessionsPerWeekCalc === 0) {
-        sessionsPerWeekCalc = 1;
+    // ✅ Đảm bảo endDate có 23:59:59 để không mất buổi cuối
+    // parseEndDateString đã set 23:59:59, nhưng cần format lại thành string
+    if (endDate) {
+      const endDateObj = parseEndDateString(endDate);
+      if (endDateObj) {
+        // Format lại để đảm bảo có 23:59:59
+        endDate = formatDateToString(endDateObj);
       }
-
-      const numOfSessions = formData.schedule?.Numofsession || 12;
-      const totalWeeks = Math.ceil(numOfSessions / sessionsPerWeekCalc);
-      endDate = dayjs(startDate).add(totalWeeks, "week").format("YYYY-MM-DD");
     }
 
     const availableDays = [];
-    // Lấy danh sách các ngày đã được chọn (để luôn enable chúng)
     const selectedDays = formData.scheduleDetail.DaysOfWeek || [];
 
-    // Nếu chưa có instructor hoặc instructorType, enable tất cả các ngày (T2-CN: 1-6, 0)
     if (!instructorType) {
-      [1, 2, 3, 4, 5, 6, 0].forEach((day) => {
-        if (!availableDays.includes(day)) {
-          availableDays.push(day);
-        }
-      });
-      setAvailableDaysForTimeslot(availableDays);
+      setAvailableDaysForTimeslot([1, 2, 3, 4, 5, 6, 0]);
       return;
     }
 
-    // Với fulltime, nếu chưa có đủ thông tin (blockedDays, instructorBusySchedule), enable tất cả
     if (
       instructorType === "fulltime" &&
       (!blockedDays || !instructorBusySchedule)
     ) {
-      [1, 2, 3, 4, 5, 6, 0].forEach((day) => {
-        if (!availableDays.includes(day)) {
-          availableDays.push(day);
-        }
-      });
-      setAvailableDaysForTimeslot(availableDays);
+      setAvailableDaysForTimeslot([1, 2, 3, 4, 5, 6, 0]);
       return;
     }
 
-    // Duyệt qua các ngày trong tuần (T2-CN: 1-6, 0)
-    [1, 2, 3, 4, 5, 6, 0].forEach((dayOfWeek) => {
-      // Nếu ngày này đã được chọn, luôn enable (không check conflict)
-      if (selectedDays.includes(dayOfWeek)) {
-        availableDays.push(dayOfWeek);
-        return;
-      }
+    const checkDays = async () => {
+      const daysToCheck = [1, 2, 3, 4, 5, 6, 0];
+      const instructorId =
+        formData.InstructorID || selectedInstructor?.InstructorID;
 
-      const dayFormat = dayOfWeekToDay(dayOfWeek);
+      
+      const availableDaysPerTimeslot = [];
 
-      // Kiểm tra xem có ít nhất 1 ca đã chọn hợp lệ với ngày này không
-      let hasValidSlot = false;
+      const userSelectedDaysSet = new Set(selectedDays);
 
-      // Duyệt qua tất cả các ca đã chọn
-      Array.from(allSelectedTimeslotIdsMemo).forEach((selectedTimeslotId) => {
-        if (hasValidSlot) return; // Đã tìm thấy 1 ca hợp lệ, không cần check tiếp
+      //  Duyệt qua từng timeslot được chọn
+      for (const selectedTimeslotId of Array.from(allSelectedTimeslotIdsMemo)) {
+        const availableDaysForThisSlot = [];
 
-        // Tìm timeslot trong DB - có thể là ID hoặc string format "08:00-10:00"
-        let selectedTimeslot = timeslots.find(
-          (t) =>
-            normalizeTimeslotId(t.TimeslotID || t.id) ===
-            normalizeTimeslotId(selectedTimeslotId)
-        );
-
-        // Nếu không tìm thấy bằng ID, có thể selectedTimeslotId là format "08:00-10:00"
-        // Tìm bằng StartTime-EndTime
-        if (
-          !selectedTimeslot &&
-          typeof selectedTimeslotId === "string" &&
-          selectedTimeslotId.includes("-")
-        ) {
-          const [startTime, endTime] = selectedTimeslotId.split("-");
-          selectedTimeslot = timeslots.find((t) => {
-            const tStartTime = normalizeTimeString(
-              t.StartTime || t.startTime || ""
-            );
-            const tEndTime = normalizeTimeString(t.EndTime || t.endTime || "");
-            return tStartTime === startTime && tEndTime === endTime;
-          });
-        }
-
-        if (!selectedTimeslot) {
-          // Nếu vẫn không tìm thấy, có thể timeslot chưa được load hoặc format khác
-          // Với logic mới: nếu không tìm thấy timeslot cụ thể, vẫn cho phép chọn ngày
-          // (vì có thể timeslot sẽ được tạo sau)
-          if (!instructorType || instructorType === "fulltime") {
-            // Fulltime hoặc chưa chọn instructor → mặc định hợp lệ
-            hasValidSlot = true;
+        for (const dayOfWeek of daysToCheck) {
+          // Nếu ngày này đang được user chọn → auto enable
+          if (userSelectedDaysSet.has(dayOfWeek)) {
+            availableDaysForThisSlot.push(dayOfWeek);
+            continue;
           }
-          return;
-        }
 
-        const selectedStartTime = normalizeTimeString(
-          selectedTimeslot.StartTime || selectedTimeslot.startTime || ""
-        );
-        const selectedEndTime = normalizeTimeString(
-          selectedTimeslot.EndTime || selectedTimeslot.endTime || ""
-        );
+          // ✅ TÁCH RÕ 2 TRƯỜNG HỢP: TimeslotID số hoặc string "HH:mm-HH:mm"
+          let selectedStartTime = "";
+          let selectedEndTime = "";
+          let selectedTimeslotDay = null;
+          let dayTimeslot = null;
 
-        // Tìm timeslot cho ngày này có cùng StartTime-EndTime
-        // Ưu tiên tìm timeslot có Day khớp với ngày đó, nếu không có thì tìm timeslot không có Day
-        // Điều này đảm bảo check conflict dùng đúng timeslotId của ngày đó
-        let dayTimeslot = timeslots.find((t) => {
-          const startTime = normalizeTimeString(
-            t.StartTime || t.startTime || ""
-          );
-          const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
-          const timeslotDay = t.Day || t.day;
-          // Ưu tiên tìm timeslot có Day khớp với ngày đó
-          return (
-            startTime === selectedStartTime &&
-            endTime === selectedEndTime &&
-            timeslotDay === dayFormat
-          );
-        });
-
-        // Nếu không tìm thấy timeslot có Day khớp, tìm timeslot không có Day (có thể dùng cho mọi ngày)
-        if (!dayTimeslot) {
-          dayTimeslot = timeslots.find((t) => {
-            const startTime = normalizeTimeString(
-              t.StartTime || t.startTime || ""
-            );
-            const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
-            const timeslotDay = t.Day || t.day;
-            // Tìm timeslot không có Day và có cùng StartTime-EndTime
-            return (
-              startTime === selectedStartTime &&
-              endTime === selectedEndTime &&
-              !timeslotDay
-            );
-          });
-        }
-
-        // Nếu không tìm thấy dayTimeslot, vẫn có thể hợp lệ nếu có selectedTimeslot
-        // (vì timeslot có thể dùng cho mọi ngày)
-        if (!dayTimeslot) {
-          dayTimeslot = selectedTimeslot;
-        }
-
-        const timeslotId = dayTimeslot.TimeslotID || dayTimeslot.id;
-
-        // Logic mới: Fulltime mặc định rảnh T2-CN (1-6, 0), chỉ check conflict
-        if (instructorType === "fulltime") {
-          // Fulltime: mặc định hợp lệ cho tất cả các ngày T2-CN
-          // Chỉ check conflict nếu có đủ thông tin (startDate, endDate, và các dependencies)
-          // Nhưng nếu không có đủ thông tin, vẫn cho phép (vì fulltime mặc định rảnh)
-          hasValidSlot = true;
-
-          // Nếu có đủ thông tin, check conflict để chính xác hơn
+          // TRƯỜNG HỢP 1: selectedTimeslotId là TimeslotID số → tìm trong DB
           if (
-            startDate &&
-            endDate &&
-            blockedDays &&
-            instructorBusySchedule &&
-            getSlotStatus
+            typeof selectedTimeslotId === "number" ||
+            (!isNaN(Number(selectedTimeslotId)) &&
+              !selectedTimeslotId.includes("-"))
           ) {
-            try {
-              const slotStatus = getSlotStatus({
-                dayOfWeek,
-                timeslotId,
-                startDate,
-                endDate,
-              });
+            const selectedTimeslot = timeslots.find(
+              (t) =>
+                normalizeTimeslotId(t.TimeslotID || t.id) ===
+                normalizeTimeslotId(selectedTimeslotId)
+            );
 
-              // Nếu bị LOCKED, ngày này không hợp lệ
-              if (slotStatus && slotStatus.status === "LOCKED") {
-                hasValidSlot = false;
-              }
-            } catch (error) {
-              // Nếu có lỗi khi gọi getSlotStatus, mặc định hợp lệ (fallback)
-              console.warn(
-                "Error calling getSlotStatus in availableDays calculation:",
-                error
+            if (selectedTimeslot) {
+              selectedStartTime = normalizeTimeString(
+                selectedTimeslot.StartTime || selectedTimeslot.startTime || ""
               );
-              // Giữ nguyên hasValidSlot = true
+              selectedEndTime = normalizeTimeString(
+                selectedTimeslot.EndTime || selectedTimeslot.endTime || ""
+              );
+              selectedTimeslotDay =
+                selectedTimeslot.Day || selectedTimeslot.day;
+            } else {
+              continue;
             }
           }
-        } else if (instructorType === "parttime") {
-          // Parttime: phải có trong instructortimeslot với status AVAILABLE
-          const slotKey = `${dayOfWeek}-${normalizeTimeslotId(timeslotId)}`;
-          const hasAvailableSlot =
-            parttimeAvailableSlotKeySet &&
-            typeof parttimeAvailableSlotKeySet.has === "function" &&
-            parttimeAvailableSlotKeySet.size > 0 &&
-            parttimeAvailableSlotKeySet.has(slotKey);
+          else if (
+            typeof selectedTimeslotId === "string" &&
+            selectedTimeslotId.includes("-")
+          ) {
+            const [startTime, endTime] = selectedTimeslotId.split("-");
+            selectedStartTime = normalizeTimeString(startTime);
+            selectedEndTime = normalizeTimeString(endTime);
+          } else {
+          }
 
-          if (!hasAvailableSlot) return; // Parttime chưa đăng ký ca này → không rảnh
+         
+          if (selectedTimeslotDay) {
+            const expectedDayFormat = dayOfWeekToDay(dayOfWeek);
 
-          // Nếu có AVAILABLE, tiếp tục check conflict (session, HOLIDAY)
+            if (selectedTimeslotDay !== expectedDayFormat) {
+              continue;
+            }
+          } else {
+          }
+
+          const dayFormat = dayOfWeekToDay(dayOfWeek);
+
+      
+          dayTimeslot = findTimeslotForDay({
+            timeslots,
+            selectedStartTime,
+            selectedEndTime,
+            targetDay: selectedTimeslotDay || dayFormat,
+            normalizeTimeString,
+          });
+
+          if (!dayTimeslot && selectedTimeslotDay) {
+            continue;
+          }
+
+          // Lấy TimeslotID để check trùng lịch
+          const timeslotId = dayTimeslot
+            ? dayTimeslot.TimeslotID || dayTimeslot.id
+            : typeof selectedTimeslotId === "number" ||
+              (!isNaN(Number(selectedTimeslotId)) &&
+                !selectedTimeslotId.includes("-"))
+            ? selectedTimeslotId
+            : null;
+
+          if (!timeslotId) {
+            continue;
+          }
+
+          // ✅ Gọi API getTimeslotLockReasons
+          if (!instructorId) {
+            continue;
+          }
+
+          const numOfSessions = formData.schedule?.Numofsession || 0;
+          if (!numOfSessions) {
+            continue;
+          }
+
+          let isValidSlot = false;
+
           try {
-            const slotStatus = getSlotStatus({
+            const lockResult = await classService.getTimeslotLockReasons({
+              InstructorID: instructorId,
               dayOfWeek,
               timeslotId,
               startDate,
-              endDate,
+              endDatePlan: endDate,
+              numofsession: parseInt(numOfSessions),
             });
 
-            // Nếu không bị LOCKED, ngày này hợp lệ
-            if (slotStatus.status !== "LOCKED") {
-              hasValidSlot = true;
+            if (lockResult && !lockResult.isLocked) {
+              isValidSlot = true;
+            } else {
             }
           } catch (error) {
-            // Nếu có lỗi khi gọi getSlotStatus, mặc định hợp lệ (fallback)
-            console.warn("Error calling getSlotStatus:", error);
-            hasValidSlot = true;
+            // Fallback
+            if (instructorType === "fulltime") {
+              isValidSlot = true;
+            } else if (instructorType === "parttime") {
+              const slotKey = `${dayOfWeek}-${normalizeTimeslotId(timeslotId)}`;
+              const hasAvailable =
+                parttimeAvailableSlotKeySet?.has &&
+                parttimeAvailableSlotKeySet.has(slotKey);
+              if (hasAvailable) {
+                isValidSlot = true;
+              }
+            }
           }
-        } else {
-          // Chưa chọn instructor hoặc type chưa xác định → hợp lệ
-          hasValidSlot = true;
+
+          if (isValidSlot) {
+            availableDaysForThisSlot.push(dayOfWeek);
+          } else {
+          }
         }
+
+        availableDaysPerTimeslot.push(availableDaysForThisSlot);
+      }
+
+      // ✅ Lấy GIAO của tất cả các mảng
+      let availableDays = [];
+
+      if (availableDaysPerTimeslot.length === 0) {
+        availableDays = [];
+      } else if (availableDaysPerTimeslot.length === 1) {
+        // Chỉ có 1 timeslot → lấy luôn
+        availableDays = availableDaysPerTimeslot[0];
+      } else {
+        // Có nhiều timeslot → lấy giao
+        availableDays = availableDaysPerTimeslot.reduce(
+          (intersection, currentArray) => {
+            return intersection.filter((day) => currentArray.includes(day));
+          }
+        );
+      }
+
+      // Sort theo thứ tự ngày trong tuần
+      availableDays.sort((a, b) => {
+        if (a === 0) return 1; // Chủ nhật xuống cuối
+        if (b === 0) return -1;
+        return a - b;
       });
 
-      // Nếu có ít nhất 1 ca hợp lệ, thêm ngày vào danh sách
-      if (hasValidSlot) {
-        availableDays.push(dayOfWeek);
-      }
-    });
+      setAvailableDaysForTimeslot(availableDays);
+    };
+
+    // Gọi async function
+    checkDays();
 
     setAvailableDaysForTimeslot(availableDays);
   }, [
     allSelectedTimeslotIdsMemo,
-    formData.scheduleDetail.DaysOfWeek, // Thêm dependency để cập nhật khi chọn/bỏ chọn ngày
-    formData.schedule?.Numofsession, // Thêm dependency để tính lại endDate khi Numofsession thay đổi
+    formData.scheduleDetail.DaysOfWeek,
+    formData.schedule?.Numofsession,
     timeslots,
     formData.scheduleDetail.OpendatePlan,
     formData.schedule.OpendatePlan,
@@ -549,8 +542,8 @@ const ClassWizard = ({
     instructorBusySchedule,
     instructorType,
     parttimeAvailableSlotKeySet,
-    alternativeStartDateSearch.showResults, // Thêm dependency để reset khi vào/ra chế độ tìm kiếm
-    // Không thêm getSlotStatus vào dependencies vì nó được định nghĩa sau useEffect này
+    alternativeStartDateSearch.showResults,
+    reloadAvailableDays, // ✅ Trigger reload khi chọn/bỏ chọn timeslot
   ]);
 
   const scheduleStartDate =
@@ -578,19 +571,6 @@ const ClassWizard = ({
     return map;
   }, [timeslots]);
 
-  // const impactedSlotKeySet = useMemo(() => {
-  //   if (!impactedSessions.length) return new Set();
-  //   const set = new Set();
-  //   impactedSessions.forEach((session) => {
-  //     if (!session.Date) return;
-  //     const dayNum = dayjs(session.Date).day();
-  //     const key = `${dayNum}-${normalizeTimeslotId(
-  //       session.TimeslotID || session.timeslotId
-  //     )}`;
-  //     set.add(key);
-  //   });
-  //   return set;
-  // }, [impactedSessions]); // Không dùng
 
   const impactedSessionMessages = useMemo(() => {
     return impactedSessions.map((session) => {
@@ -609,19 +589,8 @@ const ClassWizard = ({
     });
   }, [impactedSessions, timeslotMap]);
 
-  // const impactedSessionsErrorMessage = impactedSessionMessages.length
-  //   ? `Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải chọn lại: ${impactedSessionMessages.join(
-  //       "; "
-  //     )}`
-  //   : ""; // Không dùng
 
-  // So sánh sessions cũ và previewSessions để xác định buổi "mất" / "bù thêm" theo diff
-  // const scheduleDiff = useMemo(() => {
-  //   if (!isEditMode || !originalSessions.length || !previewSessions.length) {
-  //     return { lostSessions: [], newSessions: [] };
-  //   }
-  //   return computeScheduleDiff(originalSessions, previewSessions);
-  // }, [isEditMode, originalSessions, previewSessions]); // Không dùng
+
 
   useEffect(() => {
     // Chỉ kiểm tra khi đã có thông tin instructor type
@@ -630,8 +599,7 @@ const ClassWizard = ({
       return;
     }
 
-    // Chờ parttimeAvailableEntriesCount được load (có thể là null khi đang load)
-    // Nếu đã load xong (không phải null) và có requiredSessions
+
     if (
       parttimeAvailableEntriesCount !== null &&
       parttimeAvailableEntriesCount !== undefined &&
@@ -985,59 +953,27 @@ const ClassWizard = ({
   // Khi blockedDays / lịch bận / ngày bắt đầu / DaysOfWeek thay đổi,
   // tự động bỏ chọn các timeslot đã chọn nhưng hiện tại bị LOCKED
   // Và xóa các ca đã chọn cho ngày không còn trong DaysOfWeek
+  // Dùng utility function để tránh lặp lại logic
   useEffect(() => {
     if (!scheduleStartDate) return;
 
-    const newTimeslotsByDay = { ...formData.scheduleDetail.TimeslotsByDay };
-    const currentDaysOfWeek = formData.scheduleDetail.DaysOfWeek || [];
-    const currentDaysOfWeekSet = new Set(currentDaysOfWeek);
-    let changed = false;
-
-    // Xóa các ca đã chọn cho ngày không còn trong DaysOfWeek
-    Object.keys(newTimeslotsByDay).forEach((dayKey) => {
-      const dayOfWeek = Number(dayKey);
-      if (Number.isNaN(dayOfWeek)) return;
-
-      if (!currentDaysOfWeekSet.has(dayOfWeek)) {
-        // Ngày này không còn trong DaysOfWeek, xóa hết ca đã chọn
-        delete newTimeslotsByDay[dayKey];
-        changed = true;
-      }
-    });
-
-    // Kiểm tra và bỏ chọn các timeslot bị LOCKED
-    Object.entries(newTimeslotsByDay).forEach(([dayKey, slots]) => {
-      const dayOfWeek = Number(dayKey);
-      if (Number.isNaN(dayOfWeek) || !Array.isArray(slots)) return;
-
-      const keptSlots = slots.filter((timeslotId) => {
-        const status = determineSlotStatus({
-          dayOfWeek,
-          timeslotId,
-          startDate: scheduleStartDate,
-          endDate: formData.scheduleDetail.EnddatePlan,
-          blockedDays,
-          instructorBusySchedule,
-          formData,
-          sessionsPerWeek,
-          requiredSlotsPerWeek,
-          instructorType,
-          parttimeAvailableSlotKeySet,
-          lockedTimeslotId,
-          isDraftClass,
-        });
-        return status.status !== "LOCKED";
+    const { timeslotsByDay: newTimeslotsByDay, changed } =
+      filterLockedTimeslots({
+        timeslotsByDay: formData.scheduleDetail.TimeslotsByDay,
+        daysOfWeek: formData.scheduleDetail.DaysOfWeek,
+        determineSlotStatus,
+        scheduleStartDate,
+        endDate: formData.scheduleDetail.EnddatePlan,
+        blockedDays,
+        instructorBusySchedule,
+        formData,
+        sessionsPerWeek,
+        requiredSlotsPerWeek,
+        instructorType,
+        parttimeAvailableSlotKeySet,
+        lockedTimeslotId,
+        isDraftClass,
       });
-
-      if (keptSlots.length !== slots.length) {
-        changed = true;
-        if (keptSlots.length > 0) {
-          newTimeslotsByDay[dayKey] = keptSlots;
-        } else {
-          delete newTimeslotsByDay[dayKey];
-        }
-      }
-    });
 
     if (changed) {
       setFormData((prev) => ({
@@ -1070,8 +1006,7 @@ const ClassWizard = ({
 
   const getSlotStatus = ({ dayOfWeek, timeslotId, startDate, endDate }) => {
     if (
-      typeof dayOfWeek !== "number" ||
-      !timeslotId ||
+      (typeof dayOfWeek !== "number" && !timeslotId) ||
       !startDate ||
       !dayjs(startDate).isValid()
     ) {
@@ -1142,30 +1077,11 @@ const ClassWizard = ({
 
       setLoadingInstructorData(true);
       try {
-        console.log(
-          "[ClassWizard] Loading courses for InstructorID:",
-          formData.InstructorID
-        );
-
         // Gọi API để lấy danh sách môn học mà instructor này được dạy với status PUBLISHED
         const instructorWithCourses =
           await instructorService.getInstructorWithCourses(
             formData.InstructorID
           );
-
-        console.log(
-          "[ClassWizard] Instructor with courses response:",
-          instructorWithCourses
-        );
-        console.log(
-          "[ClassWizard] Response type:",
-          typeof instructorWithCourses,
-          Array.isArray(instructorWithCourses)
-        );
-        console.log(
-          "[ClassWizard] Response keys:",
-          instructorWithCourses ? Object.keys(instructorWithCourses) : "null"
-        );
 
         // Lấy danh sách courses từ response
         // Backend trả về: { InstructorID, FullName, ..., courses: [...] }
@@ -1180,13 +1096,6 @@ const ClassWizard = ({
             (Array.isArray(instructorWithCourses) ? instructorWithCourses : []);
         }
 
-        console.log(
-          "[ClassWizard] Instructor courses list (raw):",
-          instructorCoursesList,
-          "Length:",
-          instructorCoursesList?.length || 0
-        );
-
         // Filter theo status PUBLISHED
         // Backend trả về Status (đã được map từ CourseStatus trong repository)
         const instructorCourses = (instructorCoursesList || []).filter(
@@ -1198,21 +1107,8 @@ const ClassWizard = ({
               status === "published" ||
               status === "Published";
 
-            console.log(
-              `[ClassWizard] Course ${
-                course.CourseID || course.id
-              } - Status: ${status}, IsPublished: ${isPublished}`
-            );
-
             return isPublished;
           }
-        );
-
-        console.log(
-          "[ClassWizard] Filtered PUBLISHED courses:",
-          instructorCourses,
-          "Length:",
-          instructorCourses.length
         );
 
         setAvailableCourses(instructorCourses);
@@ -1232,7 +1128,6 @@ const ClassWizard = ({
           setSelectedCourse(null);
         }
       } catch (error) {
-        console.error("Error loading instructor courses:", error);
         setAvailableCourses([]);
       } finally {
         setLoadingInstructorData(false);
@@ -1251,11 +1146,8 @@ const ClassWizard = ({
         CourseID: classData.CourseID || classData.courseId || null, // Thêm CourseID
         Maxstudent:
           classData.Maxstudent ||
-          classData.MaxLearners ||
-          classData.maxLearners ||
+      
           "",
-        ZoomID: classData.ZoomID || classData.zoomID || "",
-        Zoompass: classData.Zoompass || classData.zoompass || "",
         schedule: {
           OpendatePlan:
             classData.OpendatePlan ||
@@ -1322,10 +1214,6 @@ const ClassWizard = ({
             CourseID: finalCourseId,
           }));
         } else {
-          console.warn(
-            `[ClassWizard] CourseID ${courseId} not found in courses list`,
-            { coursesCount: courses.length, courseId }
-          );
           // Vẫn set CourseID ngay cả khi không tìm thấy course để validation pass
           setFormData((prev) => ({
             ...prev,
@@ -1465,9 +1353,9 @@ const ClassWizard = ({
   }, [formData.scheduleDetail.EnddatePlan]);
 
   // Generate preview sessions from schedule detail
-  // Logic "Nhảy cóc & Tịnh tiến": Xử lý lịch bận cục bộ (Status='Other' hoặc 'Holiday')
+  // Logic "Nhảy cóc & Tịnh tiến": Xử lý lịch bận cục bộ ( 'Holiday')
   // - Normal: Buổi học bình thường
-  // - Skipped: Ngày trùng lịch bận cục bộ -> Bỏ qua, hiển thị "Nghỉ: GV bận"
+  // - Skipped: Ngày trùng lịch bận cục bộ
   // - Extended: Buổi dôi ra ở cuối danh sách do thêm lại ca học
   const generatePreviewSessions = async (
     startDate,
@@ -1476,13 +1364,7 @@ const ClassWizard = ({
     timeslotsByDay,
     totalSessionsNeeded
   ) => {
-    console.log("generatePreviewSessions called with:", {
-      startDate,
-      endDate,
-      daysOfWeek,
-      timeslotsByDay,
-      totalSessionsNeeded,
-    });
+    
 
     if (
       !startDate ||
@@ -1490,9 +1372,6 @@ const ClassWizard = ({
       !timeslotsByDay ||
       Object.keys(timeslotsByDay).length === 0
     ) {
-      console.log(
-        "generatePreviewSessions: Missing required data, clearing sessions"
-      );
       setPreviewSessions([]);
       setFormData((prev) => ({ ...prev, sessions: [] }));
       return;
@@ -1505,19 +1384,11 @@ const ClassWizard = ({
         startDate,
         totalSessionsNeeded,
         timeslotsByDay,
-        daysOfWeek,
-        timeslots
-      );
-      console.log(
-        "generatePreviewSessions: Calculated endDate:",
-        calculatedEndDate
+        daysOfWeek
       );
     }
 
     if (!calculatedEndDate) {
-      console.log(
-        "generatePreviewSessions: No endDate available, clearing sessions"
-      );
       setPreviewSessions([]);
       setFormData((prev) => ({ ...prev, sessions: [] }));
       return;
@@ -1526,80 +1397,27 @@ const ClassWizard = ({
     const sessions = [];
 
     // Parse startDate và endDate đúng cách để tránh timezone issues
-    // new Date("YYYY-MM-DD") có thể bị ảnh hưởng bởi timezone
-    let start, end;
-    if (typeof startDate === "string") {
-      const startParts = startDate.split("-");
-      if (startParts.length === 3) {
-        start = new Date(
-          parseInt(startParts[0], 10),
-          parseInt(startParts[1], 10) - 1,
-          parseInt(startParts[2], 10)
-        );
-      } else {
-        start = new Date(startDate);
-      }
-    } else {
-      start = new Date(startDate);
-    }
+    // ✅ Dùng utility functions để tránh lặp lại logic
+    let start = parseDateString(startDate);
+    let end = calculatedEndDate
+      ? parseEndDateString(calculatedEndDate)
+      : parseEndDateString(endDate);
 
-    if (typeof endDate === "string") {
-      const endParts = endDate.split("-");
-      if (endParts.length === 3) {
-        end = new Date(
-          parseInt(endParts[0], 10),
-          parseInt(endParts[1], 10) - 1,
-          parseInt(endParts[2], 10)
-        );
-        end.setHours(23, 59, 59, 999);
-      } else {
-        end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-      }
-    } else {
-      end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-    }
-
-    start.setHours(0, 0, 0, 0);
-
-    // Sử dụng calculatedEndDate thay vì end
-    if (typeof calculatedEndDate === "string") {
-      const endParts = calculatedEndDate.split("-");
-      if (endParts.length === 3) {
-        end = new Date(
-          parseInt(endParts[0], 10),
-          parseInt(endParts[1], 10) - 1,
-          parseInt(endParts[2], 10)
-        );
-        end.setHours(23, 59, 59, 999);
-      } else {
-        end = new Date(calculatedEndDate);
-        end.setHours(23, 59, 59, 999);
-      }
-    } else {
-      end = new Date(calculatedEndDate);
-      end.setHours(23, 59, 59, 999);
+    if (!start || !end) {
+      setPreviewSessions([]);
+      setFormData((prev) => ({ ...prev, sessions: [] }));
+      return;
     }
 
     let sessionNumber = 1;
 
     // Tính tổng số ca mỗi tuần
-    // Logic cũ: Hỗ trợ multiple timeslots cho mỗi ngày (không dùng cho DRAFT)
-    // Logic mới: Với DRAFT chỉ có một timeslot duy nhất, nhưng logic này vẫn hỗ trợ multiple timeslots
-    //   cho trường hợp edit lịch không phải DRAFT (cho phép chọn timeslot linh hoạt)
-    let sessionsPerWeek = 0;
-    daysOfWeek.forEach((dayOfWeek) => {
-      const dayTimeslots = timeslotsByDay[dayOfWeek] || [];
-      sessionsPerWeek += dayTimeslots.length;
-    });
-
-    console.log("generatePreviewSessions: sessionsPerWeek =", sessionsPerWeek);
-
+    // ✅ Dùng utility function để tránh lặp lại logic
+    const sessionsPerWeek = calculateSessionsPerWeek(
+      daysOfWeek,
+      timeslotsByDay
+    );
     if (sessionsPerWeek === 0) {
-      console.log(
-        "generatePreviewSessions: No sessions per week, clearing sessions"
-      );
       setPreviewSessions([]);
       setFormData((prev) => ({ ...prev, sessions: [] }));
       return;
@@ -1617,12 +1435,9 @@ const ClassWizard = ({
       // Nếu là ngày học trong tuần
       if (daysOfWeek.includes(dayOfWeek)) {
         const dayTimeslotIDs = timeslotsByDay[dayOfWeek] || [];
-
         // Format date string đúng cách (YYYY-MM-DD) để tránh timezone issues
-        const year = currentDate.getFullYear();
-        const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-        const day = String(currentDate.getDate()).padStart(2, "0");
-        const currentDateStr = `${year}-${month}-${day}`;
+        // Dùng utility function để tránh lặp lại logic
+        const currentDateStr = formatDateToString(currentDate);
         const currentDateDay = getDayFromDate(currentDateStr);
 
         // Lọc các timeslots hợp lệ cho ngày này (tìm timeslot cho ngày đó có cùng StartTime-EndTime)
@@ -1630,12 +1445,37 @@ const ClassWizard = ({
         for (let i = 0; i < dayTimeslotIDs.length; i++) {
           const timeslotID = dayTimeslotIDs[i];
           const normalizedTimeslotID = normalizeTimeslotId(timeslotID);
+          // Tìm timeslot: có thể là TimeslotID số hoặc string "HH:mm-HH:mm"
+          let originalTimeslot = null;
 
-          // Tìm timeslot gốc để lấy StartTime-EndTime
-          const originalTimeslot = timeslots.find(
+          // Thử tìm theo TimeslotID số trước
+          originalTimeslot = timeslots.find(
             (t) =>
               normalizeTimeslotId(t.TimeslotID || t.id) === normalizedTimeslotID
           );
+
+          // Nếu không tìm thấy và timeslotID là string format "HH:mm-HH:mm", parse và tìm theo StartTime-EndTime
+          if (
+            !originalTimeslot &&
+            typeof timeslotID === "string" &&
+            timeslotID.includes("-")
+          ) {
+            let [startTimeRaw, endTimeRaw] = timeslotID.split("-");
+
+            startTimeRaw = startTimeRaw.trim(); // "08:30"
+            endTimeRaw = endTimeRaw.trim(); // "10:00"
+
+            const startTime = `${startTimeRaw}:00`; // "08:30:00"
+            const endTime = `${endTimeRaw}:00`; // "10:00:00"
+            originalTimeslot = timeslots.find((t) => {
+              const tStart = normalizeTimeString(
+                t.StartTime || t.startTime || ""
+              );
+              const tEnd = normalizeTimeString(t.EndTime || t.endTime || "");
+          
+              return tStart === startTime && tEnd === endTime;
+            });
+          }
 
           if (!originalTimeslot) continue;
 
@@ -1654,35 +1494,14 @@ const ClassWizard = ({
             originalTimeslot.TimeslotID || originalTimeslot.id;
 
           // Tìm timeslot cho ngày này có cùng StartTime-EndTime (để check conflict)
-          // Ưu tiên tìm timeslot có Day khớp với ngày đó
-          let dayTimeslot = timeslots.find((t) => {
-            const startTime = normalizeTimeString(
-              t.StartTime || t.startTime || ""
-            );
-            const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
-            const timeslotDay = t.Day || t.day;
-            return (
-              startTime === selectedStartTime &&
-              endTime === selectedEndTime &&
-              timeslotDay === currentDateDay
-            );
+          // Dùng utility function để tránh lặp lại logic
+          const dayTimeslot = findTimeslotForDay({
+            timeslots,
+            selectedStartTime,
+            selectedEndTime,
+            targetDay: currentDateDay,
+            normalizeTimeString,
           });
-
-          // Nếu không tìm thấy timeslot có Day khớp, tìm timeslot không có Day
-          if (!dayTimeslot) {
-            dayTimeslot = timeslots.find((t) => {
-              const startTime = normalizeTimeString(
-                t.StartTime || t.startTime || ""
-              );
-              const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
-              const timeslotDay = t.Day || t.day;
-              return (
-                startTime === selectedStartTime &&
-                endTime === selectedEndTime &&
-                !timeslotDay
-              );
-            });
-          }
 
           // Dùng TimeslotID gốc, nhưng dùng dayTimeslot (nếu tìm thấy) để lấy thông tin StartTime/EndTime
           // Nếu không tìm thấy dayTimeslot, dùng originalTimeslot
@@ -1746,6 +1565,7 @@ const ClassWizard = ({
             });
             sessionsCreated++;
             validTimeslotsCount++;
+           
           }
 
           // Kiểm tra lại sau khi tạo để đảm bảo không tạo thừa
@@ -1756,10 +1576,6 @@ const ClassWizard = ({
 
         // Nếu không có timeslot nào cho ngày này (do không tìm thấy trong danh sách timeslots)
         if (validTimeslotsForDay.length === 0 && dayTimeslotIDs.length > 0) {
-          console.warn(
-            `generatePreviewSessions: Ngày ${currentDateStr} (${currentDateDay}) không tìm thấy timeslot nào trong danh sách. ` +
-              `Các timeslot IDs được chọn: ${dayTimeslotIDs.join(", ")}`
-          );
         }
       }
 
@@ -1767,7 +1583,6 @@ const ClassWizard = ({
       if (sessionsCreated >= maxSessions) {
         break;
       }
-
       // Chuyển sang ngày tiếp theo
       currentDate.setDate(currentDate.getDate() + 1);
     }
@@ -1806,10 +1621,8 @@ const ClassWizard = ({
         // Kiểm tra xem ngày này có trong lịch học không (daysOfWeek)
         if (daysOfWeek.includes(extendedDayOfWeek)) {
           const dayTimeslotIDs = timeslotsByDay[extendedDayOfWeek] || [];
-          const year = extendedDate.getFullYear();
-          const month = String(extendedDate.getMonth() + 1).padStart(2, "0");
-          const day = String(extendedDate.getDate()).padStart(2, "0");
-          const extendedDateStr = `${year}-${month}-${day}`;
+          // ✅ Dùng utility function để tránh lặp lại logic
+          const extendedDateStr = formatDateToString(extendedDate);
 
           // Tạo TẤT CẢ các ca học trong ngày này (tịnh tiến theo toàn bộ lịch học)
           for (const timeslotID of dayTimeslotIDs) {
@@ -1993,45 +1806,23 @@ const ClassWizard = ({
     setFormData((prev) => ({ ...prev, sessions: sessionData }));
   };
 
-  // Hàm tính ngày kết thúc tự động
-  // Dựa trên: số buổi học, timeslotsByDay (số ca mỗi ngày), ngày bắt đầu, và ngày học trong tuần
-  // Logic cũ: Hỗ trợ multiple timeslots cho mỗi ngày (không dùng cho DRAFT)
-  // Logic mới: Với DRAFT chỉ có một timeslot duy nhất, nhưng hàm này vẫn hỗ trợ multiple timeslots
-  //   cho trường hợp edit lịch không phải DRAFT (cho phép chọn timeslot linh hoạt)
+  // ✅ Hàm tính ngày kết thúc: endDatePlan = startDatePlan + (Numofsession / số ca/tuần, tối thiểu 2)
   const calculateEndDate = (
     startDate,
     numOfSessions,
-    timeslotsByDay,
-    daysOfWeek,
-    timeslots = []
+    timeslotsByDay = {},
+    daysOfWeek = []
   ) => {
-    if (
-      !startDate ||
-      !numOfSessions ||
-      !timeslotsByDay ||
-      Object.keys(timeslotsByDay).length === 0 ||
-      daysOfWeek.length === 0
-    ) {
+    if (!startDate || !numOfSessions) {
       return "";
     }
 
     // Parse startDate đúng cách để tránh timezone issues
-    let start;
-    if (typeof startDate === "string") {
-      const startParts = startDate.split("-");
-      if (startParts.length === 3) {
-        start = new Date(
-          parseInt(startParts[0], 10),
-          parseInt(startParts[1], 10) - 1,
-          parseInt(startParts[2], 10)
-        );
-      } else {
-        start = new Date(startDate);
-      }
-    } else {
-      start = new Date(startDate);
+    // ✅ Dùng utility function để tránh lặp lại logic
+    const start = parseDateString(startDate);
+    if (!start) {
+      return "";
     }
-    start.setHours(0, 0, 0, 0);
 
     const totalSessions = parseInt(numOfSessions);
 
@@ -2039,158 +1830,29 @@ const ClassWizard = ({
       return "";
     }
 
-    // Tính tổng số ca mỗi tuần từ timeslotsByDay
-    // Logic cũ: Hỗ trợ multiple timeslots cho mỗi ngày (không dùng cho DRAFT)
-    // Logic mới: Với DRAFT chỉ có một timeslot duy nhất, nhưng logic này vẫn hỗ trợ multiple timeslots
-    //   cho trường hợp edit lịch không phải DRAFT (cho phép chọn timeslot linh hoạt)
+    // ✅ Tính số ca/tuần từ TimeslotsByDay và DaysOfWeek
     let sessionsPerWeek = 0;
-    daysOfWeek.forEach((dayOfWeek) => {
-      const dayTimeslots = timeslotsByDay[dayOfWeek] || [];
-      sessionsPerWeek += dayTimeslots.length;
-    });
-
-    if (sessionsPerWeek === 0) {
-      return "";
+    if (
+      timeslotsByDay &&
+      Object.keys(timeslotsByDay).length > 0 &&
+      daysOfWeek.length > 0
+    ) {
+      sessionsPerWeek = calculateSessionsPerWeek(daysOfWeek, timeslotsByDay);
     }
 
-    // Tính số tuần cần thiết (làm tròn lên)
-    const weeksNeeded = Math.ceil(totalSessions / sessionsPerWeek);
+    // ✅ Số ca/tuần tối thiểu là 2
+    sessionsPerWeek = Math.max(sessionsPerWeek, 1);
 
-    // Tìm ngày học cuối cùng bằng cách duyệt qua từng ngày
-    let sessionsCreated = 0;
-    let currentDate = new Date(start);
-    let lastSessionDate = null; // Khởi tạo null để check xem có tạo được session nào không
-    const maxDate = new Date(start);
-    maxDate.setDate(maxDate.getDate() + weeksNeeded * 7 + 7); // Thêm buffer 1 tuần
+    // ✅ Tính số tuần: số tuần = Numofsession / số ca/tuần
+    const weeksNeeded = totalSessions / sessionsPerWeek;
 
-    // Duyệt qua từng ngày từ ngày bắt đầu
-    while (sessionsCreated < totalSessions && currentDate <= maxDate) {
-      // Convert getDay() (0-6, 0=CN) sang format của daysOfWeek
-      // getDay() trả về: 0=CN, 1=T2, 2=T3, 3=T4, 4=T5, 5=T6, 6=T7
-      // daysOfWeek có thể là: 0=CN, 1=T2, 2=T3, 3=T4, 4=T5, 5=T6, 6=T7 (format 0-6)
-      // HOẶC: 1=T2, 2=T3, 3=T4, 4=T5, 5=T6, 6=T7 (format 1-6, bỏ CN)
-      const dayOfWeekJS = currentDate.getDay(); // 0-6, 0=CN, 1=T2, ..., 6=T7
+    // ✅ Tính endDate = startDate + số tuần
+    const endDate = new Date(start);
+    endDate.setDate(endDate.getDate() + weeksNeeded * 7);
+    endDate.setHours(23, 59, 59, 999); // Đảm bảo 23:59:59 để không mất buổi cuối
 
-      // Kiểm tra xem daysOfWeek dùng format nào
-      const hasSunday = daysOfWeek.includes(0);
-      let dayOfWeek = dayOfWeekJS;
-
-      // Nếu daysOfWeek không chứa 0 (CN) và currentDate là CN, thì skip
-      if (!hasSunday && dayOfWeekJS === 0) {
-        currentDate.setDate(currentDate.getDate() + 1);
-        continue;
-      }
-
-      // Nếu daysOfWeek dùng format 1-6 (không có CN), convert: 1-6 giữ nguyên, 0 -> skip
-      // Nếu daysOfWeek dùng format 0-6 (có CN), giữ nguyên
-      // Hiện tại daysOfWeek dùng format 0-6 (0=CN, 1=T2, ..., 6=T7), nên giữ nguyên
-
-      // Nếu là ngày học trong tuần
-      if (daysOfWeek.includes(dayOfWeek)) {
-        const dayTimeslotIDs = timeslotsByDay[dayOfWeek] || [];
-
-        // Mỗi ca học trong ngày này = 1 session
-        if (dayTimeslotIDs.length > 0) {
-          // Validate Date khớp với Day của Timeslots trước khi tính
-          // Format date string đúng cách (YYYY-MM-DD) để tránh timezone issues
-          const year = currentDate.getFullYear();
-          const month = String(currentDate.getMonth() + 1).padStart(2, "0");
-          const day = String(currentDate.getDate()).padStart(2, "0");
-          const currentDateStr = `${year}-${month}-${day}`;
-          const currentDateDay = getDayFromDate(currentDateStr);
-
-          // Đếm số timeslots hợp lệ (tìm timeslot cho ngày đó có cùng StartTime-EndTime)
-          let validTimeslotsCount = 0;
-          dayTimeslotIDs.forEach((timeslotID) => {
-            // Tìm timeslot gốc để lấy StartTime-EndTime
-            const originalTimeslot = timeslots.find(
-              (t) => (t.TimeslotID || t.id) === timeslotID
-            );
-            if (!originalTimeslot) return;
-
-            const selectedStartTime = normalizeTimeString(
-              originalTimeslot.StartTime || originalTimeslot.startTime || ""
-            );
-            const selectedEndTime = normalizeTimeString(
-              originalTimeslot.EndTime || originalTimeslot.endTime || ""
-            );
-
-            // Tìm timeslot cho ngày này có cùng StartTime-EndTime
-            // Ưu tiên tìm timeslot có Day khớp với ngày đó
-            let dayTimeslot = timeslots.find((t) => {
-              const startTime = normalizeTimeString(
-                t.StartTime || t.startTime || ""
-              );
-              const endTime = normalizeTimeString(t.EndTime || t.endTime || "");
-              const timeslotDay = t.Day || t.day;
-              return (
-                startTime === selectedStartTime &&
-                endTime === selectedEndTime &&
-                timeslotDay === currentDateDay
-              );
-            });
-
-            // Nếu không tìm thấy timeslot có Day khớp, tìm timeslot không có Day
-            if (!dayTimeslot) {
-              dayTimeslot = timeslots.find((t) => {
-                const startTime = normalizeTimeString(
-                  t.StartTime || t.startTime || ""
-                );
-                const endTime = normalizeTimeString(
-                  t.EndTime || t.endTime || ""
-                );
-                const timeslotDay = t.Day || t.day;
-                return (
-                  startTime === selectedStartTime &&
-                  endTime === selectedEndTime &&
-                  !timeslotDay
-                );
-              });
-            }
-
-            // Nếu tìm thấy timeslot hợp lệ cho ngày này, đếm vào
-            if (dayTimeslot) {
-              validTimeslotsCount++;
-            }
-          });
-
-          // Tính số ca sẽ tạo trong ngày này (chỉ tính các timeslots hợp lệ)
-          const sessionsToAdd = validTimeslotsCount;
-
-          // Nếu thêm các ca này sẽ vượt quá tổng số buổi, chỉ lấy số ca cần thiết
-          if (sessionsToAdd > 0) {
-            if (sessionsCreated + sessionsToAdd <= totalSessions) {
-              // Có thể thêm tất cả các ca trong ngày này
-              lastSessionDate = new Date(currentDate);
-              sessionsCreated += sessionsToAdd;
-            } else {
-              // Chỉ có thể thêm một phần các ca trong ngày này
-              // Vẫn cập nhật lastSessionDate vì đây là ngày có buổi cuối cùng
-              lastSessionDate = new Date(currentDate);
-              sessionsCreated = totalSessions; // Đặt bằng totalSessions để dừng
-              break;
-            }
-          }
-        }
-      }
-
-      // Chuyển sang ngày tiếp theo
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Nếu không tạo được session nào, trả về rỗng hoặc tính toán dựa trên weeksNeeded
-    if (lastSessionDate === null) {
-      // Fallback: tính toán dựa trên weeksNeeded
-      const fallbackEndDate = new Date(start);
-      fallbackEndDate.setDate(fallbackEndDate.getDate() + weeksNeeded * 7);
-      return fallbackEndDate.toISOString().split("T")[0];
-    }
-
-    // Thêm 1 ngày vào ngày của buổi cuối cùng để có ngày kết thúc
-    const endDate = new Date(lastSessionDate);
-    endDate.setDate(endDate.getDate() + 1);
-
-    return endDate.toISOString().split("T")[0];
+    // ✅ Dùng utility function để tránh lặp lại logic
+    return formatDateToString(endDate);
   };
 
   // Logic cũ: Lọc timeslots theo Day cho từng ngày trong tuần (không dùng cho logic mới)
@@ -2319,8 +1981,7 @@ const ClassWizard = ({
         formData.scheduleDetail.OpendatePlan,
         formData.schedule.Numofsession,
         formData.scheduleDetail.TimeslotsByDay,
-        formData.scheduleDetail.DaysOfWeek,
-        timeslots
+        formData.scheduleDetail.DaysOfWeek
       );
 
       if (
@@ -2364,12 +2025,14 @@ const ClassWizard = ({
         setLoadingBlockedDays(true);
 
         // Tính endDate - nếu chưa có thì ước tính dựa trên số buổi học
+        // ✅ Dùng utility function để tránh lặp lại logic
         let endDate = formData.scheduleDetail.EnddatePlan;
         if (!endDate && formData.schedule.Numofsession) {
-          const estimatedWeeks = Math.max(formData.schedule.Numofsession, 12); // Tối thiểu 12 tuần
-          endDate = dayjs(scheduleStartDate)
-            .add(estimatedWeeks, "week")
-            .format("YYYY-MM-DD");
+          endDate = estimateEndDate(
+            scheduleStartDate,
+            formData.schedule.Numofsession,
+            12 // Tối thiểu 12 tuần
+          );
         }
 
         if (!endDate) {
@@ -2386,11 +2049,17 @@ const ClassWizard = ({
           let hasTimeslot = false;
           (formData.scheduleDetail.DaysOfWeek || []).forEach((dayOfWeek) => {
             const dayTimeslots = timeslotsByDayOfWeek[dayOfWeek] || [];
-            const ids = dayTimeslots.map(
-              (ts) => ts.TimeslotID || ts.id || ts.timeslotId
-            );
-            timeslotsByDayForAPI[dayOfWeek] = ids;
-            if (Array.isArray(ids) && ids.length > 0) {
+            // ✅ Chỉ lấy TimeslotID là số nguyên, bỏ qua string "HH:mm-HH:mm"
+            const ids = dayTimeslots
+              .map((ts) => {
+                const id = ts.TimeslotID || ts.id || ts.timeslotId;
+                // Chỉ lấy nếu là số nguyên dương
+                const numId = parseInt(id, 10);
+                return !isNaN(numId) && numId > 0 ? numId : null;
+              })
+              .filter((id) => id !== null);
+            if (ids.length > 0) {
+              timeslotsByDayForAPI[dayOfWeek] = ids;
               hasTimeslot = true;
             }
           });
@@ -2401,34 +2070,37 @@ const ClassWizard = ({
             return;
           }
 
-          console.log("🔍 analyzeBlockedDays called with:", {
-            hasScheduleCoreInfo,
-            hasSelectedDays,
-            timeslotsByDayForAPI,
-            InstructorID: formData.InstructorID,
-            DaysOfWeek: formData.scheduleDetail.DaysOfWeek,
-            startDate,
-          });
+          // ✅ Đảm bảo Numofsession là số nguyên
+          const numOfSessions =
+            parseInt(formData.schedule.Numofsession, 10) || 12;
+          if (!numOfSessions || numOfSessions <= 0) {
+            setBlockedDays({});
+            setLoadingBlockedDays(false);
+            return;
+          }
+
+          // ✅ Đảm bảo OpendatePlan đúng format YYYY-MM-DD
+          const opendatePlan = startDate ? startDate.substring(0, 10) : null;
+          if (!opendatePlan || !/^\d{4}-\d{2}-\d{2}$/.test(opendatePlan)) {
+            setBlockedDays({});
+            setLoadingBlockedDays(false);
+            return;
+          }
 
           const result = await classService.analyzeBlockedDays({
-            InstructorID: formData.InstructorID,
-            OpendatePlan: startDate,
-            Numofsession: formData.schedule.Numofsession || 12,
-            DaysOfWeek: formData.scheduleDetail.DaysOfWeek,
+            InstructorID: parseInt(formData.InstructorID, 10),
+            OpendatePlan: opendatePlan,
+            Numofsession: numOfSessions,
+            DaysOfWeek: formData.scheduleDetail.DaysOfWeek || [],
             TimeslotsByDay: timeslotsByDayForAPI,
           });
 
-          console.log("📊 analyzeBlockedDays result:", result);
-
           if (result && result.blockedDays) {
-            console.log("✅ Setting blockedDays:", result.blockedDays);
             setBlockedDays(result.blockedDays);
           } else {
-            console.log("❌ No blockedDays in result, setting empty");
             setBlockedDays({});
           }
         } catch (error) {
-          console.error("Error analyzing blocked days:", error);
           setBlockedDays({});
           setBlockedDaysError("Không thể phân tích lịch bận của giảng viên.");
         } finally {
@@ -2592,7 +2264,6 @@ const ClassWizard = ({
         // Force re-render grid khi instructorBusySchedule thay đổi - Không dùng cho logic mới
         // setGridRefreshKey((prev) => prev + 1);
       } catch (error) {
-        console.error("Error loading instructor schedule:", error);
         // Không throw error để không làm gián đoạn flow
         setInstructorBusySchedule([]);
         setParttimeAvailableSlotKeys([]);
@@ -2700,7 +2371,6 @@ const ClassWizard = ({
 
       return null; // Không tìm thấy ngày hợp lệ
     } catch (error) {
-      console.error("Error finding valid start date:", error);
       return null;
     }
   };
@@ -2731,12 +2401,27 @@ const ClassWizard = ({
       const endDate = dayjs(startDate).add(totalWeeks * 7, "day");
 
       // Gọi API để kiểm tra blocked days cho khoảng thời gian này
+      // ✅ Đảm bảo TimeslotsByDay chỉ chứa số nguyên
+      const normalizedTimeslotsByDay = {};
+      Object.keys(timeslotsByDay || {}).forEach((dayKey) => {
+        const dayTimeslots = timeslotsByDay[dayKey] || [];
+        const ids = dayTimeslots
+          .map((id) => {
+            const numId = parseInt(id, 10);
+            return !isNaN(numId) && numId > 0 ? numId : null;
+          })
+          .filter((id) => id !== null);
+        if (ids.length > 0) {
+          normalizedTimeslotsByDay[dayKey] = ids;
+        }
+      });
+
       const blockedDaysResponse = await classService.analyzeBlockedDays({
-        InstructorID: instructorId,
+        InstructorID: parseInt(instructorId, 10),
         OpendatePlan: dayjs(startDate).format("YYYY-MM-DD"),
-        Numofsession: numOfSessions,
-        DaysOfWeek: daysOfWeek,
-        TimeslotsByDay: timeslotsByDay,
+        Numofsession: parseInt(numOfSessions, 10),
+        DaysOfWeek: daysOfWeek || [],
+        TimeslotsByDay: normalizedTimeslotsByDay,
       });
       const blockedDaysResult =
         blockedDaysResponse?.blockedDays || blockedDaysResponse || {};
@@ -2847,7 +2532,6 @@ const ClassWizard = ({
 
       return { availableSlots, totalSlots };
     } catch (error) {
-      console.error("Error checking available slots:", error);
       return { availableSlots: 0, totalSlots: 0 };
     }
   };
@@ -2949,21 +2633,19 @@ const ClassWizard = ({
 
       return suggestions;
     } catch (error) {
-      console.error("Error finding suggested start dates:", error);
       return [];
     }
   };
 
   // Tính toán số ca học mong muốn mỗi tuần (requiredSlotsPerWeek)
+  // ✅ Dùng utility function để tránh lặp lại logic
   useEffect(() => {
     if (currentStep === 3 && formData.scheduleDetail.TimeslotsByDay) {
       // Tính số ca học mong muốn từ TimeslotsByDay đã chọn
-      let totalSelectedSlots = 0;
-      formData.scheduleDetail.DaysOfWeek?.forEach((dayOfWeek) => {
-        const timeslotsForDay =
-          formData.scheduleDetail.TimeslotsByDay[dayOfWeek] || [];
-        totalSelectedSlots += timeslotsForDay.length;
-      });
+      const totalSelectedSlots = calculateSessionsPerWeek(
+        formData.scheduleDetail.DaysOfWeek,
+        formData.scheduleDetail.TimeslotsByDay
+      );
       setRequiredSlotsPerWeek(totalSelectedSlots);
       setSessionsPerWeek(totalSelectedSlots);
     } else {
@@ -3073,7 +2755,6 @@ const ClassWizard = ({
             const suggestions = result?.suggestions || result || [];
             suggestion = suggestions.length > 0 ? suggestions[0] : null;
           } catch (error) {
-            console.error("Error finding better start date:", error);
             // Fallback về null nếu có lỗi
             suggestion = null;
           }
@@ -3091,7 +2772,6 @@ const ClassWizard = ({
           });
         }
       } catch (error) {
-        console.error("Error auto checking slots:", error);
         if (!cancelled) {
           setSlotAvailabilityStatus((prev) => ({
             ...prev,
@@ -3200,33 +2880,7 @@ const ClassWizard = ({
     } else if (step === 2) {
       result = validateStep2(formData);
     } else if (step === 3) {
-      console.log(
-        "[ClassWizard] validateStep(3) - formData:",
-        JSON.stringify(formData, null, 2)
-      );
-      console.log(
-        "[ClassWizard] validateStep(3) - previewSessions:",
-        previewSessions
-      );
-      console.log(
-        "[ClassWizard] validateStep(3) - previewSessions.length:",
-        previewSessions?.length || 0
-      );
-      console.log(
-        "[ClassWizard] validateStep(3) - formData.sessions:",
-        formData.sessions
-      );
-      console.log(
-        "[ClassWizard] validateStep(3) - formData.sessions.length:",
-        formData.sessions?.length || 0
-      );
-
       result = validateStep3(formData, previewSessions);
-
-      console.log(
-        "[ClassWizard] validateStep(3) - result:",
-        JSON.stringify(result, null, 2)
-      );
 
       // Thêm validation: Phải chọn ít nhất 1 ca học
       const hasSelectedTimeslot =
@@ -3236,21 +2890,11 @@ const ClassWizard = ({
             formData.scheduleDetail.TimeslotsByDay[dayOfWeek]?.length > 0
         );
 
-      console.log(
-        "[ClassWizard] validateStep(3) - hasSelectedTimeslot:",
-        hasSelectedTimeslot
-      );
-
       if (!hasSelectedTimeslot) {
         result.errors = result.errors || {};
         result.errors.TimeslotsByDay = "Vui lòng chọn ít nhất một ca học";
         result.isValid = false;
       }
-
-      console.log(
-        "[ClassWizard] validateStep(3) - final result:",
-        JSON.stringify(result, null, 2)
-      );
     } else {
       result = { isValid: true, errors: {} };
     }
@@ -3359,23 +3003,13 @@ const ClassWizard = ({
   };
 
   const handleSubmit = async () => {
-    console.log("[ClassWizard] ========== handleSubmit START ==========");
-    console.log("[ClassWizard] Current step:", currentStep);
-    console.log("[ClassWizard] formData:", JSON.stringify(formData, null, 2));
 
     // Bắt buộc phải hoàn thành cả 3 bước khi lưu nháp
     const step1Valid = validateStep(1);
     const step2Valid = validateStep(2);
     const step3Valid = validateStep(3);
 
-    console.log("[ClassWizard] Validation results:", {
-      step1Valid,
-      step2Valid,
-      step3Valid,
-    });
-
     if (!step1Valid || !step2Valid || !step3Valid) {
-      console.warn("[ClassWizard] Validation failed, returning early");
       // Nếu chưa hoàn thành bước 3, chuyển đến bước 3 để người dùng hoàn thành
       if (!step3Valid && currentStep < 3) {
         setCurrentStep(3);
@@ -3385,7 +3019,6 @@ const ClassWizard = ({
 
     // Logic mới: Không cho submit nếu có buổi trùng
     if (hasDuplicateSessions) {
-      console.warn("[ClassWizard] Has duplicate sessions, returning early");
       setErrors((prev) => ({
         ...prev,
         preview:
@@ -3396,9 +3029,6 @@ const ClassWizard = ({
     }
 
     if (hasParttimeAvailabilityIssue) {
-      console.warn(
-        "[ClassWizard] Has parttime availability issue, returning early"
-      );
       setErrors((prev) => ({
         ...prev,
         preview: parttimeAvailabilityError,
@@ -3409,18 +3039,12 @@ const ClassWizard = ({
 
     // Đảm bảo có sessions trước khi submit
     if (!formData.sessions || formData.sessions.length === 0) {
-      console.warn("[ClassWizard] No sessions found, returning early");
-      console.warn("[ClassWizard] formData.sessions:", formData.sessions);
       setErrors({
         preview: "Vui lòng hoàn thành bước 3 để tạo lịch học chi tiết",
       });
       setCurrentStep(3);
       return;
     }
-
-    console.log(
-      "[ClassWizard] All validations passed, proceeding to build submitData"
-    );
 
     // Kiểm tra InstructorID
     if (!formData.InstructorID) {
@@ -3467,22 +3091,6 @@ const ClassWizard = ({
       return;
     }
 
-    if (!formData.ZoomID || !formData.ZoomID.trim()) {
-      setErrors({
-        ZoomID: "Zoom ID là bắt buộc",
-      });
-      setCurrentStep(1);
-      return;
-    }
-
-    if (!formData.Zoompass || !formData.Zoompass.trim()) {
-      setErrors({
-        Zoompass: "Mật khẩu Zoom là bắt buộc",
-      });
-      setCurrentStep(1);
-      return;
-    }
-
     // Validate sessions trước khi submit
     if (!formData.sessions || formData.sessions.length === 0) {
       setErrors({
@@ -3519,8 +3127,6 @@ const ClassWizard = ({
       OpendatePlan: formData.schedule.OpendatePlan,
       Numofsession: parseInt(formData.schedule.Numofsession),
       Maxstudent: parseInt(formData.Maxstudent),
-      ZoomID: formData.ZoomID.trim(),
-      Zoompass: formData.Zoompass.trim(),
       EnddatePlan: formData.scheduleDetail.EnddatePlan,
       Status: "DRAFT",
       // Luôn gửi sessions khi lưu nháp - với đầy đủ thông tin bao gồm InstructorID
@@ -3536,19 +3142,11 @@ const ClassWizard = ({
 
           // Validate Date format
           if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-            console.warn(
-              `Session ${index + 1} has invalid Date format:`,
-              session.Date
-            );
             return null;
           }
 
           // Validate TimeslotID
           if (isNaN(timeslotId) || timeslotId <= 0) {
-            console.warn(
-              `Session ${index + 1} has invalid TimeslotID:`,
-              session.TimeslotID
-            );
             return null;
           }
 
@@ -3561,11 +3159,6 @@ const ClassWizard = ({
             if (timeslotDay) {
               const sessionDay = getDayFromDate(dateStr);
               if (sessionDay !== timeslotDay) {
-                console.warn(
-                  `Session ${
-                    index + 1
-                  }: Date ${dateStr} (${sessionDay}) không khớp với Timeslot Day (${timeslotDay}). Session này có thể bị từ chối bởi backend.`
-                );
                 // Vẫn gửi nhưng cảnh báo - backend sẽ xử lý
               }
             }
@@ -3595,18 +3188,6 @@ const ClassWizard = ({
         .filter((s) => s !== null), // Loại bỏ sessions null
     };
 
-    console.log("Submitting class with sessions:", {
-      classInfo: {
-        Name: submitData.Name,
-        InstructorID: submitData.InstructorID,
-        OpendatePlan: submitData.OpendatePlan,
-        EnddatePlan: submitData.EnddatePlan,
-        Numofsession: submitData.Numofsession,
-      },
-      sessionsCount: submitData.sessions.length,
-      sessions: submitData.sessions,
-    });
-
     // Nếu đang submit từ bước 2 (edit mode), đợi onSubmit hoàn thành rồi mới hiện modal chuyển hướng
     const wasSubmittingFromStep2 = submittingFromStep2;
     if (wasSubmittingFromStep2) {
@@ -3622,7 +3203,6 @@ const ClassWizard = ({
         setRedirectModal({ open: true, classId });
       }
     } catch (error) {
-      console.error("Error submitting class:", error);
       // Nếu có lỗi, không hiện modal chuyển hướng
       // Error sẽ được xử lý bởi CreateClassPage
     }
@@ -3880,11 +3460,6 @@ const ClassWizard = ({
             : null,
       };
 
-      console.log(
-        "[handleSearchAlternativeStartDate] Sending payload:",
-        payload
-      );
-
       const result = await classService.searchTimeslots(payload);
 
       const suggestions = result?.suggestions || result || [];
@@ -3898,7 +3473,6 @@ const ClassWizard = ({
         showResults: true,
       });
     } catch (error) {
-      console.error("Error searching alternative start dates:", error);
       setAlternativeStartDateSearch({
         loading: false,
         suggestions: [],
@@ -4062,6 +3636,7 @@ const ClassWizard = ({
               availableDaysForTimeslot={availableDaysForTimeslot}
               selectedTimeslotIds={selectedTimeslotIds}
               setSelectedTimeslotIds={setSelectedTimeslotIds}
+              setReloadAvailableDays={setReloadAvailableDays}
               alternativeStartDateSearch={alternativeStartDateSearch}
               setAlternativeStartDateSearch={setAlternativeStartDateSearch}
               handleSearchAlternativeStartDate={
@@ -4519,7 +4094,6 @@ const ClassWizard = ({
                     // Gọi handleSubmit để lưu thay đổi (async, sẽ đợi trong handleSubmit)
                     await handleSubmit();
                   } catch (error) {
-                    console.error("Error in confirm edit:", error);
                     alert("Có lỗi khi lưu thay đổi. Vui lòng thử lại.");
                   }
                 }}
@@ -4821,7 +4395,6 @@ const ClassWizard = ({
                       open: false,
                     });
                   } catch (error) {
-                    console.error("Error deleting sessions:", error);
                     alert("Có lỗi khi xóa các buổi học. Vui lòng thử lại.");
                   }
                 }}

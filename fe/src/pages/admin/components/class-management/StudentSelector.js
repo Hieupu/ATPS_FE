@@ -36,25 +36,33 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
       console.warn("enrolledStudents is not an array:", enrolled);
       return [];
     }
-    
+
     // Debug log
     console.log("Class enrolledStudents:", enrolled);
     console.log("All learners count:", allLearners?.length || 0);
-    
+
     // Nếu là mảng objects (enrollments), lấy LearnerID từ mỗi object
-    if (enrolled.length > 0 && typeof enrolled[0] === 'object' && enrolled[0] !== null) {
+    if (
+      enrolled.length > 0 &&
+      typeof enrolled[0] === "object" &&
+      enrolled[0] !== null
+    ) {
       const ids = enrolled
-        .map(enrollment => {
-          const id = enrollment.LearnerID || enrollment.Learner?.LearnerID || enrollment.LearnerID || enrollment.id;
+        .map((enrollment) => {
+          const id =
+            enrollment.LearnerID ||
+            enrollment.Learner?.LearnerID ||
+            enrollment.LearnerID ||
+            enrollment.id;
           return id;
         })
-        .filter(id => id !== undefined && id !== null);
+        .filter((id) => id !== undefined && id !== null);
       console.log("Extracted learner IDs from enrollments:", ids);
       return ids;
     }
-    
+
     // Nếu là mảng IDs, trả về trực tiếp
-    const ids = enrolled.filter(id => id !== undefined && id !== null);
+    const ids = enrolled.filter((id) => id !== undefined && id !== null);
     console.log("Using enrolled as IDs:", ids);
     return ids;
   }, [classData.enrolledStudents, allLearners]);
@@ -65,24 +73,33 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
       console.warn("allLearners is not an array:", allLearners);
       return [];
     }
-    
+
     const filtered = allLearners.filter((learner) => {
       if (!learner) return false;
       const learnerId = learner.LearnerID || learner.id;
       // So sánh với nhiều cách để tránh type mismatch
-      const isEnrolled = enrolledStudentIds.some(id => 
-        id === learnerId ||
-        id === parseInt(learnerId) ||
-        parseInt(id) === learnerId ||
-        String(id) === String(learnerId) ||
-        Number(id) === Number(learnerId)
+      const isEnrolled = enrolledStudentIds.some(
+        (id) =>
+          id === learnerId ||
+          id === parseInt(learnerId) ||
+          parseInt(id) === learnerId ||
+          String(id) === String(learnerId) ||
+          Number(id) === Number(learnerId)
       );
       return isEnrolled;
     });
-    
-    console.log(`Found ${filtered.length} enrolled learners out of ${allLearners.length} total learners`);
-    console.log("Enrolled learners:", filtered.map(l => ({ id: l.LearnerID || l.id, name: l.FullName || l.fullName })));
-    
+
+    console.log(
+      `Found ${filtered.length} enrolled learners out of ${allLearners.length} total learners`
+    );
+    console.log(
+      "Enrolled learners:",
+      filtered.map((l) => ({
+        id: l.LearnerID || l.id,
+        name: l.FullName || l.fullName,
+      }))
+    );
+
     return filtered;
   }, [allLearners, enrolledStudentIds]);
 
@@ -93,7 +110,7 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
     const email = learner.Email || learner.email || "";
     const phone = learner.Phone || learner.phone || "";
     const searchLower = searchTerm.toLowerCase();
-    
+
     return (
       fullName.toLowerCase().includes(searchLower) ||
       email.toLowerCase().includes(searchLower) ||
@@ -120,11 +137,15 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
     if (!selectedLearner) return;
     const learnerId = selectedLearner.LearnerID || selectedLearner.id;
     const confirmed = window.confirm(
-      `Bạn có chắc muốn xóa học viên "${selectedLearner.FullName || selectedLearner.fullName}" khỏi lớp học này?`
+      `Bạn có chắc muốn xóa học viên "${
+        selectedLearner.FullName || selectedLearner.fullName
+      }" khỏi lớp học này?`
     );
     if (confirmed) {
       // Xóa khỏi danh sách enrolled
-      const updatedEnrolled = enrolledStudentIds.filter(id => id !== learnerId);
+      const updatedEnrolled = enrolledStudentIds.filter(
+        (id) => id !== learnerId
+      );
       onUpdate(updatedEnrolled);
       handleMenuClose();
     }
@@ -141,7 +162,9 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
         <div className="selector-header">
           <div>
             <h2>Quản lý học viên</h2>
-            <p className="class-name">{classData.Name || classData.title || ""}</p>
+            <p className="class-name">
+              {classData.Name || classData.title || ""}
+            </p>
           </div>
           <button className="close-btn" onClick={onClose} title="Đóng">
             ×
@@ -156,12 +179,15 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
             </div>
             <div className="stat-divider">/</div>
             <div className="stat-item">
-              <span className="stat-value">{classData.Maxstudent || classData.MaxLearners || classData.maxLearners || classData.maxStudents || 0}</span>
+              <span className="stat-value">
+                {classData.Maxstudent || classData.maxStudents || 0}
+              </span>
               <span className="stat-label">Sĩ số tối đa</span>
             </div>
             <div className="stat-item">
               <span className="stat-value">
-                {(classData.Maxstudent || classData.MaxLearners || classData.maxLearners || classData.maxStudents || 0) - enrolledLearners.length}
+                {(classData.Maxstudent || classData.maxStudents || 0) -
+                  enrolledLearners.length}
               </span>
               <span className="stat-label">Còn lại</span>
             </div>
@@ -190,7 +216,7 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                     const fullName = learner.FullName || learner.fullName || "";
                     const email = learner.Email || learner.email || "";
                     const phone = learner.Phone || learner.phone || "";
-                    
+
                     return (
                       <div key={learnerId} className="student-card enrolled">
                         <div className="student-info">
@@ -199,12 +225,8 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                           </div>
                           <div className="student-details">
                             <div className="student-name">{fullName}</div>
-                            <div className="student-contact">
-                              {email}
-                            </div>
-                            <div className="student-contact">
-                              {phone}
-                            </div>
+                            <div className="student-contact">{email}</div>
+                            <div className="student-contact">{phone}</div>
                           </div>
                         </div>
                         <IconButton
@@ -286,14 +308,21 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                       mr: 2,
                     }}
                   >
-                    {(selectedLearner.FullName || selectedLearner.fullName || "?")[0]}
+                    {
+                      (selectedLearner.FullName ||
+                        selectedLearner.fullName ||
+                        "?")[0]
+                    }
                   </Box>
                   <Box>
                     <Typography variant="h6">
-                      {selectedLearner.FullName || selectedLearner.fullName || ""}
+                      {selectedLearner.FullName ||
+                        selectedLearner.fullName ||
+                        ""}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                      ID: {selectedLearner.LearnerID || selectedLearner.id || ""}
+                      ID:{" "}
+                      {selectedLearner.LearnerID || selectedLearner.id || ""}
                     </Typography>
                   </Box>
                 </Box>
@@ -302,20 +331,25 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Email sx={{ color: "#64748b" }} />
                     <Typography variant="body1">
-                      <strong>Email:</strong> {selectedLearner.Email || selectedLearner.email || ""}
+                      <strong>Email:</strong>{" "}
+                      {selectedLearner.Email || selectedLearner.email || ""}
                     </Typography>
                   </Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Phone sx={{ color: "#64748b" }} />
                     <Typography variant="body1">
-                      <strong>Số điện thoại:</strong> {selectedLearner.Phone || selectedLearner.phone || ""}
+                      <strong>Số điện thoại:</strong>{" "}
+                      {selectedLearner.Phone || selectedLearner.phone || ""}
                     </Typography>
                   </Box>
                   {selectedLearner.DateOfBirth && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <CalendarToday sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
-                        <strong>Ngày sinh:</strong> {selectedLearner.DateOfBirth || selectedLearner.dateOfBirth || ""}
+                        <strong>Ngày sinh:</strong>{" "}
+                        {selectedLearner.DateOfBirth ||
+                          selectedLearner.dateOfBirth ||
+                          ""}
                       </Typography>
                     </Box>
                   )}
@@ -323,7 +357,10 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Person sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
-                        <strong>Địa chỉ:</strong> {selectedLearner.Address || selectedLearner.address || ""}
+                        <strong>Địa chỉ:</strong>{" "}
+                        {selectedLearner.Address ||
+                          selectedLearner.address ||
+                          ""}
                       </Typography>
                     </Box>
                   )}
@@ -331,7 +368,8 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Person sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
-                        <strong>Nghề nghiệp:</strong> {selectedLearner.Job || selectedLearner.job || ""}
+                        <strong>Nghề nghiệp:</strong>{" "}
+                        {selectedLearner.Job || selectedLearner.job || ""}
                       </Typography>
                     </Box>
                   )}

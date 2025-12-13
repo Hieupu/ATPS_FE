@@ -121,9 +121,7 @@ const InstructorLeavePage = () => {
         params.EndDate = appliedFilters.endDate;
       }
 
-      console.log("[InstructorLeavePage] Fetching leaves with params:", params);
       const result = await classService.getInstructorLeaves(params);
-      console.log("[InstructorLeavePage] Leaves response:", result);
       setLeaves(result?.items || []);
       setPagination(result?.pagination || pagination);
       setPage(result?.pagination?.page || pageToLoad);
@@ -167,7 +165,6 @@ const InstructorLeavePage = () => {
     )
       return;
     try {
-      console.log("[InstructorLeavePage] Deleting leaves for date:", date);
       const result = await classService.deleteLeavesByDate(date, "HOLIDAY");
       alert(result?.message || `Đã xóa ${result?.deleted || 0} lịch nghỉ`);
       fetchLeaves(page);
@@ -381,11 +378,10 @@ const InstructorLeavePage = () => {
       >
         <Box>
           <Typography variant="h5" fontWeight={700}>
-            Quản lý lịch nghỉ và lịch tự chọn của giảng viên
+            Quản lý lịch nghỉ của giảng viên
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Theo dõi và quản lý các ngày nghỉ, ngày dạy tự chọn của giảng viên,
-            đảm bảo lịch học không bị gián đoạn.
+            Theo dõi và quản lý các ngày nghỉ lễ của giảng viên.
           </Typography>
         </Box>
         <Box sx={{ display: "flex", gap: 1 }}>

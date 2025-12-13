@@ -1,20 +1,14 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
-  Grid,
-  Card,
-  CardContent,
   Typography,
   Button,
   Chip,
-  IconButton,
   TextField,
   InputAdornment,
   Tabs,
   Tab,
-  LinearProgress,
-  Menu,
-  MenuItem,
   Paper,
   Dialog,
   DialogTitle,
@@ -30,20 +24,10 @@ import {
   Snackbar,
   Alert,
   Autocomplete,
+  Stack,
+  Pagination,
 } from "@mui/material";
-import {
-  Search,
-  FilterList,
-  MoreVert,
-  People,
-  Schedule,
-  PlayCircle,
-  Delete,
-  Visibility,
-  CheckCircle,
-  HourglassEmpty,
-  Class,
-} from "@mui/icons-material";
+import { Search, CheckCircle, Delete, Class } from "@mui/icons-material";
 import {
   getCoursesForAdmin,
   updateCourseStatus,
@@ -51,39 +35,68 @@ import {
   checkCourseInUse,
 } from "../../../apiServices/courseService";
 import instructorService from "../../../apiServices/instructorServicead";
+import CoursesCardList from "../components/course/CoursesCardList";
+import CourseReview from "../../instructor/components/course/CourseReview";
 import "./style.css";
 
 export default function CoursesPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlInstructorId = searchParams.get("instructorId");
+
   const [tabValue, setTabValue] = useState(0);
-  const [anchorEl, setAnchorEl] = useState(null);
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [appliedSearchQuery, setAppliedSearchQuery] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
   const [showClassesDialog, setShowClassesDialog] = useState(false);
   const [courseClasses, setCourseClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+  const [previewCourse, setPreviewCourse] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success",
   });
   const [instructors, setInstructors] = useState([]);
-  const [selectedInstructor, setSelectedInstructor] = useState(null);
-  const [appliedInstructor, setAppliedInstructor] = useState(null);
+  const [instructorInput, setInstructorInput] = useState(
+    urlInstructorId || "all"
+  );
+  const [instructorFilter, setInstructorFilter] = useState(
+    urlInstructorId || "all"
+  );
+  const [page, setPage] = useState(1);
+  const pageSize = 6;
 
   useEffect(() => {
     loadCourses();
     loadInstructors();
   }, []);
 
+  // Sync filters with URL params
+  useEffect(() => {
+    if (urlInstructorId) {
+      setInstructorFilter(urlInstructorId);
+      setInstructorInput(urlInstructorId);
+    } else {
+      setInstructorFilter("all");
+      setInstructorInput("all");
+    }
+  }, [urlInstructorId]);
+
   const loadInstructors = async () => {
     try {
-      const data = await instructorService.getAllInstructors();
+      // Sử dụng getAllInstructorsAdmin để lấy tất cả giảng viên (không giới hạn)
+      const data = await instructorService.getAllInstructorsAdmin();
       setInstructors(data || []);
     } catch (error) {
-      console.error("Unable to load instructors", error);
+      try {
+        const fallbackData = await instructorService.getAllInstructors();
+        setInstructors(fallbackData || []);
+      } catch (fallbackError) {
+        setInstructors([]);
+      }
     }
   };
 
@@ -103,7 +116,6 @@ export default function CoursesPage() {
 
       setCourses(filtered);
     } catch (error) {
-      console.error("Error loading courses:", error);
       setCourses([]);
       setSnackbar({
         open: true,
@@ -124,13 +136,42 @@ export default function CoursesPage() {
   const getStatus = (course) =>
     (course.Status || course.status || "").toUpperCase();
 
+  // Handle search and filters
+  const applyFilters = () => {
+    setSearchTerm(searchInput);
+    setInstructorFilter(instructorInput);
+
+    // Update URL with filters
+    const newParams = new URLSearchParams();
+    if (instructorInput && instructorInput !== "all") {
+      newParams.set("instructorId", instructorInput);
+    }
+    setSearchParams(newParams);
+  };
+
+  const resetFilters = () => {
+    setSearchInput("");
+    setSearchTerm("");
+    setInstructorInput("all");
+    setInstructorFilter("all");
+
+    // Navigate to base URL without query params
+    navigate("/admin/courses");
+  };
+
+  const handleSearchKeyPress = (e) => {
+    if (e.key === "Enter") {
+      applyFilters();
+    }
+  };
+
   // Filter courses by tab
   const getFilteredCourses = () => {
     let filtered = displayCourses;
 
-    // Apply search filter (chỉ áp dụng khi có appliedSearchQuery)
-    if (appliedSearchQuery.trim()) {
-      const query = appliedSearchQuery.toLowerCase();
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const query = searchTerm.toLowerCase();
       filtered = filtered.filter(
         (c) =>
           (c.Title || c.title || "").toLowerCase().includes(query) ||
@@ -141,10 +182,9 @@ export default function CoursesPage() {
       );
     }
 
-    // Apply instructor filter (chỉ áp dụng khi có appliedInstructor)
-    if (appliedInstructor) {
-      const instructorId =
-        appliedInstructor.InstructorID || appliedInstructor.instructorId;
+    // Apply instructor filter
+    if (instructorFilter && instructorFilter !== "all") {
+      const instructorId = parseInt(instructorFilter);
       filtered = filtered.filter((c) => {
         const courseInstructorId =
           c.InstructorID ||
@@ -173,57 +213,26 @@ export default function CoursesPage() {
     }
   };
 
-  const handleMenuOpen = (event, course) => {
-    setAnchorEl(event.currentTarget);
-    setSelectedCourse(course);
-  };
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, instructorFilter, tabValue]);
 
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-    setSelectedCourse(null);
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toUpperCase()) {
-      case "ACTIVE":
-      case "APPROVED":
-      case "PUBLISHED":
-        return { bg: "#dcfce7", color: "#16a34a" };
-      case "COMPLETED":
-        return { bg: "#dbeafe", color: "#2563eb" };
-      case "DRAFT":
-        return { bg: "#fef3c7", color: "#d97706" };
-      case "IN_REVIEW":
-        return { bg: "#e0e7ff", color: "#6366f1" };
-      default:
-        return { bg: "#f1f5f9", color: "#64748b" };
+  const handlePreview = async (course) => {
+    try {
+      // Admin sử dụng trực tiếp dữ liệu từ danh sách courses đã có
+      // Dữ liệu này đã được lấy từ getCoursesForAdmin() nên đầy đủ thông tin
+      setPreviewCourse(course);
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể tải chi tiết khóa học";
+      setSnackbar({
+        open: true,
+        message: errorMessage,
+        severity: "error",
+      });
     }
-  };
-
-  const getStatusIcon = (status) => {
-    switch (status?.toUpperCase()) {
-      case "ACTIVE":
-      case "APPROVED":
-      case "PUBLISHED":
-        return <CheckCircle sx={{ fontSize: 16 }} />;
-      case "COMPLETED":
-        return <CheckCircle sx={{ fontSize: 16 }} />;
-      case "DRAFT":
-      case "IN_REVIEW":
-        return <HourglassEmpty sx={{ fontSize: 16 }} />;
-      default:
-        return null;
-    }
-  };
-
-  const handlePreview = (course) => {
-    // TODO: Implement preview functionality
-    console.log("Preview course:", course);
-    setSnackbar({
-      open: true,
-      message: "Chức năng preview sẽ được triển khai sau",
-      severity: "info",
-    });
   };
 
   const handleApprove = async (course, action) => {
@@ -259,7 +268,6 @@ export default function CoursesPage() {
       });
       loadCourses();
     } catch (error) {
-      console.error("Error approving course:", error);
       setSnackbar({
         open: true,
         message:
@@ -305,7 +313,6 @@ export default function CoursesPage() {
       });
       loadCourses();
     } catch (error) {
-      console.error("Error updating course status:", error);
       setSnackbar({
         open: true,
         message:
@@ -319,12 +326,12 @@ export default function CoursesPage() {
 
   const handleViewClasses = async (course) => {
     try {
+      setSelectedCourse(course);
       setLoadingClasses(true);
       setShowClassesDialog(true);
       const data = await getCourseClasses(course.CourseID || course.courseId);
       setCourseClasses(Array.isArray(data) ? data : []);
     } catch (error) {
-      console.error("Error loading classes:", error);
       setCourseClasses([]);
       setSnackbar({
         open: true,
@@ -346,113 +353,131 @@ export default function CoursesPage() {
     (c) => getStatus(c) === "IN_REVIEW"
   ).length;
 
-  return (
-    <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
-      {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box
-          sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 3,
-          }}
-        >
-          <Box>
-            <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-              Quản lý khóa học
-            </Typography>
-            <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Quản lý, theo dõi khóa học trong hệ thống
-            </Typography>
-          </Box>
-        </Box>
+  const filteredCourses = getFilteredCourses();
+  const totalPages = Math.ceil(filteredCourses.length / pageSize);
+  const paginatedCourses = filteredCourses.slice(
+    (page - 1) * pageSize,
+    page * pageSize
+  );
 
-        {/* Search & Filter */}
-        <Box sx={{ display: "flex", gap: 2, mb: 3, flexWrap: "wrap" }}>
-          <TextField
-            placeholder="Tra cứu theo tên khóa học..."
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            sx={{
-              flex: 1,
-              minWidth: 250,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: "#fff",
-              },
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <Search sx={{ color: "#94a3b8" }} />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Autocomplete
-            options={instructors}
-            getOptionLabel={(option) =>
-              `${option.FullName || option.fullName || ""} - ${
-                option.Major || option.major || ""
-              }`
+  return (
+    <Box sx={{ p: 3, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
+      {/* Header */}
+      <Paper
+        elevation={0}
+        sx={{
+          p: 3,
+          mb: 3,
+          background: "linear-gradient(135deg, #8b47d6 0%, #5a95ff 100%)",
+          color: "white",
+          borderRadius: 2,
+        }}
+      >
+        <Box>
+          <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
+            Quản lý khóa học
+          </Typography>
+          <Typography variant="body2" sx={{ opacity: 0.9 }}>
+            Quản lý, theo dõi khóa học trong hệ thống
+          </Typography>
+        </Box>
+      </Paper>
+
+      {/* Search & Filter */}
+      <Box
+        sx={{
+          display: "flex",
+          gap: 2,
+          mb: 3,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <TextField
+          placeholder="Tìm kiếm khóa học (tên, mô tả)..."
+          size="small"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onKeyPress={handleSearchKeyPress}
+          sx={{
+            flex: 1,
+            minWidth: 250,
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+              backgroundColor: "#fff",
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <Search sx={{ color: "#94a3b8" }} />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <Autocomplete
+          size="small"
+          options={[
+            { InstructorID: "all", FullName: "Tất cả giảng viên" },
+            ...instructors,
+          ]}
+          getOptionLabel={(option) =>
+            typeof option === "string"
+              ? option
+              : option.FullName || option.fullName || ""
+          }
+          value={
+            instructorInput === "all"
+              ? { InstructorID: "all", FullName: "Tất cả giảng viên" }
+              : instructors.find(
+                  (i) => i.InstructorID === parseInt(instructorInput)
+                ) || { InstructorID: "all", FullName: "Tất cả giảng viên" }
+          }
+          onChange={(event, newValue) => {
+            if (newValue) {
+              setInstructorInput(
+                newValue.InstructorID === "all"
+                  ? "all"
+                  : newValue.InstructorID.toString()
+              );
+            } else {
+              setInstructorInput("all");
             }
-            value={selectedInstructor}
-            onChange={(event, newValue) => {
-              setSelectedInstructor(newValue);
-            }}
-            size="small"
-            sx={{
-              minWidth: 250,
-              "& .MuiOutlinedInput-root": {
-                borderRadius: 2,
-                backgroundColor: "#fff",
-              },
-            }}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                placeholder="Chọn giảng viên..."
-                label="Giảng viên"
-              />
-            )}
-            isOptionEqualToValue={(option, value) =>
-              option.InstructorID === value?.InstructorID
-            }
-          />
+          }}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Giảng viên"
+              placeholder="Tìm kiếm giảng viên..."
+              sx={{
+                minWidth: 200,
+                "& .MuiOutlinedInput-root": {
+                  borderRadius: 2,
+                  backgroundColor: "#fff",
+                },
+              }}
+            />
+          )}
+          isOptionEqualToValue={(option, value) =>
+            option.InstructorID === value.InstructorID
+          }
+        />
+        <Stack direction="row" spacing={1}>
           <Button
-            variant="outlined"
-            startIcon={<FilterList />}
-            onClick={() => {
-              // Áp dụng filter khi nhấn nút "Lọc"
-              setAppliedSearchQuery(searchQuery);
-              setAppliedInstructor(selectedInstructor);
-            }}
+            variant="contained"
+            onClick={applyFilters}
             sx={{
               borderRadius: 2,
               textTransform: "none",
-              borderColor: "#e2e8f0",
-              color: "#64748b",
-              "&:hover": {
-                borderColor: "#667eea",
-                backgroundColor: "#f0f4ff",
-              },
+              px: 3,
             }}
           >
-            Lọc
+            Áp dụng
           </Button>
-          {(appliedInstructor || appliedSearchQuery.trim()) && (
+          {(searchTerm || instructorFilter !== "all") && (
             <Button
               variant="outlined"
-              color="secondary"
-              onClick={() => {
-                // Xóa cả input và applied filter
-                setSelectedInstructor(null);
-                setSearchQuery("");
-                setAppliedInstructor(null);
-                setAppliedSearchQuery("");
-              }}
+              onClick={resetFilters}
               sx={{
                 borderRadius: 2,
                 textTransform: "none",
@@ -461,39 +486,46 @@ export default function CoursesPage() {
               Xóa lọc
             </Button>
           )}
-        </Box>
-
-        {/* Tabs */}
-        <Tabs
-          value={tabValue}
-          onChange={(e, newValue) => setTabValue(newValue)}
-          sx={{
-            "& .MuiTab-root": {
-              textTransform: "none",
-              fontWeight: 600,
-              fontSize: "14px",
-              minHeight: "48px",
-            },
-            "& .Mui-selected": {
-              color: "#667eea",
-            },
-            "& .MuiTabs-indicator": {
-              backgroundColor: "#667eea",
-            },
-          }}
-        >
-          <Tab label={`Tất cả (${displayCourses.length})`} />
-          <Tab label={`Đã duyệt (${approvedCount})`} />
-          <Tab label={`Chờ duyệt (${inReviewCount})`} />
-        </Tabs>
+        </Stack>
       </Box>
 
-      {/* Course Grid */}
+      {/* Tabs */}
+      <Tabs
+        value={tabValue}
+        onChange={(e, newValue) => setTabValue(newValue)}
+        sx={{
+          mb: 3,
+          "& .MuiTab-root": {
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: "14px",
+            minHeight: "48px",
+          },
+          "& .Mui-selected": {
+            color: "#667eea",
+          },
+          "& .MuiTabs-indicator": {
+            backgroundColor: "#667eea",
+          },
+        }}
+      >
+        <Tab label={`Tất cả (${displayCourses.length})`} />
+        <Tab label={`Đã duyệt (${approvedCount})`} />
+        <Tab label={`Chờ duyệt (${inReviewCount})`} />
+      </Tabs>
+
+      {/* Course Review Dialog */}
+      <CourseReview
+        course={previewCourse}
+        onClose={() => setPreviewCourse(null)}
+      />
+
+      {/* Course List */}
       {loading ? (
         <Box sx={{ textAlign: "center", py: 8 }}>
           <Typography sx={{ color: "#64748b" }}>Loading courses...</Typography>
         </Box>
-      ) : getFilteredCourses().length === 0 ? (
+      ) : filteredCourses.length === 0 ? (
         <Paper
           sx={{
             p: 8,
@@ -506,378 +538,42 @@ export default function CoursesPage() {
             No courses found
           </Typography>
           <Typography variant="body2" sx={{ color: "#94a3b8", mb: 3 }}>
-            {searchQuery
+            {searchTerm
               ? "Thử điều chỉnh từ khóa tìm kiếm"
               : "Chưa có khóa học nào"}
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
-          {getFilteredCourses().map((course, index) => (
-            <Grid
-              item
-              xs={12}
-              sm={6}
-              md={4}
-              lg={3}
-              key={
-                course.CourseID ||
-                course.courseId ||
-                course.id ||
-                `course-${index}`
-              }
-            >
-              <Card
-                sx={{
-                  borderRadius: 3,
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "translateY(-4px)",
-                    boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
-                  },
-                }}
-              >
-                {/* Thumbnail */}
-                <Box
-                  sx={{
-                    height: 160,
-                    background: `linear-gradient(135deg, ${
-                      course.thumbnail || "#667eea"
-                    } 0%, ${course.thumbnail || "#667eea"}dd 100%)`,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    position: "relative",
-                  }}
-                >
-                  <PlayCircle
-                    sx={{ fontSize: 64, color: "white", opacity: 0.9 }}
-                  />
-                  <IconButton
-                    sx={{
-                      position: "absolute",
-                      top: 8,
-                      right: 8,
-                      backgroundColor: "rgba(255,255,255,0.9)",
-                      "&:hover": { backgroundColor: "white" },
-                    }}
-                    size="small"
-                    onClick={(e) => handleMenuOpen(e, course)}
-                  >
-                    <MoreVert />
-                  </IconButton>
-                </Box>
-
-                <CardContent>
-                  {/* Status & Category */}
-                  <Box
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 2,
-                    }}
-                  >
-                    <Chip
-                      label={
-                        getStatus(course) === "IN_REVIEW"
-                          ? "Chờ duyệt"
-                          : getStatus(course) === "DRAFT"
-                          ? "Nháp"
-                          : getStatus(course) === "APPROVED"
-                          ? "Đã duyệt"
-                          : getStatus(course) === "PUBLISHED"
-                          ? "Đã xuất bản"
-                          : getStatus(course) === "DELETED"
-                          ? "Đã xóa"
-                          : course.Status || course.status || "active"
-                      }
-                      size="small"
-                      icon={getStatusIcon(course.Status || course.status)}
-                      sx={{
-                        backgroundColor: getStatusColor(
-                          course.Status || course.status || "active"
-                        ).bg,
-                        color: getStatusColor(
-                          course.Status || course.status || "active"
-                        ).color,
-                        fontWeight: 600,
-                        textTransform: "capitalize",
-                        height: 26,
-                      }}
-                    />
-                    <Chip
-                      label={course.Category || course.category || "General"}
-                      size="small"
-                      sx={{
-                        backgroundColor: "#f1f5f9",
-                        color: "#64748b",
-                        fontWeight: 500,
-                        fontSize: "11px",
-                        height: 24,
-                      }}
-                    />
-                  </Box>
-
-                  {/* Title */}
-                  <Typography
-                    variant="h6"
-                    sx={{ fontWeight: 700, mb: 1, fontSize: "16px" }}
-                  >
-                    {course.Title ||
-                      course.title ||
-                      course.Name ||
-                      course.name ||
-                      "Untitled Course"}
-                  </Typography>
-
-                  {/* Description */}
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      mb: 2,
-                      color: "#64748b",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden",
-                      lineHeight: 1.5,
-                      minHeight: "42px",
-                    }}
-                  >
-                    {course.Description ||
-                      course.description ||
-                      "No description available"}
-                  </Typography>
-
-                  {/* Stats */}
-                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                    >
-                      <People sx={{ fontSize: 16, color: "#64748b" }} />
-                      <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        {course.Students ||
-                          course.students ||
-                          course.enrollmentCount ||
-                          0}{" "}
-                        học viên
-                      </Typography>
-                    </Box>
-                    <Box
-                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
-                    >
-                      <Schedule sx={{ fontSize: 16, color: "#64748b" }} />
-                      <Typography variant="caption" sx={{ color: "#64748b" }}>
-                        {course.Duration || course.duration || 0} giờ
-                      </Typography>
-                    </Box>
-                  </Box>
-
-                  {/* Fee */}
-                  {(course.Fee || course.fee) && (
-                    <Box sx={{ mb: 2 }}>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontWeight: 600, color: "#667eea" }}
-                      >
-                        {new Intl.NumberFormat("vi-VN", {
-                          style: "currency",
-                          currency: "VND",
-                        }).format(course.Fee || course.fee)}
-                      </Typography>
-                    </Box>
-                  )}
-
-                  {/* Progress */}
-                  {course.progress !== undefined &&
-                    getStatus(course) !== "DRAFT" &&
-                    getStatus(course) !== "IN_REVIEW" && (
-                      <Box sx={{ mb: 2 }}>
-                        <Box
-                          sx={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            mb: 0.5,
-                          }}
-                        >
-                          <Typography
-                            variant="caption"
-                            sx={{ color: "#64748b" }}
-                          >
-                            Progress
-                          </Typography>
-                          <Typography
-                            variant="caption"
-                            sx={{ fontWeight: 600 }}
-                          >
-                            {course.progress}%
-                          </Typography>
-                        </Box>
-                        <LinearProgress
-                          variant="determinate"
-                          value={course.progress}
-                          sx={{
-                            height: 6,
-                            borderRadius: 3,
-                            backgroundColor: "#e2e8f0",
-                            "& .MuiLinearProgress-bar": {
-                              backgroundColor: course.thumbnail || "#667eea",
-                              borderRadius: 3,
-                            },
-                          }}
-                        />
-                      </Box>
-                    )}
-
-                  {/* Action Buttons for IN_REVIEW Courses */}
-                  {getStatus(course) === "IN_REVIEW" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<CheckCircle />}
-                        onClick={() => handleApprove(course, "APPROVE")}
-                        sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          backgroundColor: "#10b981",
-                          "&:hover": {
-                            backgroundColor: "#059669",
-                          },
-                        }}
-                      >
-                        Duyệt
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Delete />}
-                        onClick={() => handleApprove(course, "REJECT")}
-                        sx={{
-                          textTransform: "none",
-                          borderColor: "#ef4444",
-                          color: "#ef4444",
-                          "&:hover": {
-                            borderColor: "#dc2626",
-                            backgroundColor: "#fef2f2",
-                          },
-                        }}
-                      >
-                        Từ chối
-                      </Button>
-                    </Box>
-                  )}
-
-                  {/* Action Buttons for APPROVED Courses */}
-                  {getStatus(course) === "APPROVED" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<CheckCircle />}
-                        onClick={() =>
-                          handleStatusChange(course, "PUBLISHED", "publish")
-                        }
-                        sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          backgroundColor: "#667eea",
-                          "&:hover": {
-                            backgroundColor: "#5568d3",
-                          },
-                        }}
-                      >
-                        Công khai
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<Delete />}
-                        onClick={() =>
-                          handleStatusChange(course, "DRAFT", "revert")
-                        }
-                        sx={{
-                          textTransform: "none",
-                          borderColor: "#f59e0b",
-                          color: "#f59e0b",
-                          "&:hover": {
-                            borderColor: "#d97706",
-                            backgroundColor: "#fef3c7",
-                          },
-                        }}
-                      >
-                        Về nháp
-                      </Button>
-                    </Box>
-                  )}
-
-                  {/* Action Buttons for PUBLISHED Courses */}
-                  {getStatus(course) === "PUBLISHED" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<CheckCircle />}
-                        onClick={() =>
-                          handleStatusChange(course, "APPROVED", "unpublish")
-                        }
-                        sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          borderColor: "#06b6d4",
-                          color: "#06b6d4",
-                          "&:hover": {
-                            borderColor: "#0891b2",
-                            backgroundColor: "#cffafe",
-                          },
-                        }}
-                      >
-                        Hủy công khai
-                      </Button>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-
-      {/* Course Actions Menu */}
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            borderRadius: 2,
-            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-            minWidth: 180,
-          },
-        }}
-      >
-        <MenuItem
-          onClick={() => {
-            handlePreview(selectedCourse);
-            handleMenuClose();
-          }}
-        >
-          <Visibility sx={{ fontSize: 18, mr: 1.5 }} />
-          Xem chi tiết
-        </MenuItem>
-        <MenuItem
-          onClick={() => {
-            if (selectedCourse) {
-              handleViewClasses(selectedCourse);
+        <>
+          <CoursesCardList
+            courses={paginatedCourses}
+            loading={false}
+            onPreviewCourse={handlePreview}
+            onViewClasses={handleViewClasses}
+            onApprove={handleApprove}
+            onReject={handleApprove}
+            onPublish={(course) =>
+              handleStatusChange(course, "PUBLISHED", "publish")
             }
-            handleMenuClose();
-          }}
-        >
-          <Class sx={{ fontSize: 18, mr: 1.5 }} />
-          Xem lớp học
-        </MenuItem>
-      </Menu>
+            onUnpublish={(course) =>
+              handleStatusChange(course, "APPROVED", "unpublish")
+            }
+            onRevert={(course) => handleStatusChange(course, "DRAFT", "revert")}
+            getStatus={getStatus}
+          />
+          {filteredCourses.length > pageSize && (
+            <Box sx={{ mt: 3, display: "flex", justifyContent: "center" }}>
+              <Pagination
+                count={totalPages}
+                page={page}
+                onChange={(e, value) => setPage(value)}
+                color="primary"
+                shape="rounded"
+              />
+            </Box>
+          )}
+        </>
+      )}
 
       {/* Classes Dialog */}
       <Dialog
@@ -933,7 +629,7 @@ export default function CoursesPage() {
                   {courseClasses.map((classItem) => (
                     <TableRow key={classItem.ClassID}>
                       <TableCell sx={{ fontWeight: 600 }}>
-                        {classItem.Name || "N/A"}
+                        {classItem.Name || classItem.ClassName || "N/A"}
                       </TableCell>
                       <TableCell>
                         {classItem.instructorName ||

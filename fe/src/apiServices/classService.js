@@ -9,50 +9,24 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        // Endpoint chưa có hoặc không có quyền, dùng mock data
-        return [
-          {
-            ClassID: 1,
-            Name: "JavaScript Fundamentals 2024",
-            Status: "DRAFT",
-            Fee: 2500000,
-            CourseID: 1,
-            InstructorID: 1,
-            Instructor: {
-              InstructorID: 1,
-              FullName: "Nguyễn Văn A",
-              Major: "Full Stack Development",
-            },
-            description: "Khóa học JavaScript cơ bản cho người mới bắt đầu",
-            startDate: "2024-02-01",
-            endDate: "2024-04-30",
-            enrolledStudents: [],
-            maxStudents: 30,
-          },
-          {
-            ClassID: 2,
-            Name: "React Advanced Techniques",
-            Status: "WAITING",
-            Fee: 3000000,
-            CourseID: 2,
-            InstructorID: 2,
-            Instructor: {
-              InstructorID: 2,
-              FullName: "Trần Thị B",
-              Major: "Frontend Development",
-            },
-            description: "Khóa học React nâng cao với hooks và context",
-            startDate: "2024-03-01",
-            endDate: "2024-05-30",
-            enrolledStudents: [1, 2],
-            maxStudents: 25,
-          },
-        ];
-      }
-      // Log other errors
       console.error("Get classes error:", error);
       return [];
+    }
+  },
+
+  createZoomMeeting: async (meetingData) => {
+    try {
+      const response = await apiClient.post(
+        "/zoom/create-meeting",
+        meetingData,
+        {}
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Create Zoom meeting error:", error);
+      throw (
+        error.response?.data || { message: "Failed to create Zoom meeting" }
+      );
     }
   },
 
@@ -106,26 +80,6 @@ const classService = {
       const response = await apiClient.get("/classes/instructors");
       return response.data?.data || response.data || [];
     } catch (error) {
-      // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            InstructorID: 1,
-            FullName: "Nguyễn Văn A",
-            Major: "Full Stack Development",
-          },
-          {
-            InstructorID: 2,
-            FullName: "Trần Thị B",
-            Major: "Frontend Development",
-          },
-          {
-            InstructorID: 3,
-            FullName: "Lê Văn C",
-            Major: "Backend Development",
-          },
-        ];
-      }
       console.error("Get instructors error:", error);
       return [];
     }
@@ -134,11 +88,17 @@ const classService = {
   // Lấy danh sách lớp học theo instructor ID
   getClassesByInstructorId: async (instructorId) => {
     try {
-      const response = await apiClient.get(`/classes/instructor/${instructorId}`);
+      const response = await apiClient.get(
+        `/classes/instructor/${instructorId}`
+      );
       return response.data?.data || response.data || [];
     } catch (error) {
       console.error("Get classes by instructor error:", error);
-      throw error.response?.data || { message: "Failed to fetch classes by instructor" };
+      throw (
+        error.response?.data || {
+          message: "Failed to fetch classes by instructor",
+        }
+      );
     }
   },
 
@@ -149,32 +109,23 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            CourseID: 1,
-            Title: "JavaScript Fundamentals",
-            Description: "Khóa học JavaScript cơ bản",
-            Duration: 40,
-            Fee: 2000000,
-            Status: "active",
-          },
-          {
-            CourseID: 2,
-            Title: "React Advanced",
-            Description: "Khóa học React nâng cao",
-            Duration: 50,
-            Fee: 2500000,
-            Status: "active",
-          },
-        ];
-      }
       console.error("Get courses error:", error);
       return [];
     }
   },
 
   // ========== TIMESLOT APIs ==========
+
+  // Lấy danh sách distinct StartTime và EndTime
+  getDistinctTimeRanges: async () => {
+    try {
+      const response = await apiClient.get("/timeslots/distinct-time-ranges");
+      return response.data?.data || response.data || [];
+    } catch (error) {
+      console.error("Error getting distinct time ranges:", error);
+      throw error;
+    }
+  },
 
   // Lấy danh sách ca học (timeslots)
   getAllTimeslots: async (params = {}) => {
@@ -206,47 +157,7 @@ const classService = {
       };
     } catch (error) {
       const status = error.response?.status;
-
-      if (status === 404 || status === 403) {
-        console.warn("Timeslots endpoint not available, using fallback data");
-        const fallback = [
-          {
-            TimeslotID: 1,
-            StartTime: "08:00:00",
-            EndTime: "10:00:00",
-            Day: "T2",
-          },
-          {
-            TimeslotID: 2,
-            StartTime: "14:00:00",
-            EndTime: "16:00:00",
-            Day: "T3",
-          },
-          {
-            TimeslotID: 3,
-            StartTime: "19:00:00",
-            EndTime: "21:00:00",
-            Day: "T4",
-          },
-        ];
-        return {
-          data: fallback,
-          pagination: {
-            page: 1,
-            limit: fallback.length,
-            total: fallback.length,
-            totalPages: 1,
-          },
-        };
-      }
-
       if (status === 500) {
-        console.error(
-          "Get timeslots error (500): Backend server error. Possible causes:"
-        );
-        console.error("1. Backend chưa hỗ trợ trường 'Day' mới trong timeslot");
-        console.error("2. Database chưa được cập nhật lên dbver5");
-        console.error("3. Backend có lỗi khi query timeslots");
         console.error("Error details:", error.response?.data || error.message);
         return {
           data: [],
@@ -270,42 +181,6 @@ const classService = {
     } catch (error) {
       console.error("Get timeslot error:", error);
       throw error.response?.data || { message: "Failed to fetch timeslot" };
-    }
-  },
-
-  // Tạo ca học mới
-  createTimeslot: async (timeslotData) => {
-    try {
-      const response = await apiClient.post("/timeslots", timeslotData);
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Create timeslot error:", error);
-      throw error.response?.data || { message: "Failed to create timeslot" };
-    }
-  },
-
-  // Cập nhật ca học
-  updateTimeslot: async (timeslotId, timeslotData) => {
-    try {
-      const response = await apiClient.put(
-        `/timeslots/${timeslotId}`,
-        timeslotData
-      );
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Update timeslot error:", error);
-      throw error.response?.data || { message: "Failed to update timeslot" };
-    }
-  },
-
-  // Xóa ca học
-  deleteTimeslot: async (timeslotId) => {
-    try {
-      const response = await apiClient.delete(`/timeslots/${timeslotId}`);
-      return response.data?.data || response.data;
-    } catch (error) {
-      console.error("Delete timeslot error:", error);
-      throw error.response?.data || { message: "Failed to delete timeslot" };
     }
   },
 
@@ -335,20 +210,6 @@ const classService = {
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
-      if (error.response?.status === 404 || error.response?.status === 403) {
-        return [
-          {
-            LearnerID: 1,
-            FullName: "Học viên Một",
-            Email: "hocvien1@example.com",
-          },
-          {
-            LearnerID: 2,
-            FullName: "Học viên Hai",
-            Email: "hocvien2@example.com",
-          },
-        ];
-      }
       console.error("Get learners error:", error);
       return [];
     }
@@ -471,7 +332,6 @@ const classService = {
         throw new Error(`Invalid SessionID: ${sessionId}`);
       }
 
-      console.log("Calling delete session API with ID:", sessionIdNum);
       const response = await apiClient.delete(`/sessions/${sessionIdNum}`);
       return response.data?.data || response.data;
     } catch (error) {
@@ -483,35 +343,14 @@ const classService = {
   // Bulk Create Sessions - Tạo nhiều sessions cùng lúc
   bulkCreateSessions: async (sessionsData) => {
     try {
-      console.log(
-        "Sending bulk create request with",
-        sessionsData.length,
-        "sessions"
-      );
-      console.log("First 3 sessions:", sessionsData.slice(0, 3));
-
       const response = await apiClient.post(`/sessions/bulk`, {
         sessions: sessionsData, // Array of session objects
       });
 
       // Trả về toàn bộ response để xử lý conflicts
-      console.log(
-        "Bulk create API response (full):",
-        JSON.stringify(response.data, null, 2)
-      );
-      console.log(
-        "Bulk create API response keys:",
-        Object.keys(response.data || {})
-      );
-      console.log("Bulk create API response.data:", response.data?.data);
-      console.log("Bulk create API response.status:", response.status);
-
       return response.data || response.data?.data;
     } catch (error) {
       console.error("Bulk create sessions error:", error);
-      console.error("Error response data:", error.response?.data);
-      console.error("Error message:", error.message);
-
       const errorData = error.response?.data || {};
       // Lấy error message từ nhiều nguồn: error.response.data.error, error.response.data.message, hoặc error.message
       const errorMessage =
@@ -653,6 +492,7 @@ const classService = {
     startDate,
     numSuggestions,
     excludeClassId,
+    ClassID,
   }) => {
     try {
       const params = new URLSearchParams({
@@ -669,18 +509,11 @@ const classService = {
       if (excludeClassId) {
         params.append("excludeClassId", excludeClassId);
       }
+      if (ClassID) {
+        params.append("ClassID", ClassID);
+      }
       const url = `/classes/instructor/available-slots?${params.toString()}`;
-      console.log(`[findInstructorAvailableSlots] Gọi API: ${url}`);
-      console.log(`[findInstructorAvailableSlots] Params:`, {
-        InstructorID,
-        TimeslotID,
-        Day,
-        startDate,
-        numSuggestions,
-        excludeClassId,
-      });
       const response = await apiClient.get(url);
-      console.log(`[findInstructorAvailableSlots] Response:`, response.data);
       return response.data;
     } catch (error) {
       console.error("Find instructor slots error:", error);
@@ -688,18 +521,6 @@ const classService = {
     }
   },
 
-  addMakeupSession: async (classId, payload) => {
-    try {
-      const response = await apiClient.post(
-        `/classes/${classId}/sessions/makeup`,
-        payload
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Add makeup session error:", error);
-      throw error.response?.data || { message: "Failed to add makeup session" };
-    }
-  },
 
   // Get Sessions by Date Range
   getSessionsByDateRange: async (startDate, endDate) => {
@@ -747,7 +568,6 @@ const classService = {
     } catch (error) {
       // Nếu endpoint /status không tồn tại (404), thử dùng updateClass
       if (error.response?.status === 404) {
-        console.log("Endpoint /status không tồn tại, thử dùng updateClass");
         try {
           const response = await apiClient.put(`/classes/${classId}`, {
             Status: "APPROVED",
@@ -788,12 +608,11 @@ const classService = {
     } catch (error) {
       // Nếu endpoint /review không tồn tại (404), thử dùng updateClass
       if (error.response?.status === 404) {
-        console.log("Endpoint /review không tồn tại, thử dùng updateClass");
         try {
           // Map action thành Status
           let status = "DRAFT";
-          if (action === "APPROVE") {
-            status = "APPROVED";
+          if (action === "ACTIVE") {
+            status = "ACTIVE";
           } else if (action === "REJECT") {
             status = "REJECTED";
           }
@@ -839,7 +658,6 @@ const classService = {
     } catch (error) {
       // Nếu endpoint /publish không tồn tại (404), thử dùng updateClass
       if (error.response?.status === 404) {
-        console.log("Endpoint /publish không tồn tại, thử dùng updateClass");
         try {
           const response = await apiClient.put(`/classes/${classId}`, {
             Status: "PUBLISHED",
@@ -973,9 +791,10 @@ const classService = {
   // Lấy lý do chi tiết tại sao một timeslot bị khóa
   getTimeslotLockReasons: async (params) => {
     try {
-      const response = await apiClient.get("/classes/timeslot-lock-reasons", {
-        params,
-      });
+      const response = await apiClient.post(
+        "/classes/timeslot-lock-reasons",
+        params
+      );
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get timeslot lock reasons error:", error);
@@ -1010,7 +829,6 @@ const classService = {
   // Thêm lịch nghỉ hàng loạt cho giảng viên
   addBulkInstructorLeave: async (leaveData) => {
     try {
-      console.log("[classService] addBulkInstructorLeave payload:", leaveData);
       const response = await apiClient.post(
         "/classes/instructor/leave/bulk",
         leaveData
@@ -1027,14 +845,10 @@ const classService = {
   // Lấy danh sách lịch nghỉ giảng viên
   getInstructorLeaves: async (params) => {
     try {
-      console.log("[classService] getInstructorLeaves params:", params);
       const response = await apiClient.get("/classes/instructor/leave", {
         params,
       });
-      console.log(
-        "[classService] getInstructorLeaves response:",
-        response.data
-      );
+
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get instructor leave error:", error);
@@ -1047,7 +861,6 @@ const classService = {
   // Xóa lịch nghỉ giảng viên
   deleteInstructorLeave: async (leaveId) => {
     try {
-      console.log("[classService] deleteInstructorLeave id:", leaveId);
       const response = await apiClient.delete(
         `/classes/instructor/leave/${leaveId}`
       );
@@ -1063,7 +876,6 @@ const classService = {
   // Xóa tất cả lịch nghỉ của một ngày
   deleteLeavesByDate: async (date, status = "HOLIDAY") => {
     try {
-      console.log("[classService] deleteLeavesByDate date:", date, "status:", status);
       const response = await apiClient.delete(
         `/classes/instructor/leave/date/${date}?status=${status}`
       );
@@ -1216,8 +1028,9 @@ const classService = {
     } catch (error) {
       console.error("Add holiday for all instructors error:", error);
       throw (
-        error.response?.data ||
-        { message: "Failed to add holiday for all instructors" }
+        error.response?.data || {
+          message: "Failed to add holiday for all instructors",
+        }
       );
     }
   },
@@ -1232,8 +1045,9 @@ const classService = {
     } catch (error) {
       console.error("Sync holiday for instructor error:", error);
       throw (
-        error.response?.data ||
-        { message: "Failed to sync holiday for instructor" }
+        error.response?.data || {
+          message: "Failed to sync holiday for instructor",
+        }
       );
     }
   },
@@ -1241,13 +1055,13 @@ const classService = {
   // Lấy danh sách unique DATE có Status = HOLIDAY
   getHolidayDates: async () => {
     try {
-      const response = await apiClient.get("/classes/instructor/leave/holiday-dates");
+      const response = await apiClient.get(
+        "/classes/instructor/leave/holiday-dates"
+      );
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Get holiday dates error:", error);
-      throw (
-        error.response?.data || { message: "Failed to get holiday dates" }
-      );
+      throw error.response?.data || { message: "Failed to get holiday dates" };
     }
   },
 };

@@ -16,6 +16,7 @@ import {
   RadioGroup,
   Divider,
 } from "@mui/material";
+
 import {
   Add as AddIcon,
   Delete as DeleteIcon,
@@ -49,9 +50,7 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
       { content: "", isCorrect: false },
     ],
     correctAnswer: "",
-    matchingPairs: [
-      { left: "", right: "" },
-    ],
+    matchingPairs: [{ left: "", right: "" }],
   });
 
   const [errors, setErrors] = useState({});
@@ -111,23 +110,15 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
       newErrors.content = "Nội dung câu hỏi là bắt buộc";
     }
 
-    if (!currentQuestion.type) {
-      newErrors.type = "Vui lòng chọn loại câu hỏi";
-    }
-
     switch (currentQuestion.type) {
       case "multiple_choice":
         if (currentQuestion.options.length < 2) {
           newErrors.options = "Phải có ít nhất 2 lựa chọn";
         } else {
           const hasCorrect = currentQuestion.options.some((o) => o.isCorrect);
-          if (!hasCorrect) {
-            newErrors.options = "Phải có ít nhất 1 đáp án đúng";
-          }
           const emptyOption = currentQuestion.options.some((o) => !o.content?.trim());
-          if (emptyOption) {
-            newErrors.options = "Tất cả lựa chọn phải có nội dung";
-          }
+          if (!hasCorrect) newErrors.options = "Phải có ít nhất 1 đáp án đúng";
+          if (emptyOption) newErrors.options = "Tất cả lựa chọn phải có nội dung";
         }
         break;
 
@@ -144,16 +135,10 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
         break;
 
       case "matching":
-        if (currentQuestion.matchingPairs.length === 0) {
-          newErrors.matchingPairs = "Phải có ít nhất 1 cặp ghép";
-        } else {
-          const emptyPair = currentQuestion.matchingPairs.some(
-            (p) => !p.left?.trim() || !p.right?.trim()
-          );
-          if (emptyPair) {
-            newErrors.matchingPairs = "Tất cả cặp ghép phải có nội dung";
-          }
-        }
+        const emptyPair = currentQuestion.matchingPairs.some(
+          (p) => !p.left?.trim() || !p.right?.trim()
+        );
+        if (emptyPair) newErrors.matchingPairs = "Tất cả cặp ghép phải có nội dung";
         break;
     }
 
@@ -166,13 +151,12 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
 
     const questionToAdd = {
       ...currentQuestion,
-      id: `q-${Date.now()}`,
+      id: Date.now(),  
+      QuestionID: null,
       createdAt: new Date().toISOString(),
     };
 
     setQuestions((prev) => [...prev, questionToAdd]);
-
-    // Reset form
     setCurrentQuestion({
       content: "",
       type: "multiple_choice",
@@ -186,6 +170,7 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
       correctAnswer: "",
       matchingPairs: [{ left: "", right: "" }],
     });
+
     setErrors({});
   };
 
@@ -196,32 +181,26 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
   return (
     <Box sx={{ p: 3 }}>
       <Grid container spacing={3}>
-        {/* Left Side - Form */}
         <Grid item xs={12} md={7}>
           <Paper variant="outlined" sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom fontWeight={600}>
+            <Typography variant="h6" fontWeight={600}>
               Tạo câu hỏi mới
             </Typography>
-
             <Stack spacing={3} mt={2}>
-              {/* Question Type */}
               <TextField
                 select
                 fullWidth
                 label="Loại câu hỏi *"
                 value={currentQuestion.type}
                 onChange={(e) => handleChange("type", e.target.value)}
-                error={Boolean(errors.type)}
-                helperText={errors.type}
               >
-                {QUESTION_TYPES.map((type) => (
-                  <MenuItem key={type.value} value={type.value}>
-                    {type.label}
+                {QUESTION_TYPES.map((t) => (
+                  <MenuItem key={t.value} value={t.value}>
+                    {t.label}
                   </MenuItem>
                 ))}
               </TextField>
 
-              {/* Question Content */}
               <TextField
                 fullWidth
                 multiline
@@ -229,12 +208,10 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                 label="Nội dung câu hỏi *"
                 value={currentQuestion.content}
                 onChange={(e) => handleChange("content", e.target.value)}
-                error={Boolean(errors.content)}
+                error={!!errors.content}
                 helperText={errors.content}
-                placeholder="Nhập nội dung câu hỏi..."
               />
 
-              {/* Level & Point - Using Stack for consistent spacing */}
               <Stack direction="row" spacing={2}>
                 <TextField
                   select
@@ -243,9 +220,9 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                   value={currentQuestion.level}
                   onChange={(e) => handleChange("level", e.target.value)}
                 >
-                  {QUESTION_LEVELS.map((level) => (
-                    <MenuItem key={level.value} value={level.value}>
-                      {level.label}
+                  {QUESTION_LEVELS.map((l) => (
+                    <MenuItem key={l.value} value={l.value}>
+                      {l.label}
                     </MenuItem>
                   ))}
                 </TextField>
@@ -256,83 +233,61 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                   label="Điểm"
                   value={currentQuestion.point}
                   onChange={(e) => handleChange("point", parseInt(e.target.value) || 1)}
-                  InputProps={{ inputProps: { min: 1, max: 100 } }}
                 />
               </Stack>
 
-              {/* Topic - Full width for consistency */}
               <TextField
                 fullWidth
                 label="Chủ đề (Tùy chọn)"
                 value={currentQuestion.topic}
                 onChange={(e) => handleChange("topic", e.target.value)}
-                placeholder="Ví dụ: Grammar, Vocabulary, ..."
               />
 
               <Divider />
 
-              {/* Type-specific fields */}
+              {/* MULTIPLE CHOICE */}
               {currentQuestion.type === "multiple_choice" && (
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-                    Các lựa chọn *
-                  </Typography>
-                  {errors.options && (
-                    <Typography variant="caption" color="error">
-                      {errors.options}
-                    </Typography>
-                  )}
-                  <Stack spacing={2} mt={1}>
-                    {currentQuestion.options.map((option, index) => (
-                      <Box key={index} display="flex" gap={1} alignItems="center">
-                        <FormControlLabel
-                          control={
-                            <Checkbox
-                              checked={option.isCorrect}
-                              onChange={(e) =>
-                                handleOptionChange(index, "isCorrect", e.target.checked)
-                              }
-                              color="success"
-                            />
-                          }
-                          label=""
-                        />
-                        <TextField
-                          fullWidth
-                          size="small"
-                          placeholder={`Lựa chọn ${index + 1}`}
-                          value={option.content}
-                          onChange={(e) =>
-                            handleOptionChange(index, "content", e.target.value)
-                          }
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => removeOption(index)}
-                          disabled={currentQuestion.options.length <= 2}
-                          color="error"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={addOption}
-                      variant="outlined"
-                      size="small"
-                    >
-                      Thêm lựa chọn
-                    </Button>
-                  </Stack>
-                </Box>
+                <>
+                  <Typography fontWeight={600}>Các lựa chọn *</Typography>
+
+                  {currentQuestion.options.map((opt, i) => (
+                    <Stack direction="row" spacing={1} key={i}>
+                      <Checkbox
+                        checked={opt.isCorrect}
+                        onChange={(e) =>
+                          handleOptionChange(i, "isCorrect", e.target.checked)
+                        }
+                      />
+                      <TextField
+                        fullWidth
+                        value={opt.content}
+                        onChange={(e) =>
+                          handleOptionChange(i, "content", e.target.value)
+                        }
+                        placeholder={`Lựa chọn ${i + 1}`}
+                      />
+                      <IconButton
+                        disabled={currentQuestion.options.length <= 2}
+                        onClick={() => removeOption(i)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
+                  ))}
+
+                  <Button onClick={addOption} startIcon={<AddIcon />}>
+                    Thêm lựa chọn
+                  </Button>
+
+                  {errors.options && <Typography color="error">{errors.options}</Typography>}
+                </>
               )}
 
+              {/* TRUE / FALSE */}
               {currentQuestion.type === "true_false" && (
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-                    Đáp án đúng *
-                  </Typography>
+                <>
+                  <Typography fontWeight={600}>Đáp án đúng</Typography>
                   <RadioGroup
                     value={currentQuestion.correctAnswer}
                     onChange={(e) => handleChange("correctAnswer", e.target.value)}
@@ -340,142 +295,105 @@ const CreateQuestionTab = ({ questions, setQuestions }) => {
                     <FormControlLabel value="true" control={<Radio />} label="True" />
                     <FormControlLabel value="false" control={<Radio />} label="False" />
                   </RadioGroup>
-                  {errors.correctAnswer && (
-                    <Typography variant="caption" color="error">
-                      {errors.correctAnswer}
-                    </Typography>
-                  )}
-                </Box>
-              )}
 
+                  {errors.correctAnswer && (
+                    <Typography color="error">{errors.correctAnswer}</Typography>
+                  )}
+                </>
+              )}
               {currentQuestion.type === "fill_in_blank" && (
                 <TextField
                   fullWidth
                   label="Đáp án đúng *"
                   value={currentQuestion.correctAnswer}
-                  onChange={(e) => handleChange("correctAnswer", e.target.value)}
-                  error={Boolean(errors.correctAnswer)}
-                  helperText={errors.correctAnswer || "Nhập đáp án điền vào chỗ trống"}
-                  placeholder="Ví dụ: Paris"
+                  onChange={(e) =>
+                    handleChange("correctAnswer", e.target.value)
+                  }
+                  error={!!errors.correctAnswer}
+                  helperText={errors.correctAnswer}
                 />
               )}
 
               {currentQuestion.type === "matching" && (
-                <Box>
-                  <Typography variant="subtitle2" gutterBottom fontWeight={600}>
-                    Các cặp ghép *
-                  </Typography>
+                <>
+                  <Typography fontWeight={600}>Các cặp ghép *</Typography>
+
+                  {currentQuestion.matchingPairs.map((p, i) => (
+                    <Stack direction="row" spacing={1} key={i}>
+                      <TextField
+                        value={p.left}
+                        onChange={(e) =>
+                          handleMatchingChange(i, "left", e.target.value)
+                        }
+                        placeholder="Cột A"
+                      />
+                      <Typography>↔</Typography>
+                      <TextField
+                        value={p.right}
+                        onChange={(e) =>
+                          handleMatchingChange(i, "right", e.target.value)
+                        }
+                        placeholder="Cột B"
+                      />
+                      <IconButton
+                        disabled={currentQuestion.matchingPairs.length <= 1}
+                        onClick={() => removeMatchingPair(i)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
+                  ))}
+
+                  <Button onClick={addMatchingPair} startIcon={<AddIcon />}>
+                  </Button>
+
                   {errors.matchingPairs && (
-                    <Typography variant="caption" color="error">
-                      {errors.matchingPairs}
-                    </Typography>
+                    <Typography color="error">{errors.matchingPairs}</Typography>
                   )}
-                  <Stack spacing={2} mt={1}>
-                    {currentQuestion.matchingPairs.map((pair, index) => (
-                      <Box key={index} display="flex" gap={1} alignItems="center">
-                        <TextField
-                          size="small"
-                          placeholder="Cột A"
-                          value={pair.left}
-                          onChange={(e) =>
-                            handleMatchingChange(index, "left", e.target.value)
-                          }
-                          sx={{ flex: 1 }}
-                        />
-                        <Typography>↔</Typography>
-                        <TextField
-                          size="small"
-                          placeholder="Cột B"
-                          value={pair.right}
-                          onChange={(e) =>
-                            handleMatchingChange(index, "right", e.target.value)
-                          }
-                          sx={{ flex: 1 }}
-                        />
-                        <IconButton
-                          size="small"
-                          onClick={() => removeMatchingPair(index)}
-                          color="error"
-                        >
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Box>
-                    ))}
-                    <Button
-                      startIcon={<AddIcon />}
-                      onClick={addMatchingPair}
-                      variant="outlined"
-                      size="small"
-                    >
-                      Thêm cặp ghép
-                    </Button>
-                  </Stack>
-                </Box>
+                </>
               )}
-
-              {(currentQuestion.type === "essay" || currentQuestion.type === "speaking") && (
-                <Box
-                  sx={{
-                    p: 2,
-                    bgcolor: "#f5f5f5",
-                    borderRadius: 1,
-                    textAlign: "center",
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    {currentQuestion.type === "essay"
-                      ? "Câu hỏi tự luận sẽ được chấm thủ công"
-                      : "Câu hỏi Speaking sẽ yêu cầu học viên ghi âm"}
-                  </Typography>
-                </Box>
-              )}
-
-              {/* Add Button */}
               <Button
                 fullWidth
                 variant="contained"
-                startIcon={<SaveIcon />}
                 onClick={handleAddQuestion}
-                size="large"
+                startIcon={<SaveIcon />}
               >
                 Lưu câu hỏi
               </Button>
             </Stack>
           </Paper>
         </Grid>
-
-        {/* Right Side - Preview Questions */}
         <Grid item xs={12} md={5}>
-          <Paper variant="outlined" sx={{ p: 3, position: "sticky", top: 16 }}>
-            <Typography variant="h6" gutterBottom fontWeight={600}>
+          <Paper variant="outlined" sx={{ p: 3 }}>
+            <Typography fontWeight={600}>
               Câu hỏi đã tạo ({questions.length})
             </Typography>
 
             {questions.length === 0 ? (
-              <Box sx={{ textAlign: "center", py: 4 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Chưa có câu hỏi nào
-                </Typography>
-              </Box>
+              <Typography mt={3} textAlign="center">
+                Chưa có câu hỏi nào
+              </Typography>
             ) : (
-              <Stack spacing={2} mt={2} sx={{ maxHeight: 500, overflowY: "auto" }}>
-                {questions.map((q, index) => (
-                  <Paper key={q.id} variant="outlined" sx={{ p: 2 }}>
-                    <Stack direction="row" justifyContent="space-between" alignItems="flex-start">
-                      <Box flex={1}>
-                        <Typography variant="body2" fontWeight={600} gutterBottom>
-                          Q{index + 1}. {q.content.substring(0, 60)}
+              <Stack spacing={2} mt={2}>
+                {questions.map((q, i) => (
+                  <Paper key={q.id} sx={{ p: 2 }}>
+                    <Stack direction="row" justifyContent="space-between">
+                      <Box>
+                        <Typography fontWeight={600}>
+                          Q{i + 1}. {q.content.slice(0, 60)}
                           {q.content.length > 60 && "..."}
                         </Typography>
-                        <Stack direction="row" spacing={1} mt={1} flexWrap="wrap" useFlexGap>
-                          <Chip label={q.type} size="small" color="primary" variant="outlined" />
-                          <Chip label={q.level} size="small" variant="outlined" />
-                          {q.topic && <Chip label={q.topic} size="small" variant="outlined" />}
-                          <Chip label={`${q.point} điểm`} size="small" variant="outlined" />
+
+                        <Stack direction="row" spacing={1} mt={1}>
+                          <Chip size="small" label={q.type} />
+                          <Chip size="small" label={q.level} />
+                          <Chip size="small" label={`${q.point} điểm`} />
                         </Stack>
                       </Box>
-                      <IconButton size="small" onClick={() => removeQuestion(index)} color="error">
-                        <DeleteIcon fontSize="small" />
+
+                      <IconButton color="error" onClick={() => removeQuestion(i)}>
+                        <DeleteIcon />
                       </IconButton>
                     </Stack>
                   </Paper>

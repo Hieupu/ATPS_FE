@@ -13,7 +13,6 @@ import {
   Select,
   MenuItem,
   FormControl,
-  Chip,
   Paper,
   CircularProgress,
   Alert,
@@ -23,8 +22,7 @@ import {
 import { ChevronLeft, ChevronRight, ArrowBack } from "@mui/icons-material";
 import dayjs from "dayjs";
 import classService from "../../../apiServices/classService";
-import instructorService from "../../../apiServices/instructorService";
-import { getDayFromDate } from "../../../utils/validate";
+import { getAttendanceByInstructorApi } from "../../../apiServices/attendanceService";
 
 const InstructorSchedulePage = () => {
   const [searchParams] = useSearchParams();
@@ -37,7 +35,9 @@ const InstructorSchedulePage = () => {
   const [sessions, setSessions] = useState([]);
   const [leaves, setLeaves] = useState([]);
   const [timeslots, setTimeslots] = useState([]);
+  const [attendanceData, setAttendanceData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Lấy timeslots từ API
   useEffect(() => {
@@ -46,7 +46,7 @@ const InstructorSchedulePage = () => {
         const response = await classService.getAllTimeslots({ limit: 500 });
         setTimeslots(response?.data || []);
       } catch (error) {
-        console.error("Error loading timeslots:", error);
+        // Silent fail for timeslots
       }
     };
     loadTimeslots();
@@ -59,6 +59,7 @@ const InstructorSchedulePage = () => {
     const loadSchedule = async () => {
       try {
         setLoading(true);
+        setError(null);
 
         // Tính toán date range cho tuần hiện tại
         const weekStart = getWeekStart(currentDate);
@@ -69,52 +70,89 @@ const InstructorSchedulePage = () => {
         const endDateStr = dayjs(weekEnd).format("YYYY-MM-DD");
 
         // Lấy sessions
-        const sessionsData = await classService.getSessionsByInstructorId(
-          instructorId
-        );
-        console.log("[InstructorSchedulePage] All sessions:", sessionsData);
+        let sessionsData = [];
+        try {
+          sessionsData = await classService.getSessionsByInstructorId(
+            instructorId
+          );
+
+          // Normalize data structure
+          if (sessionsData?.data && Array.isArray(sessionsData.data)) {
+            sessionsData = sessionsData.data;
+          } else if (!Array.isArray(sessionsData)) {
+            sessionsData = [];
+          }
+        } catch (sessionError) {
+          // Kiểm tra nếu là lỗi connection
+          if (
+            sessionError?.code === "ERR_NETWORK" ||
+            sessionError?.message?.includes("CONNECTION_REFUSED") ||
+            sessionError?.message?.includes("Network Error")
+          ) {
+            setError(
+              "Không thể kết nối đến server. Vui lòng kiểm tra backend server đã được khởi động chưa."
+            );
+            setSessions([]);
+            setLeaves([]);
+            setAttendanceData([]);
+            return;
+          }
+          sessionsData = [];
+        }
 
         // Filter sessions trong tuần hiện tại
         const filteredSessions = (sessionsData || []).filter((session) => {
+          if (!session.Date) return false;
           const sessionDate = dayjs(session.Date).startOf("day");
           const start = dayjs(weekStart).startOf("day");
           const end = dayjs(weekEnd).startOf("day");
-          const inRange =
-            !sessionDate.isBefore(start) && !sessionDate.isAfter(end);
-          if (inRange) {
-            console.log("[InstructorSchedulePage] Session in range:", session);
-          }
-          return inRange;
+          return !sessionDate.isBefore(start) && !sessionDate.isAfter(end);
         });
-        console.log(
-          "[InstructorSchedulePage] Filtered sessions:",
-          filteredSessions
-        );
         setSessions(filteredSessions);
 
         // Lấy leaves
-        const leavesData = await classService.getInstructorLeaves({
-          InstructorID: instructorId,
-          StartDate: startDateStr,
-          EndDate: endDateStr,
-          limit: 1000,
-        });
-        console.log("[InstructorSchedulePage] Leaves data:", leavesData);
-        // Xử lý nhiều cấu trúc response có thể có
         let leavesItems = [];
-        if (leavesData?.data?.items) {
-          leavesItems = leavesData.data.items;
-        } else if (leavesData?.items) {
-          leavesItems = leavesData.items;
-        } else if (Array.isArray(leavesData)) {
-          leavesItems = leavesData;
-        } else if (leavesData?.data && Array.isArray(leavesData.data)) {
-          leavesItems = leavesData.data;
+        try {
+          const leavesData = await classService.getInstructorLeaves({
+            InstructorID: instructorId,
+            StartDate: startDateStr,
+            EndDate: endDateStr,
+            limit: 1000,
+          });
+
+          // Xử lý nhiều cấu trúc response có thể có
+          if (leavesData?.data?.items) {
+            leavesItems = leavesData.data.items;
+          } else if (leavesData?.items) {
+            leavesItems = leavesData.items;
+          } else if (Array.isArray(leavesData)) {
+            leavesItems = leavesData;
+          } else if (leavesData?.data && Array.isArray(leavesData.data)) {
+            leavesItems = leavesData.data;
+          }
+        } catch (leaveError) {
+          // Không block nếu lỗi leaves
+          leavesItems = [];
         }
-        console.log("[InstructorSchedulePage] Leaves items:", leavesItems);
         setLeaves(leavesItems);
+
+        // Lấy attendance data (optional - không block nếu lỗi)
+        try {
+          const attendanceResponse = await getAttendanceByInstructorApi(
+            instructorId
+          );
+          const attendanceList =
+            attendanceResponse?.data || attendanceResponse || [];
+          setAttendanceData(attendanceList);
+        } catch (attendanceError) {
+          // Không hiển thị lỗi nếu 404 - có thể chưa có attendance data
+          setAttendanceData([]);
+        }
       } catch (error) {
-        console.error("Error loading instructor schedule:", error);
+        setError(
+          error?.message ||
+            "Có lỗi xảy ra khi tải lịch giảng dạy. Vui lòng thử lại."
+        );
       } finally {
         setLoading(false);
       }
@@ -215,12 +253,6 @@ const InstructorSchedulePage = () => {
   const scheduleGrid = useMemo(() => {
     const grid = {};
 
-    console.log("[InstructorSchedulePage] Building schedule grid:", {
-      sessionsCount: sessions.length,
-      leavesCount: leaves.length,
-      timeSlotsCount: timeSlots.length,
-    });
-
     // Tạo map TimeslotID -> timeslot data để lookup nhanh
     const timeslotMap = new Map();
     timeslots.forEach((ts) => {
@@ -233,6 +265,17 @@ const InstructorSchedulePage = () => {
       // Lấy 5 ký tự đầu (HH:mm)
       return timeStr.substring(0, 5);
     };
+
+    const attendanceMap = new Map();
+    attendanceData.forEach((attendance) => {
+      const sessionId = attendance.SessionID;
+      if (sessionId) {
+        if (!attendanceMap.has(sessionId)) {
+          attendanceMap.set(sessionId, []);
+        }
+        attendanceMap.get(sessionId).push(attendance);
+      }
+    });
 
     // Thêm sessions vào grid
     sessions.forEach((session) => {
@@ -260,26 +303,33 @@ const InstructorSchedulePage = () => {
         if (slotIndex !== -1) {
           const key = `${dateStr}-${slotIndex}`;
           if (!grid[key]) grid[key] = [];
+
+          const attendances = attendanceMap.get(session.SessionID) || [];
+          const attendance = attendances.length > 0 ? attendances[0] : null;
+
           grid[key].push({
             type: "session",
             ...session,
-          });
-          console.log(
-            `[InstructorSchedulePage] Added session to grid: ${key}`,
-            session
-          );
-        } else {
-          console.log(`[InstructorSchedulePage] Session slot not found:`, {
-            startTime,
-            timeSlots: timeSlots.map((s) => normalizeTime(s.start)),
-            session,
+            attendance: attendance,
           });
         }
       }
     });
 
-    // Thêm leaves vào grid
+    // Thêm leaves vào grid (chỉ khi không có session trong ca đó)
+    // Sử dụng Set để tránh duplicate leaves
+    const processedLeaves = new Set();
+
     leaves.forEach((leave) => {
+      // Tạo unique key để tránh duplicate
+      const leaveKey = `${leave.Date}-${leave.TimeslotID || "full"}-${
+        leave.Status || ""
+      }`;
+      if (processedLeaves.has(leaveKey)) {
+        return;
+      }
+      processedLeaves.add(leaveKey);
+
       const leaveDate = dayjs(leave.Date);
       const dateStr = leaveDate.format("YYYY-MM-DD");
 
@@ -302,26 +352,30 @@ const InstructorSchedulePage = () => {
 
         if (slotIndex !== -1) {
           const key = `${dateStr}-${slotIndex}`;
+
+          // Kiểm tra xem đã có session trong ca này chưa - nếu có thì không thêm leave
+          const hasSession = grid[key]?.some((item) => item.type === "session");
+          if (hasSession) {
+            return;
+          }
+
           if (!grid[key]) grid[key] = [];
           grid[key].push({
             type: "leave",
             ...leave,
           });
-          console.log(
-            `[InstructorSchedulePage] Added leave to grid: ${key}`,
-            leave
-          );
-        } else {
-          console.log(`[InstructorSchedulePage] Leave slot not found:`, {
-            startTime,
-            timeSlots: timeSlots.map((s) => normalizeTime(s.start)),
-            leave,
-          });
         }
       } else {
-        // Leave chặn toàn bộ ngày - thêm vào tất cả slots của ngày đó
+        // Leave chặn toàn bộ ngày - thêm vào tất cả slots của ngày đó (chỉ khi không có session)
         timeSlots.forEach((slot, slotIndex) => {
           const key = `${dateStr}-${slotIndex}`;
+
+          // Kiểm tra xem đã có session trong ca này chưa - nếu có thì không thêm leave
+          const hasSession = grid[key]?.some((item) => item.type === "session");
+          if (hasSession) {
+            return;
+          }
+
           if (!grid[key]) grid[key] = [];
           grid[key].push({
             type: "leave",
@@ -329,16 +383,11 @@ const InstructorSchedulePage = () => {
             isFullDay: true,
           });
         });
-        console.log(
-          `[InstructorSchedulePage] Added full day leave: ${dateStr}`,
-          leave
-        );
       }
     });
 
-    console.log("[InstructorSchedulePage] Final grid keys:", Object.keys(grid));
     return grid;
-  }, [sessions, leaves, timeSlots, timeslots]);
+  }, [sessions, leaves, timeSlots, timeslots, attendanceData, weekDates]);
 
   const handlePreviousWeek = () => {
     const newDate = new Date(currentDate);
@@ -369,9 +418,59 @@ const InstructorSchedulePage = () => {
     }/${end.getFullYear()}`;
   };
 
+  const getAttendanceStatus = (session, attendance) => {
+    if (!session || !session.Date) {
+      return { text: "Chưa có dữ liệu", color: "#9e9e9e" };
+    }
+
+    const sessionDate = dayjs(session.Date);
+    const today = dayjs().startOf("day");
+
+    // Chưa đến ngày
+    if (sessionDate.isAfter(today)) {
+      return { text: "Not yet", color: "#9e9e9e" };
+    }
+
+    // Đã qua ngày - kiểm tra attendance
+    if (attendance && attendance.Status) {
+      const status = String(attendance.Status).toUpperCase();
+      if (status === "PRESENT") {
+        return { text: "Có mặt", color: "#2e7d32", fontWeight: 700 };
+      } else if (status === "ABSENT") {
+        return { text: "Vắng", color: "#d32f2f" };
+      } else if (status === "LATE") {
+        return { text: "Muộn", color: "#f57c00" };
+      }
+    }
+
+    // Đã qua ngày nhưng không có attendance record = vắng
+    return { text: "Vắng", color: "#d32f2f" };
+  };
+
   const renderScheduleCard = (item, slot, idx) => {
     const isLeave = item.type === "leave";
     const isFullDayLeave = item.isFullDay;
+    const isAvailable =
+      isLeave && (item.Status === "AVAILABLE" || item.Status === "available");
+
+    // Xác định màu sắc và text cho leave
+    let leaveColor = "#f44336";
+    let leaveBgColor = "#ffebee";
+    let leaveText = "Bận riêng";
+
+    if (isAvailable) {
+      leaveColor = "#1976d2";
+      leaveBgColor = "#e3f2fd";
+      leaveText = "Đăng ký dạy thêm";
+    } else if (item.Status === "HOLIDAY" || item.Status === "holiday") {
+      leaveColor = "#ff9800";
+      leaveBgColor = "#fff3e0";
+      leaveText = "Nghỉ lễ";
+    }
+
+    const attendanceStatus = !isLeave
+      ? getAttendanceStatus(item, item.attendance)
+      : null;
 
     return (
       <Paper
@@ -381,16 +480,8 @@ const InstructorSchedulePage = () => {
           p: 1.5,
           mb: 1,
           borderLeft: 4,
-          borderColor: isLeave
-            ? item.Status === "HOLIDAY"
-              ? "#ff9800"
-              : "#f44336"
-            : "#4caf50",
-          bgcolor: isLeave
-            ? item.Status === "HOLIDAY"
-              ? "#fff3e0"
-              : "#ffebee"
-            : "#e8f5e9",
+          borderColor: isLeave ? leaveColor : "#4caf50",
+          bgcolor: isLeave ? leaveBgColor : "#e8f5e9",
           "&:hover": {
             boxShadow: 4,
           },
@@ -400,37 +491,36 @@ const InstructorSchedulePage = () => {
           variant="body2"
           sx={{
             fontWeight: 600,
-            color: isLeave
-              ? item.Status === "HOLIDAY"
-                ? "#e65100"
-                : "#c62828"
-              : "#2e7d32",
+            color: isLeave ? leaveColor : "#2e7d32",
             mb: 0.5,
             fontSize: "0.85rem",
           }}
         >
-          {isLeave
-            ? item.Status === "HOLIDAY"
-              ? "Nghỉ lễ"
-              : "Bận riêng"
-            : item.ClassName || item.Name || "Lớp học"}
+          {isLeave ? leaveText : item.ClassName || item.Name || "Lịch dạy"}
         </Typography>
 
         {!isLeave && (
           <>
-            <Typography
-              variant="caption"
-              sx={{
-                display: "block",
-                color: "#2e7d32",
-                fontWeight: 500,
-                mb: 0.5,
-              }}
-            ></Typography>
+            {/* Hiển thị attendance status ngay dưới tên lớp - luôn hiển thị cho session */}
+            {attendanceStatus && (
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  color: attendanceStatus.color,
+                  fontWeight: attendanceStatus.fontWeight || 500,
+                  mb: 0.5,
+                  fontSize: "0.75rem",
+                }}
+              >
+                {attendanceStatus.text}
+              </Typography>
+            )}
+
             {item.Location && (
               <Typography
                 variant="caption"
-                sx={{ display: "block", color: "text.secondary" }}
+                sx={{ display: "block", color: "text.secondary", mt: 0.5 }}
               >
                 tại {item.Location}
               </Typography>
@@ -447,7 +537,7 @@ const InstructorSchedulePage = () => {
               fontStyle: "italic",
             }}
           >
-            Chặn toàn ngày
+            Cả ngày
           </Typography>
         )}
 
@@ -540,6 +630,12 @@ const InstructorSchedulePage = () => {
           </Box>
         </Box>
       </Box>
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+      )}
 
       {loading ? (
         <Box
@@ -656,11 +752,11 @@ const InstructorSchedulePage = () => {
             sx={{
               width: 20,
               height: 20,
-              bgcolor: "#f44336",
+              bgcolor: "#1976d2",
               borderRadius: 0.5,
             }}
           />
-          <Typography variant="body2">Bận riêng</Typography>
+          <Typography variant="body2">Đăng ký dạy thêm</Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <Box

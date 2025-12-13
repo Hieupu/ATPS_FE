@@ -4,7 +4,7 @@ const refundService = {
   // Lấy tất cả yêu cầu hoàn tiền
   getAllRefunds: async (params = {}) => {
     try {
-      const { page = 1, limit = 10, status, search } = params;
+      const { page = 1, limit = 10, status, search, dateFrom, dateTo } = params;
       const queryParams = new URLSearchParams({
         page: page.toString(),
         limit: limit.toString(),
@@ -12,14 +12,16 @@ const refundService = {
 
       if (status) queryParams.append("status", status);
       if (search) queryParams.append("search", search);
+      if (dateFrom) queryParams.append("dateFrom", dateFrom);
+      if (dateTo) queryParams.append("dateTo", dateTo);
 
       const response = await apiClient.get(
         `/refunds?${queryParams.toString()}`
       );
       return response.data;
     } catch (error) {
-      console.error("Get all refunds error:", error);
-      throw error.response?.data || { message: "Failed to get refunds" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -29,8 +31,8 @@ const refundService = {
       const response = await apiClient.get(`/refunds/${refundId}`);
       return response.data;
     } catch (error) {
-      console.error("Get refund by id error:", error);
-      throw error.response?.data || { message: "Failed to get refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -40,8 +42,8 @@ const refundService = {
       const response = await apiClient.post("/refunds", refundData);
       return response.data;
     } catch (error) {
-      console.error("Create refund error:", error);
-      throw error.response?.data || { message: "Failed to create refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -51,8 +53,8 @@ const refundService = {
       const response = await apiClient.put(`/refunds/${refundId}`, updateData);
       return response.data;
     } catch (error) {
-      console.error("Update refund error:", error);
-      throw error.response?.data || { message: "Failed to update refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -62,8 +64,8 @@ const refundService = {
       const response = await apiClient.delete(`/refunds/${refundId}`);
       return response.data;
     } catch (error) {
-      console.error("Delete refund error:", error);
-      throw error.response?.data || { message: "Failed to delete refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -73,10 +75,8 @@ const refundService = {
       const response = await apiClient.get(`/refunds/status?status=${status}`);
       return response.data;
     } catch (error) {
-      console.error("Get refunds by status error:", error);
-      throw (
-        error.response?.data || { message: "Failed to get refunds by status" }
-      );
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -86,8 +86,8 @@ const refundService = {
       const response = await apiClient.post(`/refunds/${refundId}/approve`);
       return response.data;
     } catch (error) {
-      console.error("Approve refund error:", error);
-      throw error.response?.data || { message: "Failed to approve refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
@@ -99,19 +99,32 @@ const refundService = {
       });
       return response.data;
     } catch (error) {
-      console.error("Reject refund error:", error);
-      throw error.response?.data || { message: "Failed to reject refund" };
+      console.error(error);
+      throw error.response?.data;
     }
   },
 
-  // Hoàn tiền (approved -> completed)
-  completeRefund: async (refundId) => {
+  // Lấy danh sách lớp liên quan để chuyển
+  getRelatedClasses: async (refundId) => {
     try {
-      const response = await apiClient.post(`/refunds/${refundId}/complete`);
+      const response = await apiClient.get(
+        `/refunds/${refundId}/related-classes`
+      );
       return response.data;
     } catch (error) {
-      console.error("Complete refund error:", error);
-      throw error.response?.data || { message: "Failed to complete refund" };
+      console.error(error);
+      throw error.response?.data;
+    }
+  },
+  sendAccountInfoEmail: async (refundId) => {
+    try {
+      const response = await apiClient.post(
+        `/refunds/${refundId}/request-account-info`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      throw error.response?.data;
     }
   },
 };

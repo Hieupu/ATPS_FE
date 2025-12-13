@@ -24,12 +24,17 @@ import StaffReportsPage from "./pages/admin/pages/StaffReportsPage";
 import SchedulePageAdmin from "./pages/admin/pages/SchedulePage";
 import InstructorLeavePage from "./pages/admin/pages/InstructorLeavePage";
 import InstructorSchedulePageAdmin from "./pages/admin/pages/InstructorSchedulePage";
+import InstructorCertificatesPage from "./pages/admin/pages/InstructorCertificatesPage";
+import SessionChangeRequestsPage from "./pages/admin/pages/SessionChangeRequestsPage";
 import TimeslotManagerPage from "./pages/admin/pages/TimeslotManagerPage";
 import NewsPage from "./pages/admin/pages/NewsPage";
 import AdminCoursesPage from "./pages/admin/pages/CoursesPage";
 import RefundPage from "./pages/admin/pages/RefundPage";
 import PromotionsPage from "./pages/admin/pages/PromotionsPage";
 import EmailTemplatePage from "./pages/admin/pages/EmailTemplatePage";
+import EmailLogPage from "./pages/admin/pages/EmailLogPage";
+import PayrollPage from "./pages/admin/pages/PayrollPage";
+import PaymentHistoryAdminPage from "./pages/admin/pages/PaymentHistoryAdminPage";
 import { ADMIN_ROUTES, PUBLIC_ROUTES } from "./routingLayer/routes";
 import "./App.css";
 import AdminInstructorsPage from "./pages/admin/pages/InstructorsPage";
@@ -54,7 +59,7 @@ import InstructorLayout from "./layouts/InstructorLayout";
 import InstructorDashboard from "./pages/instructor/pages/DashboardPage";
 import InstructorClasses from "./pages/instructor/pages/ClassesPage";
 import ClassDetailPage from "./pages/instructor/pages/ClassDetailPage";
-import InstructorAssignments from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExams from "./pages/instructor/pages/ExamsPage";
 import InstructorGrades from "./pages/instructor/pages/GradesPage";
 import InstructorSettings from "./pages/instructor/pages/SettingsPage";
@@ -81,14 +86,13 @@ import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
 import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
 import InstructorClassesPage from "./pages/instructor/pages/ClassesPage";
-import InstructorAssignmentsPage from "./pages/instructor/pages/AssignmentsPage";
+
 import InstructorExamsPage from "./pages/instructor/pages/ExamsPage";
 import InstructorGradesPage from "./pages/instructor/pages/GradesPage";
 import InstructorSettingsPage from "./pages/instructor/pages/SettingsPage";
 import { AuthProvider, RequireAuth } from "./contexts/AuthContext";
 import { useTokenExpiry } from "./hooks/useTokenExpiry";
 
-// ⭐ Các route mới từ nhánh của bạn
 import CreateExamPage from "./pages/instructor/components/exam/CreateExamPage";
 import EditExamPage from "./pages/instructor/components/exam/EditExamPage";
 
@@ -121,11 +125,11 @@ function AppRoutes() {
 
       <Route path="/instructors" element={<InstructorsPage />} />
       <Route path="/instructors/:id" element={<InstructorDetailPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+      <Route path="/contact" element={<ContactPage />} />
       <Route path="/assignments" element={<AssignmentsPage />} />
       <Route path="/exam" element={<ExamsPage />} />
-      <Route path="/exam/:examId/take" element={<ExamTakingPage />} />
-      <Route path="/exam/:examId/result" element={<ExamResultPage />} />
+      <Route path="/exam/:instanceId/take" element={<ExamTakingPage />} />
+      <Route path="/exam/:instanceId/result" element={<ExamResultPage />} />
 
       {/* Learner Routes */}
       <Route path="/schedule" element={<SchedulePage />} />
@@ -138,51 +142,68 @@ function AppRoutes() {
        <Route path="/new" element={<NewsPages />} />
        <Route path="/new/:newsId" element={<NewsDetailPage />} />
       {/* Admin Routes */}
-      <Route path="/admin" element={<AdminLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="dashboard" element={<DashboardPage />} />
-        <Route path="classes" element={<ClassesPage />} />
-        <Route path="classes/new" element={<CreateClassPage />} />
-        <Route path="classes/edit/:classId" element={<CreateClassPage />} />
-        <Route path="courses" element={<AdminCoursesPage />} />
-        <Route path="instructors" element={<InstructorsPageAdmin />} />
-        <Route path="learners" element={<LearnersPage />} />
-        <Route path="reports" element={<AdminReportsPage />} />
-        <Route path="news" element={<NewsPage />} />
-        <Route
-          path="classes/:courseId/schedule"
-          element={<SchedulePageAdmin />}
-        />
-        {/* Statistics Routes */}
-        <Route path="statistics/revenue" element={<RevenueReportsPage />} />
-        <Route path="statistics/learners" element={<LearnerReportsPage />} />
-        <Route path="statistics/classes" element={<ClassReportsPage />} />
-        <Route path="statistics/staff" element={<StaffReportsPage />} />
-        {/* User Management Routes */}
-        <Route path="users/learners" element={<LearnersPage />} />
-        <Route path="users/instructors" element={<AdminInstructorsPage />} />
-        <Route path="users/staff" element={<StaffPage />} />
-        <Route path="users/admins" element={<AdminsPage />} />
-        <Route path="users/create" element={<InstructorsPage />} />
-        {/* Class & Schedule Routes */}
-        <Route path="schedule" element={<SchedulePage />} />
-        <Route
-          path="instructor-calendar"
-          element={<InstructorSchedulePageAdmin />}
-        />
-        <Route path="instructor-leave" element={<InstructorLeavePage />} />
-        {/* Finance Routes */}
-        <Route path="finance/payment-history" element={<AdminReportsPage />} />
-        <Route path="finance/refunds" element={<RefundPage />} />
-        <Route path="finance/promotions" element={<PromotionsPage />} />
-        <Route path="finance/payroll" element={<AdminReportsPage />} />
-        {/* System Routes */}
-        <Route path="system/payment-gateways" element={<AdminReportsPage />} />
-        <Route
-          path="system/notification-templates"
-          element={<EmailTemplatePage />}
-        />
-        <Route path="system/timeslots" element={<TimeslotManagerPage />} />
+      <Route element={<RequireAuth allowedRoles={["admin"]} />}>
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="classes" element={<ClassesPage />} />
+          <Route path="classes/new" element={<CreateClassPage />} />
+          <Route path="classes/edit/:classId" element={<CreateClassPage />} />
+          <Route path="courses" element={<AdminCoursesPage />} />
+          <Route path="instructors" element={<InstructorsPageAdmin />} />
+          <Route path="learners" element={<LearnersPage />} />
+          <Route path="reports" element={<AdminReportsPage />} />
+          <Route path="news" element={<NewsPage />} />
+          <Route
+            path="classes/:courseId/schedule"
+            element={<SchedulePageAdmin />}
+          />
+          {/* Statistics Routes */}
+          <Route path="statistics/revenue" element={<RevenueReportsPage />} />
+          <Route path="statistics/learners" element={<LearnerReportsPage />} />
+          <Route path="statistics/classes" element={<ClassReportsPage />} />
+          <Route path="statistics/staff" element={<StaffReportsPage />} />
+          {/* User Management Routes */}
+          <Route path="users/learners" element={<LearnersPage />} />
+          <Route path="users/instructors" element={<AdminInstructorsPage />} />
+          <Route path="users/staff" element={<StaffPage />} />
+          <Route path="users/admins" element={<AdminsPage />} />
+          <Route path="users/create" element={<InstructorsPage />} />
+          {/* Class & Schedule Routes */}
+          <Route path="schedule" element={<SchedulePage />} />
+          <Route
+            path="instructor-calendar"
+            element={<InstructorSchedulePageAdmin />}
+          />
+          <Route path="instructor-leave" element={<InstructorLeavePage />} />
+          <Route
+            path="instructor-certificates"
+            element={<InstructorCertificatesPage />}
+          />
+          <Route
+            path="session-change-requests"
+            element={<SessionChangeRequestsPage />}
+          />
+          {/* Finance Routes */}
+          <Route
+            path="finance/payment-history"
+            element={<PaymentHistoryAdminPage />}
+          />
+          <Route path="finance/refunds" element={<RefundPage />} />
+          <Route path="finance/promotions" element={<PromotionsPage />} />
+          <Route path="finance/payroll" element={<PayrollPage />} />
+          {/* System Routes */}
+          <Route
+            path="system/payment-gateways"
+            element={<PaymentHistoryAdminPage />}
+          />
+          <Route
+            path="system/email-templates"
+            element={<EmailTemplatePage />}
+          />
+          <Route path="system/email-logs" element={<EmailLogPage />} />
+          <Route path="system/timeslots" element={<TimeslotManagerPage />} />
+        </Route>
       </Route>
       {/* Instructor Routes */}
       <Route element={<RequireAuth allowedRoles={["instructor"]} />}>
@@ -196,7 +217,6 @@ function AppRoutes() {
           <Route path="classes" element={<InstructorClasses />} />
           <Route path="classes/:classId" element={<ClassDetailPage />} />
 
-          <Route path="assignments" element={<InstructorAssignments />} />
           <Route path="exams" element={<InstructorExams />} />
           <Route path="grades" element={<InstructorGrades />} />
           <Route path="schedule" element={<InstructorSchedulePage />} />

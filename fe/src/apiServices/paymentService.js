@@ -49,3 +49,8 @@ export const cancelRefundRequestApi = async (refundId) => {
   const response = await apiClient.put(`/payment/refund/${refundId}/cancel`);
   return response.data;
 };
+
+export const getAdminPaymentHistoryApi = async (params = {}) => {
+  const response = await apiClient.get("/payment/admin/history", { params });
+  return response.data;
+};

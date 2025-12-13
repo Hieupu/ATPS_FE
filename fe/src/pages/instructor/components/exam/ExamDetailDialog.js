@@ -19,12 +19,9 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
     return new Date(dateString).toLocaleString('vi-VN');
   };
 
-  // Lấy tổng số câu hỏi từ sections
   const getTotalQuestions = () => {
     const sectionsData = exam.sections || exam.Sections || [];
     if (sectionsData.length === 0) return 0;
-    
-    // Lọc chỉ lấy child sections (có ParentSectionId)
     const childSections = sectionsData.filter(s => s.ParentSectionId || s.parentSectionId);
     
     return childSections.reduce((total, section) => {
@@ -36,13 +33,11 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
     <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>  
       <DialogContent dividers sx={{ minHeight: '400px' }}>
         <Grid container spacing={3}>
-          {/* BÊN TRÁI - THÔNG TIN BÀI THI */}
           <Grid item xs={12} md={5}>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-              {/* Thông tin bài thi */}
               <Box>
                 <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-                  Thông tin bài thi
+                  Thông tin bài tập
                 </Typography>
                 <Paper variant="outlined" sx={{ p: 2.5 }}>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -154,7 +149,7 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
 
                     <Box>
                       <Typography variant="body1" color="text.primary" fontWeight={600} sx={{ mb: 0.5 }}>
-                        Thời gian mở bài thi
+                        Thời gian mở bài tập
                       </Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Typography variant="body2" color="text.primary">
@@ -174,11 +169,10 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
             </Box>
           </Grid>
 
-          {/* BÊN PHẢI - CẤU TRÚC BÀI THI */}
           <Grid item xs={12} md={7}>
             <Box>
               <Typography variant="h6" fontWeight={600} gutterBottom sx={{ mb: 2 }}>
-                Cấu trúc bài thi
+                Cấu trúc bài tập
               </Typography>
               {(() => {
                 const sectionsData = exam.sections || exam.Sections || [];
@@ -194,7 +188,7 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
                       }}
                     >
                       <Typography variant="body1" color="text.secondary">
-                        Chưa có phần thi nào
+                        Chưa có phần bài tập nào
                       </Typography>
                     </Paper>
                   );
@@ -270,7 +264,7 @@ const ExamDetailDialog = ({ open, onClose, exam }) => {
                                   fontWeight={500}
                                   sx={{ display: 'block', mb: 1 }}
                                 >
-                                  Phần thi con:
+                                  Phần bài tập con:
                                 </Typography>
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                                   {children.map((child, childIdx) => (

@@ -35,20 +35,6 @@ export const validateStep1 = (formData) => {
     errors.Maxstudent = "Sĩ số tối đa phải lớn hơn 0";
   }
 
-  // ZoomID validation (required)
-  if (!formData.ZoomID || !formData.ZoomID.trim()) {
-    errors.ZoomID = "Vui lòng nhập Zoom ID";
-  } else if (formData.ZoomID.trim().length > 11) {
-    errors.ZoomID = "Zoom ID không được quá 11 ký tự";
-  }
-
-  // Zoompass validation (required)
-  if (!formData.Zoompass || !formData.Zoompass.trim()) {
-    errors.Zoompass = "Vui lòng nhập mật khẩu Zoom";
-  } else if (formData.Zoompass.trim().length > 6) {
-    errors.Zoompass = "Mật khẩu Zoom không được quá 6 ký tự";
-  }
-
   return {
     isValid: Object.keys(errors).length === 0,
     errors,
@@ -97,22 +83,13 @@ export const validateStep2 = (formData) => {
  * @returns {Object} { isValid: boolean, errors: {} }
  */
 export const validateStep3 = (formData, previewSessions = []) => {
-  console.log("[validateStep3] ========== START ==========");
-  console.log("[validateStep3] formData.scheduleDetail:", formData.scheduleDetail);
-  console.log("[validateStep3] previewSessions:", previewSessions);
-  console.log("[validateStep3] previewSessions.length:", previewSessions?.length || 0);
-  console.log("[validateStep3] formData.sessions:", formData.sessions);
-  console.log("[validateStep3] formData.sessions.length:", formData.sessions?.length || 0);
-  
   const errors = {};
 
   if (!formData.scheduleDetail?.OpendatePlan) {
-    console.log("[validateStep3] ERROR: Missing OpendatePlan");
     errors.scheduleDetailOpendatePlan = "Vui lòng chọn ngày dự kiến bắt đầu";
   }
 
   if (!formData.scheduleDetail?.EnddatePlan) {
-    console.log("[validateStep3] ERROR: Missing EnddatePlan");
     errors.scheduleDetailEnddatePlan =
       "Ngày kết thúc chưa được tính toán. Vui lòng kiểm tra lại thông tin";
   }
@@ -124,7 +101,6 @@ export const validateStep3 = (formData, previewSessions = []) => {
     const start = new Date(formData.scheduleDetail.OpendatePlan);
     const end = new Date(formData.scheduleDetail.EnddatePlan);
     if (end <= start) {
-      console.log("[validateStep3] ERROR: EnddatePlan <= OpendatePlan");
       errors.scheduleDetailEnddatePlan = "Ngày kết thúc phải sau ngày bắt đầu";
     }
   }
@@ -133,7 +109,6 @@ export const validateStep3 = (formData, previewSessions = []) => {
     !formData.scheduleDetail?.DaysOfWeek ||
     formData.scheduleDetail.DaysOfWeek.length === 0
   ) {
-    console.log("[validateStep3] ERROR: Missing DaysOfWeek");
     errors.DaysOfWeek = "Vui lòng chọn ít nhất một ngày trong tuần";
   }
 
@@ -152,7 +127,6 @@ export const validateStep3 = (formData, previewSessions = []) => {
     });
 
     if (!hasAnyTimeslot) {
-      console.log("[validateStep3] ERROR: No timeslots selected");
       errors.TimeslotsByDay =
         "Vui lòng chọn ít nhất một ca học cho các ngày đã chọn";
     }
@@ -162,19 +136,11 @@ export const validateStep3 = (formData, previewSessions = []) => {
   const sessionsToCheck = formData.sessions && formData.sessions.length > 0 
     ? formData.sessions 
     : previewSessions;
-  
-  console.log("[validateStep3] sessionsToCheck:", sessionsToCheck);
-  console.log("[validateStep3] sessionsToCheck.length:", sessionsToCheck?.length || 0);
 
   if (sessionsToCheck.length === 0) {
-    console.log("[validateStep3] ERROR: No sessions found");
     errors.preview =
       "Không có buổi học nào được tạo. Vui lòng kiểm tra lại lịch học";
   }
-
-  console.log("[validateStep3] Final errors:", errors);
-  console.log("[validateStep3] isValid:", Object.keys(errors).length === 0);
-  console.log("[validateStep3] ========== END ==========");
 
   return {
     isValid: Object.keys(errors).length === 0,

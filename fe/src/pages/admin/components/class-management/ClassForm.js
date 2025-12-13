@@ -37,15 +37,6 @@ const ClassForm = ({ classData, instructors, onSubmit, onCancel }) => {
   const isClosed = normalizedStatus === CLASS_STATUS.CLOSE;
   const isOnGoing = normalizedStatus === CLASS_STATUS.ON_GOING;
 
-  // Debug log
-  if (classData) {
-    console.log("ClassForm - Class status check:", {
-      originalStatus: classData.Status || classData.status,
-      normalizedStatus: normalizedStatus,
-      isClosed: isClosed,
-      isOnGoing: isOnGoing,
-    });
-  }
 
   useEffect(() => {
     if (classData) {

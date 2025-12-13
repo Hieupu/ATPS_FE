@@ -10,10 +10,117 @@ export const isValidEmail = (email) => {
 
 /**
  * Kiểm tra số điện thoại Việt Nam
+ * @param {string} phone - Phone number to validate
+ * @returns {boolean} - true if valid, false otherwise
  */
 export const isValidPhone = (phone) => {
-  const phoneRegex = /^(0|\+84)[0-9]{9}$/;
-  return phoneRegex.test(phone);
+  if (!phone || !phone.trim()) return false;
+  const phoneRegex = /^(\+84|0)[1-9][0-9]{8,9}$/;
+  const cleanedPhone = phone.trim().replace(/\s+/g, "");
+  return phoneRegex.test(cleanedPhone);
+};
+
+/**
+ * Validate email format and return error message if invalid
+ * @param {string} email - Email to validate
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validateEmail = (email) => {
+  if (!email?.trim()) {
+    return "Vui lòng nhập email";
+  }
+  // Kiểm tra khoảng trắng trong email
+  if (email.includes(" ")) {
+    return "Email không được chứa khoảng trắng";
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    return "Email không hợp lệ";
+  }
+  return null;
+};
+
+/**
+ * Validate password strength
+ * @param {string} password - Password to validate
+ * @param {boolean} isCreate - Whether password is required (for create)
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validatePassword = (password, isCreate = false) => {
+  if (isCreate && !password) {
+    return "Vui lòng nhập mật khẩu";
+  }
+  if (password) {
+    // Kiểm tra khoảng trắng trong mật khẩu
+    if (password.includes(" ")) {
+      return "Mật khẩu không được chứa khoảng trắng";
+    }
+    if (password.length < 6) {
+      return "Mật khẩu phải có ít nhất 6 ký tự";
+    }
+  }
+  return null;
+};
+
+/**
+ * Validate confirm password matches password
+ * @param {string} password - Original password
+ * @param {string} confirmPassword - Confirm password to validate
+ * @param {boolean} isCreate - Whether password is required (for create)
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validateConfirmPassword = (
+  password,
+  confirmPassword,
+  isCreate = false
+) => {
+  // Nếu đang tạo mới và có password, thì confirm password là bắt buộc
+  if (isCreate && password && !confirmPassword) {
+    return "Vui lòng nhập lại mật khẩu";
+  }
+
+  // Nếu có confirm password, phải khớp với password
+  if (confirmPassword) {
+    if (confirmPassword !== password) {
+      return "Mật khẩu nhập lại không khớp";
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Validate Vietnamese phone number format
+ * @param {string} phone - Phone number to validate
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validatePhone = (phone) => {
+  if (phone && phone.trim()) {
+    // Kiểm tra khoảng trắng trong số điện thoại (sau khi trim)
+    const trimmedPhone = phone.trim();
+    if (trimmedPhone.includes(" ")) {
+      return "Số điện thoại không được chứa khoảng trắng";
+    }
+    // Vietnamese phone format: 10-11 digits, may start with 0 or +84
+    const phoneRegex = /^(\+84|0)[1-9][0-9]{8,9}$/;
+    const cleanedPhone = trimmedPhone.replace(/\s+/g, "");
+    if (!phoneRegex.test(cleanedPhone)) {
+      return "Số điện thoại không hợp lệ (ví dụ: 0123456789 hoặc +84123456789)";
+    }
+  }
+  return null;
+};
+
+/**
+ * Validate FullName
+ * @param {string} fullName - Full name to validate
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validateFullName = (fullName) => {
+  if (!fullName?.trim()) {
+    return "Vui lòng nhập họ tên";
+  }
+  return null;
 };
 
 /**
@@ -339,13 +446,13 @@ export const validateSessionsForm = (
  */
 export const dayOfWeekToDay = (dayOfWeek) => {
   const dayMap = {
-    0: "CN", // Chủ Nhật
-    1: "T2", // Thứ Hai
-    2: "T3", // Thứ Ba
-    3: "T4", // Thứ Tư
-    4: "T5", // Thứ Năm
-    5: "T6", // Thứ Sáu
-    6: "T7", // Thứ Bảy
+    0: "SUNDAY", // Chủ Nhật
+    1: "MONDAY", // Thứ Hai
+    2: "TUESDAY", // Thứ Ba
+    3: "WEDNESDAY", // Thứ Tư
+    4: "THURSDAY", // Thứ Năm
+    5: "FRIDAY", // Thứ Sáu
+    6: "SATURDAY", // Thứ Bảy
   };
   return dayMap[dayOfWeek] || null;
 };
@@ -433,6 +540,38 @@ export const dayToDayOfWeek = (day) => {
 };
 
 /**
+ * Validate Instructor Fee (phí giảng dạy)
+ * @param {number|string} fee - Fee to validate
+ * @returns {string|null} - Error message or null if valid
+ */
+export const validateInstructorFee = (fee) => {
+  // Nếu fee là null, undefined, hoặc rỗng, cho phép (optional field)
+  if (fee === null || fee === undefined || fee === "") {
+    return null;
+  }
+
+  // Chuyển đổi sang number
+  const feeNumber = typeof fee === "string" ? parseFloat(fee) : Number(fee);
+
+  // Kiểm tra có phải số không
+  if (isNaN(feeNumber)) {
+    return "Phí giảng dạy phải là số";
+  }
+
+  // Kiểm tra không được âm
+  if (feeNumber < 0) {
+    return "Phí giảng dạy không được âm";
+  }
+
+  // Kiểm tra phải từ 1000 trở lên
+  if (feeNumber < 1000) {
+    return "Phí giảng dạy phải từ 1,000 VND trở lên";
+  }
+
+  return null;
+};
+
+/**
  * Lọc timeslots theo Day
  * @param {Array} timeslots - Mảng timeslots
  * @param {string} day - Day format (T2, T3, T4, T5, T6, T7, CN)
@@ -483,4 +622,11 @@ export default {
   dayToDayOfWeek,
   filterTimeslotsByDay,
   groupTimeslotsByDay,
+  // New validation functions for user management
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateFullName,
+  validateInstructorFee,
+  validateConfirmPassword,
 };
