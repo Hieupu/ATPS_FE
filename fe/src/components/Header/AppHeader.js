@@ -89,6 +89,10 @@ const AppHeader = () => {
       label: "Lịch khai giảng",
       path: "/openingCeremony",
     },
+       {
+      label: "Tin tức",
+      path: "/new",
+    },
     {
       label: "Liên hệ",
       path: "/contact",

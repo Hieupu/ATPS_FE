@@ -479,10 +479,10 @@ useEffect(() => {
       return; // Đã spam, không cho tiếp tục
     }
 
-    if (selectedSlots.length >= 3) {
+    if (selectedSlots.length >= 6) {
       setConflictAlert({
         severity: "warning",
-        message: `Bạn chỉ được chọn tối đa 3 slot trong một tuần.`
+        message: `Bạn chỉ được chọn tối đa 6 slot trong một tuần.`
       });
       return;
     }
