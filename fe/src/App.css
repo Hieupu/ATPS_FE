@@ -110,3 +110,7 @@ a:hover {
     padding: 0 16px;
   }
 }
+
+.Toastify__toast-container--top-right {
+  top: 80px;
+}
