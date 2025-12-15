@@ -196,7 +196,7 @@ const AttendanceByClass = ({ learnerId, attendance }) => {
                 </Box>
 
                 <Grid container spacing={2}>
-                  <Grid item xs={4}>
+                  <Grid item xs={6}>
                     <Box sx={{ textAlign: "center" }}>
                       <Typography variant="h6" color="success.main">
                         {cls.PresentCount}
@@ -206,17 +206,7 @@ const AttendanceByClass = ({ learnerId, attendance }) => {
                       </Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={4}>
-                    <Box sx={{ textAlign: "center" }}>
-                      <Typography variant="h6" color="warning.main">
-                        {cls.LateCount}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Đi muộn
-                      </Typography>
-                    </Box>
-                  </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={6}>
                     <Box sx={{ textAlign: "center" }}>
                       <Typography variant="h6" color="error.main">
                         {cls.AbsentCount}

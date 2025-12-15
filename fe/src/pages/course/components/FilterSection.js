@@ -45,13 +45,11 @@ const FilterSection = ({
     { value: "Sunday", label: "Chủ nhật" },
   ];
   
-  const levels = [
-    { value: "5.0", label: "5.0" },
-    { value: "6.0", label: "6.0" },
-    { value: "6.5", label: "6.5" },
-    { value: "7.0", label: "7.0" },
-    { value: "7.5", label: "7.5" },
-  ];
+const levels = [
+  { value: "BEGINNER", label: "Dành cho người mới" },
+  { value: "INTERMEDIATE", label: "Trình độ trung cấp" },
+  { value: "ADVANCED", label: "Trình độ nâng cao" },
+];
 
   useEffect(() => {
     const currentDate = new Date();
@@ -143,7 +141,7 @@ const FilterSection = ({
                 }
               }}
             >
-              <InputLabel sx={{ fontWeight: 500 }}>Tháng khai giảng</InputLabel>
+              <InputLabel sx={{ fontWeight: 500 }}>Theo Tháng</InputLabel>
               <Select
                 value={filters.month || ""}
                 onChange={handleMonthChange}
@@ -190,7 +188,11 @@ const FilterSection = ({
                 value={filters.levels ? filters.levels.split(",") : []}
                 onChange={handleLevelsChange}
                 input={<OutlinedInput label="Trình độ" />}
-                renderValue={(selected) => selected.join(", ")}
+                  renderValue={(selected) => 
+    selected
+      .map(value => levels.find(level => level.value === value)?.label || value)
+      .join(", ")
+  }
               >
                 {levels.map((level) => (
                   <MenuItem key={level.value} value={level.value} sx={{ py: 1.5 }}>
@@ -360,7 +362,7 @@ const FilterSection = ({
                 {filters.levels && filters.levels.split(",").map((level, index) => (
                   <Grow in timeout={300 + index * 50} key={level}>
                     <Chip
-                      label={`Level ${level}`}
+                       label={levels.find(l => l.value === level)?.label || level}
                       onDelete={() => {
                         const newLevels = filters.levels.split(",").filter(l => l !== level);
                         onFilterChange({ 
