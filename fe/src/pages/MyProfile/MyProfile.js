@@ -1,6 +1,7 @@
 // MyProfile.js
 import React, { useState, useEffect } from "react";
 import { Box, Container, Grid, Alert, Typography } from "@mui/material";
+import { toast } from "react-toastify";
 import {
   getProfileApi,
   updateProfileApi,
@@ -43,17 +44,20 @@ const MyProfile = () => {
         Phone: profileData.account?.Phone || "",
       });
     } catch (error) {
-      setMessage({ type: "error", text: "Failed to load profile" });
+      toast.error("Không thể tải thông tin hồ sơ");
     }
   };
 
-  const handleEditToggle = () => {
-    setIsEditing(!isEditing);
-    if (isEditing) {
-      setFormData(profile);
-    }
-  };
-
+ const handleEditToggle = () => {
+  setIsEditing(!isEditing);
+  if (isEditing) {
+    // Reset lại formData khi hủy, bao gồm cả Phone từ account
+    setFormData({
+      ...profile,
+      Phone: profile.account?.Phone || "",
+    });
+  }
+};
   const handlePasswordToggle = () => {
     setIsChangingPassword(!isChangingPassword);
     setPasswordData({
@@ -101,23 +105,75 @@ const MyProfile = () => {
     });
   };
 
+  const validatePassword = (password) => {
+    // Kiểm tra khoảng trắng
+    if (/\s/.test(password)) {
+      toast.error("Mật khẩu không được chứa khoảng trắng");
+      return false;
+    }
+
+    // Kiểm tra độ dài tối thiểu 8 ký tự
+    if (password.length < 8) {
+      toast.error("Mật khẩu phải có ít nhất 8 ký tự");
+      return false;
+    }
+
+    // Kiểm tra có chứa số
+    if (!/\d/.test(password)) {
+      toast.error("Mật khẩu phải chứa ít nhất 1 chữ số");
+      return false;
+    }
+
+    // Kiểm tra có chứa chữ cái
+    if (!/[a-zA-Z]/.test(password)) {
+      toast.error("Mật khẩu phải chứa ít nhất 1 chữ cái");
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSaveProfile = async () => {
     try {
       setLoading(true);
       const updatedProfile = await updateProfileApi(formData);
       setProfile(updatedProfile.profile);
       setIsEditing(false);
-      setMessage({ type: "success", text: "Profile updated successfully" });
+      toast.success("Cập nhật hồ sơ thành công");
     } catch (error) {
-      setMessage({ type: "error", text: error.message });
+      toast.error(error.message || "Cập nhật hồ sơ thất bại");
     } finally {
       setLoading(false);
     }
   };
 
   const handleChangePassword = async () => {
+    // Kiểm tra mật khẩu hiện tại không được để trống
+    if (!passwordData.currentPassword.trim()) {
+      toast.error("Vui lòng nhập mật khẩu hiện tại");
+      return;
+    }
+
+    // Kiểm tra mật khẩu mới không được để trống
+    if (!passwordData.newPassword.trim()) {
+      toast.error("Vui lòng nhập mật khẩu mới");
+      return;
+    }
+
+    // Validate mật khẩu mới
+    if (!validatePassword(passwordData.newPassword)) {
+      return;
+    }
+
+    // Kiểm tra mật khẩu xác nhận
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setMessage({ type: "error", text: "New passwords do not match" });
+      toast.error("Mật khẩu xác nhận không khớp");
+      return;
+    }
+
+    // Kiểm tra mật khẩu mới không được giống mật khẩu cũ
+    if (passwordData.currentPassword === passwordData.newPassword) {
+      toast.error("Mật khẩu mới phải khác mật khẩu hiện tại");
       return;
     }
 
@@ -127,10 +183,10 @@ const MyProfile = () => {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
-      setMessage({ type: "success", text: "Password changed successfully" });
+      toast.success("Đổi mật khẩu thành công");
       handlePasswordToggle();
     } catch (error) {
-      setMessage({ type: "error", text: error.message });
+      toast.error(error.message || "Đổi mật khẩu thất bại");
     } finally {
       setLoading(false);
     }
@@ -141,11 +197,11 @@ const MyProfile = () => {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setMessage({ type: "error", text: "Please upload an image file" });
+      toast.error("Vui lòng tải lên file hình ảnh");
       return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setMessage({ type: "error", text: "File size must be less than 2MB" });
+      toast.error("Kích thước file phải nhỏ hơn 2MB");
       return;
     }
 
@@ -160,17 +216,17 @@ const MyProfile = () => {
 
       URL.revokeObjectURL(tempUrl);
 
-      setMessage({ type: "success", text: "Avatar updated successfully" });
+      toast.success("Cập nhật ảnh đại diện thành công");
     } catch (error) {
       fetchProfile();
-      setMessage({ type: "error", text: error.message });
+      toast.error(error.message || "Cập nhật ảnh đại diện thất bại");
     } finally {
       setLoading(false);
     }
   };
 
   if (!profile) {
-    return <Typography>Loading...</Typography>;
+    return <Typography>Đang tải...</Typography>;
   }
 
   return (
