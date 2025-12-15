@@ -73,7 +73,6 @@ export default function InstructorDashboard() {
         const response = await apiClient.get(`/${instructorId}/dashboard`);
         if (response.data.success) {
           setDashboardData(response.data.data);
-          console.log(response.data.data, "check data");
         }
       } catch (error) {
         console.error(error);
@@ -84,6 +83,27 @@ export default function InstructorDashboard() {
 
     fetchDashboardData();
   }, []);
+
+  const statusConfig = {
+    APPROVED: {
+      label: "Đã duyệt",
+      bgcolor: "#2e7d32",
+    },
+    PENDING: {
+      label: "Đang chờ",
+      bgcolor: "#ed6c02",
+    },
+    REJECTED: {
+      label: "Từ chối",
+      bgcolor: "#d32f2f",
+    },
+  };
+
+  const notificationTitleMap = {
+    REQUEST_APPROVED: "Đổi lịch",
+    enrollment: "Học viên đăng ký",
+    certificate_status_change: "Yêu cầu cấp chứng chỉ",
+  };
 
   const totalActiveCourses = useMemo(() => {
     if (!dashboardData) return 0;
@@ -147,24 +167,7 @@ export default function InstructorDashboard() {
       .slice(0, 5);
   }, [dashboardData]);
 
-  const examStatus = useMemo(() => {
-    if (!dashboardData) return [];
-    return dashboardData.exams.map((exam) => {
-      const submissions = dashboardData.submissions.filter(
-        (s) => s.examId === exam.examId
-      );
-      const ungraded = submissions.filter((s) => s.score === null).length;
-      const cls = dashboardData.classes.find((c) => c.classId === exam.classId);
-
-      return {
-        ...exam,
-        className: cls?.className || "N/A",
-        totalSubmissions: submissions.length,
-        ungradedCount: ungraded,
-        status: ungraded === 0 ? "Đã chấm" : "Chưa chấm",
-      };
-    });
-  }, [dashboardData]);
+  const exams = dashboardData?.exams || [];
 
   const learnerWarnings = useMemo(() => {
     if (
@@ -233,9 +236,7 @@ export default function InstructorDashboard() {
 
   const pendingRequests = useMemo(() => {
     if (!dashboardData) return [];
-    return dashboardData.sessionChangeRequests.filter(
-      (r) => r.status === "PENDING"
-    );
+    return dashboardData.sessionChangeRequests;
   }, [dashboardData]);
 
   const attendanceAlerts = useMemo(() => {
@@ -1008,7 +1009,7 @@ export default function InstructorDashboard() {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {examStatus.map((exam) => (
+                  {exams.map((exam) => (
                     <TableRow
                       key={exam.examId}
                       sx={{
@@ -1062,7 +1063,7 @@ export default function InstructorDashboard() {
                           borderBottom: "1px solid #f1f5f9",
                         }}
                       >
-                        {exam.totalSubmissions}
+                        {exam.submittedCount}/{exam.totalLearners}
                       </TableCell>
                       <TableCell sx={{ borderBottom: "1px solid #f1f5f9" }}>
                         <Box
@@ -1071,11 +1072,8 @@ export default function InstructorDashboard() {
                           <LinearProgress
                             variant="determinate"
                             value={
-                              exam.totalSubmissions > 0
-                                ? ((exam.totalSubmissions -
-                                    exam.ungradedCount) /
-                                    exam.totalSubmissions) *
-                                  100
+                              exam.totalLearners > 0
+                                ? (exam.gradedCount / exam.totalLearners) * 100
                                 : 0
                             }
                             sx={{
@@ -1101,12 +1099,9 @@ export default function InstructorDashboard() {
                               fontSize: "0.875rem",
                             }}
                           >
-                            {exam.totalSubmissions > 0
+                            {exam.totalLearners > 0
                               ? Math.round(
-                                  ((exam.totalSubmissions -
-                                    exam.ungradedCount) /
-                                    exam.totalSubmissions) *
-                                    100
+                                  (exam.gradedCount / exam.totalLearners) * 100
                                 )
                               : 0}
                             %
@@ -1485,8 +1480,9 @@ export default function InstructorDashboard() {
                           fontWeight={600}
                           sx={{ flex: 1 }}
                         >
-                          {notif.title}
+                          {notificationTitleMap[notif.title] || "Thông báo"}
                         </Typography>
+
                         <Chip
                           label={notif.isRead === "read" ? "Đã đọc" : "Mới"}
                           size="small"
@@ -1592,10 +1588,11 @@ export default function InstructorDashboard() {
                           {req.reason}
                         </Typography>
                         <Chip
-                          label="Đang chờ"
+                          label={statusConfig[req.status]?.label || req.status}
                           size="small"
                           sx={{
-                            bgcolor: "#ed6c02",
+                            bgcolor:
+                              statusConfig[req.status]?.bgcolor || "#64748b",
                             color: "white",
                             fontWeight: 500,
                           }}
