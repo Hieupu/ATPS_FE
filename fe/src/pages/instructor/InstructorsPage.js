@@ -1015,11 +1015,10 @@ const InstructorsPage = () => {
                   }}
                 >
                   <MenuItem value="0,1000000">Tất cả mức phí</MenuItem>
-                  <MenuItem value="0,200000">Dưới 200k</MenuItem>
-                  <MenuItem value="200000,400000">200k - 400k</MenuItem>
-                  <MenuItem value="400000,600000">400k - 600k</MenuItem>
-                  <MenuItem value="600000,800000">600k - 800k</MenuItem>
-                  <MenuItem value="800000,1000000">800k - 1tr</MenuItem>
+                  <MenuItem value="0,300000">Dưới 300k</MenuItem>
+                  <MenuItem value="300000,500000">300k - 500k</MenuItem>
+                  <MenuItem value="500000,700000">500k - 700k</MenuItem>
+                  <MenuItem value="700000,1000000">700k - 1tr</MenuItem>
                   <MenuItem value="1000000,5000000">Trên 1tr</MenuItem>
                 </Select>
               </FormControl>

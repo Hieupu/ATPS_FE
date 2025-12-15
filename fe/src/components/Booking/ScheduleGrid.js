@@ -775,7 +775,7 @@ useEffect(() => {
                     return sWeekKey === currentWeekKey;
                   });
                   const hasReachedMaxSlotsInWeek =
-                    slotsInSameWeek.length >= 3 && !isSelected;
+                    slotsInSameWeek.length >= 6 && !isSelected;
 
                   const isDisabled =
                     isBanned || // ⭐️ Disable khi bị ban
@@ -785,7 +785,7 @@ useEffect(() => {
                     isReservedByOthers ||
                     slot.Status !== "available" ||
                     checkingConflict ||
-                    (selectedSlots.length >= 3 && !isSelected);
+                    (selectedSlots.length >= 6 && !isSelected);
                   
                   let bgColor = slot.Status === "available" ? "#4caf50" : "#ffffff";
                   if (isReservedByOthers || slot.Status === "busy") {
