@@ -42,11 +42,6 @@ const MyCourseCard = ({ course }) => {
   const navigate = useNavigate();
   const imageUrl = course.Image || courseImages[course.CourseID % courseImages.length];
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    return new Date(dateString).toLocaleDateString("vi-VN");
-  };
-
   return (
     <Card
       sx={{
@@ -105,25 +100,6 @@ const MyCourseCard = ({ course }) => {
             boxShadow: "0 10px 20px rgba(0,0,0,0.35)",
           }}
         />
-        {course.LastEnrollmentDate && (
-          <Box
-            sx={{
-              position: "absolute",
-              bottom: 12,
-              right: 12,
-              bgcolor: "rgba(0,0,0,0.7)",
-              color: "white",
-              px: 1.5,
-              py: 0.5,
-              borderRadius: 2,
-              backdropFilter: "blur(10px)",
-            }}
-          >
-            <Typography variant="caption" sx={{ fontWeight: 600 }}>
-              📅 {formatDate(course.LastEnrollmentDate)}
-            </Typography>
-          </Box>
-        )}
       </Box>
 
       <CardContent
@@ -144,7 +120,7 @@ const MyCourseCard = ({ course }) => {
             height: "56px",
             overflow: "hidden",
             display: "-webkit-box",
-            mb:-3,
+            mb:-5,
             WebkitLineClamp: 2,
             WebkitBoxOrient: "vertical",
             lineHeight: 1.35,
@@ -271,7 +247,8 @@ const MyCourseCard = ({ course }) => {
               variant="body2"
               sx={{ fontWeight: 700, color: "text.primary" }}
             >
-              {course.Duration || 0}h
+              {Math.trunc(course.Duration || 0)}h
+
             </Typography>
             <Typography
               variant="caption"
@@ -714,7 +691,7 @@ const MyCourses = () => {
         {/* Courses Grid */}
         {paginatedCourses.length > 0 && (
           <Fade in={!loading} timeout={500}>
-            <Grid container spacing={4}>
+            <Grid container spacing={6}>
               {paginatedCourses.map((course, index) => (
                 <Grid item xs={12} sm={6} md={4} key={course.CourseID}>
                   <Fade in={true} timeout={300 + index * 50}>

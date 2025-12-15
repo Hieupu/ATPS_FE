@@ -397,7 +397,7 @@ const MyClassList = ({ courseId }) => {
         mb: 1.5,
       }}
     >
-      📅 Lịch học hàng tuần:
+       Lịch học hàng tuần:
     </Typography>
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
       {Array.from(
