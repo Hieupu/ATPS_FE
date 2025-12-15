@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Typography, CircularProgress } from "@mui/material";
-import { toast } from "react-toastify"; // Import toast
+import { toast } from "react-toastify";
 import { useAuth } from "../../../contexts/AuthContext";
 
 import ClassDetailLayout from "../components/class/ClassDetailLayout";
