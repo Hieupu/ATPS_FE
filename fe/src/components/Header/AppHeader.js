@@ -54,7 +54,7 @@ const AppHeader = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Sử dụng AuthContext thay vì localStorage trực tiếp
-  const { user, isLearner, isInstructor, isParent, logout } = useAuth();
+  const { user, isLearner, isInstructor, isParent, isAdmin, logout } = useAuth();
 
   // Load notifications on mount and when user changes
   useEffect(() => {
@@ -181,7 +181,7 @@ const AppHeader = () => {
           }}
         >
           <AssignmentTurnedIn sx={{ mr: 1, color: "#6b7280" }} />
-         Bài kiểm tra
+          Bài kiểm tra
         </MenuItem>
       );
       items.push(
@@ -239,6 +239,14 @@ const AppHeader = () => {
         >
           <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
           Quản lý khoá học
+        </MenuItem>
+      );
+    }
+    if (isAdmin) {
+      items.push(
+        <MenuItem key="admin-dashboard" onClick={() => navigate("/admin")}>
+          <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
+          Quản lý hệ thống
         </MenuItem>
       );
     }
@@ -687,7 +695,7 @@ const AppHeader = () => {
                   </Menu>
                   <Avatar
                     onClick={(e) => setAnchorEl(e.currentTarget)}
-                      src={user?.ProfilePicture || user?.profilePicture}
+                    src={user?.ProfilePicture || user?.profilePicture}
                     sx={{
                       cursor: "pointer",
                       background:
