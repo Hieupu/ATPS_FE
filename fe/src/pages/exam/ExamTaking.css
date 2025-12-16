@@ -1,5 +1,5 @@
 .split-container {
-  height: calc(100vh - 120px); /* chỉnh theo header của bạn */
+  height: calc(100vh - 120px); 
   display: flex;
 }
 

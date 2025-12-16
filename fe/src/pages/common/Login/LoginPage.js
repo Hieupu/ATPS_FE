@@ -222,26 +222,6 @@ const LoginPage = () => {
               >
                 Google
               </Button>
-
-              <Button
-                sx={{
-                  flex: 1,
-                  py: 1.5,
-                  fontWeight: 600,
-                  borderColor: "grey.300",
-                  color: "text.primary",
-                  "&:hover": {
-                    borderColor: "grey.400",
-                    backgroundColor: "grey.50",
-                  },
-                }}
-                variant="outlined"
-                size="large"
-                startIcon={<FacebookIcon />}
-                onClick={handleFacebookLogin}
-              >
-                Facebook
-              </Button>
             </Box>
 
             <Box

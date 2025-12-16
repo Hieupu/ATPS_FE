@@ -1,4 +1,3 @@
-// --- phần import giữ nguyên ---
 import React, { useEffect, useState } from "react";
 import {
   Box,
@@ -12,6 +11,7 @@ import {
   Paper,
   Autocomplete,
   CircularProgress,
+  Alert,
 } from "@mui/material";
 
 import {
@@ -55,28 +55,19 @@ const ExamInstanceSettingsStep = ({
     endTime: "",
   });
 
-  /* ======================
-      LOAD COURSES
-  ====================== */
   useEffect(() => {
     (async () => {
       try {
         const result = await getInstructorCoursesApi();
-        console.log("✅ Loaded courses:", result);
         setCourses(result || []);
       } catch (err) {
-        console.error("❌ Load courses error:", err);
+        console.error(" Load courses error:", err);
       }
     })();
   }, []);
 
-  /* ======================
-      PREFILL WHEN EDIT - ĐẢM BẢO LUÔN LÀ MẢNG
-  ====================== */
   useEffect(() => {
     if (!initialInstance || courses.length === 0) return;
-
-    console.log("📋 Prefilling with initialInstance:", initialInstance);
 
     const inst = initialInstance;
 
@@ -86,10 +77,9 @@ const ExamInstanceSettingsStep = ({
 
     const foundCourse = courses.find((c) => c.label === inst.CourseName);
     if (foundCourse) {
-      console.log("✅ Found course:", foundCourse);
       setCourseId(foundCourse.value);
     } else {
-      console.warn("⚠️ Course not found for:", inst.CourseName);
+      console.warn(" Course not found for:", inst.CourseName);
     }
 
     if (inst.StartTime) {
@@ -102,73 +92,67 @@ const ExamInstanceSettingsStep = ({
     setIsRandomQuestion(!!inst.isRandomQuestion);
     setIsRandomAnswer(!!inst.isRandomAnswer);
     setMaxAttempts(inst.Attempt || 1);
-
-    // ✅ ĐẢM BẢO LUÔN LÀ MẢNG
     if (inst.ClassId != null) {
-      const classIds = Array.isArray(inst.ClassId) 
-        ? inst.ClassId 
+      const classIds = Array.isArray(inst.ClassId)
+        ? inst.ClassId
         : [inst.ClassId];
-      
-      console.log("✅ Setting selectedClasses:", classIds, "Type:", typeof classIds);
       setSelectedClasses(classIds);
       setSelectedUnits([]);
     }
-    
+
     if (inst.UnitId != null) {
-      const unitIds = Array.isArray(inst.UnitId) 
-        ? inst.UnitId 
+      const unitIds = Array.isArray(inst.UnitId)
+        ? inst.UnitId
         : [inst.UnitId];
-      
-      console.log("✅ Setting selectedUnits:", unitIds, "Type:", typeof unitIds);
       setSelectedUnits(unitIds);
       setSelectedClasses([]);
     }
   }, [initialInstance, courses]);
 
-  /* ======================
-      LOAD CLASS / UNIT
-  ====================== */
   useEffect(() => {
     if (!courseId) return;
-
     (async () => {
       setLoading(true);
       try {
         if (instanceType === "Exam") {
           const cls = await getClassesByCourseApi(courseId);
-          console.log("✅ Loaded classes:", cls);
           setClasses(cls || []);
         } else {
           const uts = await getUnitByCourseApi(courseId);
-          console.log("✅ Loaded units:", uts);
           setUnits(uts || []);
         }
       } catch (err) {
-        console.error("❌ Load class/unit error:", err);
+        console.error("Load class/unit error:", err);
       }
       setLoading(false);
     })();
   }, [courseId, instanceType]);
 
-  /* ======================
-      VALIDATE TIME
-  ====================== */
   const validateTimes = () => {
     const errors = { startTime: "", endTime: "" };
 
-    if (!startTime) errors.startTime = "Start time bắt buộc";
-    if (!endTime) errors.endTime = "End time bắt buộc";
+    if (instanceType === "Exam") {
+      if (!startTime) errors.startTime = "Exam bắt buộc phải có thời gian bắt đầu";
+      if (!endTime) errors.endTime = "Exam bắt buộc phải có thời gian kết thúc";
+    }
+    if (instanceType === "Assignment") {
+      const hasStart = !!startTime;
+      const hasEnd = !!endTime;
+      if (hasStart && !hasEnd) {
+        errors.endTime = "Vui lòng chọn thời gian kết thúc hoặc bỏ trống cả 2 để vô thời hạn";
+      }
+      if (!hasStart && hasEnd) {
+        errors.startTime = "Vui lòng chọn thời gian bắt đầu hoặc bỏ trống cả 2 để vô thời hạn";
+      }
+    }
 
     if (startTime && endTime && new Date(startTime) >= new Date(endTime)) {
-      errors.endTime = "End time phải lớn hơn Start time";
+      errors.endTime = "Thời gian kết thúc phải lớn hơn thời gian bắt đầu";
     }
 
     return { errors, isValid: !errors.startTime && !errors.endTime };
   };
 
-  /* ======================
-      SUBMIT - ✅ FIX ĐẢM BẢO MẢNG
-  ====================== */
   const handleSave = async () => {
     if (loading || isSubmitting) return;
 
@@ -180,22 +164,13 @@ const ExamInstanceSettingsStep = ({
       alert("Vui lòng chọn khóa học");
       return;
     }
-
-    // ✅ ĐẢM BẢO LUÔN LÀ MẢNG - KIỂM TRA KỸ
-    const classIds = instanceType === "Exam" 
+    const classIds = instanceType === "Exam"
       ? (Array.isArray(selectedClasses) ? selectedClasses : [])
       : [];
-      
-    const unitIds = instanceType === "Assignment" 
+
+    const unitIds = instanceType === "Assignment"
       ? (Array.isArray(selectedUnits) ? selectedUnits : [])
       : [];
-
-    console.log("📋 Before validation:");
-    console.log("  - instanceType:", instanceType);
-    console.log("  - selectedClasses:", selectedClasses, "isArray:", Array.isArray(selectedClasses));
-    console.log("  - selectedUnits:", selectedUnits, "isArray:", Array.isArray(selectedUnits));
-    console.log("  - classIds:", classIds, "length:", classIds.length);
-    console.log("  - unitIds:", unitIds, "length:", unitIds.length);
 
     if (classIds.length === 0 && unitIds.length === 0) {
       alert("Vui lòng chọn Lớp (Exam) hoặc Unit (Assignment)");
@@ -207,8 +182,6 @@ const ExamInstanceSettingsStep = ({
     try {
       setIsSubmitting(true);
       setLoading(true);
-
-      // ==================== EDIT MODE ====================
       if (isEditMode) {
         const instanceId = initialInstance?.InstanceId || initialInstance?.instanceId;
         const examId = initialInstance?.ExamId || initialInstance?.examId;
@@ -219,51 +192,36 @@ const ExamInstanceSettingsStep = ({
 
         const payload = {
           instanceType,
-          startTime,
-          endTime,
           attempt: attemptValue,
           isRandomQuestion,
           isRandomAnswer,
         };
-
-        // ✅ GÁN ĐÚNG KIỂU MẢNG
+        if (startTime) payload.startTime = startTime;
+        if (endTime) payload.endTime = endTime;
         if (instanceType === "Exam") {
-          payload.classId = classIds; // ← Luôn là mảng
+          payload.classId = classIds; 
         } else {
-          payload.unitId = unitIds; // ← Luôn là mảng
+          payload.unitId = unitIds; 
         }
-
-        console.log("🚀 EDIT PAYLOAD:", JSON.stringify(payload, null, 2));
-        console.log("  - examId:", examId);
-        console.log("  - instanceId:", instanceId);
 
         await updateExamInstanceApi(examId, instanceId, payload);
         alert("Cập nhật bài tập thành công!");
       }
-      // ==================== CREATE MODE ====================
+   
       else {
         const payload = {
           instanceType,
-          startTime,
-          endTime,
           attempt: attemptValue,
           isRandomQuestion,
           isRandomAnswer,
         };
-
-        // ✅ GÁN ĐÚNG KIỂU MẢNG
+        if (startTime) payload.startTime = startTime;
+        if (endTime) payload.endTime = endTime;
         if (instanceType === "Exam") {
-          payload.classId = classIds; // ← Luôn là mảng
+          payload.classId = classIds; 
         } else {
-          payload.unitId = unitIds; // ← Luôn là mảng
+          payload.unitId = unitIds; 
         }
-
-        console.log("🚀 CREATE PAYLOAD:", JSON.stringify({
-          exam: examData,
-          sections: sections,
-          instance: payload,
-        }, null, 2));
-
         await createFullExamApi({
           exam: examData,
           sections,
@@ -277,7 +235,7 @@ const ExamInstanceSettingsStep = ({
       console.error("❌ Submit error:", err);
       console.error("  - Response:", err?.response?.data);
       console.error("  - Message:", err?.message);
-      
+
       alert(
         err?.response?.data?.message || err?.message || "Lỗi khi lưu dữ liệu!"
       );
@@ -286,10 +244,7 @@ const ExamInstanceSettingsStep = ({
       setLoading(false);
     }
   };
-
-  /* ======================
-      UI
-  ====================== */
+  const isUnlimitedTime = instanceType === "Assignment" && !startTime && !endTime;
   return (
     <Box>
       <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
@@ -306,6 +261,7 @@ const ExamInstanceSettingsStep = ({
             setInstanceType(e.target.value);
             setSelectedUnits([]);
             setSelectedClasses([]);
+            setTimeErrors({ startTime: "", endTime: "" });
           }}
           sx={{ mb: 3 }}
         >
@@ -336,7 +292,6 @@ const ExamInstanceSettingsStep = ({
             value={units.filter((u) => selectedUnits.includes(u.UnitID))}
             onChange={(e, val) => {
               const newUnitIds = val.map((u) => u.UnitID);
-              console.log("✅ Selected units changed:", newUnitIds);
               setSelectedUnits(newUnitIds);
             }}
             renderInput={(params) => (
@@ -353,7 +308,6 @@ const ExamInstanceSettingsStep = ({
             value={classes.filter((c) => selectedClasses.includes(c.ClassID))}
             onChange={(e, val) => {
               const newClassIds = val.map((c) => c.ClassID);
-              console.log("✅ Selected classes changed:", newClassIds);
               setSelectedClasses(newClassIds);
             }}
             renderInput={(params) => (
@@ -375,10 +329,15 @@ const ExamInstanceSettingsStep = ({
             <TextField
               fullWidth
               type="datetime-local"
-              label="Start time"
+              label={instanceType === "Exam" ? "Ngày bắt đầu *" : "Start time (tùy chọn)"}
               InputLabelProps={{ shrink: true }}
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => {
+                setStartTime(e.target.value);
+                if (timeErrors.startTime) {
+                  setTimeErrors({ ...timeErrors, startTime: "" });
+                }
+              }}
               error={!!timeErrors.startTime}
               helperText={timeErrors.startTime}
             />
@@ -388,15 +347,24 @@ const ExamInstanceSettingsStep = ({
             <TextField
               fullWidth
               type="datetime-local"
-              label="End time"
+              label={instanceType === "Exam" ? "End time *" : "End time (tùy chọn)"}
               InputLabelProps={{ shrink: true }}
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => {
+                setEndTime(e.target.value);
+                if (timeErrors.endTime) {
+                  setTimeErrors({ ...timeErrors, endTime: "" });
+                }
+              }}
               error={!!timeErrors.endTime}
               helperText={timeErrors.endTime}
             />
           </Grid>
-
+          {instanceType === "Assignment" && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <strong>Assignment:</strong> Có thể bỏ trống cả 2 trường thời gian để tạo bài tập vô thời hạn
+            </Alert>
+          )}
           <Grid item xs={12}>
             <FormControlLabel
               control={
@@ -435,7 +403,6 @@ const ExamInstanceSettingsStep = ({
           </Grid>
         </Grid>
       </Paper>
-
       <Box mt={3} textAlign="right">
         <Button
           variant="contained"

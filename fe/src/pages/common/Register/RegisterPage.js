@@ -34,16 +34,16 @@ const RegisterPage = () => {
 
   const validate = () => {
     if (!form.username || !form.email || !form.password || !form.confirmPassword) {
-      return "Please enter complete information: username, email, password!";
+      return "Vui lòng nhập đầy đủ thông tin: Họ và tên, email, mật khẩu!";
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(form.email)) return "Invalid email!";
+    if (!emailRegex.test(form.email)) return "Email không hợp lệ!";
     const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/;
     if (!passwordRegex.test(form.password)) {
-      return "Password must be at least 6 characters, including letters and numbers!";
+      return "Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ cái và số!";
     }
-    if (form.password !== form.confirmPassword) return "Password confirmation does not match!";
-    if (form.phone && !/^\d{9,11}$/.test(form.phone)) return "Invalid phone number (9–11 digits only)!";
+    if (form.password !== form.confirmPassword) return "Mật khẩu xác thực không khớp!";
+    if (form.phone && !/^\d{9,11}$/.test(form.phone)) return "Số điện thoại không hợp lệ!";
     return null;
   };
 
@@ -69,7 +69,6 @@ const RegisterPage = () => {
         password: form.password,
       });
 
-      setSuccessMsg(res?.message || "Account created successfully!");
       setSeconds(4);
       setSuccessOpen(true);
 
@@ -80,7 +79,7 @@ const RegisterPage = () => {
       timeoutRef.current = setTimeout(goLogin, 4000);
     } catch (error) {
       console.error("Register error:", error);
-      setErrorMsg(error?.message || "Register failed. Please try again!");
+      setErrorMsg(error?.message || "Đăng ký thất bại. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -124,10 +123,10 @@ const RegisterPage = () => {
           <Box component="form" onSubmit={handleSubmit}>
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Tên đăng nhập
+                Họ và tên
               </Typography>
               <TextField
-                fullWidth name="username" placeholder="tên đăng nhập"
+                fullWidth name="username" placeholder="Họ và tên của bạn"
                 value={form.username} onChange={handleChange} required disabled={loading || successOpen}
               />
             </Box>
@@ -136,7 +135,7 @@ const RegisterPage = () => {
                 Email
               </Typography>
               <TextField
-                fullWidth name="email" type="email" placeholder="you@example.com"
+                fullWidth name="email" type="email" placeholder="nguyenvana@mail.com"
                 value={form.email} onChange={handleChange} required disabled={loading || successOpen}
               />
             </Box>
@@ -219,26 +218,6 @@ const RegisterPage = () => {
             >
               Google
             </Button>
-
-            <Button
-              sx={{
-                flex: 1,
-                py: 1.5,
-                fontWeight: 600,
-                borderColor: 'grey.300',
-                color: 'text.primary',
-                "&:hover": {
-                  borderColor: 'grey.400',
-                  backgroundColor: 'grey.50',
-                },
-              }}
-              variant="outlined"
-              size="large"
-              startIcon={<FacebookIcon />}
-              onClick={startFacebookAuth}
-            >
-              Facebook
-            </Button>
           </Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 1 }}>
               <Typography variant="body2" color="text.secondary">
@@ -255,20 +234,20 @@ const RegisterPage = () => {
         <DialogTitle sx={{ textAlign: "center", pb: 1 }}>
           <CheckCircleOutlineRoundedIcon sx={{ fontSize: 56 }} color="success" />
           <Typography variant="h5" sx={{ mt: 1, fontWeight: 700 }}>
-            Registration Successful
+            Đăng ký thành công
           </Typography>
         </DialogTitle>
         <DialogContent sx={{ textAlign: "center" }}>
           <Typography sx={{ mb: 1 }}>
-            {successMsg || "Your account has been created successfully."}
+            {successMsg || "Tài khoản của bạn đã được tạo thành công."}
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Redirecting to login in <b>{seconds}s</b>…
+           Đang chuyển hướng đến trang đăng nhập <b>{seconds}s</b>…
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: "center", pb: 2 }}>
           <Button variant="contained" onClick={handleCloseSuccess}>
-            Go to Login now
+             Đăng nhập ngay
           </Button>
         </DialogActions>
       </Dialog>
