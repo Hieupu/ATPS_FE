@@ -1,0 +1,21 @@
+.split-container {
+  height: calc(100vh - 120px);
+  display: flex;
+}
+
+.split-left,
+.split-right {
+  height: 100%;
+  overflow-y: auto;
+}
+
+.scroll-panel {
+  height: 100%;
+  overflow-y: auto;
+}
+.question-card,
+.question-card:hover {
+  box-shadow: none !important;
+  transform: none !important;
+  transition: none !important;
+}
