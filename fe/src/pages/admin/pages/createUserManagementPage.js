@@ -15,10 +15,6 @@ import {
   TableRow,
   TableCell,
   IconButton,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
   Stack,
   MenuItem,
   Pagination,
@@ -32,6 +28,14 @@ import {
 import uploadService from "../../../apiServices/uploadService";
 import accountService from "../../../apiServices/accountService";
 import { useAuth } from "../../../contexts/AuthContext";
+import {
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateFullName,
+  validateConfirmPassword,
+} from "../../../utils/validate";
+import UserFormModal from "../components/UserFormModal";
 
 const statusOptions = [
   { value: "active", label: "Hoạt động" },
@@ -71,6 +75,7 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
     const [saving, setSaving] = useState(false);
     const [page, setPage] = useState(1);
     const [pageSize] = useState(10);
+    const [newErrors, setNewErrors] = useState({});
 
     // Kiểm tra xem đang edit chính account của mình không
     const isEditingSelf = useMemo(() => {
@@ -175,7 +180,9 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
         DateOfBirth: item?.DateOfBirth ? item.DateOfBirth.split("T")[0] : "",
         ProfilePicture: item?.ProfilePicture || "",
         Gender: item?.Gender || "other",
+        ConfirmPassword: "",
       });
+      setNewErrors({});
       setModalOpen(true);
     };
 
@@ -183,42 +190,73 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
       setModalOpen(false);
       setSelectedItem(null);
       setFormData({ ...defaultForm });
-    };
-
-    const handleAvatarUpload = async (event) => {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      const loadingMsg = document.createElement("div");
-      loadingMsg.textContent = "Đang tải ảnh lên...";
-      loadingMsg.style.cssText =
-        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
-      document.body.appendChild(loadingMsg);
-
-      try {
-        const result = await uploadService.uploadAvatar(file);
-        setFormData((prev) => ({
-          ...prev,
-          ProfilePicture: result.url || result.data?.url,
-        }));
-      } catch (error) {
-        alert(error?.message || "Không thể tải ảnh");
-      } finally {
-        if (document.body.contains(loadingMsg)) {
-          document.body.removeChild(loadingMsg);
-        }
-      }
+      setNewErrors({});
     };
 
     const handleSubmit = async () => {
-      if (!formData.FullName?.trim()) {
-        alert("Vui lòng nhập họ tên");
+      // Clear previous errors
+      const errors = {};
+
+      // Validate FullName using utils
+      const fullNameError = validateFullName(formData.FullName);
+      if (fullNameError) {
+        errors.FullName = fullNameError;
+      }
+
+      // Validate Email
+      const emailError = validateEmail(formData.Email);
+      if (emailError) {
+        errors.Email = emailError;
+      }
+
+      // Validate Password (required when creating)
+      if (!selectedItem) {
+        const passwordError = validatePassword(formData.Password, true);
+        if (passwordError) {
+          errors.Password = passwordError;
+        }
+        // Validate confirm password when creating
+        const confirmPasswordError = validateConfirmPassword(
+          formData.Password,
+          formData.ConfirmPassword,
+          true
+        );
+        if (confirmPasswordError) {
+          errors.ConfirmPassword = confirmPasswordError;
+        }
+      } else if (formData.Password) {
+        // Validate password when updating (if provided)
+        const passwordError = validatePassword(formData.Password, false);
+        if (passwordError) {
+          errors.Password = passwordError;
+        }
+        // Validate confirm password when updating (if password is provided)
+        const confirmPasswordError = validateConfirmPassword(
+          formData.Password,
+          formData.ConfirmPassword,
+          false
+        );
+        if (confirmPasswordError) {
+          errors.ConfirmPassword = confirmPasswordError;
+        }
+      }
+
+      // Validate Phone (if provided)
+      if (formData.Phone) {
+        const phoneError = validatePhone(formData.Phone);
+        if (phoneError) {
+          errors.Phone = phoneError;
+        }
+      }
+
+      // If there are errors, set them and return
+      if (Object.keys(errors).length > 0) {
+        setNewErrors(errors);
         return;
       }
-      if (!formData.Email?.trim()) {
-        alert("Vui lòng nhập email");
-        return;
-      }
+
+      // Clear errors if validation passes
+      setNewErrors({});
 
       try {
         setSaving(true);
@@ -238,13 +276,13 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
           if (selectedItem.AccID) {
             const accountPayload = {};
             if (formData.Email && formData.Email !== selectedItem.Email) {
-              accountPayload.Email = formData.Email;
+              accountPayload.Email = formData.Email.trim().toLowerCase();
             }
             if (
               formData.Phone !== undefined &&
               formData.Phone !== selectedItem.Phone
             ) {
-              accountPayload.Phone = formData.Phone;
+              accountPayload.Phone = formData.Phone.trim();
             }
             const currentStatus = (
               selectedItem.Status ||
@@ -262,6 +300,13 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
             if (formData.Password) {
               accountPayload.Password = formData.Password;
             }
+            // Update Gender if changed
+            if (
+              formData.Gender &&
+              formData.Gender !== (selectedItem.Gender || "other")
+            ) {
+              accountPayload.Gender = formData.Gender;
+            }
 
             if (Object.keys(accountPayload).length > 0) {
               await accountService.updateAccount(
@@ -275,8 +320,8 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
         } else {
           const createPayload = {
             ...payload,
-            Email: formData.Email.trim(),
-            Phone: formData.Phone || "",
+            Email: formData.Email.trim().toLowerCase(),
+            Phone: formData.Phone?.trim() || "",
             Status: formData.Status || "active",
             Password: formData.Password,
             Gender: formData.Gender || "other",
@@ -512,171 +557,23 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
           </CardContent>
         </Card>
 
-        <Dialog open={modalOpen} onClose={closeModal} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ fontWeight: 600 }}>
-            {selectedItem
+        <UserFormModal
+          open={modalOpen}
+          onClose={closeModal}
+          onSubmit={handleSubmit}
+          title={
+            selectedItem
               ? `Cập nhật ${entityLabel.toLowerCase()}`
-              : `Thêm ${entityLabel.toLowerCase()} mới`}
-          </DialogTitle>
-          <DialogContent dividers>
-            <Stack spacing={2}>
-              <TextField
-                label="Họ tên"
-                value={formData.FullName}
-                onChange={(e) =>
-                  setFormData({ ...formData, FullName: e.target.value })
-                }
-                fullWidth
-                required
-              />
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField
-                  label="Email"
-                  value={formData.Email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Email: e.target.value })
-                  }
-                  fullWidth
-                  required
-                />
-                <TextField
-                  label="Điện thoại"
-                  value={formData.Phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Phone: e.target.value })
-                  }
-                  fullWidth
-                />
-              </Stack>
-              {!selectedItem && (
-                <TextField
-                  label="Mật khẩu"
-                  type="password"
-                  value={formData.Password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Password: e.target.value })
-                  }
-                  fullWidth
-                  required
-                />
-              )}
-              {selectedItem && (
-                <TextField
-                  label="Đặt lại mật khẩu (tùy chọn)"
-                  type="password"
-                  value={formData.Password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Password: e.target.value })
-                  }
-                  fullWidth
-                />
-              )}
-              <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-                <TextField
-                  select
-                  label="Trạng thái"
-                  value={formData.Status}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Status: e.target.value })
-                  }
-                  fullWidth
-                  disabled={isEditingSelf}
-                  helperText={
-                    isEditingSelf
-                      ? "Bạn không thể thay đổi trạng thái của chính mình"
-                      : ""
-                  }
-                >
-                  {statusOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  select
-                  label="Giới tính"
-                  value={formData.Gender}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Gender: e.target.value })
-                  }
-                  fullWidth
-                >
-                  {genderOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
-              </Stack>
-              <TextField
-                label="Địa chỉ"
-                value={formData.Address}
-                onChange={(e) =>
-                  setFormData({ ...formData, Address: e.target.value })
-                }
-                fullWidth
-              />
-              <TextField
-                label="Ngày sinh"
-                type="date"
-                value={formData.DateOfBirth}
-                onChange={(e) =>
-                  setFormData({ ...formData, DateOfBirth: e.target.value })
-                }
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-              <Box>
-                <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                  Ảnh đại diện
-                </Typography>
-                {formData.ProfilePicture && (
-                  <Box sx={{ mb: 1 }}>
-                    <img
-                      src={formData.ProfilePicture}
-                      alt="avatar preview"
-                      style={{
-                        width: 140,
-                        height: 140,
-                        borderRadius: 12,
-                        objectFit: "cover",
-                        border: "1px solid #ddd",
-                      }}
-                    />
-                  </Box>
-                )}
-                <input
-                  type="file"
-                  id="user-avatar-input"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={handleAvatarUpload}
-                />
-                <Button
-                  variant="outlined"
-                  component="label"
-                  htmlFor="user-avatar-input"
-                  size="small"
-                >
-                  Chọn ảnh
-                </Button>
-              </Box>
-            </Stack>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, py: 2 }}>
-            <Button onClick={closeModal} disabled={saving}>
-              Hủy
-            </Button>
-            <Button
-              variant="contained"
-              onClick={handleSubmit}
-              disabled={saving}
-            >
-              {saving ? "Đang lưu..." : "Lưu"}
-            </Button>
-          </DialogActions>
-        </Dialog>
+              : `Thêm ${entityLabel.toLowerCase()} mới`
+          }
+          formData={formData}
+          setFormData={setFormData}
+          errors={newErrors}
+          setErrors={setNewErrors}
+          saving={saving}
+          isEditing={!!selectedItem}
+          showInstructorFields={false}
+        />
       </Box>
     );
   };

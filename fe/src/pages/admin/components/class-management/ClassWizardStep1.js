@@ -1,38 +1,4 @@
 import React from "react";
-
-/**
- * ClassWizardStep1 - Component cho Step 1: Thông tin cơ bản
- *
- * Props:
- * - formData: Object chứa dữ liệu form
- * - setFormData: Function để cập nhật formData
- * - errors: Object chứa lỗi validation
- * - readonly: Boolean - chế độ chỉ đọc
- * - instructors: Array - danh sách giảng viên
- * - filteredInstructors: Array - danh sách giảng viên đã filter
- * - instructorSearchTerm: String - từ khóa tìm kiếm giảng viên
- * - setInstructorSearchTerm: Function
- * - instructorDropdownOpen: Boolean
- * - setInstructorDropdownOpen: Function
- * - selectedInstructor: Object - giảng viên đã chọn
- * - setSelectedInstructor: Function
- * - setInstructorType: Function
- * - setParttimeAvailableSlotKeys: Function
- * - setParttimeAvailableEntriesCount: Function
- * - setParttimeAvailabilityError: Function
- * - setBlockedDays: Function
- * - setSelectedTimeslotIds: Function
- * - setAlternativeStartDateSearch: Function
- * - availableCourses: Array - danh sách khóa học
- * - filteredCourses: Array - danh sách khóa học đã filter
- * - courseSearchTerm: String
- * - setCourseSearchTerm: Function
- * - courseDropdownOpen: Boolean
- * - setCourseDropdownOpen: Function
- * - selectedCourse: Object
- * - setSelectedCourse: Function
- * - loadingInstructorData: Boolean
- */
 const ClassWizardStep1 = ({
   formData,
   setFormData,
@@ -407,79 +373,6 @@ const ClassWizardStep1 = ({
         {errors.Maxstudent && (
           <span className="error-message">{errors.Maxstudent}</span>
         )}
-      </div>
-
-      <div
-        className="form-row"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
-        }}
-      >
-        <div className="form-group">
-          <label htmlFor="ZoomID">
-            Zoom ID <span className="required">*</span>
-          </label>
-          <input
-            type="text"
-            id="ZoomID"
-            value={formData.ZoomID}
-            onChange={(e) =>
-              setFormData({ ...formData, ZoomID: e.target.value })
-            }
-            placeholder="12345678901"
-            maxLength="11"
-            className={errors.ZoomID ? "error" : ""}
-            disabled={readonly}
-            readOnly={readonly}
-          />
-          {errors.ZoomID && (
-            <span className="error-message">{errors.ZoomID}</span>
-          )}
-          <small
-            style={{
-              color: "#64748b",
-              fontSize: "12px",
-              marginTop: "4px",
-              display: "block",
-            }}
-          >
-            ID phòng Zoom (tối đa 11 ký tự)
-          </small>
-        </div>
-
-        <div className="form-group">
-          <label htmlFor="Zoompass">
-            Mật khẩu Zoom <span className="required">*</span>
-          </label>
-          <input
-            type="text"
-            id="Zoompass"
-            value={formData.Zoompass}
-            onChange={(e) =>
-              setFormData({ ...formData, Zoompass: e.target.value })
-            }
-            placeholder="123456"
-            maxLength="6"
-            className={errors.Zoompass ? "error" : ""}
-            disabled={readonly}
-            readOnly={readonly}
-          />
-          {errors.Zoompass && (
-            <span className="error-message">{errors.Zoompass}</span>
-          )}
-          <small
-            style={{
-              color: "#64748b",
-              fontSize: "12px",
-              marginTop: "4px",
-              display: "block",
-            }}
-          >
-            Mật khẩu phòng Zoom (tối đa 6 ký tự)
-          </small>
-        </div>
       </div>
     </div>
   );

@@ -100,8 +100,8 @@ const InstructorCard = ({ instructor }) => {
           <Avatar
             src={instructor.ProfilePicture}
             sx={{
-              width: 110,
-              height: 110,
+              width: 130,
+              height: 130,
               border: "4px solid",
               borderColor: "primary.light",
               boxShadow: "0 10px 30px rgba(99, 102, 241, 0.3)",
@@ -120,6 +120,7 @@ const InstructorCard = ({ instructor }) => {
             textAlign: "center",
             color: "text.primary",
             fontFamily: "'Poppins', 'Segoe UI', sans-serif",
+            mb:-1
           }}
         >
           {instructor.FullName}
@@ -131,7 +132,7 @@ const InstructorCard = ({ instructor }) => {
             display: "flex",
             flexDirection: "column",
             gap: 1.5,
-            p: 2,
+            p: 1,
             bgcolor: "#f4f6ff",
             borderRadius: 3,
             border: "1px solid rgba(99,102,241,0.08)",
@@ -174,7 +175,7 @@ const InstructorCard = ({ instructor }) => {
             </Typography>
           </Box>
           {/* Certificates */}
-          {instructor.Certificates && instructor.Certificates.length > 0 && (
+          {/* {instructor.Certificates && instructor.Certificates.length > 0 && (
             <Box
               sx={{
                 display: "flex",
@@ -218,7 +219,7 @@ const InstructorCard = ({ instructor }) => {
                 </Typography>
               )}
             </Box>
-          )}
+          )} */}
         </Box>
 
         {/* Stats */}
@@ -228,6 +229,8 @@ const InstructorCard = ({ instructor }) => {
             justifyContent: "space-around",
             gap: 2,
             py: 2,
+            mb:-2,
+            mt:-2,
             borderTop: "2px solid",
             borderBottom: "2px solid",
             borderColor: "divider",
@@ -297,7 +300,7 @@ const InstructorCard = ({ instructor }) => {
               fontSize: "0.9rem",
             }}
           >
-            Phí: {(instructor.InstructorFee || 0).toLocaleString("vi-VN")}{" "}
+            Gia sư: {(instructor.InstructorFee || 0).toLocaleString("vi-VN")}{" "}
             VND/buổi
           </Typography>
         </Box>
@@ -1012,11 +1015,10 @@ const InstructorsPage = () => {
                   }}
                 >
                   <MenuItem value="0,1000000">Tất cả mức phí</MenuItem>
-                  <MenuItem value="0,200000">Dưới 200k</MenuItem>
-                  <MenuItem value="200000,400000">200k - 400k</MenuItem>
-                  <MenuItem value="400000,600000">400k - 600k</MenuItem>
-                  <MenuItem value="600000,800000">600k - 800k</MenuItem>
-                  <MenuItem value="800000,1000000">800k - 1tr</MenuItem>
+                  <MenuItem value="0,300000">Dưới 300k</MenuItem>
+                  <MenuItem value="300000,500000">300k - 500k</MenuItem>
+                  <MenuItem value="500000,700000">500k - 700k</MenuItem>
+                  <MenuItem value="700000,1000000">700k - 1tr</MenuItem>
                   <MenuItem value="1000000,5000000">Trên 1tr</MenuItem>
                 </Select>
               </FormControl>

@@ -9,6 +9,10 @@ import {
   TextField,
   Button,
   InputAdornment,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
 import {
   Person as PersonIcon,
@@ -19,7 +23,10 @@ import {
   Home as HomeIcon,
   CalendarToday as CalendarIcon,
   School as SchoolIcon,
-  Male as MaleIcon, Female as FemaleIcon, Transgender as OtherIcon
+  Male as MaleIcon,
+  Female as FemaleIcon,
+  Transgender as OtherIcon,
+  Info as InfoIcon,
 } from "@mui/icons-material";
 
 const PersonalInformation = ({
@@ -34,41 +41,55 @@ const PersonalInformation = ({
   return (
     <Card
       sx={{
-        borderRadius: "24px",
-        background: "white",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
+        borderRadius: "16px",
+        backgroundColor: "#ffffff",
+        boxShadow: "0 4px 20px rgba(0, 0, 0, 0.05)",
+        border: "1px solid #e0e0e0",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          boxShadow: "0 6px 24px rgba(0, 0, 0, 0.08)",
+        },
       }}
     >
-      <CardContent sx={{ p: 4 }}>
+      <CardContent sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
         <SectionHeader
           icon={<PersonIcon />}
-          title="Personal Information"
-          subtitle="Update your personal details here"
+          title="Thông tin cá nhân"
+          subtitle="Cập nhật thông tin cá nhân của bạn tại đây"
         />
 
-        <Grid container spacing={3}>
+        <Grid container spacing={2}>
           <Grid item xs={12}>
             <TextField
               fullWidth
-              label="Email Address"
+              label="Địa chỉ email"
               value={profile.account?.Email || ""}
               disabled
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <EmailIcon sx={{ color: "#9ca3af" }} />
+                    <EmailIcon sx={{ color: "#1a237e" }} />
                   </InputAdornment>
                 ),
+                sx: {
+                  borderRadius: "10px",
+                  backgroundColor: "#fafafa",
+                  "&.Mui-disabled": {
+                    backgroundColor: "#f5f5f5",
+                  },
+                },
               }}
-              helperText="Email address cannot be changed"
+              helperText="Email không thể thay đổi"
               sx={{
-                "& .MuiOutlinedInput-root": {
-                  borderRadius: "12px",
-                  bgcolor: "#f9fafb",
+                "& .MuiFormHelperText-root": {
+                  fontSize: "0.75rem",
+                  color: "#757575",
+                  ml: 0,
                 },
               }}
             />
           </Grid>
+          
           <RoleSpecificFields
             profile={profile}
             formData={formData}
@@ -96,41 +117,124 @@ const SectionHeader = ({ icon, title, subtitle }) => (
       alignItems: "center",
       gap: 2,
       mb: 3,
-      pb: 2,
-      borderBottom: "2px solid #f0f0f0",
+      pb: 2.5,
+      borderBottom: "1px solid #e0e0e0",
     }}
   >
     <Box
       sx={{
-        width: 48,
-        height: 48,
-        borderRadius: "12px",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        width: 44,
+        height: 44,
+        borderRadius: "10px",
+        backgroundColor: "#1a237e",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        boxShadow: "0 3px 8px rgba(26, 35, 126, 0.15)",
       }}
     >
-      {React.cloneElement(icon, { sx: { color: "white", fontSize: 28 } })}
+      {React.cloneElement(icon, { 
+        sx: { 
+          color: "white", 
+          fontSize: 24 
+        } 
+      })}
     </Box>
     <Box>
-      <Typography variant="h5" fontWeight="700">
+      <Typography 
+        variant="h6" 
+        fontWeight="600"
+        sx={{ color: "#1a237e" }}
+      >
         {title}
       </Typography>
-      <Typography variant="body2" color="text.secondary">
+      <Typography 
+        variant="body2" 
+        sx={{ 
+          color: "#757575",
+          fontSize: "0.875rem",
+        }}
+      >
         {subtitle}
       </Typography>
     </Box>
   </Box>
 );
 
+const MultilineTextField = ({
+  label,
+  name,
+  value,
+  disabled,
+  onChange,
+  icon,
+  rows = 2,
+}) => (
+  <TextField
+    fullWidth
+    label={label}
+    name={name}
+    value={value}
+    onChange={onChange}
+    disabled={disabled}
+    multiline
+    rows={rows}
+    InputLabelProps={{
+      sx: {
+        fontSize: "0.875rem",
+        "&.Mui-focused": {
+          color: "#1a237e",
+        },
+      },
+    }}
+    slotProps={{
+      input: {
+        startAdornment: (
+          <InputAdornment 
+            position="start"
+            sx={{
+              alignSelf: 'flex-start',
+              marginTop: '10px',
+              marginRight: '8px',
+            }}
+          >
+            {React.cloneElement(icon, { 
+              sx: { 
+                color: disabled ? "#bdbdbd" : "#1a237e",
+                fontSize: 20 
+              } 
+            })}
+          </InputAdornment>
+        ),
+      },
+    }}
+    sx={{
+      '& .MuiOutlinedInput-root': {
+        borderRadius: "10px",
+        alignItems: 'flex-start',
+        paddingTop: '8px',
+        backgroundColor: disabled ? "#f5f5f5" : "#ffffff",
+        '&:hover fieldset': {
+          borderColor: disabled ? "#e0e0e0" : "#1a237e",
+        },
+        '&.Mui-focused fieldset': {
+          borderColor: "#1a237e",
+          borderWidth: 2,
+        },
+      },
+      '& .MuiInputBase-inputMultiline': {
+        marginTop: '4px',
+      },
+    }}
+  />
+);
+
 const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => {
-  console.log('formData:', formData);
   const commonFields = (
     <>
       <Grid item xs={12} md={6}>
         <FormTextField
-          label="Full Name"
+          label="Họ và tên"
           name="FullName"
           value={formData.FullName || ""}
           disabled={!isEditing}
@@ -138,18 +242,20 @@ const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => 
           icon={<PersonIcon />}
         />
       </Grid>
+      
       <Grid item xs={12} md={6}>
         <GenderSelect
-          label="Gender"
+          label="Giới tính"
           name="Gender"
-          value={formData.Gender || formData.account?.Gender || ""} // Sửa ở đây
+          value={formData.Gender || formData.account?.Gender || ""}
           disabled={!isEditing}
           onChange={onInputChange}
         />
       </Grid>
+      
       <Grid item xs={12} md={6}>
         <FormTextField
-          label="Phone Number"
+          label="Số điện thoại"
           name="Phone"
           value={formData.Phone || ""}
           disabled={!isEditing}
@@ -157,9 +263,10 @@ const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => 
           icon={<PhoneIcon />}
         />
       </Grid>
+      
       <Grid item xs={12} md={6}>
         <FormTextField
-          label="Date of Birth"
+          label="Ngày sinh"
           name="DateOfBirth"
           type="date"
           value={formData.DateOfBirth ? new Date(formData.DateOfBirth).toLocaleDateString('en-CA') : ""}
@@ -169,9 +276,10 @@ const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => 
           InputLabelProps={{ shrink: true }}
         />
       </Grid>
+      
       <Grid item xs={12} md={6}>
         <FormTextField
-          label="Job"
+          label="Nghề nghiệp"
           name="Job"
           value={formData.Job || ""}
           disabled={!isEditing}
@@ -179,18 +287,18 @@ const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => 
           icon={<WorkIcon />}
         />
       </Grid>
-      <Grid item xs={12}>
-        <FormTextField
-          label="Address"
-          name="Address"
-          value={formData.Address || ""}
-          disabled={!isEditing}
-          onChange={onInputChange}
-          icon={<HomeIcon />}
-          multiline
-          rows={2}
-        />
-      </Grid>
+      
+ <Grid item xs={12}>
+  <MultilineTextField
+    label="Địa chỉ"
+    name="Address"
+    value={formData.Address || ""}
+    disabled={!isEditing}
+    onChange={onInputChange}
+    icon={<HomeIcon />}
+    rows={2}
+  />
+</Grid>
     </>
   );
 
@@ -200,7 +308,7 @@ const RoleSpecificFields = ({ profile, formData, isEditing, onInputChange }) => 
         {commonFields}
         <Grid item xs={12} md={6}>
           <FormTextField
-            label="Major"
+            label="Chuyên ngành"
             name="Major"
             value={formData.Major || ""}
             disabled={!isEditing}
@@ -222,56 +330,73 @@ const GenderSelect = ({
   disabled,
   onChange,
 }) => {
-  // Hàm để lấy icon dựa trên giá trị hiện tại
   const getGenderIcon = (genderValue) => {
     switch (genderValue) {
       case "male":
-        return <MaleIcon sx={{ color: "#6366f1" }} />;
+        return <MaleIcon sx={{ color: "#1a237e" }} />;
       case "female":
-        return <FemaleIcon sx={{ color: "#6366f1" }} />;
+        return <FemaleIcon sx={{ color: "#1a237e" }} />;
       case "other":
-        return <OtherIcon sx={{ color: "#6366f1" }} />;
+        return <OtherIcon sx={{ color: "#1a237e" }} />;
       default:
-        return <OtherIcon sx={{ color: "#6366f1" }} />;
+        return <OtherIcon sx={{ color: "#1a237e" }} />;
     }
   };
 
   return (
-    <TextField
-      fullWidth
-      select
-      label={label}
-      name={name}
-      value={value}
-      onChange={onChange}
-      disabled={disabled}
-      InputProps={{
-        startAdornment: (
-          <InputAdornment position="start">
-            {getGenderIcon(value)}
-          </InputAdornment>
-        ),
-      }}
-      SelectProps={{
-        native: true,
-      }}
-      sx={{
-        "& .MuiOutlinedInput-root": {
-          borderRadius: "12px",
-          "&:hover fieldset": {
-            borderColor: "#6366f1",
+    <FormControl fullWidth disabled={disabled}>
+      <InputLabel 
+        sx={{ 
+          fontSize: "0.875rem",
+          "&.Mui-focused": {
+            color: "#1a237e",
+          }
+        }}
+      >
+        {label}
+      </InputLabel>
+      <Select
+        label={label}
+        name={name}
+        value={value}
+        onChange={onChange}
+        sx={{
+          borderRadius: "10px",
+          "& .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#e0e0e0",
           },
-          "&.Mui-focused fieldset": {
-            borderColor: "#6366f1",
+          "&:hover .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1a237e",
           },
-        },
-      }}
-    >
-      <option value="">Select Gender</option>
-      <option value="male">Male</option>
-      <option value="female">Female</option>
-      <option value="other">Other</option>
-    </TextField>
+          "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+            borderColor: "#1a237e",
+            borderWidth: 2,
+          },
+        }}
+      >
+        <MenuItem value="">
+          <em>Chọn giới tính</em>
+        </MenuItem>
+        <MenuItem value="male">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <MaleIcon sx={{ fontSize: 20, color: "#1a237e" }} />
+            <span>Nam</span>
+          </Box>
+        </MenuItem>
+        <MenuItem value="female">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <FemaleIcon sx={{ fontSize: 20, color: "#1a237e" }} />
+            <span>Nữ</span>
+          </Box>
+        </MenuItem>
+        <MenuItem value="other">
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <OtherIcon sx={{ fontSize: 20, color: "#1a237e" }} />
+            <span>Khác</span>
+          </Box>
+        </MenuItem>
+      </Select>
+    </FormControl>
   );
 };
 
@@ -297,73 +422,109 @@ const FormTextField = ({
     disabled={disabled}
     multiline={multiline}
     rows={rows}
-    InputLabelProps={InputLabelProps}
+    InputLabelProps={{
+      ...InputLabelProps,
+      sx: {
+        fontSize: "0.875rem",
+        "&.Mui-focused": {
+          color: "#1a237e",
+        },
+      },
+    }}
     InputProps={{
       startAdornment: (
         <InputAdornment position="start">
-          {React.cloneElement(icon, { sx: { color: "#6366f1" } })}
+          {React.cloneElement(icon, { 
+            sx: { 
+              color: disabled ? "#bdbdbd" : "#1a237e",
+              fontSize: 20 
+            } 
+          })}
         </InputAdornment>
       ),
+      sx: {
+        borderRadius: "10px",
+        backgroundColor: disabled ? "#f5f5f5" : "#ffffff",
+        "&:hover fieldset": {
+          borderColor: disabled ? "#e0e0e0" : "#1a237e",
+        },
+        "&.Mui-focused fieldset": {
+          borderColor: "#1a237e",
+          borderWidth: 2,
+        },
+      },
     }}
     sx={{
       "& .MuiOutlinedInput-root": {
-        borderRadius: "12px",
-        "&:hover fieldset": {
-          borderColor: "#6366f1",
-        },
-        "&.Mui-focused fieldset": {
-          borderColor: "#6366f1",
-        },
+        borderRadius: "10px",
       },
     }}
   />
 );
 
 const ActionButtons = ({ loading, onSave, onCancel }) => (
-  <Box sx={{ mt: 4, display: "flex", gap: 2 }}>
+  <Box 
+    sx={{ 
+      mt: 4, 
+      display: "flex", 
+      gap: 2,
+      flexWrap: "wrap",
+      justifyContent: "flex-end",
+    }}
+  >
+    <Button
+      variant="outlined"
+      onClick={onCancel}
+      sx={{
+        borderRadius: "10px",
+        px: 3,
+        py: 1,
+        minWidth: 120,
+        borderColor: "#d32f2f",
+        color: "#d32f2f",
+        borderWidth: 2,
+        textTransform: "none",
+        fontSize: "0.9375rem",
+        fontWeight: 500,
+        "&:hover": {
+          backgroundColor: "#ffebee",
+          borderColor: "#d32f2f",
+          borderWidth: 2,
+        },
+        transition: "all 0.2s ease",
+      }}
+    >
+      Hủy bỏ
+    </Button>
+    
     <Button
       variant="contained"
       startIcon={<SaveIcon />}
       onClick={onSave}
       disabled={loading}
       sx={{
-        borderRadius: "12px",
+        borderRadius: "10px",
         px: 4,
-        py: 1.5,
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)",
+        py: 1,
+        minWidth: 140,
+        backgroundColor: "#1a237e",
         textTransform: "none",
-        fontSize: "16px",
-        fontWeight: 600,
+        fontSize: "0.9375rem",
+        fontWeight: 500,
         "&:hover": {
-          boxShadow: "0 6px 20px rgba(102, 126, 234, 0.5)",
-          transform: "translateY(-2px)",
+          backgroundColor: "#283593",
+          boxShadow: "0 4px 12px rgba(26, 35, 126, 0.3)",
+          transform: "translateY(-1px)",
         },
-        transition: "all 0.3s ease",
+        "&.Mui-disabled": {
+          backgroundColor: "#e0e0e0",
+          color: "#9e9e9e",
+        },
+        transition: "all 0.2s ease",
+        boxShadow: "0 3px 10px rgba(26, 35, 126, 0.2)",
       }}
     >
-      Save Changes
-    </Button>
-    <Button
-      variant="outlined"
-      onClick={onCancel}
-      sx={{
-        borderRadius: "12px",
-        px: 4,
-        py: 1.5,
-        borderColor: "#667eea",
-        color: "#667eea",
-        textTransform: "none",
-        fontSize: "16px",
-        fontWeight: 600,
-        "&:hover": {
-          borderColor: "#764ba2",
-          color: "#764ba2",
-          bgcolor: "rgba(102, 126, 234, 0.04)",
-        },
-      }}
-    >
-      Cancel
+      {loading ? "Đang lưu..." : "Lưu thay đổi"}
     </Button>
   </Box>
 );

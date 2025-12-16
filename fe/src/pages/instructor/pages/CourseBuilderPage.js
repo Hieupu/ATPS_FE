@@ -28,8 +28,8 @@ export default function CourseBuilderPage() {
   const [units, setUnits] = useState([]);
   const [materials, setMaterials] = useState([]);
   const [lessonsByUnit, setLessonsByUnit] = useState({});
-  const [assignmentsByUnit, setAssignmentsByUnit] = useState({}); // ← THIẾU
-  const [loadingAssignments, setLoadingAssignments] = useState({}); // ← THIẾU
+  const [assignmentsByUnit, setAssignmentsByUnit] = useState({});
+  const [loadingAssignments, setLoadingAssignments] = useState({});
 
   const [loadingCourse, setLoadingCourse] = useState(true);
   const [loadingUnits, setLoadingUnits] = useState(true);

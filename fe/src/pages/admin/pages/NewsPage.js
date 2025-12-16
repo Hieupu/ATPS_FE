@@ -1,9 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   Box,
-  Grid,
   Card,
-  CardContent,
   Typography,
   Button,
   Chip,
@@ -17,7 +15,6 @@ import {
   DialogContent,
   DialogActions,
   TextareaAutosize,
-  Paper,
   CircularProgress,
   Alert,
   Pagination,
@@ -43,6 +40,7 @@ import {
   UploadFile,
 } from "@mui/icons-material";
 import newsService from "../../../apiServices/newsService";
+import { cloudinaryUpload } from "../../../utils/cloudinaryUpload";
 import "./style.css";
 
 const BASE_API_URL =
@@ -57,9 +55,13 @@ const STATUS_FILTERS = [
   { key: "deleted", status: "deleted" },
 ];
 
+const PAGE_SIZE = 10;
+
 const buildImageUrl = (path) => {
   if (!path) return "";
+  // Nếu đã là URL đầy đủ (Cloudinary hoặc http/https), trả về trực tiếp
   if (path.startsWith("http")) return path;
+  // Nếu là path tương đối, build URL từ API host (cho backward compatibility)
   return `${API_HOST}${path.startsWith("/") ? path : `/${path}`}`;
 };
 
@@ -68,20 +70,12 @@ export default function NewsPage() {
   const [selectedNews, setSelectedNews] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
-  const [news, setNews] = useState([]);
+  const [allNews, setAllNews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [error, setError] = useState(null);
-  const [statusCounts, setStatusCounts] = useState({
-    all: 0,
-    published: 0,
-    pending: 0,
-    rejected: 0,
-    deleted: 0,
-  });
   const [uploadingImage, setUploadingImage] = useState(false);
   const [imageUploadError, setImageUploadError] = useState(null);
   const fileInputRef = useRef(null);
@@ -93,66 +87,24 @@ export default function NewsPage() {
     StaffID: 1, // TODO: Lấy từ auth context
   });
 
-  const fetchStatusCounts = useCallback(async () => {
-    try {
-      const responses = await Promise.all(
-        STATUS_FILTERS.map(({ status }) =>
-          newsService.getAllNews({
-            page: 1,
-            limit: 1,
-            status,
-          })
-        )
-      );
-
-      const nextCounts = responses.reduce((acc, res, index) => {
-        const total =
-          res?.pagination?.total ??
-          res?.total ??
-          (Array.isArray(res?.data) ? res.data.length : 0);
-        acc[STATUS_FILTERS[index].key] = total;
-        return acc;
-      }, {});
-
-      setStatusCounts((prev) => ({ ...prev, ...nextCounts }));
-    } catch (fetchError) {
-      console.error("Error fetching news counts:", fetchError);
-    }
-  }, []);
-
   useEffect(() => {
     loadNews();
-  }, [tabValue, page, searchQuery]);
-
-  useEffect(() => {
-    fetchStatusCounts();
-  }, [fetchStatusCounts]);
+  }, []);
 
   const loadNews = async () => {
     try {
       setLoading(true);
       setError(null);
-
-      let status = null;
-      if (tabValue === 1) status = "published";
-      else if (tabValue === 2) status = "pending";
-      else if (tabValue === 3) status = "rejected";
-      else if (tabValue === 4) status = "deleted";
-
-      const params = {
-        page,
-        limit: 10,
-        status,
-        search: searchQuery,
-      };
-
-      const response = await newsService.getAllNews(params);
-      setNews(response?.data || []);
-      setTotalPages(response?.pagination?.totalPages || 1);
+      // Fetch all news once, then filter & paginate on the client like LearnersPage
+      const response = await newsService.getAllNews();
+      const list =
+        (Array.isArray(response?.data) && response.data) ||
+        (Array.isArray(response) && response) ||
+        [];
+      setAllNews(list);
     } catch (error) {
-      console.error("Error loading news:", error);
       setError("Không thể tải danh sách tin tức");
-      setNews([]);
+      setAllNews([]);
     } finally {
       setLoading(false);
     }
@@ -187,19 +139,18 @@ export default function NewsPage() {
     try {
       setUploadingImage(true);
       setImageUploadError(null);
-      const formDataToUpload = new FormData();
-      formDataToUpload.append("image", file);
-      const response = await newsService.uploadImage(formDataToUpload);
-      const imagePath = response?.data?.path || response?.path;
-      if (!imagePath) {
-        throw new Error("Không nhận được đường dẫn ảnh từ server");
+
+      const imageUrl = await cloudinaryUpload(file, setUploadingImage);
+
+      if (!imageUrl) {
+        throw new Error("Không thể tải ảnh lên Cloudinary");
       }
+
       setFormData((prev) => ({
         ...prev,
-        Image: imagePath,
+        Image: imageUrl,
       }));
     } catch (uploadError) {
-      console.error("Error uploading image:", uploadError);
       setImageUploadError(
         uploadError?.message || "Không thể tải ảnh lên. Vui lòng thử lại."
       );
@@ -264,9 +215,7 @@ export default function NewsPage() {
 
       handleCloseDialog();
       loadNews();
-      await fetchStatusCounts();
     } catch (error) {
-      console.error("Error saving news:", error);
       setError(error.message || "Không thể lưu tin tức");
     }
   };
@@ -277,9 +226,7 @@ export default function NewsPage() {
       await newsService.deleteNews(selectedNews.NewsID);
       setOpenDeleteDialog(false);
       loadNews();
-      await fetchStatusCounts();
     } catch (error) {
-      console.error("Error deleting news:", error);
       setError(error.message || "Không thể xóa tin tức");
     }
   };
@@ -288,9 +235,7 @@ export default function NewsPage() {
     try {
       await newsService.approveNews(newsItem.NewsID);
       loadNews();
-      await fetchStatusCounts();
     } catch (error) {
-      console.error("Error approving news:", error);
       setError(error.message || "Không thể duyệt tin tức");
     }
   };
@@ -299,9 +244,7 @@ export default function NewsPage() {
     try {
       await newsService.rejectNews(newsItem.NewsID);
       loadNews();
-      await fetchStatusCounts();
     } catch (error) {
-      console.error("Error rejecting news:", error);
       setError(error.message || "Không thể từ chối tin tức");
     }
   };
@@ -329,7 +272,7 @@ export default function NewsPage() {
         return "Chờ duyệt";
       case "rejected":
         return "Đã từ chối";
-   
+
       default:
         return status || "Unknown";
     }
@@ -348,12 +291,69 @@ export default function NewsPage() {
     }
   };
 
-  const displayNews = news;
-  const allCount = statusCounts.all ?? news.length;
+  // Client-side filtering & pagination (aligned with LearnersPage pattern)
+  const filteredNews = useMemo(() => {
+    const status =
+      tabValue === 1
+        ? "published"
+        : tabValue === 2
+        ? "pending"
+        : tabValue === 3
+        ? "rejected"
+        : tabValue === 4
+        ? "deleted"
+        : null;
+
+    const search = searchQuery.trim().toLowerCase();
+
+    return allNews.filter((item) => {
+      const matchesStatus = !status || item.Status?.toLowerCase() === status;
+      const matchesSearch =
+        !search ||
+        item.Title?.toLowerCase().includes(search) ||
+        item.Content?.toLowerCase().includes(search);
+      return matchesStatus && matchesSearch;
+    });
+  }, [allNews, tabValue, searchQuery]);
+
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredNews.length / PAGE_SIZE) || 1
+  );
+
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+    }
+  }, [page, totalPages]);
+
+  const displayNews = useMemo(() => {
+    const startIndex = (page - 1) * PAGE_SIZE;
+    const endIndex = startIndex + PAGE_SIZE;
+    return filteredNews.slice(startIndex, endIndex);
+  }, [filteredNews, page]);
+
+  const statusCounts = useMemo(() => {
+    const counts = {
+      all: allNews.length,
+      published: 0,
+      pending: 0,
+      rejected: 0,
+      deleted: 0,
+    };
+    allNews.forEach((item) => {
+      const statusKey = (item.Status || "").toLowerCase();
+      if (counts[statusKey] !== undefined) {
+        counts[statusKey] += 1;
+      }
+    });
+    return counts;
+  }, [allNews]);
+
+  const allCount = statusCounts.all ?? 0;
   const publishedCount = statusCounts.published ?? 0;
   const pendingCount = statusCounts.pending ?? 0;
   const rejectedCount = statusCounts.rejected ?? 0;
-  const deletedCount = statusCounts.deleted ?? 0;
 
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
@@ -486,7 +486,6 @@ export default function NewsPage() {
           <Tab label={`Đã xuất bản (${publishedCount})`} />
           <Tab label={`Chờ duyệt (${pendingCount})`} />
           <Tab label={`Đã từ chối (${rejectedCount})`} />
-      
         </Tabs>
       </Box>
 
@@ -806,7 +805,6 @@ export default function NewsPage() {
               <option value="pending">Chờ duyệt</option>
               <option value="published">Đã xuất bản</option>
               <option value="rejected">Đã từ chối</option>
-         
             </TextField>
           </Box>
         </DialogContent>

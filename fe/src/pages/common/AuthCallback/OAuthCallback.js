@@ -9,10 +9,10 @@ import {
 } from "@mui/material";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAuth } from "../../../contexts/AuthContext";
 
 export default function OAuthCallback() {
- const [search] = useSearchParams();
+  const [search] = useSearchParams();
   const navigate = useNavigate();
   const [seconds, setSeconds] = useState(3);
   const { login } = useAuth(); // Sử dụng Auth Context
@@ -29,27 +29,29 @@ export default function OAuthCallback() {
     }
   }, [userB64]);
 
- useEffect(() => {
-  if (token && user) {
-    login(user, token);
-  }
-
-  const iv = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
-  const to = setTimeout(() => {
-    if (user?.role === "learner") {
-      navigate("/");
-    } else if (user?.role === "instructor") {
-      navigate("/instructor");
-    } else {
-      navigate("/"); 
+  useEffect(() => {
+    if (token && user) {
+      login(user, token);
     }
-  }, 3000);
 
-  return () => {
-    clearInterval(iv);
-    clearTimeout(to);
-  };
-}, [token, user, navigate, login]);
+    const iv = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000);
+    const to = setTimeout(() => {
+      if (user?.role === "learner") {
+        navigate("/");
+      } else if (user?.role === "instructor") {
+        navigate("/instructor");
+      } else if (user?.role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate("/");
+      }
+    }, 3000);
+
+    return () => {
+      clearInterval(iv);
+      clearTimeout(to);
+    };
+  }, [token, user, navigate, login]);
   const ok = Boolean(token);
 
   return (

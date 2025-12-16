@@ -191,7 +191,6 @@ const CreateClassPage = () => {
     }
     const { sessions, instructorId, classId } = conflictContextRef.current;
 
-
     const orderedConflicts = [...(conflictModal.conflicts || [])].sort(
       (a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0)
     );
@@ -273,6 +272,7 @@ const CreateClassPage = () => {
               startDate: searchPointer.format("YYYY-MM-DD"),
               numSuggestions: 1, // Chỉ cần tìm 1 buổi hợp lệ
               excludeClassId: classId, // Loại trừ các sessions đã tạo của class này
+              ClassID: classId,
             });
 
             // Lấy tất cả suggestions (cả available và busy)
@@ -423,13 +423,55 @@ const CreateClassPage = () => {
     }
   };
 
-  const handleSubmit = async (submitData) => {
+  const handleSubmit = async (submitData) => { 
     setSubmitting(true);
     setError("");
     conflictContextRef.current = null;
     submissionRef.current = submitData;
     try {
-      const isEdit = !!classId; // Kiểm tra xem đang edit hay create
+    const first = submitData.sessions[0];
+
+    const start_time = `${first.Date}T${first.TimeslotStart}`;
+
+    const [h1, m1] = first.TimeslotStart.split(":").map(Number);
+    const [h2, m2] = first.TimeslotEnd.split(":").map(Number);
+      const duration = h2 * 60 + m2 - (h1 * 60 + m1);
+
+    const dayStringToNumber = {
+      MONDAY: 2,
+      TUESDAY: 3,
+      WEDNESDAY: 4,
+      THURSDAY: 5,
+      FRIDAY: 6,
+      SATURDAY: 7,
+        SUNDAY: 8,
+    };
+
+    const weekly_days = [
+        ...new Set(
+          submitData.sessions.map((s) => dayStringToNumber[s.TimeslotDay])
+        ),
+    ]
+    .sort((a, b) => a - b)
+    .join(",");
+
+    const result = {
+      start_time,
+      weekly_days,
+        duration,
+    };
+
+      const zoomPayload = {
+          topic: submitData.Name,
+        start_time: result.start_time,
+          duration: result.duration || 120,
+          weekly_days: result.weekly_days,
+          end_times: submitData.sessions.length,
+        };
+        const zoomResponse = await classService.createZoomMeeting(zoomPayload);
+        console.log("Zoom meeting created:", zoomResponse);
+
+      const isEdit = !!classId;
       const classPayload = {
         Name: submitData.Name,
         InstructorID: submitData.InstructorID,
@@ -439,10 +481,11 @@ const CreateClassPage = () => {
         EnddatePlan: submitData.EnddatePlan,
         Numofsession: submitData.Numofsession,
         Maxstudent: submitData.Maxstudent,
-        ZoomID: submitData.ZoomID,
-        Zoompass: submitData.Zoompass,
+        ZoomID: zoomResponse.id,
+        Zoompass: zoomResponse.password,
         Status: submitData.Status || "DRAFT",
         CourseID: submitData.CourseID || null,
+        
         // Trường cũ (backward compatibility - sẽ bỏ khi backend cập nhật)
         StartDate: submitData.StartDate || submitData.OpendatePlan,
         ExpectedSessions:
@@ -451,7 +494,7 @@ const CreateClassPage = () => {
       };
 
       let resultClass;
-      let classIdToUse = classId; // Dùng classId từ URL nếu đang edit
+      let classIdToUse = classId; 
 
       if (isEdit) {
         // Update existing class (metadata)
@@ -495,7 +538,6 @@ const CreateClassPage = () => {
         // Map và validate sessions data
         const sessionsPayload = submitData.sessions
           .map((s, index) => {
-
             // Đảm bảo Date là string format YYYY-MM-DD
             let dateStr = s.Date;
             if (dateStr instanceof Date) {
@@ -530,13 +572,32 @@ const CreateClassPage = () => {
               return null;
             }
 
+            const matchedZoom = zoomResponse.occurrences.find((z) => {
+              const zoomDate = new Date(z.start_time);
+              zoomDate.setHours(zoomDate.getHours() + 7); // Zoom UTC → GMT+7
+
+              const zDate = zoomDate.toISOString().split("T")[0];
+
+              return zDate === dateStr;
+            }); 
+            console.log(matchedZoom);
+            localStorage.setItem(
+              "zoomCreateResult",
+              JSON.stringify(zoomResponse)
+            );
+
+            const saved = localStorage.getItem("zoomCreateResult");
+            const zoomData = saved ? JSON.parse(saved) : null;
+
             const mappedSession = {
+              SessionID: s.SessionID || s.sessionId || s.id || null,
               Title: s.Title || `Session ${s.number || index + 1}`,
               Description: s.Description || "",
               Date: dateStr, // YYYY-MM-DD string
               TimeslotID: timeslotId, // Integer
               InstructorID: submitData.InstructorID, // Integer
               ClassID: finalClassId, // Integer
+              ZoomUUID: zoomData.occurrence_id || null,
             };
             return mappedSession;
           })
@@ -590,18 +651,173 @@ const CreateClassPage = () => {
         }
 
         try {
-
           let bulkResult;
 
           if (isEdit) {
-            // EDIT MODE: dùng API updateClassSchedule để xoá buổi cũ + tạo lại buổi mới
-            bulkResult = await classService.updateClassSchedule(
-              classIdToUse,
-              sessionsPayload
-            );
+            // EDIT MODE: giữ UUID - reschedule hoặc tạo mới, tránh xoá toàn bộ
+            const existingSessions = Array.isArray(classData?.sessions)
+              ? classData.sessions
+              : [];
+            const existingById = new Map();
+            existingSessions.forEach((s) => {
+              const sid = s.SessionID || s.id || s.sessionId;
+              if (sid) existingById.set(parseInt(sid, 10), s);
+            });
+
+            const toReschedule = [];
+            const toCreate = [];
+
+            sessionsPayload.forEach((s) => {
+              const sid = s.SessionID ? parseInt(s.SessionID, 10) : null;
+              if (sid && existingById.has(sid)) {
+                const original = existingById.get(sid);
+                const originalDate = original.Date || original.date;
+                const originalTimeslot =
+                  original.TimeslotID ||
+                  original.timeslotId ||
+                  original.Timeslot?.TimeslotID;
+                if (
+                  originalDate !== s.Date ||
+                  parseInt(originalTimeslot, 10) !== s.TimeslotID
+                ) {
+                  toReschedule.push({
+                    sessionId: sid,
+                    Date: s.Date,
+                    TimeslotID: s.TimeslotID,
+                  });
+                }
+              } else {
+                // Buổi mới
+                toCreate.push(s);
+              }
+            });
+
+            const conflicts = [];
+            const created = [];
+
+            // Helper: check learner conflict
+            const checkLearnerConflict = async (Date, TimeslotID) => {
+              try {
+                const res = await classService.checkLearnerConflicts(
+                  finalClassId,
+                  Date,
+                  TimeslotID
+                );
+                return res;
+              } catch (err) {
+                console.warn("checkLearnerConflicts error", err);
+                return null;
+              }
+            };
+
+            // Reschedule các buổi thay đổi
+            for (const item of toReschedule) {
+              try {
+                const learnerCheck = await checkLearnerConflict(
+                  item.Date,
+                  item.TimeslotID
+                );
+                if (
+                  learnerCheck?.conflicts?.length > 0 ||
+                  learnerCheck?.hasConflicts
+                ) {
+                  conflicts.push({
+                    sessionIndex: item.sessionId,
+                    conflictInfo: {
+                      message:
+                        learnerCheck?.message ||
+                        "Học viên của lớp có buổi trùng (learner conflict)",
+                    },
+                  });
+                  continue;
+                }
+
+                await classService.rescheduleSession(
+                  item.sessionId,
+                  item.Date,
+                  item.TimeslotID
+                );
+                created.push({ sessionId: item.sessionId, type: "reschedule" });
+              } catch (err) {
+                conflicts.push({
+                  sessionIndex: item.sessionId,
+                  conflictInfo: {
+                    message:
+                      err?.response?.data?.message ||
+                      err?.message ||
+                      "Không thể đổi lịch (reschedule)",
+                  },
+                });
+              }
+            }
+
+            // Tạo mới các buổi chưa có SessionID
+            for (const item of toCreate) {
+              try {
+                const learnerCheck = await checkLearnerConflict(
+                  item.Date,
+                  item.TimeslotID
+                );
+                if (
+                  learnerCheck?.conflicts?.length > 0 ||
+                  learnerCheck?.hasConflicts
+                ) {
+                  conflicts.push({
+                    sessionIndex: item.Title,
+                    conflictInfo: {
+                      message:
+                        learnerCheck?.message ||
+                        "Học viên của lớp có buổi trùng (learner conflict)",
+                    },
+                  });
+                  continue;
+                }
+
+                const result = await classService.createSession(item);
+                if (result?.SessionID || result?.sessionId) {
+                  created.push({
+                    sessionId: result.SessionID || result.sessionId,
+                    type: "create",
+                  });
+                } else {
+                  conflicts.push({
+                    sessionIndex: item.Title,
+                    conflictInfo: {
+                      message: "Không xác định được SessionID sau khi tạo",
+                    },
+                  });
+                }
+              } catch (err) {
+                conflicts.push({
+                  sessionIndex: item.Title,
+                  conflictInfo: {
+                    message:
+                      err?.response?.data?.message ||
+                      err?.message ||
+                      "Không thể tạo buổi học mới",
+                  },
+                });
+              }
+            }
+
+            if (conflicts.length > 0) {
+              setConflictModal({
+                open: true,
+                conflicts,
+                createdCount: created.length,
+                totalCount: toReschedule.length + toCreate.length,
+              });
+              setSubmitting(false);
+              return;
+            }
+
+            bulkResult = { success: true, created };
           } else {
             // CREATE MODE: dùng bulkCreateSessions như hiện tại
             bulkResult = await classService.bulkCreateSessions(sessionsPayload);
+            setTimeout(() => {
+              localStorage.removeItem("zoomCreateResult");
+            }, 10000);
           }
 
           // Kiểm tra kết quả

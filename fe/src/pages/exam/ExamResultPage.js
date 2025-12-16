@@ -82,7 +82,7 @@ const ExamResultPage = () => {
       await retryExamApi(instanceId);
       navigate(`/exam/${instanceId}/take`, { replace: true });
     } catch (err) {
-      alert(err.message || 'Không thể reset bài thi');
+      alert(err.message || "Không thể reset bài thi");
     } finally {
       setRetrying(false);
     }
@@ -120,7 +120,7 @@ const ExamResultPage = () => {
           <>
             <Card sx={{ mb: 3 }}>
               <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
                   <EmojiEvents sx={{ mr: 1 }} color="warning" />
                   <Typography variant="h6" fontWeight={600}>
                     {result.examTitle || 'Kết quả bài thi'}

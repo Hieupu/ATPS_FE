@@ -49,17 +49,26 @@ import {
   Class,
   Group,
   Edit,
-  Visibility,
-  VisibilityOff,
   Book,
   MoreVert,
   CalendarToday,
   EventBusy,
+  Verified,
 } from "@mui/icons-material";
 import "../pages/style.css";
 import instructorService from "../../../apiServices/instructorServicead";
 import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
+import certificateService from "../../../apiServices/certificateService";
+import {
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateFullName,
+  validateInstructorFee,
+  validateConfirmPassword,
+} from "../../../utils/validate";
+import UserFormModal from "../components/UserFormModal";
 
 const AdminInstructorsPage = () => {
   const navigate = useNavigate();
@@ -71,7 +80,6 @@ const AdminInstructorsPage = () => {
   const [searchInput, setSearchInput] = useState("");
   const [statusInput, setStatusInput] = useState("all");
   const [typeInput, setTypeInput] = useState("all");
-  const [showInstructorForm, setShowInstructorForm] = useState(false);
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRow, setSelectedRow] = useState(null);
@@ -81,6 +89,25 @@ const AdminInstructorsPage = () => {
   const [instructorCourses, setInstructorCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [showInstructorForm, setShowInstructorForm] = useState(false);
+  const [formData, setFormData] = useState({
+    FullName: "",
+    Email: "",
+    Phone: "",
+    Password: "",
+    Status: "active",
+    Address: "",
+    DateOfBirth: "",
+    ProfilePicture: "",
+    Gender: "other",
+    Major: "",
+    Job: "",
+    CV: "",
+    InstructorFee: null,
+    Type: "parttime",
+  });
+  const [newErrors, setNewErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadInstructors();
@@ -92,30 +119,14 @@ const AdminInstructorsPage = () => {
       // Gọi API admin-specific để lấy danh sách giảng viên từ database
       // Format: { success: true, data: [...] }
       const instructorsList = await instructorService.getAllInstructorsAdmin();
-      
-      // Map Status và Gender từ account (đã được SELECT trong query và map trong repository)
-      // Repository đã map AccountStatus -> Status và AccountGender -> Gender
-      const mappedInstructors = instructorsList.map((instructor) => {
-        const mapped = {
-          ...instructor,
-          // Status từ account table (đã được map trong repository từ AccountStatus)
-          // Chỉ fallback nếu thực sự null/undefined/empty
-          Status:
-            instructor.Status && instructor.Status.trim()
-              ? instructor.Status.trim()
-              : "active",
-          // Gender từ account table (đã được map trong repository từ AccountGender)
-          // Chỉ fallback nếu thực sự null/undefined/empty
-          Gender:
-            instructor.Gender && instructor.Gender.trim()
-              ? instructor.Gender.trim()
-              : "other",
-          // Đảm bảo Email và Phone có sẵn
-          Email: instructor.Email || instructor.account?.Email || "",
-          Phone: instructor.Phone || instructor.account?.Phone || "",
-        };
-        return mapped;
-      });
+
+      const mappedInstructors = instructorsList.map((instructor) => ({
+        ...instructor,
+        Status: instructor.Status?.trim() || "active",
+        Gender: instructor.Gender?.trim() || "other",
+        Email: instructor.Email || instructor.account?.Email || "",
+        Phone: instructor.Phone || instructor.account?.Phone || "",
+      }));
 
       setInstructors(mappedInstructors);
     } catch (error) {
@@ -126,14 +137,235 @@ const AdminInstructorsPage = () => {
     }
   };
 
-  const handleAddInstructor = () => {
-    setSelectedInstructor(null);
+  const openInstructorModal = (instructor = null) => {
+    setSelectedInstructor(instructor);
+    setFormData({
+      FullName: instructor?.FullName || "",
+      Email: instructor?.Email || "",
+      Phone: instructor?.Phone || "",
+      Password: "",
+      Status: instructor?.Status || "active",
+      Address: instructor?.Address || "",
+      DateOfBirth: instructor?.DateOfBirth
+        ? instructor.DateOfBirth.split("T")[0]
+        : "",
+      ProfilePicture: instructor?.ProfilePicture || "",
+      Gender: instructor?.Gender || "other",
+      Major: instructor?.Major || "",
+      Job: instructor?.Job || "",
+      CV: instructor?.CV || "",
+      InstructorFee: instructor?.InstructorFee || null,
+      Type: instructor?.Type || instructor?.InstructorType || "parttime",
+    });
+    setNewErrors({});
     setShowInstructorForm(true);
   };
 
-  const handleEditInstructor = (instructor) => {
-    setSelectedInstructor(instructor);
-    setShowInstructorForm(true);
+  const closeInstructorModal = () => {
+    setShowInstructorForm(false);
+    setSelectedInstructor(null);
+    setFormData({
+      FullName: "",
+      Email: "",
+      Phone: "",
+      Password: "",
+      ConfirmPassword: "",
+      Status: "active",
+      Address: "",
+      DateOfBirth: "",
+      ProfilePicture: "",
+      Gender: "other",
+      Major: "",
+      Job: "",
+      CV: "",
+      InstructorFee: null,
+      Type: "parttime",
+    });
+    setNewErrors({});
+  };
+
+  const handleSubmitInstructor = async () => {
+    const errors = {};
+
+    const fullNameError = validateFullName(formData.FullName);
+    if (fullNameError) {
+      errors.FullName = fullNameError;
+    }
+
+    const emailError = validateEmail(formData.Email);
+    if (emailError) {
+      errors.Email = emailError;
+    }
+
+    if (!selectedInstructor) {
+      const passwordError = validatePassword(formData.Password, true);
+      if (passwordError) {
+        errors.Password = passwordError;
+      }
+      // Validate confirm password when creating
+      const confirmPasswordError = validateConfirmPassword(
+        formData.Password,
+        formData.ConfirmPassword,
+        true
+      );
+      if (confirmPasswordError) {
+        errors.ConfirmPassword = confirmPasswordError;
+      }
+    } else if (formData.Password) {
+      const passwordError = validatePassword(formData.Password, false);
+      if (passwordError) {
+        errors.Password = passwordError;
+      }
+      // Validate confirm password when updating (if password is provided)
+      const confirmPasswordError = validateConfirmPassword(
+        formData.Password,
+        formData.ConfirmPassword,
+        false
+      );
+      if (confirmPasswordError) {
+        errors.ConfirmPassword = confirmPasswordError;
+      }
+    }
+
+    if (formData.Phone) {
+      const phoneError = validatePhone(formData.Phone);
+      if (phoneError) {
+        errors.Phone = phoneError;
+      }
+    }
+
+    if (!formData.Major || !formData.Major.trim()) {
+      errors.Major = "Vui lòng nhập chuyên môn";
+    }
+
+    if (!formData.CV || !formData.CV.trim()) {
+      errors.CV = "Vui lòng tải CV";
+    }
+
+    // Validate InstructorFee nếu có giá trị
+    if (
+      formData.InstructorFee !== null &&
+      formData.InstructorFee !== undefined &&
+      formData.InstructorFee !== ""
+    ) {
+      const feeError = validateInstructorFee(formData.InstructorFee);
+      if (feeError) {
+        errors.InstructorFee = feeError;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setNewErrors(errors);
+      return;
+    }
+
+    setNewErrors({});
+
+    try {
+      setSaving(true);
+      if (selectedInstructor) {
+        const instructorData = {
+          FullName: formData.FullName.trim(),
+          DateOfBirth: formData.DateOfBirth || null,
+          ProfilePicture: formData.ProfilePicture || null,
+          Job: formData.Job?.trim() || null,
+          Address: formData.Address?.trim() || null,
+          CV: formData.CV || null,
+          Major: formData.Major?.trim() || null,
+          InstructorFee: formData.InstructorFee
+            ? parseFloat(formData.InstructorFee)
+            : null,
+        };
+
+        await instructorService.updateInstructor(
+          selectedInstructor.InstructorID,
+          instructorData
+        );
+
+        const accountData = {};
+        const normalizedEmail = formData.Email.trim().toLowerCase();
+        if (
+          normalizedEmail !== (selectedInstructor.Email || "").toLowerCase()
+        ) {
+          accountData.Email = normalizedEmail;
+        }
+
+        const currentPhone = (selectedInstructor.Phone || "").trim();
+        const newPhone = (formData.Phone || "").trim();
+        if (newPhone && newPhone !== currentPhone) {
+          accountData.Phone = newPhone;
+        }
+
+        const currentStatus = (
+          selectedInstructor.Status || "active"
+        ).toLowerCase();
+        const newStatus = (formData.Status || "active").toLowerCase();
+        if (newStatus !== currentStatus) {
+          accountData.Status = formData.Status;
+        }
+
+        if (formData.Password && formData.Password.trim()) {
+          accountData.Password = formData.Password;
+        }
+
+        if (
+          formData.Gender &&
+          formData.Gender !== (selectedInstructor.Gender || "other")
+        ) {
+          accountData.Gender = formData.Gender;
+        }
+
+        if (selectedInstructor.AccID && Object.keys(accountData).length > 0) {
+          try {
+            await accountService.updateAccount(
+              selectedInstructor.AccID,
+              accountData
+            );
+            alert("Cập nhật giảng viên và tài khoản thành công!");
+          } catch (accountError) {
+            const errorMessage =
+              accountError.response?.data?.message ||
+              accountError.message ||
+              "Lỗi không xác định";
+            alert(
+              `Cập nhật giảng viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}`
+            );
+          }
+        } else {
+          alert("Cập nhật giảng viên thành công!");
+        }
+      } else {
+        const instructorData = {
+          FullName: formData.FullName.trim(),
+          Major: formData.Major?.trim() || null,
+          Job: formData.Job?.trim() || null,
+          Address: formData.Address?.trim() || null,
+          DateOfBirth: formData.DateOfBirth || null,
+          ProfilePicture: formData.ProfilePicture || null,
+          CV: formData.CV || null,
+          InstructorFee: formData.InstructorFee
+            ? parseFloat(formData.InstructorFee)
+            : null,
+          Type: formData.Type || "parttime",
+          Email: formData.Email.trim().toLowerCase(),
+          Phone: formData.Phone?.trim() || null,
+          Password: formData.Password,
+          Status: formData.Status || "active",
+          Gender: formData.Gender || "other",
+        };
+
+        await instructorService.createInstructor(instructorData);
+        alert("Tạo giảng viên mới thành công!");
+      }
+
+      closeInstructorModal();
+      await loadInstructors();
+    } catch (error) {
+      console.error("Save error:", error);
+      alert(error?.message || "Không thể lưu dữ liệu");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleViewClasses = async (instructor) => {
@@ -217,186 +449,6 @@ const AdminInstructorsPage = () => {
           error?.message ||
           "Không thể tải danh sách khóa học từ database!"
       );
-    }
-  };
-
-  const handleSubmitInstructor = async (formData) => {
-    try {
-      if (selectedInstructor) {
-        // CẬP NHẬT giảng viên và account
-        // Backend whitelist cho instructor update: FullName, DateOfBirth, ProfilePicture, Job, Address, CV, Major, InstructorFee
-        // KHÔNG được gửi: Email, Phone (nằm trong bảng account)
-        const instructorData = {
-          FullName: formData.FullName,
-          DateOfBirth: formData.DateOfBirth || null,
-          ProfilePicture: formData.ProfilePicture || null,
-          Job: formData.Job || null,
-          Address: formData.Address || null,
-          CV: formData.CV || null,
-          Major: formData.Major || null,
-          InstructorFee: formData.InstructorFee
-            ? parseFloat(formData.InstructorFee)
-            : null,
-        };
-
-        // Account data (Email, Phone, Status từ account table) - gửi riêng qua accountService
-        // Chỉ gửi Email và Phone nếu chúng thay đổi (tránh lỗi unique constraint khi giữ nguyên)
-        const accountData = {};
-
-        // Chỉ gửi Email nếu thay đổi
-        if (formData.Email !== selectedInstructor.Email) {
-          accountData.Email = formData.Email;
-        }
-
-        // Chỉ gửi Phone nếu thay đổi
-        const currentPhone = selectedInstructor.Phone || null;
-        const newPhone = formData.Phone || null;
-        if (newPhone !== currentPhone) {
-          accountData.Phone = newPhone;
-        }
-
-        // Luôn gửi Status nếu có thay đổi hoặc cần update
-        const currentStatus = selectedInstructor.Status || "active";
-        const newStatus = formData.Status || "active";
-        // Normalize status để so sánh (active vs ACTIVE)
-        const normalizedCurrentStatus = currentStatus.toLowerCase();
-        const normalizedNewStatus = newStatus.toLowerCase();
-        if (normalizedNewStatus !== normalizedCurrentStatus) {
-          accountData.Status = formData.Status;
-        } else if (Object.keys(accountData).length === 0) {
-          // Nếu không có field nào thay đổi nhưng Status vẫn cần được gửi để đảm bảo
-          accountData.Status = formData.Status;
-        }
-
-        // Nếu có password mới, thêm vào accountData
-        if (formData.Password && formData.Password.trim()) {
-          accountData.Password = formData.Password;
-        }
-
-        // Update instructor (chỉ các trường hợp lệ)
-        await instructorService.updateInstructor(
-          selectedInstructor.InstructorID,
-          instructorData
-        );
-
-        // Update account (nếu có AccID và có data cần update)
-        // Fallback: nếu endpoint không tồn tại, thử gửi account data cùng với instructor data
-        let accountUpdated = false;
-        if (selectedInstructor.AccID && Object.keys(accountData).length > 0) {
-          try {
-            await accountService.updateAccount(
-              selectedInstructor.AccID,
-              accountData
-            );
-            accountUpdated = true;
-          } catch (accountError) {
-            // Nếu endpoint không tồn tại, thử gửi account data cùng với instructor data
-            if (
-              accountError.isEndpointNotFound ||
-              accountError.response?.status === 404
-            ) {
-              // Thử gửi account data cùng với instructor data
-              // Backend whitelist sẽ lọc Email, Phone ra, nhưng có thể backend có logic đặc biệt
-              // để update account khi nhận Email, Phone, Status trong request
-              try {
-                await instructorService.updateInstructor(
-                  selectedInstructor.InstructorID,
-                  {
-                    ...instructorData,
-                    ...accountData, // Gửi Email, Phone, Status cùng với instructor data
-                  }
-                );
-                accountUpdated = true;
-              } catch (fallbackError) {
-                // Thông báo cho user biết account không được update
-                alert(
-                  "Cập nhật giảng viên thành công, nhưng không thể cập nhật thông tin tài khoản (Email, Phone, Status).\n\nVui lòng liên hệ backend để bổ sung endpoint PUT /api/accounts/:accId"
-                );
-              }
-            } else {
-              // Các lỗi khác (400, 500, etc.)
-              const errorMessage =
-                accountError.response?.data?.message ||
-                accountError.message ||
-                "Lỗi không xác định";
-              // Thông báo cho user biết account không được update
-              alert(
-                `Cập nhật giảng viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}\n\nVui lòng kiểm tra lại.`
-              );
-            }
-          }
-        } else if (
-          selectedInstructor.AccID &&
-          Object.keys(accountData).length === 0
-        ) {
-          console.log(
-            "Không có thay đổi nào trong account data, bỏ qua update account"
-          );
-        }
-
-        if (accountUpdated) {
-          alert("Cập nhật giảng viên và tài khoản thành công!");
-        } else {
-          // Instructor đã được update, chỉ account chưa
-          // Alert đã được hiển thị ở trên
-        }
-      } else {
-        // TẠO MỚI giảng viên và account
-        if (!formData.Password || !formData.Password.trim()) {
-          alert("Vui lòng nhập mật khẩu để tạo tài khoản!");
-          return;
-        }
-
-        // Tạo instructor với account data (backend sẽ tự tạo account)
-        const instructorData = {
-          FullName: formData.FullName,
-          Major: formData.Major || null,
-          Job: formData.Job || null,
-          Address: formData.Address || null,
-          DateOfBirth: formData.DateOfBirth || null,
-          ProfilePicture: formData.ProfilePicture || null,
-          CV: formData.CV || null, // Thêm CV
-          InstructorFee: formData.InstructorFee
-            ? parseFloat(formData.InstructorFee)
-            : null,
-          Type: formData.Type || "parttime",
-          // Account fields để backend tạo account
-          Email: formData.Email,
-          Phone: formData.Phone || null,
-          Password: formData.Password,
-          Status: formData.Status || "active",
-          Gender: formData.Gender || "other",
-        };
-
-        await instructorService.createInstructor(instructorData);
-        alert("Tạo giảng viên mới thành công!");
-      }
-      // Reload danh sách sau khi lưu
-      await loadInstructors();
-      setShowInstructorForm(false);
-    } catch (error) {
-      console.error("Lỗi khi lưu giảng viên:", error);
-
-      // Xử lý error response chi tiết hơn
-      let errorMessage = "Không thể lưu giảng viên!";
-
-      if (error.response?.data) {
-        const errorData = error.response.data;
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          // Nếu có nhiều lỗi validation
-          errorMessage = `Dữ liệu không hợp lệ:\n${errorData.errors.join(
-            "\n"
-          )}`;
-        } else if (errorData.message) {
-          errorMessage = errorData.message;
-        } else if (errorData.error) {
-          errorMessage = errorData.error;
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-
-      alert(errorMessage);
     }
   };
 
@@ -511,7 +563,7 @@ const AdminInstructorsPage = () => {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={handleAddInstructor}
+            onClick={() => openInstructorModal()}
             sx={{
               backgroundColor: "#667eea",
               textTransform: "none",
@@ -691,7 +743,7 @@ const AdminInstructorsPage = () => {
           <Button
             variant="contained"
             startIcon={<Add />}
-            onClick={handleAddInstructor}
+            onClick={() => openInstructorModal()}
             sx={{
               backgroundColor: "#667eea",
               textTransform: "none",
@@ -732,6 +784,9 @@ const AdminInstructorsPage = () => {
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
                   Trạng thái
+                </TableCell>
+                <TableCell sx={{ fontWeight: 700, color: "#1e293b" }}>
+                  Chứng chỉ
                 </TableCell>
                 <TableCell
                   sx={{ fontWeight: 700, color: "#1e293b" }}
@@ -787,6 +842,29 @@ const AdminInstructorsPage = () => {
                           size="small"
                           sx={{
                             backgroundColor: isActive ? "#10b981" : "#94a3b8",
+                            color: "white",
+                            fontWeight: 600,
+                            fontSize: "11px",
+                          }}
+                        />
+                      );
+                    })()}
+                  </TableCell>
+                  <TableCell>
+                    {(() => {
+                      // "Đã có" khi có ít nhất một chứng chỉ APPROVED
+                      // "Chưa có" khi không có chứng chỉ nào, hoặc chỉ có PENDING/REJECTED
+                      const hasApproved =
+                        instructor.HasApprovedCertificate === true;
+
+                      return (
+                        <Chip
+                          label={hasApproved ? "Đã có" : "Chưa có"}
+                          size="small"
+                          sx={{
+                            backgroundColor: hasApproved
+                              ? "#10b981"
+                              : "#94a3b8",
                             color: "white",
                             fontWeight: 600,
                             fontSize: "11px",
@@ -854,7 +932,7 @@ const AdminInstructorsPage = () => {
       >
         <MenuItem
           onClick={() => {
-            handleEditInstructor(selectedRow);
+            openInstructorModal(selectedRow);
             setAnchorEl(null);
           }}
         >
@@ -906,6 +984,38 @@ const AdminInstructorsPage = () => {
         >
           <EventBusy sx={{ fontSize: 18, mr: 1.5 }} />
           Quản lý lịch nghỉ
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (selectedRow && selectedRow.InstructorID) {
+              const instructorId = selectedRow.InstructorID;
+              navigate(
+                `/admin/instructor-certificates?instructorId=${instructorId}`
+              );
+            } else {
+              alert("Không tìm thấy thông tin giảng viên");
+            }
+            setAnchorEl(null);
+          }}
+        >
+          <Verified sx={{ fontSize: 18, mr: 1.5 }} />
+          Quản lý chứng chỉ
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (selectedRow && selectedRow.InstructorID) {
+              const instructorId = selectedRow.InstructorID;
+              navigate(
+                `/admin/session-change-requests?instructorId=${instructorId}`
+              );
+            } else {
+              alert("Không tìm thấy thông tin giảng viên");
+            }
+            setAnchorEl(null);
+          }}
+        >
+          <Verified sx={{ fontSize: 18, mr: 1.5 }} />
+          Yêu cầu chuyển lịch
         </MenuItem>
       </Menu>
 
@@ -1185,542 +1295,23 @@ const AdminInstructorsPage = () => {
       </Dialog>
 
       {/* Instructor Form Modal */}
-      {showInstructorForm && (
-        <InstructorForm
-          instructorData={selectedInstructor}
-          onSubmit={handleSubmitInstructor}
-          onCancel={() => setShowInstructorForm(false)}
-        />
-      )}
+      <UserFormModal
+        open={showInstructorForm}
+        onClose={closeInstructorModal}
+        onSubmit={handleSubmitInstructor}
+        title={
+          selectedInstructor ? "Chỉnh sửa giảng viên" : "Thêm giảng viên mới"
+        }
+        formData={formData}
+        setFormData={setFormData}
+        errors={newErrors}
+        setErrors={setNewErrors}
+        saving={saving}
+        isEditing={!!selectedInstructor}
+        showInstructorFields={true}
+        instructorService={instructorService}
+      />
     </Box>
-  );
-};
-
-// Instructor Form Component
-const InstructorForm = ({ instructorData, onSubmit, onCancel }) => {
-  const [formData, setFormData] = useState({
-    FullName: "",
-    Email: "",
-    Password: "",
-    Phone: "",
-    Major: "",
-    Job: "",
-    Address: "",
-    DateOfBirth: "",
-    ProfilePicture: "",
-    CV: "",
-    InstructorFee: null,
-    Status: "active",
-    Type: "parttime",
-    Gender: "other",
-  });
-
-  const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    if (instructorData) {
-      setFormData({
-        FullName: instructorData.FullName || "",
-        Email: instructorData.Email || "",
-        Password: "", // Don't populate password for edit
-        Phone: instructorData.Phone || "",
-        Major: instructorData.Major || "",
-        Job: instructorData.Job || "",
-        Address: instructorData.Address || "",
-        DateOfBirth: instructorData.DateOfBirth || "",
-        ProfilePicture: instructorData.ProfilePicture || "",
-        CV: instructorData.CV || "",
-        InstructorFee: instructorData.InstructorFee || null,
-        Status: instructorData.Status || "active",
-        Type:
-          instructorData.Type || instructorData.InstructorType || "parttime",
-        Gender: instructorData.Gender || "other",
-      });
-    } else {
-      // Reset form when creating new
-      setFormData({
-        FullName: "",
-        Email: "",
-        Password: "",
-        Phone: "",
-        Major: "",
-        Job: "",
-        Address: "",
-        DateOfBirth: "",
-        ProfilePicture: "",
-        CV: "",
-        InstructorFee: null,
-        Status: "active",
-        Type: "parttime",
-        Gender: "other",
-      });
-    }
-  }, [instructorData]);
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.FullName.trim()) {
-      newErrors.FullName = "Vui lòng nhập họ tên";
-    }
-
-    if (!formData.Email.trim()) {
-      newErrors.Email = "Vui lòng nhập email";
-    } else if (!/\S+@\S+\.\S+/.test(formData.Email)) {
-      newErrors.Email = "Email không hợp lệ";
-    }
-
-    // Password is required only when creating new instructor
-    if (!instructorData && !formData.Password.trim()) {
-      newErrors.Password = "Vui lòng nhập mật khẩu";
-    } else if (formData.Password && formData.Password.length < 6) {
-      newErrors.Password = "Mật khẩu phải có ít nhất 6 ký tự";
-    }
-
-    if (!formData.Phone.trim()) {
-      newErrors.Phone = "Vui lòng nhập số điện thoại";
-    } else {
-      // Validate phone format (Vietnam: 10-11 digits, có thể bắt đầu bằng 0 hoặc +84)
-      const phoneRegex = /^(\+84|0)[1-9][0-9]{8,9}$/;
-      const cleanedPhone = formData.Phone.replace(/\s+/g, "");
-      if (!phoneRegex.test(cleanedPhone)) {
-        newErrors.Phone =
-          "Số điện thoại không hợp lệ (VD: 0123456789 hoặc +84123456789)";
-      }
-    }
-
-    if (!formData.Major.trim()) {
-      newErrors.Major = "Vui lòng nhập chuyên môn";
-    }
-
-    // Validate Type
-    if (formData.Type && !["fulltime", "parttime"].includes(formData.Type)) {
-      newErrors.Type = "Loại giảng viên phải là fulltime hoặc parttime";
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (validateForm()) {
-      // Only include password in submission if it was provided or if creating new
-      const submitData = { ...formData };
-      if (instructorData && !submitData.Password) {
-        // Remove password field if editing and password is empty
-        delete submitData.Password;
-      }
-      onSubmit(submitData);
-    }
-  };
-
-  return (
-    <div className="modal-overlay">
-      <div className="modal-container">
-        <div className="modal-header">
-          <h2>
-            {instructorData ? " Chỉnh sửa giảng viên" : " Thêm giảng viên mới"}
-          </h2>
-          <button className="close-btn" onClick={onCancel}>
-            ✕
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="user-form">
-          <div className="form-group">
-            <label htmlFor="FullName">Họ và tên *</label>
-            <input
-              type="text"
-              id="FullName"
-              value={formData.FullName}
-              onChange={(e) =>
-                setFormData({ ...formData, FullName: e.target.value })
-              }
-              className={errors.FullName ? "error" : ""}
-              placeholder="Nhập họ và tên"
-            />
-            {errors.FullName && (
-              <span className="error-message">{errors.FullName}</span>
-            )}
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Email">Email *</label>
-              <input
-                type="email"
-                id="Email"
-                value={formData.Email}
-                onChange={(e) =>
-                  setFormData({ ...formData, Email: e.target.value })
-                }
-                className={errors.Email ? "error" : ""}
-                placeholder="Nhập email"
-              />
-              {errors.Email && (
-                <span className="error-message">{errors.Email}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="Password">
-                Mật khẩu {!instructorData ? "*" : ""}
-              </label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  id="Password"
-                  value={formData.Password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, Password: e.target.value })
-                  }
-                  className={errors.Password ? "error" : ""}
-                  placeholder={
-                    instructorData
-                      ? "Để trống nếu không đổi mật khẩu"
-                      : "Nhập mật khẩu (tối thiểu 6 ký tự)"
-                  }
-                  style={{ paddingRight: "40px", width: "100%" }}
-                />
-                <IconButton
-                  onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: "absolute",
-                    right: "8px",
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    padding: "4px",
-                  }}
-                >
-                  {showPassword ? (
-                    <VisibilityOff fontSize="small" />
-                  ) : (
-                    <Visibility fontSize="small" />
-                  )}
-                </IconButton>
-              </div>
-              {errors.Password && (
-                <span className="error-message">{errors.Password}</span>
-              )}
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Phone">Số điện thoại *</label>
-              <input
-                type="tel"
-                id="Phone"
-                value={formData.Phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, Phone: e.target.value })
-                }
-                className={errors.Phone ? "error" : ""}
-                placeholder="Nhập số điện thoại"
-              />
-              {errors.Phone && (
-                <span className="error-message">{errors.Phone}</span>
-              )}
-            </div>
-            <div className="form-group">
-              <label htmlFor="Type">Loại giảng viên *</label>
-              <select
-                id="Type"
-                value={formData.Type}
-                onChange={(e) =>
-                  setFormData({ ...formData, Type: e.target.value })
-                }
-                className={errors.Type ? "error" : ""}
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                <option value="parttime">Part-time</option>
-                <option value="fulltime">Full-time</option>
-              </select>
-              {errors.Type && (
-                <span className="error-message">{errors.Type}</span>
-              )}
-            </div>
-            <div className="form-group">
-              <label htmlFor="Gender">Giới tính *</label>
-              <select
-                id="Gender"
-                value={formData.Gender}
-                onChange={(e) =>
-                  setFormData({ ...formData, Gender: e.target.value })
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  borderRadius: "4px",
-                  border: "1px solid #ddd",
-                }}
-              >
-                <option value="male">Nam</option>
-                <option value="female">Nữ</option>
-                <option value="other">Khác</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Major">Chuyên môn *</label>
-              <input
-                type="text"
-                id="Major"
-                value={formData.Major}
-                onChange={(e) =>
-                  setFormData({ ...formData, Major: e.target.value })
-                }
-                className={errors.Major ? "error" : ""}
-                placeholder="Ví dụ: Full Stack Development"
-              />
-              {errors.Major && (
-                <span className="error-message">{errors.Major}</span>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="Job">Nghề nghiệp</label>
-              <input
-                type="text"
-                id="Job"
-                value={formData.Job || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, Job: e.target.value })
-                }
-                placeholder="Ví dụ: Giảng viên, Developer"
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="Address">Địa chỉ</label>
-              <input
-                type="text"
-                id="Address"
-                value={formData.Address || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, Address: e.target.value })
-                }
-                placeholder="Nhập địa chỉ"
-              />
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="DateOfBirth">Ngày sinh</label>
-              <input
-                type="date"
-                id="DateOfBirth"
-                value={formData.DateOfBirth || ""}
-                onChange={(e) =>
-                  setFormData({ ...formData, DateOfBirth: e.target.value })
-                }
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="InstructorFee">Phí giảng dạy (VND)</label>
-              <input
-                type="number"
-                id="InstructorFee"
-                value={formData.InstructorFee || ""}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    InstructorFee: parseFloat(e.target.value) || null,
-                  })
-                }
-                min="0"
-                step="1000"
-                placeholder="Ví dụ: 500000"
-              />
-            </div>
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="ProfilePicture">Ảnh đại diện</label>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                {formData.ProfilePicture && (
-                  <div style={{ marginBottom: "10px" }}>
-                    <img
-                      src={formData.ProfilePicture}
-                      alt="Avatar preview"
-                      style={{
-                        width: "150px",
-                        height: "150px",
-                        objectFit: "cover",
-                        borderRadius: "8px",
-                        border: "1px solid #ddd",
-                      }}
-                    />
-                  </div>
-                )}
-                <input
-                  type="file"
-                  id="avatarFile"
-                  accept="image/*"
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      // Hiển thị loading
-                      const loadingMsg = document.createElement("div");
-                      loadingMsg.textContent = "Đang tải ảnh lên...";
-                      loadingMsg.style.cssText =
-                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
-                      document.body.appendChild(loadingMsg);
-
-                      try {
-                        const result = await instructorService.uploadAvatar(
-                          file
-                        );
-                        setFormData({
-                          ...formData,
-                          ProfilePicture: result.url || result.data?.url,
-                        });
-                        document.body.removeChild(loadingMsg);
-                        alert("Tải ảnh thành công!");
-                      } catch (error) {
-                        if (document.body.contains(loadingMsg)) {
-                          document.body.removeChild(loadingMsg);
-                        }
-                        alert(
-                          error?.message || "Lỗi khi tải ảnh. Vui lòng thử lại."
-                        );
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  component="label"
-                  htmlFor="avatarFile"
-                  size="small"
-                  fullWidth
-                >
-                  Chọn ảnh đại diện
-                </Button>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="CV">CV</label>
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                {formData.CV && (
-                  <div style={{ marginBottom: "10px" }}>
-                    <Typography variant="body2" color="text.secondary">
-                      CV đã tải:{" "}
-                      <a
-                        href={formData.CV}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#1976d2" }}
-                      >
-                        Xem CV
-                      </a>
-                    </Typography>
-                  </div>
-                )}
-                <input
-                  type="file"
-                  id="cvFile"
-                  accept=".pdf,.doc,.docx,image/*"
-                  style={{ display: "none" }}
-                  onChange={async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                      // Hiển thị loading
-                      const loadingMsg = document.createElement("div");
-                      loadingMsg.textContent = "Đang tải CV lên...";
-                      loadingMsg.style.cssText =
-                        "position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 9999;";
-                      document.body.appendChild(loadingMsg);
-
-                      try {
-                        const result = await instructorService.uploadCV(file);
-                        setFormData({
-                          ...formData,
-                          CV: result.url || result.data?.url,
-                        });
-                        document.body.removeChild(loadingMsg);
-                        alert("Tải CV thành công!");
-                      } catch (error) {
-                        if (document.body.contains(loadingMsg)) {
-                          document.body.removeChild(loadingMsg);
-                        }
-                        alert(
-                          error?.message || "Lỗi khi tải CV. Vui lòng thử lại."
-                        );
-                      }
-                    }
-                  }}
-                />
-                <Button
-                  variant="outlined"
-                  component="label"
-                  htmlFor="cvFile"
-                  size="small"
-                  fullWidth
-                >
-                  Chọn CV
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="Status">Trạng thái tài khoản *</label>
-            <select
-              id="Status"
-              value={formData.Status}
-              onChange={(e) =>
-                setFormData({ ...formData, Status: e.target.value })
-              }
-            >
-              <option value="active">Hoạt động</option>
-              <option value="inactive">Không hoạt động</option>
-            </select>
-          </div>
-
-          <div className="form-actions">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onCancel}
-            >
-              Hủy
-            </button>
-            <button type="submit" className="btn btn-primary">
-              {instructorData ? " Cập nhật" : " Tạo mới"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
   );
 };
 

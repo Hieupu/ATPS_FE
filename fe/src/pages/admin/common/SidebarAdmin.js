@@ -26,6 +26,7 @@ import {
   ExpandLess as ExpandLessIcon,
   Book as BookIcon,
   CheckCircle as CheckCircleIcon,
+  SwapHoriz as SwapHorizIcon,
 } from "@mui/icons-material";
 import "../pages/style.css";
 
@@ -108,9 +109,21 @@ const menuItems = [
           },
           {
             id: "instructor-leave",
-            label: "Quản lý lịch nghỉ và tự chọn",
+            label: "Quản lý lịch nghỉ",
             icon: <EventBusyIcon />,
             path: "/admin/instructor-leave",
+          },
+          {
+            id: "instructor-certificates",
+            label: "Quản lý chứng chỉ giảng viên",
+            icon: <CheckCircleIcon />,
+            path: "/admin/instructor-certificates",
+          },
+          {
+            id: "session-change-requests",
+            label: "Quản lý yêu cầu chuyển lịch",
+            icon: <SwapHorizIcon />,
+            path: "/admin/session-change-requests",
           },
         ],
       },
@@ -175,7 +188,7 @@ const menuItems = [
       },
       {
         id: "refunds",
-        label: "Xử lý hoàn tiền",
+        label: "Xử lý yêu cầu",
         icon: <AccountBalanceWalletIcon />,
         path: "/admin/finance/refunds",
       },
@@ -194,10 +207,24 @@ const menuItems = [
         path: "/admin/system/payment-gateways",
       },
       {
-        id: "notification-templates",
-        label: "Quản lý mẫu gửi mail",
+        id: "email-management",
+        label: "Quản lý mail",
         icon: <EmailIcon />,
-        path: "/admin/system/notification-templates",
+        type: "dropdown",
+        children: [
+          {
+            id: "email-templates",
+            label: "Quản lý mẫu gửi mail",
+            icon: <EmailIcon />,
+            path: "/admin/system/email-templates",
+          },
+          {
+            id: "email-logs",
+            label: "Lịch sử gửi mail",
+            icon: <EmailIcon />,
+            path: "/admin/system/email-logs",
+          },
+        ],
       },
       {
         id: "timeslots",

@@ -378,12 +378,10 @@ const ClassWizardStep3 = ({
     }
   };
 
-  // Xử lý click ngày học trong tuần - sử dụng handleDayToggle từ props
-  // ✅ SỬA: Check TRƯỚC KHI toggle để logic thêm timeslots chạy đúng
+
   const handleDayClick = (dayValue) => {
     if (readonly) return;
 
-    // ✅ Check TRƯỚC KHI toggle
     const isCurrentlySelected =
       formData.scheduleDetail.DaysOfWeek.includes(dayValue);
 
@@ -392,7 +390,6 @@ const ClassWizardStep3 = ({
       handleDayToggle(dayValue);
     }
 
-    // ✅ Nếu đang chọn ngày mới (không phải bỏ chọn), thêm tất cả các ca đã chọn vào ngày đó
     if (!isCurrentlySelected) {
       // Thêm tất cả các ca đã chọn vào ngày mới
       setFormData((prev) => {

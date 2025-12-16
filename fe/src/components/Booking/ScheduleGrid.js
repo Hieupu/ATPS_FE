@@ -479,10 +479,10 @@ useEffect(() => {
       return; // Đã spam, không cho tiếp tục
     }
 
-    if (selectedSlots.length >= 3) {
+    if (selectedSlots.length >= 6) {
       setConflictAlert({
         severity: "warning",
-        message: `Bạn chỉ được chọn tối đa 3 slot trong một tuần.`
+        message: `Bạn chỉ được chọn tối đa 6 slot trong một tuần.`
       });
       return;
     }
@@ -775,7 +775,7 @@ useEffect(() => {
                     return sWeekKey === currentWeekKey;
                   });
                   const hasReachedMaxSlotsInWeek =
-                    slotsInSameWeek.length >= 3 && !isSelected;
+                    slotsInSameWeek.length >= 6 && !isSelected;
 
                   const isDisabled =
                     isBanned || // ⭐️ Disable khi bị ban
@@ -785,7 +785,7 @@ useEffect(() => {
                     isReservedByOthers ||
                     slot.Status !== "available" ||
                     checkingConflict ||
-                    (selectedSlots.length >= 3 && !isSelected);
+                    (selectedSlots.length >= 6 && !isSelected);
                   
                   let bgColor = slot.Status === "available" ? "#4caf50" : "#ffffff";
                   if (isReservedByOthers || slot.Status === "busy") {

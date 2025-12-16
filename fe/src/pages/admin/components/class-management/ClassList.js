@@ -223,7 +223,7 @@ const ClassList = ({
             const course = courses.find(
               (c) => (c.CourseID || c.id) === courseId
             );
-            const displayFee = classFee || course?.Fee || course?.fee || null;
+            const displayFee = classFee || null;
 
             // Lấy thông tin giảng viên
             const instructorId =
@@ -399,13 +399,7 @@ const ClassList = ({
                             ? classItem.enrolledStudents.length
                             : classItem.enrolledCount || 0;
 
-                          // Lấy sĩ số tối đa (hỗ trợ cả Maxstudent và MaxLearners)
-                          const maxLearners =
-                            classItem.Maxstudent ||
-                            classItem.maxstudent ||
-                            classItem.MaxLearners ||
-                            classItem.maxLearners ||
-                            classItem.maxStudents;
+                          const maxLearners =classItem.Maxstudent;
 
                           // Hiển thị
                           if (

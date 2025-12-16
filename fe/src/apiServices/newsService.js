@@ -98,7 +98,12 @@ const newsService = {
     }
   },
 
+  // Deprecated: Sử dụng cloudinaryUpload từ utils/cloudinaryUpload.js thay vì method này
+  // Giữ lại để backward compatibility nếu có code cũ đang dùng
   uploadImage: async (formData) => {
+    console.warn(
+      "uploadImage is deprecated. Use cloudinaryUpload from utils/cloudinaryUpload.js instead."
+    );
     try {
       const response = await apiClient.post("/news/upload", formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -112,5 +117,3 @@ const newsService = {
 };
 
 export default newsService;
-
-

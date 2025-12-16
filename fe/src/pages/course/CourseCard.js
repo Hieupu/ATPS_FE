@@ -127,6 +127,7 @@ const CourseCard = ({ course }) => {
             lineHeight: 1.35,
             color: "text.primary",
             fontFamily: "'Poppins', 'Segoe UI', sans-serif",
+            mb:-2
           }}
         >
           {course.Title}
@@ -137,7 +138,7 @@ const CourseCard = ({ course }) => {
           variant="body2"
           color="text.secondary"
           sx={{
-            mb: 3,
+            mb: 1,
             height: "42px",
             overflow: "hidden",
             display: "-webkit-box",
@@ -209,9 +210,9 @@ const CourseCard = ({ course }) => {
             display: "flex",
             justifyContent: "space-around",
             gap: 1,
-            mt: 2,
-            mb: 2,
-            pb: 3,
+            mt: 1,
+            mb: 1,
+            pb: 2,
             borderBottom: "2px solid",
             borderColor: "divider",
           }}
@@ -251,7 +252,7 @@ const CourseCard = ({ course }) => {
               variant="body2"
               sx={{ fontWeight: 700, color: "text.primary" }}
             >
-              {course.Duration || 0}h
+               {Math.trunc(course.Duration || 0)}h
             </Typography>
             <Typography
               variant="caption"
