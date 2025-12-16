@@ -12,6 +12,8 @@ import {
   useTheme,
   useMediaQuery,
   Chip,
+  TextField,
+  IconButton,
 } from "@mui/material";
 import {
   Menu as MenuIcon,
@@ -27,6 +29,14 @@ import {
   School,
   Speed,
   WorkspacePremium,
+  NotificationsActive,
+  ChevronRight,
+  Business,
+  Apps,
+  Facebook,
+  Instagram,
+  YouTube,
+  MusicNote,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../../../components/Header/AppHeader";
@@ -855,104 +865,233 @@ const HomePage = () => {
       </Box>
 
       {/* Footer */}
-      <Box
-        component="footer"
-        sx={{ backgroundColor: "grey.900", color: "white", py: 6 }}
-      >
-        <Container maxWidth="lg">
-          <Grid container spacing={4}>
-            <Grid item xs={12} md={4}>
-              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <School sx={{ fontSize: 32, mr: 1 }} />
-                <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                  ATPS
-                </Typography>
-              </Box>
-              <Typography variant="body2" sx={{ opacity: 0.8 }}>
-                All-in-One Test Preparation System - Giải pháp toàn diện cho học tập và ôn luyện thi hiệu quả
-              </Typography>
-            </Grid>
-            <Grid item xs={6} md={2}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Product
-              </Typography>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {["Features", "Pricing", "Courses", "Resources"].map((item) => (
-                  <Typography
-                    key={item}
-                    variant="body2"
-                    sx={{
-                      opacity: 0.8,
-                      cursor: "pointer",
-                      "&:hover": { opacity: 1 },
-                    }}
-                  >
-                    {item}
-                  </Typography>
-                ))}
-              </Box>
-            </Grid>
-            <Grid item xs={6} md={2}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Company
-              </Typography>
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                {["About", "Blog", "Careers", "Contact"].map((item) => (
-                  <Typography
-                    key={item}
-                    variant="body2"
-                    sx={{
-                      opacity: 0.8,
-                      cursor: "pointer",
-                      "&:hover": { opacity: 1 },
-                    }}
-                  >
-                    {item}
-                  </Typography>
-                ))}
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Typography variant="h6" gutterBottom sx={{ fontWeight: 600 }}>
-                Stay Updated
-              </Typography>
-              <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>
-                Subscribe to our newsletter for the latest updates and learning
-                tips.
-              </Typography>
-              <Box sx={{ display: "flex", gap: 1 }}>
-                <input
-                  type="email"
-                  placeholder="Your email"
-                  style={{
-                    flex: 1,
-                    padding: "10px 16px",
-                    borderRadius: "4px",
-                    border: "none",
-                    outline: "none",
-                  }}
-                />
-                <Button variant="contained" color="primary">
-                  Subscribe
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-          <Box
+<Box
+  component="footer"
+  sx={{
+    backgroundColor: "#ffffff",
+    color: "#1a237e",
+    py: 6,
+    borderTop: "1px solid #e0e0e0",
+  }}
+>
+  <Container maxWidth="lg">
+    <Grid container spacing={4}>
+      {/* Cột thông tin ATPS */}
+      <Grid item xs={12} md={4}>
+        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+          <School
             sx={{
-              borderTop: "1px solid rgba(255,255,255,0.1)",
-              mt: 4,
-              pt: 4,
-              textAlign: "center",
+              fontSize: 36,
+              mr: 2,
+              color: "#1a237e",
+            }}
+          />
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+              color: "#1a237e",
+              letterSpacing: "0.5px",
             }}
           >
-            <Typography variant="body2" sx={{ opacity: 0.8 }}>
-              © 2025 ATPS. All rights reserved. Built with passion for
-              education.
+            ATPS
+          </Typography>
+        </Box>
+        <Typography variant="body1" sx={{ mb: 3, color: "#546e7a", lineHeight: 1.6 }}>
+          Nền Tảng Ôn Luyện IELTS Toàn Diện Cho Mọi Trình Độ
+        </Typography>
+        
+        {/* Mạng xã hội */}
+        <Box sx={{ display: "flex", gap: 1 }}>
+          {["Facebook", "Instagram", "YouTube"].map((social) => (
+            <IconButton
+              key={social}
+              sx={{
+                color: "#546e7a",
+                "&:hover": {
+                  backgroundColor: "#f5f5f5",
+                  color: "#1a237e",
+                },
+              }}
+            >
+              {social === "Facebook" && <Facebook />}
+              {social === "Instagram" && <Instagram />}
+              {social === "YouTube" && <YouTube />}
+            </IconButton>
+          ))}
+        </Box>
+      </Grid>
+
+      {/* Cột Sản phẩm */}
+      <Grid item xs={6} md={2}>
+        <Typography 
+          variant="subtitle1" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 600,
+            color: "#1a237e",
+            mb: 2,
+          }}
+        >
+          Sản Phẩm
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {["Tính năng", "Bảng giá", "Khóa học", "Tài nguyên"].map((item) => (
+            <Typography
+              key={item}
+              variant="body2"
+              sx={{
+                color: "#546e7a",
+                cursor: "pointer",
+                "&:hover": { 
+                  color: "#1a237e",
+                  fontWeight: 500,
+                },
+              }}
+            >
+              {item}
             </Typography>
-          </Box>
-        </Container>
+          ))}
+        </Box>
+      </Grid>
+
+      {/* Cột Công ty */}
+      <Grid item xs={6} md={2}>
+        <Typography 
+          variant="subtitle1" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 600,
+            color: "#1a237e",
+            mb: 2,
+          }}
+        >
+          Công Ty
+        </Typography>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+          {["Về chúng tôi", "Blog", "Tuyển dụng", "Liên hệ"].map((item) => (
+            <Typography
+              key={item}
+              variant="body2"
+              sx={{
+                color: "#546e7a",
+                cursor: "pointer",
+                "&:hover": { 
+                  color: "#1a237e",
+                  fontWeight: 500,
+                },
+              }}
+            >
+              {item}
+            </Typography>
+          ))}
+        </Box>
+      </Grid>
+
+      {/* Cột Đăng ký nhận tin */}
+      <Grid item xs={12} md={4}>
+        <Typography 
+          variant="subtitle1" 
+          gutterBottom 
+          sx={{ 
+            fontWeight: 600,
+            color: "#1a237e",
+            mb: 2,
+          }}
+        >
+          Cập Nhật Tin Tức
+        </Typography>
+        <Typography variant="body2" sx={{ color: "#546e7a", mb: 2, lineHeight: 1.6 }}>
+          Đăng ký nhận bản tin để cập nhật thông tin mới nhất và tài liệu ôn thi.
+        </Typography>
+        
+        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+          <TextField
+            placeholder="Email của bạn"
+            variant="outlined"
+            size="small"
+            fullWidth
+            sx={{
+              "& .MuiOutlinedInput-root": {
+                "& fieldset": {
+                  borderColor: "#b0bec5",
+                },
+                "&:hover fieldset": {
+                  borderColor: "#1a237e",
+                },
+                "&.Mui-focused fieldset": {
+                  borderColor: "#1a237e",
+                },
+              },
+            }}
+          />
+ <Button
+  variant="contained"
+  sx={{
+    backgroundColor: "#1a237e",
+    color: "white",
+    fontWeight: 600,
+    px: 4, 
+    minWidth: "100px",
+    whiteSpace: "nowrap", 
+    "&:hover": {
+      backgroundColor: "#283593",
+    },
+  }}
+>
+  Đăng Ký
+</Button>
+        </Box>
+      </Grid>
+    </Grid>
+
+    {/* Phần bản quyền */}
+    <Box
+      sx={{
+        borderTop: "1px solid #e0e0e0",
+        mt: 4,
+        pt: 3,
+        textAlign: "center",
+        display: "flex",
+        flexDirection: { xs: "column", md: "row" },
+        justifyContent: "space-between",
+        alignItems: "center",
+        gap: 2,
+      }}
+    >
+      <Typography variant="body2" sx={{ color: "#546e7a" }}>
+        © 2025 <strong style={{ color: "#1a237e" }}>ATPS</strong>. Bảo lưu mọi quyền.
+      </Typography>
+      
+      <Box sx={{ display: "flex", gap: 3 }}>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: "#546e7a",
+            cursor: "pointer",
+            "&:hover": { 
+              color: "#1a237e",
+            },
+          }}
+        >
+          Điều khoản sử dụng
+        </Typography>
+        <Typography 
+          variant="body2" 
+          sx={{ 
+            color: "#546e7a",
+            cursor: "pointer",
+            "&:hover": { 
+              color: "#1a237e",
+            },
+          }}
+        >
+          Chính sách bảo mật
+        </Typography>
       </Box>
+    </Box>
+  </Container>
+</Box>
     </Box>
   );
 };
