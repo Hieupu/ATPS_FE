@@ -200,8 +200,8 @@ const AddSectionDialog = ({ open, onClose, onSave, isChild, editData, parentType
             <Grid item xs={12}>
               <Alert severity="info">
                 {isChild
-                  ? "Phân mục con kế thừa loại phần bài tập từ phân mục cha."
-                  : "Bạn có thể thêm phân mục con sau khi tạo phần bài tập."}
+                  ? "Hãy tải tài liệu riêng cho phân mục nhỏ này."
+                  : "Bạn có thể thêm phân mục nhỏ sau khi tạo phần bài tập."}
               </Alert>
             </Grid>
           </Grid>

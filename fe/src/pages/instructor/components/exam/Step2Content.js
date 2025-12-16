@@ -220,7 +220,7 @@ const SortableParentSection = ({
                                         color="primary"
                                         variant="outlined"
                                     />
-                                    <Chip label={`Phần ${index + 1}`} size="small" />
+                                    
                                     <Chip
                                         label={`${childSections.length} phân mục`}
                                         size="small"
@@ -844,7 +844,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                         gutterBottom
                         sx={{ color: "#666", fontWeight: 600 }}
                     >
-                        Chưa có phần thi nào
+                        Chưa có phần bài tập nào
                     </Typography>
 
                     <Typography
@@ -852,7 +852,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                         color="text.secondary"
                         sx={{ mb: 3 }}
                     >
-                        Nhấn nút "Thêm phần thi mới" để bắt đầu xây dựng bài thi
+                        Nhấn nút "Thêm phần bài tập mới" để bắt đầu xây dựng bài thi
                     </Typography>
 
                     <Button
@@ -862,7 +862,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                         onClick={handleAddParentSection}
                         sx={{ px: 4, py: 1.5, fontSize: "1rem", fontWeight: 600 }}
                     >
-                        Thêm phần thi mới
+                        Thêm phần bài tập
                     </Button>
                 </Paper>
 
