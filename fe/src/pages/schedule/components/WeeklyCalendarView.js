@@ -181,10 +181,10 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     toast.warn("Bạn không có quyền truy cập vào buổi học này.");
     return;
   }
-  if (role === "learner" && !isWithin10MinBefore) {
-    toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
-    return;
-  }
+  // if (role === "learner" && !isWithin10MinBefore) {
+  //   toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+  //   return;
+  // }
 
   localStorage.setItem('zoomScheduleData', JSON.stringify({
     schedule: schedule,
@@ -198,6 +198,7 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
       sessionId: schedule.SessionID,
       accId: userId,
+      userRole: role,
       userName: user.user.username,
       startTime: schedule.StartTime,
       endTime: schedule.EndTime,
