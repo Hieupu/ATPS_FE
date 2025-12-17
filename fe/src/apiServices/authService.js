@@ -84,3 +84,26 @@ export const startFacebookAuth = () => {
   const base = apiClient.defaults.baseURL.replace(/\/$/, "");
   window.location.href = `${base}/facebook`;
 };
+
+// Gửi mã xác thực khi đăng ký
+export const sendRegisterVerification = async (email) => {
+  try {
+    const response = await apiClient.post("/send-register-verification", { email });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Gửi mã xác thực thất bại" };
+  }
+};
+
+// Xác thực mã đăng ký
+export const verifyRegisterCodeApi = async (email, code) => {
+  try {
+    const response = await apiClient.post("/verify-register-code", {
+      email,
+      code,
+    });
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { message: "Xác thực thất bại" };
+  }
+};
