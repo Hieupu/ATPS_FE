@@ -48,7 +48,10 @@ export const submitExamApi = async (instanceId, payload = {}) => {
     }
     const res = await apiClient.post(
       `/exams/instances/${instanceId}/submit`,
-      requestBody
+      requestBody,
+      {
+      timeout: 200000
+      }
     );
 
     return res.data;
