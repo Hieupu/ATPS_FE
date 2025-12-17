@@ -18,7 +18,36 @@ import {
   Flag,
 } from "@mui/icons-material";
 
+// Cấu hình hiển thị cho từng trạng thái (Instructor UI)
+const STATUS_CONFIG = {
+  ONGOING: {
+    label: "Đang giảng dạy",
+    color: "#10b981",
+    bg: "#d1fae5",
+  },
+  ACTIVE: {
+    label: "Lớp đã mở",
+    color: "#f59e0b",
+    bg: "#fef3c7",
+  },
+  APPROVED: {
+    label: "Lớp đã phân công",
+    color: "#3b82f6",
+    bg: "#dbeafe",
+  },
+  CLOSE: {
+    label: "Lớp đã kết thúc",
+    color: "#6366f1",
+    bg: "#e0e7ff",
+  },
+  CANCEL: {
+    label: "Lớp bị hủy",
+    color: "#ef4444", // Red
+  },
+};
+
 export default function ClassCardItem({ cls, onMenuOpen }) {
+  // --- Xử lý lịch học ---
   const scheduleLines = cls.scheduleSummary
     ? cls.scheduleSummary
         .split("|")
@@ -26,14 +55,15 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
         .filter(Boolean)
     : [];
 
+  // --- Parse dữ liệu số ---
   const completedSessions = parseInt(cls.finishedSessions) || 0;
   const totalSessions = parseInt(cls.totalSessions) || 0;
   const currentStudents = parseInt(cls.currentStudents) || 0;
   const maxStudents = parseInt(cls.maxStudents) || 0;
   const progress = cls.progressPercent || 0;
-
   const hasSessionToday = !!cls.hasSessionToday;
 
+  // --- Xử lý Level ---
   const levelColors = {
     BEGINNER: { bg: "#dbeafe", text: "#1e40af", label: "Cơ bản" },
     INTERMEDIATE: { bg: "#fef3c7", text: "#92400e", label: "Trung cấp" },
@@ -45,40 +75,42 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
     label: cls.courseLevel || "Khác",
   };
 
+  // --- Helper Format Date ---
   const formatShortDate = (dateStr) => {
     if (!dateStr) return "---";
     const date = new Date(dateStr);
     if (isNaN(date.getTime())) return "---";
-
     const day = date.getDate().toString().padStart(2, "0");
     const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
-
     return `${day}/${month}/${year}`;
   };
 
+  // --- Logic hiển thị Next Session ---
   let nextSessionText = "Chưa có lịch";
   if (cls.nextSessionDate) {
     const date = new Date(cls.nextSessionDate);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-
     const targetDate = new Date(date);
     targetDate.setHours(0, 0, 0, 0);
 
-    if (targetDate.getTime() === today.getTime()) {
-      nextSessionText = "Hôm nay";
-    } else if (targetDate.getTime() === tomorrow.getTime()) {
+    if (targetDate.getTime() === today.getTime()) nextSessionText = "Hôm nay";
+    else if (targetDate.getTime() === tomorrow.getTime())
       nextSessionText = "Ngày mai";
-    } else {
-      nextSessionText = formatShortDate(cls.nextSessionDate);
-    }
+    else nextSessionText = formatShortDate(cls.nextSessionDate);
   }
 
   const endDateText = formatShortDate(cls.endDate);
+
+  // Lấy config hiển thị dựa trên status hiện tại
+  const currentStatus = STATUS_CONFIG[cls.classStatus] || {
+    label: cls.classStatus,
+    color: "#94a3b8",
+    bg: "#f1f5f9",
+  };
 
   return (
     <Card
@@ -107,6 +139,8 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
           alt={cls.courseTitle}
           sx={{ objectFit: "cover", bgcolor: "#f8fafc" }}
         />
+
+        {/* Badge Hôm nay (Ưu tiên cao nhất) */}
         {hasSessionToday && (
           <Chip
             label="HÔM NAY"
@@ -120,36 +154,19 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
               fontWeight: 800,
               fontSize: "10px",
               height: 24,
-              "& .MuiChip-label": { px: 1.5 },
             }}
           />
         )}
+
+        {/* Status Chip (Đã sửa theo logic mới) */}
         <Chip
-          label={
-            ["APPROVED", "ACTIVE"].includes(cls.classStatus)
-              ? "Đang diễn ra"
-              : ["PENDING", "WAITING", "ONGOING"].includes(cls.classStatus)
-              ? "Sắp khai giảng"
-              : cls.classStatus === "CLOSE"
-              ? "Đã kết thúc"
-              : cls.classStatus === "CANCEL"
-              ? "Đã hủy"
-              : cls.classStatus
-          }
+          label={currentStatus.label}
           size="small"
           sx={{
             position: "absolute",
             top: 10,
             right: 50,
-            bgcolor: ["APPROVED", "ACTIVE"].includes(cls.classStatus)
-              ? "#10b981"
-              : ["PENDING", "WAITING", "ONGOING"].includes(cls.classStatus)
-              ? "#f59e0b"
-              : cls.classStatus === "CLOSE"
-              ? "#6366f1"
-              : cls.classStatus === "CANCEL"
-              ? "#ef4444"
-              : "#94a3b8",
+            bgcolor: currentStatus.color, // Dùng màu nền đậm cho nổi bật
             color: "white",
             fontWeight: 700,
             fontSize: "10px",
@@ -157,6 +174,8 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             "& .MuiChip-label": { px: 1.5 },
           }}
         />
+
+        {/* Level Chip */}
         {cls.courseLevel && (
           <Chip
             label={levelColor.label}
@@ -170,10 +189,10 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
               fontWeight: 700,
               fontSize: "10px",
               height: 24,
-              "& .MuiChip-label": { px: 1.5 },
             }}
           />
         )}
+
         <IconButton
           size="small"
           onClick={(e) => onMenuOpen(e, cls)}
@@ -185,7 +204,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             backdropFilter: "blur(4px)",
             width: 32,
             height: 32,
-            "& hover": { bgcolor: "white" },
+            "&:hover": { bgcolor: "white" },
           }}
         >
           <MoreVert sx={{ fontSize: 18 }} />
@@ -224,7 +243,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
           {cls.courseTitle}
         </Typography>
 
-        {/* --- ĐÂY LÀ PHẦN ĐÃ SỬA --- */}
+        {/* Khung Lịch Học (Scrollable) */}
         <Box
           sx={{
             bgcolor: "#f8fafc",
@@ -232,13 +251,11 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             p: 1.5,
             mb: 2,
             border: "1px solid #e2e8f0",
-            // Thêm các dòng dưới để cố định chiều cao và scroll
-            height: "110px", // Chiều cao cố định cho khung lịch (khoảng 3-4 dòng)
+            height: "110px",
             display: "flex",
             flexDirection: "column",
           }}
         >
-          {/* Header cố định */}
           <Box
             sx={{
               display: "flex",
@@ -259,19 +276,15 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
-          {/* Phần nội dung cuộn (Scrollable) */}
           <Box
             sx={{
-              overflowY: "auto", // Cho phép cuộn dọc
+              overflowY: "auto",
               flexGrow: 1,
-              // Style thanh cuộn cho đẹp
               "&::-webkit-scrollbar": { width: "4px" },
-              "&::-webkit-scrollbar-track": { background: "transparent" },
               "&::-webkit-scrollbar-thumb": {
                 background: "#cbd5e1",
                 borderRadius: "4px",
               },
-              "&::-webkit-scrollbar-thumb:hover": { background: "#94a3b8" },
             }}
           >
             {cls.scheduleSummary &&
@@ -315,8 +328,8 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             )}
           </Box>
         </Box>
-        {/* --- KẾT THÚC PHẦN ĐÃ SỬA --- */}
 
+        {/* Thông tin chi tiết 3 cột */}
         <Box
           sx={{
             display: "grid",
@@ -325,6 +338,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             mb: 2,
           }}
         >
+          {/* Cột 1: Buổi tới */}
           <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
             <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
               <CalendarToday
@@ -363,6 +377,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
+          {/* Cột 2: Sĩ số */}
           <Box
             sx={{
               display: "flex",
@@ -402,6 +417,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
             </Typography>
           </Box>
 
+          {/* Cột 3: Kết thúc */}
           <Box
             sx={{
               display: "flex",
@@ -430,6 +446,7 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
           </Box>
         </Box>
 
+        {/* Thanh tiến độ */}
         <Box sx={{ mt: "auto" }}>
           <Box
             sx={{
@@ -466,11 +483,13 @@ export default function ClassCardItem({ cls, onMenuOpen }) {
               bgcolor: "#e2e8f0",
               "& .MuiLinearProgress-bar": {
                 bgcolor:
-                  progress === 100
+                  cls.classStatus === "CLOSE"
+                    ? "#6366f1" // Kết thúc thì màu tím
+                    : progress === 100
                     ? "#10b981"
                     : hasSessionToday
                     ? "#dc2626"
-                    : "#6366f1",
+                    : "#10b981", // Mặc định xanh lá
                 borderRadius: 4,
               },
             }}

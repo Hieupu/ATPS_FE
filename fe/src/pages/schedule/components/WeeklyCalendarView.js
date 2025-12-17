@@ -181,10 +181,10 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     toast.warn("Bạn không có quyền truy cập vào buổi học này.");
     return;
   }
-  if (role === "learner" && !isWithin10MinBefore) {
-    toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
-    return;
-  }
+  // if (role === "learner" && !isWithin10MinBefore) {
+  //   toast.warn("Học viên chỉ có thể vào phòng học trong vòng 10 phút trước giờ bắt đầu.");
+  //   return;
+  // }
 
   localStorage.setItem('zoomScheduleData', JSON.stringify({
     schedule: schedule,
@@ -198,6 +198,7 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
     await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
       sessionId: schedule.SessionID,
       accId: userId,
+      userRole: role,
       userName: user.user.username,
       startTime: schedule.StartTime,
       endTime: schedule.EndTime,
@@ -216,7 +217,13 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
 };
 
 
-  const renderScheduleCard = (schedule, slot, idx) => (
+const renderScheduleCard = (schedule, slot, idx) => {
+  // Kiểm tra nếu buổi học đã qua
+  const now = new Date();
+  const scheduleEnd = new Date(`${schedule.Date}T${schedule.EndTime}`);
+  const isPastSession = now > scheduleEnd;
+  
+  return (
     <div
       key={idx}
       style={{
@@ -276,7 +283,7 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
           {slot.start}-{slot.end}
         </div>
 
-        {canJoinZoom(schedule) && (
+        {!isPastSession && canJoinZoom(schedule) && (
           <button
             onClick={() => handleJoinZoom(schedule)}
             style={{
@@ -301,9 +308,25 @@ const daysOfWeek = ["Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ S
             Tham gia Zoom
           </button>
         )}
+        
+        {isPastSession && (
+          <div style={{
+            width: '100%',
+            padding: '4px 8px',
+            backgroundColor: '#e0e0e0',
+            color: '#757575',
+            borderRadius: '4px',
+            fontSize: '0.7rem',
+            fontWeight: 500,
+            textAlign: 'center'
+          }}>
+            Đã kết thúc
+          </div>
+        )}
       </div>
     </div>
   );
+};
 
   return (
     <div style={{ padding: '24px', backgroundColor: '#f8f9fa', minHeight: '100vh' }}>

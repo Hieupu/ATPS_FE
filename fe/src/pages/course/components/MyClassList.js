@@ -204,7 +204,6 @@ const MyClassList = ({ courseId }) => {
             <ul>
               <li>Chuyển bạn sang lớp học mới</li>
               <li>Hủy đăng ký khỏi lớp hiện tại</li>
-              <li>Cần được quản trị viên xác nhận</li>
             </ul>
           </DialogContentText>
         </DialogContent>
@@ -397,7 +396,7 @@ const MyClassList = ({ courseId }) => {
         mb: 1.5,
       }}
     >
-      📅 Lịch học hàng tuần:
+       Lịch học hàng tuần:
     </Typography>
     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
       {Array.from(

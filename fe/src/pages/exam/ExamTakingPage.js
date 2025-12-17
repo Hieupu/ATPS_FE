@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, { useEffect, useMemo, useState, useRef, memo, useCallback } from "react";
 import {
   Box,
   Container,
@@ -6,391 +6,707 @@ import {
   Card,
   CardContent,
   Button,
-  RadioGroup,
-  FormControlLabel,
-  Radio,
-  TextField,
   Chip,
   CircularProgress,
+  Snackbar,
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
-
-import { Send, ArrowBack } from "@mui/icons-material";
+import {
+  Send,
+  ArrowBack,
+  Fullscreen,
+  FullscreenExit,
+  AccessTime,
+  CheckCircle,
+  Timer,
+} from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import { debounce } from "lodash";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   getExamToDoApi,
   saveAnswerApi,
   submitExamApi,
+  hasRemainingAttempts,
+  getRemainingAttempts,
+  buildSubmitPayload,
+  formatDurationText,
 } from "../../apiServices/learnerExamService";
-
-import { loadFileAsHtml } from "../../utils/fileToHtml"; // Bạn cần chắc chắn rằng loadFileAsHtml có thể xử lý file URL
+import { cloudinaryUpload } from "../../utils/cloudinaryUpload";
+import { loadFileAsHtml } from "../../utils/fileToHtml";
+import { QuestionRenderer } from "./QuestionComponents";
 import "./ExamTaking.css";
 
-// ===================================================================
-// QUESTION BLOCK
-// ===================================================================
-const QuestionBlock = ({ question, answers, onChange }) => {
-  const value = answers[question.examQuestionId] || "";
+const AudioPlayer = memo(
+  ({ audioUrl }) => {
+    const audioRef = useRef(null);
+    if (!audioUrl) return null;
 
-  const isMCQ = question.type === "multiple_choice";
-  const isTF = question.type === "true_false";
-
-  return (
-    <Card className="question-card" id={`q_${question.examQuestionId}`} sx={{ mb: 2 }}>
-      <CardContent>
-        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
-          <Chip label={`Question ${question.orderIndex + 1}`} color="primary" />
-          <Typography variant="caption">{question.point} point</Typography>
+    return (
+      <Box
+        sx={{
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          borderRadius: 2,
+          p: 3,
+          mb: 3,
+          position: "sticky",
+          top: 0,
+          zIndex: 10,
+        }}
+      >
+        <Typography variant="h6" sx={{ color: "white", mb: 2, textAlign: "center" }}>
+          Audio Listening
+        </Typography>
+        <Box sx={{ bgcolor: "white", borderRadius: 2, p: 2 }}>
+          <audio ref={audioRef} controls style={{ width: "100%" }} preload="metadata" key={audioUrl}>
+            <source src={audioUrl} type="audio/mpeg" />
+            Your browser does not support the audio element.
+          </audio>
         </Box>
+      </Box>
+    );
+  },
+  (prevProps, nextProps) => {
+    return prevProps.audioUrl === nextProps.audioUrl;
+  }
+);
 
-        <Typography sx={{ mb: 2 }}>{question.content}</Typography>
+AudioPlayer.displayName = "AudioPlayer";
 
-        {isMCQ && (
-          <RadioGroup
+const QuestionBlock = memo(
+  ({ question, answers, onChange, onAudioUpload }) => {
+    const value = answers[question.examQuestionId] || "";
+
+    const handleChange = useCallback(
+      (newValue) => {
+        onChange(question.examQuestionId, newValue);
+      },
+      [question.examQuestionId, onChange]
+    );
+
+    return (
+      <Card className="question-card" id={`q_${question.examQuestionId}`} sx={{ mb: 2 }}>
+        <CardContent>
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+            <Chip label={`Question ${question.orderIndex + 1}`} color="primary" />
+            <Typography variant="caption">{question.point} point</Typography>
+          </Box>
+
+          <Typography sx={{ mb: 2, fontWeight: 500 }}>{question.content}</Typography>
+
+          <QuestionRenderer
+            question={question}
             value={value}
-            onChange={(e) => onChange(question.examQuestionId, e.target.value)}
-          >
-            {question.options?.map((o) => (
-              <FormControlLabel
-                key={o.optionId}
-                value={o.content}
-                control={<Radio />}
-                label={o.content}
-              />
-            ))}
-          </RadioGroup>
-        )}
-
-        {isTF && (
-          <RadioGroup
-            value={value}
-            onChange={(e) => onChange(question.examQuestionId, e.target.value)}
-          >
-            <FormControlLabel value="True" control={<Radio />} label="True" />
-            <FormControlLabel value="False" control={<Radio />} label="False" />
-          </RadioGroup>
-        )}
-
-        {!isMCQ && !isTF && (
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            value={value}
-            onChange={(e) => onChange(question.examQuestionId, e.target.value)}
-            placeholder="Nhập câu trả lời..."
+            onChange={handleChange}
+            onUpload={onAudioUpload}
           />
-        )}
-      </CardContent>
-    </Card>
-  );
-};
+        </CardContent>
+      </Card>
+    );
+  },
+  (prevProps, nextProps) => {
+    const prevValue = prevProps.answers[prevProps.question.examQuestionId];
+    const nextValue = nextProps.answers[nextProps.question.examQuestionId];
 
-// ===================================================================
-// MAIN PAGE
-// ===================================================================
+    return (
+      prevProps.question === nextProps.question &&
+      prevValue === nextValue &&
+      prevProps.onAudioUpload === nextProps.onAudioUpload
+    );
+  }
+);
+
+QuestionBlock.displayName = "QuestionBlock";
+
+const LeftPane = memo(
+  ({ audioUrl, htmlPassage, width }) => {
+    return (
+      <Box
+        className="scroll-panel"
+        sx={{
+          width: `${width}%`,
+          borderRight: "1px solid #ccc",
+          background: "#fafafa",
+          p: 3,
+          overflowY: "auto",
+        }}
+      >
+        {audioUrl && <AudioPlayer audioUrl={audioUrl} />}
+
+        {htmlPassage ? (
+          <div dangerouslySetInnerHTML={{ __html: htmlPassage }} />
+        ) : (
+          <Typography color="text.secondary">No passage content</Typography>
+        )}
+      </Box>
+    );
+  },
+  (prevProps, nextProps) => {
+    return (
+      prevProps.audioUrl === nextProps.audioUrl &&
+      prevProps.htmlPassage === nextProps.htmlPassage &&
+      prevProps.width === nextProps.width
+    );
+  }
+);
+
+LeftPane.displayName = "LeftPane";
+
 const ExamTakingPage = () => {
   const { instanceId } = useParams();
   const navigate = useNavigate();
 
   const [instance, setInstance] = useState(null);
   const [sections, setSections] = useState([]);
-  const [answers, setAnswers] = useState({});
+  const [activeSection, setActiveSection] = useState(null);
   const [activeChildSection, setActiveChildSection] = useState(null);
   const [htmlPassage, setHtmlPassage] = useState("");
+  const [answers, setAnswers] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showError, setShowError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-
+  const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [startTime] = useState(Date.now());
+  const [timeLeft, setTimeLeft] = useState(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
+  const timerIntervalRef = useRef(null);
+  const elapsedTimerRef = useRef(null);
   const [leftWidth, setLeftWidth] = useState(42);
-
   const containerRef = useRef(null);
-  const leftPaneRef = useRef(null);
-  const rightPaneRef = useRef(null);
   const dragging = useRef(false);
 
-  // ===================================================================
-  // LOAD EXAM
-  // ===================================================================
-  const loadExam = async () => {
-    try {
-      setLoading(true);
+  const currentAudioUrl = useMemo(() => {
+    return activeChildSection?.audioUrl || null;
+  }, [activeChildSection?.audioUrl]);
 
-      const data = await getExamToDoApi(instanceId);
+  useEffect(() => {
+    const loadExam = async () => {
+      try {
+        setLoading(true);
+        setError(null);
 
-      setInstance(data.instance);
-      setSections(data.sections || []);
+        const data = await getExamToDoApi(instanceId);
 
-      // Lấy file URL từ childSections của section con
-      if (data.sections?.[0]?.childSections?.length > 0) {
-        setActiveChildSection(data.sections[0].childSections[0]);
-        if (data.sections[0].childSections[0].FileURL) {
-          // Tải nội dung của file URL
-          loadFileAsHtml(data.sections[0].childSections[0].FileURL).then(setHtmlPassage);
+        if (!data || !data.sections) {
+          throw new Error("Không có dữ liệu bài thi");
         }
-      }
 
-      const init = {};
-      data.sections?.forEach((sec) => {
-        sec.childSections?.forEach((child) => {
-          child.questions?.forEach((q) => {
-            if (q.learnerAnswer) init[q.examQuestionId] = q.learnerAnswer;
+        if (!hasRemainingAttempts(data.instance)) {
+          alert("Bạn đã hết lượt làm bài thi này");
+          navigate(-1);
+          return;
+        }
+
+        setInstance(data.instance);
+        setSections(data.sections || []);
+
+        const answerMap = {};
+        data.sections.forEach((section) => {
+          section.childSections?.forEach((child) => {
+            child.questions?.forEach((q) => {
+              if (q.learnerAnswer !== null && q.learnerAnswer !== undefined) {
+                answerMap[q.examQuestionId] = q.learnerAnswer;
+              }
+            });
           });
         });
-      });
 
-      setAnswers(init);
+        setAnswers(answerMap);
+
+        if (data.sections.length > 0) {
+          const firstSection = data.sections[0];
+          setActiveSection(firstSection);
+
+          if (firstSection.childSections?.length > 0) {
+            const firstChild = firstSection.childSections[0];
+            setActiveChildSection(firstChild);
+          }
+        }
+
+        if (data.instance?.examDuration) {
+          const durationInSeconds = data.instance.examDuration * 60;
+          setTimeLeft(durationInSeconds);
+        }
+      } catch (err) {
+        setError(err.message || "Không thể tải bài thi");
+        setShowError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (instanceId) {
+      loadExam();
+    }
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+      if (elapsedTimerRef.current) {
+        clearInterval(elapsedTimerRef.current);
+      }
+    };
+  }, [instanceId, navigate]);
+
+  useEffect(() => {
+    const loadPassage = async () => {
+      if (!activeChildSection?.FileURL) {
+        setHtmlPassage("");
+        return;
+      }
+
+      try {
+        const html = await loadFileAsHtml(activeChildSection.FileURL);
+        setHtmlPassage(html);
+      } catch (err) {
+        console.error("Load passage error:", err);
+        setHtmlPassage("");
+      }
+    };
+
+    loadPassage();
+  }, [activeChildSection?.FileURL]);
+
+  useEffect(() => {
+    if (timeLeft === null || timeLeft <= 0) return;
+
+    timerIntervalRef.current = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerIntervalRef.current);
+          handleAutoSubmit();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+      }
+    };
+  }, [timeLeft]);
+
+  useEffect(() => {
+    elapsedTimerRef.current = setInterval(() => {
+      setElapsedTime((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      if (elapsedTimerRef.current) {
+        clearInterval(elapsedTimerRef.current);
+      }
+    };
+  }, []);
+
+  const formatTime = (seconds) => {
+    if (seconds === null) return "--:--:--";
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return `${hours.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const debouncedSave = useMemo(
+    () =>
+      debounce(async (answersToSave) => {
+        try {
+          const answersArray = Object.entries(answersToSave).map(([examQuestionId, answer]) => ({
+            examQuestionId: parseInt(examQuestionId),
+            answer: answer || "",
+          }));
+
+          await saveAnswerApi(instanceId, answersArray);
+        } catch (err) {
+          console.error("Auto-save error:", err);
+        }
+      }, 1500),
+    [instanceId]
+  );
+
+  const handleAnswerChange = useCallback(
+    (examQuestionId, value) => {
+      setAnswers((prev) => {
+        const updated = { ...prev, [examQuestionId]: value };
+        debouncedSave(updated);
+        return updated;
+      });
+    },
+    [debouncedSave]
+  );
+
+  const handleAudioUpload = useCallback(async (audioBlob) => {
+    const url = await cloudinaryUpload(audioBlob);
+    if (!url) {
+      throw new Error("Không thể upload audio");
+    }
+    return url;
+  }, []);
+
+  const handleSubmit = () => {
+    const answeredCount = Object.values(answers).filter((a) => a && a.trim()).length;
+    const totalQuestions = sections.reduce((sum, sec) => {
+      return (
+        sum +
+        (sec.childSections?.reduce((childSum, child) => {
+          return childSum + (child.questions?.length || 0);
+        }, 0) || 0)
+      );
+    }, 0);
+
+    if (answeredCount < totalQuestions) {
+      if (
+        !window.confirm(
+          `Bạn mới trả lời ${answeredCount}/${totalQuestions} câu. Bạn có chắc muốn nộp bài?`
+        )
+      ) {
+        return;
+      }
+    }
+
+    setSubmitDialogOpen(true);
+  };
+
+  const confirmSubmit = async () => {
+    try {
+      setSubmitting(true);
+      setSubmitDialogOpen(false);
+
+      const payload = buildSubmitPayload(
+        Object.entries(answers).map(([examQuestionId, answer]) => ({
+          examQuestionId: parseInt(examQuestionId),
+          answer,
+        })),
+        startTime,
+        {
+          metadata: {
+            totalQuestionsAttempted: Object.keys(answers).length,
+          },
+        }
+      );
+
+      const result = await submitExamApi(instanceId, payload);
+
+      toast.success("Nộp bài thành công", { autoClose: 2000 });
+
+      setTimeout(() => {
+        navigate(`/exam/${instanceId}/result`, { replace: true });
+      }, 1000);
+    } catch (err) {
+      console.error("Submit error:", err);
+      alert(err.message || "Lỗi khi nộp bài");
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
-  useEffect(() => {
-    loadExam();
-  }, [instanceId]);
-
-  // ===================================================================
-  // AUTO SAVE
-  // ===================================================================
-  const debouncedSave = useMemo(
-    () =>
-      debounce(async (questionId, answer) => {
-        await saveAnswerApi(instanceId, [
-          { examQuestionId: questionId, answer },
-        ]);
-      }, 350),
-    []
-  );
-
-  const handleAnswerChange = (id, value) => {
-    setAnswers((prev) => ({ ...prev, [id]: value }));
-    debouncedSave(id, value);
+  const handleAutoSubmit = async () => {
+    alert("Hết giờ! Bài thi sẽ được nộp tự động.");
+    await confirmSubmit();
   };
 
-  // ===================================================================
-  // RESIZER DRAG
-  // ===================================================================
-  const startDragging = (e) => {
+  const handleSectionChange = async (section) => {
+    setActiveSection(section);
+
+    if (section.childSections?.length > 0) {
+      const firstChild = section.childSections[0];
+      setActiveChildSection(firstChild);
+    }
+  };
+
+  const handleChildTabClickByIndex = async (index) => {
+    if (!activeSection?.childSections || !activeSection.childSections[index]) {
+      return;
+    }
+
+    const child = activeSection.childSections[index];
+    setActiveChildSection(child);
+    document.querySelector(".scroll-panel:last-child")?.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const toggleFullscreen = () => {
+    if (!isFullscreen) {
+      document.documentElement.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+    setIsFullscreen(!isFullscreen);
+  };
+
+  const startDragging = () => {
     dragging.current = true;
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", stopDragging);
+  };
 
+  const stopDragging = () => {
+    dragging.current = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", stopDragging);
+  };
+
+  const onMouseMove = (e) => {
+    if (!dragging.current || !containerRef.current) return;
     const containerWidth = containerRef.current.offsetWidth;
-    const startX = e.clientX;
-    const startLeftPx = (leftWidth / 100) * containerWidth;
-
-    const onMouseMove = (ev) => {
-      if (!dragging.current) return;
-
-      const delta = ev.clientX - startX;
-      let newLeftPx = startLeftPx + delta;
-
-      newLeftPx = Math.max(
-        containerWidth * 0.2,
-        Math.min(containerWidth * 0.8, newLeftPx)
-      );
-
-      const newPercent = (newLeftPx / containerWidth) * 100;
-
-      leftPaneRef.current.style.width = `${newPercent}%`;
-      rightPaneRef.current.style.width = `${100 - newPercent}%`;
-    };
-
-    const stopDragging = () => {
-      dragging.current = false;
-      const finalLeft = leftPaneRef.current.offsetWidth;
-      setLeftWidth((finalLeft / containerWidth) * 100);
-
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", stopDragging);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", stopDragging);
+    const newLeftWidth = (e.clientX / containerWidth) * 100;
+    if (newLeftWidth > 20 && newLeftWidth < 80) {
+      setLeftWidth(newLeftWidth);
+    }
   };
 
-  // ===================================================================
-  // SUBMIT
-  // ===================================================================
-  const handleSubmit = async () => {
-    if (!window.confirm("Bạn chắc chắn muốn nộp bài?")) return;
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh" }}>
+        <CircularProgress />
+        <Typography sx={{ ml: 2 }}>Đang tải bài thi...</Typography>
+      </Box>
+    );
+  }
 
-    setSubmitting(true);
+  if (error) {
+    return (
+      <Container maxWidth="md" sx={{ mt: 4 }}>
+        <Alert severity="error">{error}</Alert>
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)} sx={{ mt: 2 }}>
+          Quay lại
+        </Button>
+      </Container>
+    );
+  }
 
-    const payload = Object.entries(answers).map(([id, ans]) => ({
-      examQuestionId: Number(id),
-      answer: ans,
-    }));
-
-    await submitExamApi(instanceId, payload);
-    navigate(`/exam/${instanceId}/result`);
-  };
-
-  // ===================================================================
-  // RENDER UI
-  // ===================================================================
   return (
     <>
-      <Container maxWidth={false} sx={{ mt: 2, mb: 2, px: 2 }}>
-        {/* ================= HEADER - BACK AND SUBMIT BUTTONS ================= */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
-          <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)}>
-            Quay lại
-          </Button>
+      <ToastContainer />
+      <Snackbar
+        open={showError}
+        autoHideDuration={6000}
+        onClose={() => setShowError(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert onClose={() => setShowError(false)} severity="error" sx={{ width: "100%" }}>
+          {error}
+        </Alert>
+      </Snackbar>
 
-          {/* Button for Section Type */}
-          <Box sx={{ display: "flex", gap: 2, alignItems: "center" }}>
-            {sections[0]?.Type && (
-              <Button variant="outlined" color="primary">
-                {sections[0]?.Type}
-              </Button>
-            )}
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          px: 2,
+          py: 1.5,
+          background: "#fff",
+          borderBottom: "1px solid #ddd",
+          position: "sticky",
+          top: 0,
+          zIndex: 1100,
+        }}
+      >
+        <Button startIcon={<ArrowBack />} onClick={() => navigate(-1)}>
+          Quay lại
+        </Button>
 
-            {/* Submit Button */}
-            {!loading && instance && (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 1,
+            position: "absolute",
+            left: "50%",
+            transform: "translateX(-50%)",
+          }}
+        >
+          {sections.map((section, idx) => {
+            const sectionType =
+              section.childSections?.[0]?.Type || section.Type || `Section ${idx + 1}`;
+
+            return (
               <Button
-                variant="contained"
+                key={section.SectionId}
+                variant={activeSection?.SectionId === section.SectionId ? "contained" : "outlined"}
                 color="primary"
-                endIcon={<Send />}
-                onClick={handleSubmit}
-                disabled={submitting}
+                onClick={() => handleSectionChange(section)}
               >
-                Submit
+                {sectionType.toUpperCase()}
               </Button>
-            )}
-          </Box>
+            );
+          })}
         </Box>
 
-        {loading ? (
-          <Box sx={{ textAlign: "center", mt: 4 }}>
-            <CircularProgress />
-          </Box>
-        ) : (
-          instance && (
-            <>
-              {/* Main Layout */}
-              <Box
-                ref={containerRef}
-                sx={{
-                  display: "flex",
-                  width: "100%",
-                  height: "70vh",
-                  mt: 2,
-                  overflow: "hidden",
-                }}
-              >
-                {/* Left Panel */}
-                <Box
-                  ref={leftPaneRef}
-                  sx={{
-                    width: `${leftWidth}%`,
-                    borderRight: "1px solid #ccc",
-                    display: "flex",
-                    flexDirection: "column",
-                    pr: 1,
-                    overflowY: "auto",
-                  }}
-                >
-                  {htmlPassage ? (
-                    <Box
-                      dangerouslySetInnerHTML={{ __html: htmlPassage }}
-                      sx={{ fontSize: "16px", lineHeight: "1.6" }}
-                    />
-                  ) : (
-                    <Typography>Đang tải nội dung...</Typography>
-                  )}
-                </Box>
+        <Box sx={{ display: "flex", gap: 1.5, alignItems: "center" }}>
+          <Chip
+            icon={<Timer />}
+            label={formatTime(elapsedTime)}
+            color="info"
+            variant="outlined"
+            sx={{ fontWeight: 600 }}
+          />
 
-                {/* Resizer */}
-                <Box
-                  onMouseDown={startDragging}
-                  sx={{
-                    width: "6px",
-                    cursor: "col-resize",
-                    background: "#c8c8c8",
-                    "&:hover": { background: "#999" },
-                  }}
-                />
+          {timeLeft !== null && (
+            <Chip
+              icon={<AccessTime />}
+              label={formatTime(timeLeft)}
+              color={timeLeft < 300 ? "error" : "primary"}
+              variant="outlined"
+              sx={{ fontWeight: 600 }}
+            />
+          )}
 
-                {/* Right Panel */}
-                <Box
-                  ref={rightPaneRef}
-                  sx={{
-                    width: `${100 - leftWidth}%`,
-                    pl: 1,
-                    overflowY: "auto",
-                  }}
-                >
-                  <Box id="questionScrollBox" sx={{ pr: 1 }}>
-                    {activeChildSection?.questions?.map((q) => (
-                      <QuestionBlock
-                        key={q.examQuestionId}
-                        question={q}
-                        answers={answers}
-                        onChange={handleAnswerChange}
-                      />
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={toggleFullscreen}
+            sx={{ minWidth: "auto", px: 1.5 }}
+          >
+            {isFullscreen ? <FullscreenExit /> : <Fullscreen />}
+          </Button>
 
-              {/* Combined Part and Question Navigator */}
-              <Box
-                sx={{
-                  width: "100%",
-                  mt: 1,
-                  py: 1,
-                  borderTop: "1px solid #ddd",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  flexWrap: "wrap",
-                  gap: 1,
-                  background: "#fff",
-                }}
-              >
-                {/* Part Navigator */}
-                {sections[0]?.childSections?.map((child) => (
-                  <Button
-                    key={child.SectionId}
-                    variant={
-                      activeChildSection?.SectionId === child.SectionId
-                        ? "contained"
-                        : "outlined"
-                    }
-                    onClick={() => {
-                      setActiveChildSection(child);
-                      document.getElementById("questionScrollBox")?.scrollTo({
-                        top: 0,
-                        behavior: "smooth",
-                      });
-                    }}
-                  >
-                    Part {child.OrderIndex + 1}
-                  </Button>
-                ))}
+          <Button
+            variant="contained"
+            color="success"
+            startIcon={<Send />}
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? "Đang nộp..." : "NỘP BÀI"}
+          </Button>
+        </Box>
+      </Box>
 
-                {/* Separator */}
-                <Box sx={{ width: "2px", height: "32px", background: "#ddd", mx: 1 }} />
+      <Box
+        ref={containerRef}
+        sx={{
+          display: "flex",
+          width: "100%",
+          height: "calc(100vh - 140px)",
+          overflow: "hidden",
+          background: "#fff",
+        }}
+      >
+        <LeftPane audioUrl={currentAudioUrl} htmlPassage={htmlPassage} width={leftWidth} />
 
-                {/* Question Navigator */}
-                {activeChildSection?.questions?.map((q, idx) => (
-                  <Button
-                    key={q.examQuestionId}
-                    variant={answers[q.examQuestionId] ? "contained" : "outlined"}
-                    color={answers[q.examQuestionId] ? "success" : "primary"}
-                    sx={{ minWidth: 40 }}
-                    onClick={() =>
-                      document
-                        .getElementById(`q_${q.examQuestionId}`)
-                        ?.scrollIntoView({ behavior: "smooth" })
-                    }
-                  >
-                    {idx + 1}
-                  </Button>
-                ))}
-              </Box>
-            </>
-          )
+        <Box
+          onMouseDown={startDragging}
+          sx={{
+            width: "5px",
+            cursor: "col-resize",
+            background: "#ddd",
+            "&:hover": { background: "#999" },
+          }}
+        />
+
+        <Box
+          className="scroll-panel"
+          sx={{
+            width: `${100 - leftWidth}%`,
+            p: 3,
+            pb: 10,
+            overflowY: "auto",
+          }}
+        >
+          {activeChildSection?.questions?.length > 0 ? (
+            activeChildSection.questions.map((q) => (
+              <QuestionBlock
+                key={q.examQuestionId}
+                question={q}
+                answers={answers}
+                onChange={handleAnswerChange}
+                onAudioUpload={handleAudioUpload}
+              />
+            ))
+          ) : (
+            <Alert severity="info">Không có câu hỏi</Alert>
+          )}
+        </Box>
+      </Box>
+
+      <Box
+        sx={{
+          position: "fixed",
+          bottom: 0,
+          left: 0,
+          right: 0,
+          py: 1.5,
+          borderTop: "1px solid #ddd",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          flexWrap: "wrap",
+          gap: 1,
+          background: "#fff",
+          boxShadow: "0 -2px 10px rgba(0,0,0,0.1)",
+          zIndex: 1000,
+        }}
+      >
+        {activeSection?.childSections?.map((child, index) => {
+          const partNumber =
+            child.orderIndex !== undefined && child.orderIndex !== null ? child.orderIndex + 1 : index + 1;
+
+          const isActive = activeChildSection?.childSectionId === child.childSectionId;
+
+          return (
+            <Button
+              key={child.childSectionId || index}
+              variant={isActive ? "contained" : "outlined"}
+              color="primary"
+              onClick={() => {
+                handleChildTabClickByIndex(index);
+              }}
+              size="small"
+            >
+              Part {partNumber}
+            </Button>
+          );
+        })}
+
+        {activeChildSection?.questions?.length > 0 && (
+          <Box sx={{ width: "2px", height: "32px", background: "#ddd", mx: 1 }} />
         )}
-      </Container>
+
+        {activeChildSection?.questions?.map((q, idx) => {
+          const hasAnswer = answers[q.examQuestionId];
+          return (
+            <Button
+              key={q.examQuestionId}
+              variant={hasAnswer ? "contained" : "outlined"}
+              color={hasAnswer ? "success" : "primary"}
+              sx={{ minWidth: 40 }}
+              size="small"
+              onClick={() =>
+                document.getElementById(`q_${q.examQuestionId}`)?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              {idx + 1}
+            </Button>
+          );
+        })}
+      </Box>
+
+      <Dialog open={submitDialogOpen} onClose={() => setSubmitDialogOpen(false)}>
+        <DialogTitle>Xác nhận nộp bài</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Bạn có chắc chắn muốn nộp bài? Sau khi nộp, bạn không thể chỉnh sửa câu trả lời.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSubmitDialogOpen(false)} disabled={submitting}>
+            Hủy
+          </Button>
+          <Button onClick={confirmSubmit} variant="contained" color="primary" disabled={submitting}>
+            {submitting ? "Đang nộp..." : "Xác nhận nộp"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

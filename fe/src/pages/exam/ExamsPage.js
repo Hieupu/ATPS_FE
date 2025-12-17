@@ -1,4 +1,3 @@
-// pages/ExamsPage.js
 import React, { useState, useEffect } from 'react';
 import {
   Box,
@@ -12,6 +11,7 @@ import {
   Alert,
   CircularProgress,
   Button,
+  LinearProgress,
 } from '@mui/material';
 import {
   Quiz,
@@ -19,12 +19,15 @@ import {
   CheckCircle,
   History,
   Refresh,
+  Warning,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import AppHeader from '../../components/Header/AppHeader';
 import {
   getAllExamInstancesApi,
-  retryExamApi
+  retryExamApi,
+  hasRemainingAttempts,
+  getRemainingAttempts,
 } from '../../apiServices/learnerExamService';
 
 const STATUS_COLOR_MAP = {
@@ -43,8 +46,7 @@ const STATUS_LABEL_MAP = {
 
 const TAB_FILTERS = [
   { value: 'all', label: 'Tất cả' },
-  { value: 'Open', label: 'Đang mở' },
-  { value: 'Scheduled', label: 'Chưa đến giờ' },
+  { value: 'active', label: 'Cần làm' },
   { value: 'Closed', label: 'Đã đóng' },
 ];
 
@@ -62,7 +64,8 @@ const formatDateTime = (value) => {
 
 const ExamsPage = () => {
   const navigate = useNavigate();
-  const [tab, setTab] = useState('all');
+
+  const [tab, setTab] = useState('active');
   const [instances, setInstances] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -70,10 +73,11 @@ const ExamsPage = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await getAllExamInstancesApi();
       setInstances(data || []);
     } catch (err) {
-      setError(err.message || 'Không thể tải danh sách bài thi');
+      setError(err.message || 'Không thể tải danh sách bài kiểm tra.');
     } finally {
       setLoading(false);
     }
@@ -81,22 +85,55 @@ const ExamsPage = () => {
 
   useEffect(() => {
     loadData();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, []);
 
   const filteredInstances = instances.filter((inst) => {
     if (tab === 'all') return true;
-    return inst.status === tab;
+    if (tab === 'active') {
+      return inst.status === 'Open' || inst.status === 'Scheduled';
+    }
+    if (tab === 'Closed') return inst.status === 'Closed';
+    return true;
   });
 
   const handleRetry = async (instanceId) => {
-    if (!window.confirm("Bạn có chắc muốn làm lại bài thi?")) return;
+    if (!window.confirm('Bạn có chắc muốn làm lại bài này?')) return;
 
     try {
       await retryExamApi(instanceId);
-      navigate(`/exam/${instanceId}/take`);
+      navigate(`/exam/${instanceId}/take?retry=true`);
     } catch (err) {
-      alert(err.message || "Không thể reset bài thi");
+      alert(err.message || 'Không thể reset bài tập này');
     }
+  };
+
+  const getAttemptStatus = (inst) => {
+    if (!inst.usedAttempt && inst.usedAttempt !== 0) return null;
+
+    const remaining = getRemainingAttempts(inst);
+    const used = inst.usedAttempt || 0;
+    const total = inst.attempt || 1;
+
+    return {
+      used,
+      total,
+      remaining,
+      hasRemaining: hasRemainingAttempts(inst),
+      isLastAttempt: remaining === 1,
+      percentage: (used / total) * 100,
+    };
   };
 
   return (
@@ -107,21 +144,9 @@ const ExamsPage = () => {
           <Typography variant="h5" fontWeight={700}>
             Bài kiểm tra của tôi
           </Typography>
-          <Button
-            startIcon={<History />}
-            variant="outlined"
-            size="small"
-            onClick={() => navigate('/exams/history')}
-          >
-            Lịch sử làm bài
-          </Button>
         </Box>
 
-        <Tabs
-          value={tab}
-          onChange={(_, value) => setTab(value)}
-          sx={{ mb: 3 }}
-        >
+        <Tabs value={tab} onChange={(_, value) => setTab(value)} sx={{ mb: 3 }}>
           {TAB_FILTERS.map((t) => (
             <Tab key={t.value} label={t.label} value={t.value} />
           ))}
@@ -135,90 +160,188 @@ const ExamsPage = () => {
 
         {!loading && error && <Alert severity="error">{error}</Alert>}
 
-        {!loading && !error && filteredInstances.map((inst) => {
-          const isSubmitted = inst.isSubmitted === true || inst.status === "Closed";
+        {!loading && !error && filteredInstances.length === 0 && (
+          <Alert severity="info">Không có bài kiểm tra nào.</Alert>
+        )}
 
-          return (
-            <Card
-              key={inst.instanceId}
-              sx={{
-                mb: 2,
-                borderLeft: 6,
-                borderColor: STATUS_COLOR_MAP[inst.status] || 'default',
-              }}
-            >
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap' }}>
-                  
-                  {/* LEFT SIDE */}
-                  <Box sx={{ flex: 1, minWidth: 250 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <Quiz sx={{ mr: 1 }} />
-                      <Typography variant="h6" fontWeight={600}>
-                        {inst.examTitle}
+        {!loading &&
+          !error &&
+          filteredInstances.map((inst) => {
+            const attemptStatus = getAttemptStatus(inst);
+            const isOpen = inst.status === 'Open';
+            const hasSubmitted = (inst.usedAttempt || 0) > 0 && !inst.hasInProgressAnswers;
+            const hasInProgress = !!inst.hasInProgressAnswers;
+            const hasRemaining = attemptStatus?.hasRemaining || false;
+
+            return (
+              <Card
+                key={inst.instanceId}
+                sx={{
+                  mb: 2,
+                  borderLeft: 6,
+                  borderColor: STATUS_COLOR_MAP[inst.status] || 'grey.500',
+                }}
+              >
+                <CardContent>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      flexWrap: 'wrap',
+                      gap: 2,
+                    }}
+                  >
+                    <Box sx={{ flex: 1, minWidth: 250 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Quiz sx={{ mr: 1 }} />
+                        <Typography variant="h6" fontWeight={600}>
+                          {inst.examTitle}
+                        </Typography>
+                      </Box>
+
+                      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                        Lớp: {inst.className || '—'}
                       </Typography>
+
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <AccessTime sx={{ mr: 1, fontSize: 18 }} />
+                        <Typography variant="body2">
+                          {formatDateTime(inst.startTime)} → {formatDateTime(inst.endTime)}
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                        <Chip
+                          label={STATUS_LABEL_MAP[inst.status] || inst.status}
+                          color={STATUS_COLOR_MAP[inst.status] || 'default'}
+                          size="small"
+                        />
+                      </Box>
+
+                      {attemptStatus && (
+                        <Box sx={{ mt: 1 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                            <Typography variant="body2" fontWeight={600}>
+                              Số lần làm bài:
+                            </Typography>
+                            <Chip
+                              label={`${attemptStatus.used}/${attemptStatus.total}`}
+                              color={
+                                !attemptStatus.hasRemaining
+                                  ? 'error'
+                                  : attemptStatus.isLastAttempt
+                                  ? 'warning'
+                                  : 'primary'
+                              }
+                              size="small"
+                            />
+
+                            {attemptStatus.isLastAttempt && attemptStatus.hasRemaining && (
+                              <Chip
+                                icon={<Warning />}
+                                label="Lượt cuối"
+                                color="warning"
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+
+                            {!attemptStatus.hasRemaining && (
+                              <Chip
+                                label="Hết lượt"
+                                color="error"
+                                size="small"
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+
+                          <LinearProgress
+                            variant="determinate"
+                            value={attemptStatus.percentage}
+                            sx={{
+                              height: 6,
+                              borderRadius: 1,
+                              bgcolor: 'grey.200',
+                              '& .MuiLinearProgress-bar': {
+                                bgcolor: !attemptStatus.hasRemaining
+                                  ? 'error.main'
+                                  : attemptStatus.isLastAttempt
+                                  ? 'warning.main'
+                                  : 'primary.main',
+                              },
+                            }}
+                          />
+                        </Box>
+                      )}
                     </Box>
 
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      Lớp: {inst.className || '—'}
-                    </Typography>
-
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                      <AccessTime sx={{ mr: 1, fontSize: 18 }} />
-                      <Typography variant="body2">
-                        {formatDateTime(inst.startTime)} → {formatDateTime(inst.endTime)}
-                      </Typography>
-                    </Box>
-
-                    <Chip
-                      label={STATUS_LABEL_MAP[inst.status] || inst.status}
-                      color={STATUS_COLOR_MAP[inst.status] || 'default'}
-                      size="small"
-                      sx={{ mr: 1 }}
-                    />
-                    <Chip
-                      label={`Lượt làm tối đa: ${inst.attempt}`}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Box>
-
-                  {/* RIGHT SIDE BUTTONS */}
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, minWidth: 200 }}>
-
-                    {inst.status === "Open" && !isSubmitted && (
-                      <Button
-                        variant="contained"
-                        onClick={() => navigate(`/exam/${inst.instanceId}/take`)}
-                      >
-                        Vào làm bài
-                      </Button>
-                    )}
-
-                    {isSubmitted && (
-                      <Button
-                        variant="contained"
-                        startIcon={<Refresh />}
-                        onClick={() => handleRetry(inst.instanceId)}
-                      >
-                        Làm lại bài thi
-                      </Button>
-                    )}
-
-                    <Button
-                      variant="outlined"
-                      startIcon={<CheckCircle />}
-                      onClick={() => navigate(`/exam/${inst.instanceId}/result`)}
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 1,
+                        minWidth: 200,
+                      }}
                     >
-                      Xem kết quả
-                    </Button>
-                  </Box>
+                      {isOpen && !hasSubmitted && !hasInProgress && hasRemaining && (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => navigate(`/exam/${inst.instanceId}/take`)}
+                        >
+                          VÀO LÀM BÀI
+                        </Button>
+                      )}
 
-                </Box>
-              </CardContent>
-            </Card>
-          );
-        })}
+                      {isOpen && !hasSubmitted && hasInProgress && hasRemaining && (
+                        <Button
+                          variant="contained"
+                          color="info"
+                          onClick={() => navigate(`/exam/${inst.instanceId}/take`)}
+                        >
+                          TIẾP TỤC LÀM
+                        </Button>
+                      )}
+
+                      {isOpen && hasSubmitted && hasRemaining && (
+                        <Button
+                          variant="contained"
+                          color="secondary"
+                          startIcon={<Refresh />}
+                          onClick={() => handleRetry(inst.instanceId)}
+                        >
+                          LÀM LẠI BÀI
+                        </Button>
+                      )}
+
+                      {isOpen && !hasRemaining && (
+                        <Alert severity="error" sx={{ p: 1 }}>
+                          Đã hết lượt làm bài
+                        </Alert>
+                      )}
+
+                      {(isOpen || inst.status === 'Closed') && hasSubmitted && (
+                        <Button
+                          variant="outlined"
+                          startIcon={<CheckCircle />}
+                          onClick={() => navigate(`/exam/${inst.instanceId}/result`)}
+                        >
+                          XEM KẾT QUẢ
+                        </Button>
+                      )}
+
+                      {inst.status === 'Closed' && !hasSubmitted && (
+                        <Alert severity="warning" sx={{ p: 1 }}>
+                          Chưa làm bài
+                        </Alert>
+                      )}
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            );
+          })}
       </Container>
     </>
   );

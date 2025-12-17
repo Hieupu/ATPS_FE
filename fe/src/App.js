@@ -82,6 +82,8 @@ import ExamsPage from "./pages/exam/ExamsPage";
 import ExamTakingPage from "./pages/exam/ExamTakingPage";
 import ExamResultPage from "./pages/exam/ExamResultPage";
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
+import ExamReviewPage from "./pages/exam/ExamReviewPage";
+
 
 import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
 import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
@@ -130,7 +132,7 @@ function AppRoutes() {
       <Route path="/exam" element={<ExamsPage />} />
       <Route path="/exam/:instanceId/take" element={<ExamTakingPage />} />
       <Route path="/exam/:instanceId/result" element={<ExamResultPage />} />
-
+      <Route path="/exam/:instanceId/review" element={<ExamReviewPage />} />
       {/* Learner Routes */}
       <Route path="/schedule" element={<SchedulePage />} />
       <Route path="/reschedule-requests" element={<RescheduleRequestsPage />} />
