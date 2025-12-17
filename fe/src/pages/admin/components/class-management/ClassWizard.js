@@ -14,6 +14,7 @@ import {
 } from "../../../../utils/classWizardValidation";
 import classService from "../../../../apiServices/classService";
 import instructorService from "../../../../apiServices/instructorServicead";
+import { getCachedTimeslots } from "../../../../utils/timeslotCache";
 import "./ClassWizard.css";
 import {
   determineSlotStatus,
@@ -33,6 +34,7 @@ import {
 import ClassWizardStep1 from "./ClassWizardStep1";
 import ClassWizardStep2 from "./ClassWizardStep2";
 import ClassWizardStep3 from "./ClassWizardStep3";
+import ClassWizardStep3Edit from "./ClassWizardStep3Edit";
 import ClassWizardStep4 from "./ClassWizardStep4";
 // Import constants
 import {
@@ -114,13 +116,9 @@ const ClassWizard = ({
   const [instructorNameForError, setInstructorNameForError] = useState("");
   const [originalSessions, setOriginalSessions] = useState([]);
   const [impactedSessions, setImpactedSessions] = useState([]);
-  // const [loadingBlockedDays, setLoadingBlockedDays] = useState(false); // Không dùng
-  // const [skipWarningModal, setSkipWarningModal] = useState({
-  //   open: false,
-  //   skippedCount: 0,
-  //   totalCount: 0,
-  //   percentage: 0,
-  // }); // Không dùng
+  const [hasUnresolvedImpactedSessions, setHasUnresolvedImpactedSessions] =
+    useState(false);
+  
   const [redirectModal, setRedirectModal] = useState({
     open: false,
     classId: null,
@@ -142,6 +140,27 @@ const ClassWizard = ({
   const [sessionsPerWeek, setSessionsPerWeek] = useState(0); // Số ca học mỗi tuần // Modal cảnh báo khi quá nhiều buổi bị SKIP
   const [originalStartDate, setOriginalStartDate] = useState(null); // Lưu ngày bắt đầu ban đầu để so sánh khi lùi lịch
   const [requiredSlotsPerWeek, setRequiredSlotsPerWeek] = useState(0); // Số ca học mong muốn mỗi tuần
+
+  // Timeslot ranges (cache) cho Step3
+  const [distinctTimeRanges, setDistinctTimeRanges] = useState([]);
+  const [loadingTimeRanges, setLoadingTimeRanges] = useState(false);
+
+  // Load distinct time ranges (timeslot ranges) once
+  useEffect(() => {
+    const loadTimeslots = async () => {
+      setLoadingTimeRanges(true);
+      try {
+        const timeRanges = await getCachedTimeslots();
+        setDistinctTimeRanges(timeRanges || []);
+      } catch (error) {
+        console.error("Error loading timeslots:", error);
+        setDistinctTimeRanges([]);
+      } finally {
+        setLoadingTimeRanges(false);
+      }
+    };
+    loadTimeslots();
+  }, []);
 
   // Search dropdown states
   const [instructorSearchTerm, setInstructorSearchTerm] = useState("");
@@ -186,6 +205,56 @@ const ClassWizard = ({
     error: null,
     showResults: false,
   });
+
+  // Tính Numofsession từ Duration khi selectedCourse thay đổi (dbver7)
+  useEffect(() => {
+    if (!selectedCourse) {
+      return;
+    }
+
+    const rawDuration =
+      selectedCourse.Duration ??
+      selectedCourse.duration ??
+      selectedCourse.durationHours;
+
+    const durationNumber = Number(rawDuration);
+    if (Number.isNaN(durationNumber) || durationNumber <= 0) {
+      // Không override nếu không có duration hợp lệ
+      console.warn(
+        "[ClassWizard] Không tính được Numofsession từ Duration của course:",
+        selectedCourse
+      );
+      return;
+    }
+
+    const computedNum = Math.max(1, Math.ceil(durationNumber / 2));
+    const isEdit = Boolean(classId);
+
+    setFormData((prev) => {
+      // Nếu đã có Numofsession (ví dụ từ classData khi edit), giữ nguyên trong edit mode
+      const existing = Number(prev?.schedule?.Numofsession || 0);
+      if (existing > 0 && isEdit) {
+        return prev;
+      }
+
+      const next = {
+        ...prev,
+        schedule: {
+          ...(prev.schedule || {}),
+          Numofsession: computedNum,
+        },
+      };
+
+      console.log(
+        "[ClassWizard] Tính Numofsession từ Duration course:",
+        rawDuration,
+        "=>",
+        computedNum
+      );
+
+      return next;
+    });
+  }, [selectedCourse, classId]);
 
   useEffect(() => {
     if (selectedInstructor) {
@@ -354,7 +423,6 @@ const ClassWizard = ({
       const instructorId =
         formData.InstructorID || selectedInstructor?.InstructorID;
 
-      
       const availableDaysPerTimeslot = [];
 
       const userSelectedDaysSet = new Set(selectedDays);
@@ -400,8 +468,7 @@ const ClassWizard = ({
             } else {
               continue;
             }
-          }
-          else if (
+          } else if (
             typeof selectedTimeslotId === "string" &&
             selectedTimeslotId.includes("-")
           ) {
@@ -411,7 +478,6 @@ const ClassWizard = ({
           } else {
           }
 
-         
           if (selectedTimeslotDay) {
             const expectedDayFormat = dayOfWeekToDay(dayOfWeek);
 
@@ -423,7 +489,6 @@ const ClassWizard = ({
 
           const dayFormat = dayOfWeekToDay(dayOfWeek);
 
-      
           dayTimeslot = findTimeslotForDay({
             timeslots,
             selectedStartTime,
@@ -571,7 +636,6 @@ const ClassWizard = ({
     return map;
   }, [timeslots]);
 
-
   const impactedSessionMessages = useMemo(() => {
     return impactedSessions.map((session) => {
       const dateDisplay = formatDateForDisplay(session.Date);
@@ -589,16 +653,12 @@ const ClassWizard = ({
     });
   }, [impactedSessions, timeslotMap]);
 
-
-
-
   useEffect(() => {
     // Chỉ kiểm tra khi đã có thông tin instructor type
     if (!instructorType || instructorType !== "parttime") {
       setParttimeAvailabilityError("");
       return;
     }
-
 
     if (
       parttimeAvailableEntriesCount !== null &&
@@ -1124,7 +1184,14 @@ const ClassWizard = ({
 
         // Chỉ reset CourseID nếu không phải edit mode hoặc instructor đã thay đổi
         if (!isEditMode || !isSameInstructor) {
-          setFormData((prev) => ({ ...prev, CourseID: null }));
+          setFormData((prev) => ({
+            ...prev,
+            CourseID: null,
+            schedule: {
+              ...(prev.schedule || {}),
+              Numofsession: "",
+            },
+          }));
           setSelectedCourse(null);
         }
       } catch (error) {
@@ -1144,10 +1211,7 @@ const ClassWizard = ({
         InstructorID: classData.InstructorID || classData.instructorId || null,
         Fee: classData.Fee || classData.tuitionFee || "",
         CourseID: classData.CourseID || classData.courseId || null, // Thêm CourseID
-        Maxstudent:
-          classData.Maxstudent ||
-      
-          "",
+        Maxstudent: classData.Maxstudent || "",
         schedule: {
           OpendatePlan:
             classData.OpendatePlan ||
@@ -1212,6 +1276,15 @@ const ClassWizard = ({
           setFormData((prev) => ({
             ...prev,
             CourseID: finalCourseId,
+            // dbver7: nếu có Duration, tính Numofsession từ Duration để hiển thị ở Step 2
+            schedule: {
+              ...(prev.schedule || {}),
+              Numofsession:
+                prev.schedule?.Numofsession ||
+                (course.Duration
+                  ? Math.max(1, Math.ceil(Number(course.Duration) / 2))
+                  : ""),
+            },
           }));
         } else {
           // Vẫn set CourseID ngay cả khi không tìm thấy course để validation pass
@@ -1364,8 +1437,6 @@ const ClassWizard = ({
     timeslotsByDay,
     totalSessionsNeeded
   ) => {
-    
-
     if (
       !startDate ||
       daysOfWeek.length === 0 ||
@@ -1395,6 +1466,7 @@ const ClassWizard = ({
     }
 
     const sessions = [];
+    let skipCount = 0; // Đếm số buổi bị bỏ qua do HOLIDAY/OTHER (không push vào sessions)
 
     // Parse startDate và endDate đúng cách để tránh timezone issues
     // ✅ Dùng utility functions để tránh lặp lại logic
@@ -1472,7 +1544,7 @@ const ClassWizard = ({
                 t.StartTime || t.startTime || ""
               );
               const tEnd = normalizeTimeString(t.EndTime || t.endTime || "");
-          
+
               return tStart === startTime && tEnd === endTime;
             });
           }
@@ -1533,26 +1605,27 @@ const ClassWizard = ({
 
           const { timeslotID, timeslot } = validTimeslotsForDay[i];
 
-          // Kiểm tra lịch bận cục bộ (Status='Other' hoặc 'Holiday')
-          // TODO: Gọi API để kiểm tra instructor có bận vào ngày này không
-          // Tạm thời dùng instructorBusySchedule đã load
-          const isBusy = instructorBusySchedule.some(
-            (busy) =>
-              busy.Date === currentDateStr &&
-              busy.TimeslotID === timeslotID &&
-              (busy.Status === "Other" || busy.Status === "Holiday")
-          );
+          // Kiểm tra lịch bận cục bộ:
+          // - HOLIDAY: khóa toàn bộ ngày (mọi timeslot trong ngày đó đều được coi là bận)
+          // - OTHER: chỉ khóa đúng timeslot đó
+          const isBusy = instructorBusySchedule.some((busy) => {
+            const status = (busy.Status || busy.status || "").toUpperCase();
+            const sameDate = busy.Date === currentDateStr;
+            if (!sameDate) return false;
+            if (status === "HOLIDAY") {
+              // Ngày nghỉ: coi như bận cho mọi ca trong ngày đó
+              return true;
+            }
+            if (status === "OTHER") {
+              return busy.TimeslotID === timeslotID;
+            }
+            return false;
+          });
 
           if (isBusy) {
-            // SKIPPED: Ngày trùng lịch bận cục bộ
-            sessions.push({
-              number: sessionNumber++,
-              date: new Date(currentDate),
-              dayOfWeek: dayOfWeek,
-              timeslot: timeslot,
-              type: "SKIPPED",
-              reason: "GV bận",
-            });
+            // Buổi rơi vào ngày bận (HOLIDAY/OTHER) → không tạo session,
+            // chỉ tăng bộ đếm để sau đó tạo buổi EXTENDED bù ở cuối lịch.
+            skipCount++;
             // Không tăng sessionsCreated vì đây là buổi bị bỏ qua
           } else {
             // NORMAL: Buổi học bình thường
@@ -1565,7 +1638,6 @@ const ClassWizard = ({
             });
             sessionsCreated++;
             validTimeslotsCount++;
-           
           }
 
           // Kiểm tra lại sau khi tạo để đảm bảo không tạo thừa
@@ -1642,16 +1714,21 @@ const ClassWizard = ({
                 continue;
               }
 
-              // Kiểm tra xem ngày này có bận không (chỉ check OTHER/Holiday, không check session conflict)
-              const isBusy = instructorBusySchedule.some(
-                (busy) =>
-                  busy.Date === extendedDateStr &&
-                  busy.TimeslotID === timeslotID &&
-                  (busy.Status === "Other" ||
-                    busy.Status === "Holiday" ||
-                    busy.Status === "OTHER" ||
-                    busy.Status === "HOLIDAY")
-              );
+              // Kiểm tra xem ngày này có bận không:
+              // - HOLIDAY: khóa toàn bộ ngày (mọi timeslot trong ngày đó đều được coi là bận)
+              // - OTHER: chỉ khóa đúng timeslot đó
+              const isBusy = instructorBusySchedule.some((busy) => {
+                const status = (busy.Status || busy.status || "").toUpperCase();
+                const sameDate = busy.Date === extendedDateStr;
+                if (!sameDate) return false;
+                if (status === "HOLIDAY") {
+                  return true;
+                }
+                if (status === "OTHER") {
+                  return busy.TimeslotID === timeslotID;
+                }
+                return false;
+              });
 
               if (!isBusy) {
                 // Tạo buổi Extended - đây là ngày đúng lịch học tiếp theo
@@ -1676,7 +1753,7 @@ const ClassWizard = ({
     };
 
     // Logic "Tự động Tịnh tiến": Thêm các buổi Extended ở cuối theo đúng lịch học tiếp theo
-    const skippedCount = sessions.filter((s) => s.type === "SKIPPED").length;
+    const skippedCount = skipCount; // sử dụng biến đếm thay vì sessions SKIPPED
     const normalSessions = sessions.filter((s) => s.type === "NORMAL");
     let extendedSessions = [];
 
@@ -1698,7 +1775,7 @@ const ClassWizard = ({
       );
     }
 
-    // Gộp tất cả sessions: Normal + Skipped + Extended
+    // Gộp tất cả sessions: chỉ còn Normal + Extended (không hiển thị SKIPPED)
     let allSessions = [...sessions, ...extendedSessions];
 
     // Sắp xếp sessions theo thứ tự thời gian: Date trước, sau đó StartTime
@@ -2880,20 +2957,35 @@ const ClassWizard = ({
     } else if (step === 2) {
       result = validateStep2(formData);
     } else if (step === 3) {
-      result = validateStep3(formData, previewSessions);
+      if (isEditMode) {
+        // Ở chế độ edit: chỉ cần có ít nhất 1 session hợp lệ
+        const hasSessions =
+          Array.isArray(formData.sessions) && formData.sessions.length > 0;
+        result = {
+          isValid: hasSessions,
+          errors: hasSessions
+            ? {}
+            : {
+                preview:
+                  "Vui lòng đảm bảo danh sách buổi học hợp lệ trước khi tiếp tục.",
+              },
+        };
+      } else {
+        // Ở chế độ tạo mới: dùng validateStep3 cũ + bắt buộc chọn ít nhất 1 ca
+        result = validateStep3(formData, previewSessions);
 
-      // Thêm validation: Phải chọn ít nhất 1 ca học
-      const hasSelectedTimeslot =
-        formData.scheduleDetail.TimeslotsByDay &&
-        Object.keys(formData.scheduleDetail.TimeslotsByDay).some(
-          (dayOfWeek) =>
-            formData.scheduleDetail.TimeslotsByDay[dayOfWeek]?.length > 0
-        );
+        const hasSelectedTimeslot =
+          formData.scheduleDetail.TimeslotsByDay &&
+          Object.keys(formData.scheduleDetail.TimeslotsByDay).some(
+            (dayOfWeek) =>
+              formData.scheduleDetail.TimeslotsByDay[dayOfWeek]?.length > 0
+          );
 
-      if (!hasSelectedTimeslot) {
-        result.errors = result.errors || {};
-        result.errors.TimeslotsByDay = "Vui lòng chọn ít nhất một ca học";
-        result.isValid = false;
+        if (!hasSelectedTimeslot) {
+          result.errors = result.errors || {};
+          result.errors.TimeslotsByDay = "Vui lòng chọn ít nhất một ca học";
+          result.isValid = false;
+        }
       }
     } else {
       result = { isValid: true, errors: {} };
@@ -2913,7 +3005,8 @@ const ClassWizard = ({
     }
 
     // Nếu đang ở bước 3 thì kiểm tra thêm điều kiện
-    if (currentStep === 3) {
+    if (currentStep === 3 && !isEditMode) {
+      // Chỉ áp dụng bộ validate nâng cao cho flow tạo mới
       if (hasParttimeAvailabilityIssue) {
         setErrors((prev) => ({
           ...prev,
@@ -2993,6 +3086,16 @@ const ClassWizard = ({
       return;
     }
 
+    // Nếu đang ở bước 3 và edit mode, kiểm tra còn buổi cần đổi không
+    if (currentStep === 3 && isEditMode && hasUnresolvedImpactedSessions) {
+      setErrors((prev) => ({
+        ...prev,
+        preview:
+          "Vui lòng đổi lịch tất cả các buổi học bị ảnh hưởng trước khi tiếp tục.",
+      }));
+      return;
+    }
+
     if (validateStep(currentStep)) {
       setCurrentStep(currentStep + 1);
     }
@@ -3003,7 +3106,6 @@ const ClassWizard = ({
   };
 
   const handleSubmit = async () => {
-
     // Bắt buộc phải hoàn thành cả 3 bước khi lưu nháp
     const step1Valid = validateStep(1);
     const step2Valid = validateStep(2);
@@ -3129,10 +3231,19 @@ const ClassWizard = ({
       Maxstudent: parseInt(formData.Maxstudent),
       EnddatePlan: formData.scheduleDetail.EnddatePlan,
       Status: "DRAFT",
-      // Luôn gửi sessions khi lưu nháp - với đầy đủ thông tin bao gồm InstructorID
-      // Title: "Session for class {classDisplayName}"
+      // Luôn gửi sessions khi lưu nháp - với đầy đủ thông tin bao gồm InstructorID.
+      // Logic mới: CHỈ gửi các buổi "thực dạy" (NORMAL/EXTENDED), không gửi buổi SKIPPED (HOLIDAY/leave),
+      // vì các buổi đó chỉ dùng để tính bù và hiển thị preview.
+      // Trong edit mode: không gửi các buổi đã bị disable (isDisabled: true) - đây là các buổi gốc đã được đổi lịch
       sessions: formData.sessions
-        .filter((session) => session.Date && session.TimeslotID) // Chỉ lấy sessions hợp lệ
+        .filter((session) => {
+          if (!session.Date || !session.TimeslotID) return false;
+          // Nếu có session.type và là SKIPPED thì bỏ qua
+          if (session.type && session.type === "SKIPPED") return false;
+          // Nếu session đã bị disable (đã được đổi lịch) thì bỏ qua
+          if (session.isDisabled === true) return false;
+          return true;
+        })
         .map((session, index) => {
           // Đảm bảo Date là string format YYYY-MM-DD
           const dateStr = toISODateString(session.Date);
@@ -3164,7 +3275,11 @@ const ClassWizard = ({
             }
           }
 
-          return {
+          const payload = {
+            // Trong edit mode: nếu session có SessionID và không phải buổi mới, gửi SessionID để update
+            // Nếu không có SessionID hoặc là buổi mới (isNew: true), để null để backend tạo mới
+            SessionID:
+              session.SessionID && !session.isNew ? session.SessionID : null,
             Title: `Session for class ${classDisplayName}`,
             Description: session.Description || "",
             Date: dateStr, // YYYY-MM-DD string
@@ -3182,11 +3297,47 @@ const ClassWizard = ({
               timeslot?.EndTime ||
               timeslot?.endTime ||
               null,
+            // Nếu là buổi rescheduled, gửi originalSessionID để backend biết cần xóa buổi cũ
+            originalSessionID:
+              session.isRescheduled && session.originalSessionID
+                ? session.originalSessionID
+                : null,
             // ClassID sẽ được set sau khi class được tạo trong CreateClassPage
           };
+
+          // Logging để debug
+          if (session.isRescheduled) {
+            console.log(`[handleSubmit] Buổi rescheduled:`, {
+              Date: dateStr,
+              TimeslotID: timeslotId,
+              originalSessionID: session.originalSessionID,
+              isRescheduled: session.isRescheduled,
+              payloadOriginalSessionID: payload.originalSessionID,
+            });
+          }
+
+          return payload;
         })
         .filter((s) => s !== null), // Loại bỏ sessions null
     };
+
+    // Logging để debug
+    console.log(
+      `[handleSubmit] Tổng số sessions gửi lên:`,
+      submitData.sessions.length
+    );
+    const sessionsWithOriginalId = submitData.sessions.filter(
+      (s) => s.originalSessionID != null
+    );
+    console.log(
+      `[handleSubmit] Sessions có originalSessionID:`,
+      sessionsWithOriginalId.map((s) => ({
+        Date: s.Date,
+        TimeslotID: s.TimeslotID,
+        originalSessionID: s.originalSessionID,
+        originalSessionIDType: typeof s.originalSessionID,
+      }))
+    );
 
     // Nếu đang submit từ bước 2 (edit mode), đợi onSubmit hoàn thành rồi mới hiện modal chuyển hướng
     const wasSubmittingFromStep2 = submittingFromStep2;
@@ -3626,57 +3777,76 @@ const ClassWizard = ({
           {/* Step 3: Schedule Detail - Layout 2 cột */}
           {/* Disable bước 3 khi readonly */}
           {currentStep === 3 && !readonly && (
-            <ClassWizardStep3
-              formData={formData}
-              setFormData={setFormData}
-              errors={errors}
-              readonly={readonly}
-              timeslots={timeslots}
-              daysOfWeekOptions={daysOfWeekOptions}
-              availableDaysForTimeslot={availableDaysForTimeslot}
-              selectedTimeslotIds={selectedTimeslotIds}
-              setSelectedTimeslotIds={setSelectedTimeslotIds}
-              setReloadAvailableDays={setReloadAvailableDays}
-              alternativeStartDateSearch={alternativeStartDateSearch}
-              setAlternativeStartDateSearch={setAlternativeStartDateSearch}
-              handleSearchAlternativeStartDate={
-                handleSearchAlternativeStartDate
-              }
-              handleApplyAlternativeStartDate={handleApplyAlternativeStartDate}
-              handleDayToggle={handleDayToggle}
-              handleTimeslotToggle={handleTimeslotToggle}
-              previewSessions={previewSessions}
-              setPreviewSessions={setPreviewSessions}
-              generatePreviewSessions={generatePreviewSessions}
-              blockedDays={blockedDays}
-              blockedDaysError={blockedDaysError}
-              hasValidSelectedSlots={hasValidSelectedSlots}
-              hasDuplicateSessions={hasDuplicateSessions}
-              hasParttimeAvailabilityIssue={hasParttimeAvailabilityIssue}
-              sessionsPerWeek={sessionsPerWeek}
-              requiredSlotsPerWeek={requiredSlotsPerWeek}
-              instructorType={instructorType}
-              parttimeAvailabilityError={parttimeAvailabilityError}
-              isEditMode={isEditMode}
-              impactedSessionMessages={impactedSessionMessages}
-              scheduleStartDate={scheduleStartDate}
-              allSelectedTimeslotIdsMemo={allSelectedTimeslotIdsMemo}
-              shouldShowPreview={shouldShowPreview}
-              setShouldShowPreview={setShouldShowPreview}
-              slotAvailabilityStatus={slotAvailabilityStatus}
-              loadingBlockedDays={loadingBlockedDays}
-              hasInsufficientSlots={hasInsufficientSlots}
-              formatDateForDisplay={formatDateForDisplay}
-              normalizeTimeString={normalizeTimeString}
-              normalizeTimeslotId={normalizeTimeslotId}
-              dayOfWeekToDay={dayOfWeekToDay}
-              getSlotStatus={getSlotStatus}
-              dayjs={dayjs}
-              hasScheduleCoreInfo={hasScheduleCoreInfo}
-              selectedTimeslotId={selectedTimeslotId}
-              conflictDetails={conflictDetails}
-              hasSelectedSlots={hasSelectedSlots}
-            />
+            <>
+              {!isEditMode && (
+                <ClassWizardStep3
+                  formData={formData}
+                  setFormData={setFormData}
+                  errors={errors}
+                  readonly={readonly}
+                  timeslots={timeslots}
+                  distinctTimeRanges={distinctTimeRanges}
+                  loadingTimeRanges={loadingTimeRanges}
+                  daysOfWeekOptions={daysOfWeekOptions}
+                  availableDaysForTimeslot={availableDaysForTimeslot}
+                  selectedTimeslotIds={selectedTimeslotIds}
+                  setSelectedTimeslotIds={setSelectedTimeslotIds}
+                  setReloadAvailableDays={setReloadAvailableDays}
+                  alternativeStartDateSearch={alternativeStartDateSearch}
+                  setAlternativeStartDateSearch={setAlternativeStartDateSearch}
+                  handleSearchAlternativeStartDate={
+                    handleSearchAlternativeStartDate
+                  }
+                  handleApplyAlternativeStartDate={
+                    handleApplyAlternativeStartDate
+                  }
+                  handleDayToggle={handleDayToggle}
+                  handleTimeslotToggle={handleTimeslotToggle}
+                  previewSessions={previewSessions}
+                  setPreviewSessions={setPreviewSessions}
+                  generatePreviewSessions={generatePreviewSessions}
+                  blockedDays={blockedDays}
+                  blockedDaysError={blockedDaysError}
+                  hasValidSelectedSlots={hasValidSelectedSlots}
+                  hasDuplicateSessions={hasDuplicateSessions}
+                  hasParttimeAvailabilityIssue={hasParttimeAvailabilityIssue}
+                  sessionsPerWeek={sessionsPerWeek}
+                  requiredSlotsPerWeek={requiredSlotsPerWeek}
+                  instructorType={instructorType}
+                  parttimeAvailabilityError={parttimeAvailabilityError}
+                  isEditMode={isEditMode}
+                  impactedSessionMessages={impactedSessionMessages}
+                  scheduleStartDate={scheduleStartDate}
+                  allSelectedTimeslotIdsMemo={allSelectedTimeslotIdsMemo}
+                  shouldShowPreview={shouldShowPreview}
+                  setShouldShowPreview={setShouldShowPreview}
+                  slotAvailabilityStatus={slotAvailabilityStatus}
+                  loadingBlockedDays={loadingBlockedDays}
+                  hasInsufficientSlots={hasInsufficientSlots}
+                  formatDateForDisplay={formatDateForDisplay}
+                  normalizeTimeString={normalizeTimeString}
+                  normalizeTimeslotId={normalizeTimeslotId}
+                  dayOfWeekToDay={dayOfWeekToDay}
+                  getSlotStatus={getSlotStatus}
+                  dayjs={dayjs}
+                  hasScheduleCoreInfo={hasScheduleCoreInfo}
+                  selectedTimeslotId={selectedTimeslotId}
+                  conflictDetails={conflictDetails}
+                  hasSelectedSlots={hasSelectedSlots}
+                />
+              )}
+              {isEditMode && (
+                <ClassWizardStep3Edit
+                  formData={formData}
+                  setFormData={setFormData}
+                  errors={errors}
+                  timeslots={timeslots}
+                  originalSessions={originalSessions}
+                  requiredSessions={requiredSessions}
+                  onValidationChange={setHasUnresolvedImpactedSessions}
+                />
+              )}
+            </>
           )}
 
           {/* Step 4: Review */}
@@ -3714,16 +3884,25 @@ const ClassWizard = ({
                   className="btn btn-primary"
                   onClick={handleNext}
                   disabled={
+                    // Chỉ disable theo logic slot khi đang tạo mới
                     (currentStep === 3 &&
+                      !isEditMode &&
                       alternativeStartDateSearch.showResults) || // Disable khi ở chế độ tìm kiếm
-                    (currentStep === 3 && !hasValidSelectedSlots) ||
-                    (currentStep === 3 && hasDuplicateSessions) ||
-                    (currentStep === 3 && hasParttimeAvailabilityIssue) ||
+                    (currentStep === 3 &&
+                      !isEditMode &&
+                      !hasValidSelectedSlots) ||
+                    (currentStep === 3 &&
+                      !isEditMode &&
+                      hasDuplicateSessions) ||
+                    (currentStep === 3 &&
+                      !isEditMode &&
+                      hasParttimeAvailabilityIssue) ||
                     (currentStep === 3 && readonly)
                   }
                   style={{
                     opacity:
                       (currentStep === 3 &&
+                        !isEditMode &&
                         (!hasValidSelectedSlots ||
                           hasDuplicateSessions ||
                           hasParttimeAvailabilityIssue)) ||
@@ -3732,6 +3911,7 @@ const ClassWizard = ({
                         : 1,
                     cursor:
                       (currentStep === 3 &&
+                        !isEditMode &&
                         (!hasValidSelectedSlots ||
                           hasDuplicateSessions ||
                           hasParttimeAvailabilityIssue)) ||
@@ -3757,7 +3937,7 @@ const ClassWizard = ({
                 className="btn btn-success"
                 onClick={handleSubmit}
               >
-                Lưu nháp
+                Lưu
               </button>
             </>
           )}

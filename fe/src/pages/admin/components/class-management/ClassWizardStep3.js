@@ -80,7 +80,7 @@ const ClassWizardStep3 = ({
         setDistinctTimeRanges(timeRanges || []);
       } catch (error) {
         console.error("Error loading distinct time ranges:", error);
-        // Fallback về hardcode nếu API fail
+
         setDistinctTimeRanges([
           { StartTime: "08:00", EndTime: "10:00" },
           { StartTime: "10:20", EndTime: "12:20" },
@@ -173,7 +173,6 @@ const ClassWizardStep3 = ({
         end: formattedEnd,
         label,
         timeslotId: timeslotId,
-        // Không cần timeslot object nữa vì chỉ dùng distinct time ranges
         timeslot: null,
       };
     });
@@ -253,9 +252,19 @@ const ClassWizardStep3 = ({
                 numofsession: parseInt(formData.schedule.Numofsession) || 0,
               });
 
-              // Nếu isLocked = true, thêm vào danh sách locked
+              // Nếu isLocked = true, chỉ lock khi lý do không phải HOLIDAY/insufficient_slots
               if (result && result.isLocked) {
-                locked.add(slot.timeslotId);
+                const reasons = Array.isArray(result.reasons)
+                  ? result.reasons
+                  : [];
+                const hasHoliday = reasons.some((r) => r.type === "HOLIDAY");
+                const hasInsufficient = reasons.some(
+                  (r) => r.type === "insufficient_slots"
+                );
+
+                if (!hasHoliday && !hasInsufficient) {
+                  locked.add(slot.timeslotId);
+                }
               }
             } catch (error) {
               // Nếu có lỗi, không disable (fallback)
@@ -377,7 +386,6 @@ const ClassWizardStep3 = ({
       });
     }
   };
-
 
   const handleDayClick = (dayValue) => {
     if (readonly) return;
@@ -743,34 +751,27 @@ const ClassWizardStep3 = ({
               );
 
               // Logic enable/disable:
-              // 1. Nếu readonly → disable
-              // 2. Nếu ở chế độ tìm kiếm → enable tất cả
-              // 3. Nếu chưa chọn ca học → disable
-              // 4. Nếu đã chọn ca học:
-              //    - Nếu ngày đã được chọn → luôn enable (cho phép bỏ chọn)
-              //    - Nếu ngày chưa được chọn → chỉ enable nếu có trong availableDaysForTimeslot
-              //    - Nếu availableDaysForTimeslot rỗng nhưng đã chọn ca → enable tất cả (fallback)
+              // 1. readonly → luôn disable
+              // 2. search mode → enable tất cả (cho phép tìm ngày dù là HOLIDAY, sẽ auto bù ở preview)
+              // 3. chưa chọn ca học → disable
+              // 4. đã chọn ca:
+              //    - ngày đã chọn → luôn enable (cho phép bỏ chọn)
+              //    - ngày chưa chọn:
+              //        + nếu không có availableDaysForTimeslot → disable (không còn fallback enable-all)
+              //        + nếu có availableDaysForTimeslot → chỉ enable nếu day nằm trong danh sách
               let isDisabled = false;
               if (readonly) {
                 isDisabled = true;
               } else if (isInSearchMode) {
-                // Ở chế độ tìm kiếm, enable tất cả
                 isDisabled = false;
               } else if (!hasSelectedTimeslots) {
-                // Chưa chọn ca học → disable
                 isDisabled = true;
               } else if (isSelected) {
-                // Ngày đã được chọn → luôn enable (cho phép bỏ chọn)
                 isDisabled = false;
               } else {
-                // Ngày chưa được chọn → chỉ enable nếu có trong availableDaysForTimeslot
-                // Nếu availableDaysForTimeslot rỗng nhưng đã chọn ca → enable (fallback cho trường hợp chưa tính toán xong)
-                if (
-                  availableDaysForTimeslot.length === 0 &&
-                  hasSelectedTimeslots
-                ) {
-                  // Fallback: nếu đã chọn ca nhưng chưa có availableDaysForTimeslot, enable tất cả
-                  isDisabled = false;
+                if (availableDaysForTimeslot.length === 0) {
+                  // Không có ngày khả dụng cho các ca đã chọn → không cho chọn thêm ngày mới
+                  isDisabled = true;
                 } else {
                   isDisabled = !availableDaysForTimeslot.includes(day.value);
                 }
@@ -789,7 +790,7 @@ const ClassWizardStep3 = ({
                   }}
                   title={
                     isDisabled && hasSelectedTimeslots && !isSelected
-                      ? "Ngày này không có ca học giống hoặc bị trùng lịch"
+                      ? "Ngày này không khả dụng cho các ca đã chọn"
                       : isDisabled && !hasSelectedTimeslots
                       ? "Vui lòng chọn ca học trước"
                       : ""
@@ -1032,7 +1033,6 @@ const ClassWizardStep3 = ({
                 style={{ display: "flex", flexDirection: "column", gap: "8px" }}
               >
                 {previewSessions.map((session) => {
-                  const isSkipped = session.type === "SKIPPED";
                   const isExtended = session.type === "EXTENDED";
                   const dateStr = session.date.toLocaleDateString("vi-VN");
 
@@ -1043,17 +1043,9 @@ const ClassWizardStep3 = ({
                         padding: "12px",
                         borderRadius: "6px",
                         fontSize: "13px",
-                        backgroundColor: isSkipped
-                          ? "#ffebee"
-                          : isExtended
-                          ? "#e8f5e9"
-                          : "#f8f9fa",
+                        backgroundColor: isExtended ? "#e8f5e9" : "#f8f9fa",
                         border: `1px solid ${
-                          isSkipped
-                            ? "#ef5350"
-                            : isExtended
-                            ? "#66bb6a"
-                            : "#e2e8f0"
+                          isExtended ? "#66bb6a" : "#e2e8f0"
                         }`,
                       }}
                     >
@@ -1065,16 +1057,14 @@ const ClassWizardStep3 = ({
                         }}
                       >
                         <span style={{ fontSize: "16px", fontWeight: 600 }}>
-                          {isSkipped ? "🔴" : isExtended ? "🟢" : "⚪"}
+                          {isExtended ? "🟢" : "⚪"}
                         </span>
                         <div style={{ flex: 1 }}>
                           <div
                             style={{
                               fontWeight: 600,
-                              textDecoration: isSkipped
-                                ? "line-through"
-                                : "none",
-                              color: isSkipped ? "#c62828" : "#1e293b",
+                              textDecoration: "none",
+                              color: "#1e293b",
                             }}
                           >
                             Buổi {session.number}:{" "}
@@ -1097,17 +1087,6 @@ const ClassWizardStep3 = ({
                             -{" "}
                             {session.timeslot.EndTime ||
                               session.timeslot.endTime}
-                            {isSkipped && (
-                              <span
-                                style={{
-                                  marginLeft: "8px",
-                                  color: "#c62828",
-                                  fontWeight: 500,
-                                }}
-                              >
-                                - Nghỉ: {session.reason || "GV bận"}
-                              </span>
-                            )}
                             {isExtended && (
                               <span
                                 style={{

@@ -14,6 +14,12 @@ const ClassWizardStep2 = ({
   isEditMode,
   impactedSessionMessages,
 }) => {
+  // Debug log: kiểm tra đã nhận được Tổng số buổi học hay chưa
+  console.log(
+    "[ClassWizardStep2] Numofsession (from formData.schedule):",
+    formData?.schedule?.Numofsession
+  );
+
   return (
     <div className="wizard-step-content">
       <div className="schedule-section">
@@ -68,47 +74,43 @@ const ClassWizardStep2 = ({
           >
             Mặc định: Ngày mai
           </small>
-          {instructorType === "parttime" &&
-            parttimeAvailabilityError && (
-              <div
-                style={{
-                  marginTop: "12px",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  backgroundColor: "#fef2f2",
-                  border: "1px solid #fca5a5",
-                  color: "#991b1b",
-                  fontSize: "13px",
-                }}
-              >
-                {parttimeAvailabilityError}
+          {instructorType === "parttime" && parttimeAvailabilityError && (
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                backgroundColor: "#fef2f2",
+                border: "1px solid #fca5a5",
+                color: "#991b1b",
+                fontSize: "13px",
+              }}
+            >
+              {parttimeAvailabilityError}
+            </div>
+          )}
+          {isEditMode && !readonly && impactedSessionMessages.length > 0 && (
+            <div
+              style={{
+                marginTop: "12px",
+                padding: "12px",
+                borderRadius: "8px",
+                backgroundColor: "#fff7ed",
+                border: "1px solid #fdba74",
+                color: "#9a3412",
+                fontSize: "13px",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải chọn lại:
               </div>
-            )}
-          {isEditMode &&
-            !readonly &&
-            impactedSessionMessages.length > 0 && (
-              <div
-                style={{
-                  marginTop: "12px",
-                  padding: "12px",
-                  borderRadius: "8px",
-                  backgroundColor: "#fff7ed",
-                  border: "1px solid #fdba74",
-                  color: "#9a3412",
-                  fontSize: "13px",
-                }}
-              >
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>
-                  Do thay đổi ngày bắt đầu dự kiến các ca sau sẽ phải
-                  chọn lại:
-                </div>
-                <ul style={{ paddingLeft: 18, margin: 0 }}>
-                  {impactedSessionMessages.map((msg, idx) => (
-                    <li key={`impact-step2-${idx}`}>{msg}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+              <ul style={{ paddingLeft: 18, margin: 0 }}>
+                {impactedSessionMessages.map((msg, idx) => (
+                  <li key={`impact-step2-${idx}`}>{msg}</li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="form-group">
@@ -118,25 +120,27 @@ const ClassWizardStep2 = ({
           <input
             type="number"
             id="Numofsession"
-            value={formData.schedule.Numofsession}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                schedule: {
-                  ...formData.schedule,
-                  Numofsession: e.target.value,
-                },
-              })
-            }
-            placeholder="Nhập số buổi học dự kiến"
+            value={formData.schedule.Numofsession || ""}
+            // dbver7: Tổng số buổi được tính tự động từ Duration của khóa học,
+            // không cho phép chỉnh sửa tay ở Step 2
+            readOnly
+            disabled
             min="1"
             className={errors.Numofsession ? "error" : ""}
-            disabled={readonly}
-            readOnly={readonly}
           />
           {errors.Numofsession && (
             <span className="error-message">{errors.Numofsession}</span>
           )}
+          <small
+            style={{
+              color: "#64748b",
+              fontSize: "12px",
+              marginTop: "4px",
+              display: "block",
+            }}
+          >
+            Số buổi học được tính theo Duration của khóa học
+          </small>
         </div>
       </div>
     </div>
@@ -144,4 +148,3 @@ const ClassWizardStep2 = ({
 };
 
 export default ClassWizardStep2;
-

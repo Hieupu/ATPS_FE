@@ -23,12 +23,6 @@ import {
   validateConfirmPassword,
 } from "../../../utils/validate";
 
-const statusOptions = [
-  { value: "active", label: "Hoạt động" },
-  { value: "inactive", label: "Không hoạt động" },
-  { value: "banned", label: "Bị khóa" },
-];
-
 const genderOptions = [
   { value: "male", label: "Nam" },
   { value: "female", label: "Nữ" },
@@ -332,19 +326,6 @@ const UserFormModal = ({
                     </MenuItem>
                   ))}
                 </TextField>
-                <TextField
-                  select
-                  label="Trạng thái"
-                  value={formData.Status || "active"}
-                  onChange={(e) => handleFieldChange("Status", e.target.value)}
-                  fullWidth
-                >
-                  {statusOptions.map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </TextField>
               </Stack>
 
               <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
@@ -389,43 +370,21 @@ const UserFormModal = ({
             </>
           )}
 
-          {/* Common fields: Status, Gender (if not instructor) */}
+          {/* Common fields: Gender (if not instructor) */}
           {!showInstructorFields && (
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-              <TextField
-                select
-                label="Trạng thái"
-                value={formData.Status || "active"}
-                onChange={(e) => handleFieldChange("Status", e.target.value)}
-                fullWidth
-              >
-                {statusOptions
-                  .filter(
-                    (opt) =>
-                      showLearnerStatus
-                        ? opt.value !== "inactive" // For learners: hide "inactive", show "banned"
-                        : true // For admin/staff: show all options
-                  )
-                  .map((option) => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-              </TextField>
-              <TextField
-                select
-                label="Giới tính"
-                value={formData.Gender || "other"}
-                onChange={(e) => handleFieldChange("Gender", e.target.value)}
-                fullWidth
-              >
-                {genderOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-            </Stack>
+            <TextField
+              select
+              label="Giới tính"
+              value={formData.Gender || "other"}
+              onChange={(e) => handleFieldChange("Gender", e.target.value)}
+              fullWidth
+            >
+              {genderOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
           )}
 
           {/* Job field (for learners) */}

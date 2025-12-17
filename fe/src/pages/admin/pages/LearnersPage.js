@@ -44,10 +44,13 @@ import {
   TrendingUp,
   Edit,
   MoreVert,
+  Lock,
+  LockOpen,
 } from "@mui/icons-material";
 import "./style.css";
 import learnerService from "../../../apiServices/learnerService";
 import accountService from "../../../apiServices/accountService";
+import { useAuth } from "../../../contexts/AuthContext";
 import {
   validateEmail,
   validatePassword,
@@ -55,6 +58,10 @@ import {
   validateFullName,
   validateConfirmPassword,
 } from "../../../utils/validate";
+import {
+  handleStatusToggle,
+  getStatusButtonLabel,
+} from "../../../utils/statusToggle";
 import UserFormModal from "../components/UserFormModal";
 
 // Helper function để normalize status value
@@ -65,6 +72,7 @@ const normalizeStatusValue = (status) => {
 };
 
 const LearnersPage = () => {
+  const { user } = useAuth();
   const [learners, setLearners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,7 +93,6 @@ const LearnersPage = () => {
     Email: "",
     Phone: "",
     Password: "",
-    Status: "active",
     Address: "",
     DateOfBirth: "",
     ProfilePicture: "",
@@ -130,7 +137,6 @@ const LearnersPage = () => {
 
   const openLearnerModal = (learner) => {
     setSelectedLearner(learner);
-    const normalizedStatus = normalizeStatusValue(learner?.Status);
     // Lấy Gender từ learner object (đã được map từ account trong loadLearners)
     // Gender đã được map trực tiếp vào learner object trong loadLearners()
     const learnerGender =
@@ -141,7 +147,6 @@ const LearnersPage = () => {
       Phone: learner?.Phone || "",
       Password: "",
       ConfirmPassword: "",
-      Status: normalizedStatus === "banned" ? "banned" : "active",
       Address: learner?.Address || "",
       DateOfBirth: learner?.DateOfBirth
         ? learner.DateOfBirth.split("T")[0]
@@ -163,7 +168,6 @@ const LearnersPage = () => {
       Phone: "",
       Password: "",
       ConfirmPassword: "",
-      Status: "active",
       Address: "",
       DateOfBirth: "",
       ProfilePicture: "",
@@ -315,12 +319,6 @@ const LearnersPage = () => {
       const newPhone = (formData.Phone || "").trim();
       if (newPhone && newPhone !== currentPhone) {
         accountData.Phone = newPhone;
-      }
-
-      const currentStatus = normalizeStatusValue(selectedLearner.Status);
-      const newStatus = normalizeStatusValue(formData.Status);
-      if (newStatus !== currentStatus) {
-        accountData.Status = formData.Status;
       }
 
       if (formData.Password && formData.Password.trim()) {
@@ -763,6 +761,39 @@ const LearnersPage = () => {
           },
         }}
       >
+        {(() => {
+          // Check if editing self
+          if (!selectedRow || !user) return null;
+          const currentUserAccID = user.AccID || user.accID || user.id;
+          const selectedAccID = selectedRow.AccID || selectedRow.accID;
+          const isEditingSelf =
+            currentUserAccID &&
+            selectedAccID &&
+            currentUserAccID === selectedAccID;
+
+          return !isEditingSelf ? (
+            <MenuItem
+              onClick={async () => {
+                if (selectedRow) {
+                  await handleStatusToggle(
+                    selectedRow,
+                    accountService,
+                    loadLearners,
+                    "learner"
+                  );
+                }
+                setAnchorEl(null);
+              }}
+            >
+              {(selectedRow?.Status || "active").toLowerCase() === "active" ? (
+                <Lock sx={{ fontSize: 18, mr: 1.5 }} />
+              ) : (
+                <LockOpen sx={{ fontSize: 18, mr: 1.5 }} />
+              )}
+              {getStatusButtonLabel(selectedRow?.Status || "active")}
+            </MenuItem>
+          ) : null;
+        })()}
         <MenuItem
           onClick={() => {
             openLearnerModal(selectedRow);

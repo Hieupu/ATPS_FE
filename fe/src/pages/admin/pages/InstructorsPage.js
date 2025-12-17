@@ -54,12 +54,15 @@ import {
   CalendarToday,
   EventBusy,
   Verified,
+  Lock,
+  LockOpen,
 } from "@mui/icons-material";
 import "../pages/style.css";
 import instructorService from "../../../apiServices/instructorServicead";
 import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
 import certificateService from "../../../apiServices/certificateService";
+import { useAuth } from "../../../contexts/AuthContext";
 import {
   validateEmail,
   validatePassword,
@@ -68,10 +71,17 @@ import {
   validateInstructorFee,
   validateConfirmPassword,
 } from "../../../utils/validate";
+import {
+  handleStatusToggle,
+  getStatusButtonLabel,
+  toggleStatus,
+} from "../../../utils/statusToggle";
+import InstructorStatusChangeModal from "../components/InstructorStatusChangeModal";
 import UserFormModal from "../components/UserFormModal";
 
 const AdminInstructorsPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [instructors, setInstructors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,13 +99,15 @@ const AdminInstructorsPage = () => {
   const [instructorCourses, setInstructorCourses] = useState([]);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
+  const [showStatusChangeModal, setShowStatusChangeModal] = useState(false);
+  const [statusChangeInstructor, setStatusChangeInstructor] = useState(null);
+  const [statusChangeClasses, setStatusChangeClasses] = useState([]);
   const [showInstructorForm, setShowInstructorForm] = useState(false);
   const [formData, setFormData] = useState({
     FullName: "",
     Email: "",
     Phone: "",
     Password: "",
-    Status: "active",
     Address: "",
     DateOfBirth: "",
     ProfilePicture: "",
@@ -144,7 +156,6 @@ const AdminInstructorsPage = () => {
       Email: instructor?.Email || "",
       Phone: instructor?.Phone || "",
       Password: "",
-      Status: instructor?.Status || "active",
       Address: instructor?.Address || "",
       DateOfBirth: instructor?.DateOfBirth
         ? instructor.DateOfBirth.split("T")[0]
@@ -170,7 +181,6 @@ const AdminInstructorsPage = () => {
       Phone: "",
       Password: "",
       ConfirmPassword: "",
-      Status: "active",
       Address: "",
       DateOfBirth: "",
       ProfilePicture: "",
@@ -296,14 +306,6 @@ const AdminInstructorsPage = () => {
           accountData.Phone = newPhone;
         }
 
-        const currentStatus = (
-          selectedInstructor.Status || "active"
-        ).toLowerCase();
-        const newStatus = (formData.Status || "active").toLowerCase();
-        if (newStatus !== currentStatus) {
-          accountData.Status = formData.Status;
-        }
-
         if (formData.Password && formData.Password.trim()) {
           accountData.Password = formData.Password;
         }
@@ -350,7 +352,6 @@ const AdminInstructorsPage = () => {
           Email: formData.Email.trim().toLowerCase(),
           Phone: formData.Phone?.trim() || null,
           Password: formData.Password,
-          Status: formData.Status || "active",
           Gender: formData.Gender || "other",
         };
 
@@ -409,6 +410,95 @@ const AdminInstructorsPage = () => {
           error?.message ||
           "Không thể tải danh sách lớp học từ database!"
       );
+    }
+  };
+
+  const handleToggleInstructorStatus = async (instructor) => {
+    try {
+      // 1. Lấy danh sách lớp của instructor
+      const classes = await classService.getClassesByInstructorId(
+        instructor.InstructorID
+      );
+
+      // 2. Filter lớp (Status != "CANCEL")
+      const activeClasses = classes.filter(
+        (cls) => (cls.Status || "").toUpperCase() !== "CANCEL"
+      );
+
+      // 3. Nếu có lớp: mở modal với danh sách lớp
+      if (activeClasses.length > 0) {
+        setStatusChangeInstructor(instructor);
+        setStatusChangeClasses(activeClasses);
+        setShowStatusChangeModal(true);
+      } else {
+        // 4. Nếu không có lớp: update status trực tiếp
+        const newStatus = toggleStatus(instructor.Status || "active", "instructor");
+        await accountService.updateAccount(instructor.AccID, {
+          Status: newStatus,
+        });
+        alert(
+          `${getStatusButtonLabel(instructor.Status || "active")} thành công!`
+        );
+        await loadInstructors();
+      }
+    } catch (error) {
+      console.error("Toggle instructor status error:", error);
+      alert(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Không thể đổi trạng thái"
+      );
+    }
+  };
+
+  const handleCancelInstructorClasses = async (classIds) => {
+    try {
+      const results = [];
+      for (const classId of classIds) {
+        try {
+          await classService.cancelClass(classId);
+          results.push({ classId, success: true });
+        } catch (error) {
+          results.push({
+            classId,
+            success: false,
+            error: error.message || error.response?.data?.message,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      const failedCount = results.filter((r) => !r.success).length;
+
+      if (failedCount > 0) {
+        alert(
+          `Đã hủy ${successCount} lớp, ${failedCount} lớp thất bại. Vui lòng kiểm tra lại.`
+        );
+      }
+    } catch (error) {
+      console.error("Cancel instructor classes error:", error);
+      throw error;
+    }
+  };
+
+  const handleConfirmStatusChange = async () => {
+    try {
+      if (!statusChangeInstructor) return;
+
+      const newStatus = toggleStatus(
+        statusChangeInstructor.Status || "active",
+        "instructor"
+      );
+      await accountService.updateAccount(statusChangeInstructor.AccID, {
+        Status: newStatus,
+      });
+      alert(
+        `${getStatusButtonLabel(statusChangeInstructor.Status || "active")} thành công!`
+      );
+      await loadInstructors();
+    } catch (error) {
+      console.error("Update instructor status error:", error);
+      throw error;
     }
   };
 
@@ -930,6 +1020,34 @@ const AdminInstructorsPage = () => {
           },
         }}
       >
+        {(() => {
+          // Check if editing self
+          if (!selectedRow || !user) return null;
+          const currentUserAccID = user.AccID || user.accID || user.id;
+          const selectedAccID = selectedRow.AccID || selectedRow.accID;
+          const isEditingSelf =
+            currentUserAccID &&
+            selectedAccID &&
+            currentUserAccID === selectedAccID;
+
+          return !isEditingSelf ? (
+            <MenuItem
+              onClick={async () => {
+                if (selectedRow) {
+                  await handleToggleInstructorStatus(selectedRow);
+                }
+                setAnchorEl(null);
+              }}
+            >
+              {(selectedRow?.Status || "active").toLowerCase() === "active" ? (
+                <Lock sx={{ fontSize: 18, mr: 1.5 }} />
+              ) : (
+                <LockOpen sx={{ fontSize: 18, mr: 1.5 }} />
+              )}
+              {getStatusButtonLabel(selectedRow?.Status || "active")}
+            </MenuItem>
+          ) : null;
+        })()}
         <MenuItem
           onClick={() => {
             openInstructorModal(selectedRow);
@@ -1310,6 +1428,20 @@ const AdminInstructorsPage = () => {
         isEditing={!!selectedInstructor}
         showInstructorFields={true}
         instructorService={instructorService}
+      />
+
+      {/* Instructor Status Change Modal */}
+      <InstructorStatusChangeModal
+        open={showStatusChangeModal}
+        onClose={() => {
+          setShowStatusChangeModal(false);
+          setStatusChangeInstructor(null);
+          setStatusChangeClasses([]);
+        }}
+        instructor={statusChangeInstructor}
+        classes={statusChangeClasses}
+        onConfirm={handleConfirmStatusChange}
+        onCancelClasses={handleCancelInstructorClasses}
       />
     </Box>
   );
