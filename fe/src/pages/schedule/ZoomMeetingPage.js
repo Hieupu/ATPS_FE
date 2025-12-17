@@ -43,7 +43,7 @@ const ZoomMeetingPage = () => {
       console.warn(" zoomData chưa sẵn sàng, bỏ qua initializeMeeting");
       return;
     }
-
+    console.log("Khởi tạo meeting với dữ liệu:", zoomData);
     const initializeMeeting = async () => {
       try {
         setIsLoading(true);
@@ -118,14 +118,17 @@ const ZoomMeetingPage = () => {
 
     const handleBeforeUnload = () => {
       if (!zoomData) return;
+      if(zoomData.userRole  ==="instructor"){
       localStorage.setItem(
         "zoomData",
         JSON.stringify({
           sessionId: zoomData.schedule.SessionID,
           accId: userId,
           timestamp: new Date().toISOString(),
+          zoomId: zoomData.schedule.ZoomID,
         })
       );
+      }
 
       sendZoomLeftPayload();
     };

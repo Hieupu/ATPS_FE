@@ -175,7 +175,7 @@ export default function InstructorSchedulePage() {
     setTabIndex(newValue);
   };
 
-  const handleStartZoom = (session) => {
+  const handleStartZoom = async (session) => {
     if (!session) return;
     const start = new Date(`${session.date}T${session.startTime}`);
     const now = new Date();
@@ -195,12 +195,12 @@ export default function InstructorSchedulePage() {
       toast.warn("Bạn không có quyền truy cập vào buổi học này.");
       return;
     }
-    if (role === "instructor" && !isWithin15MinBefore) {
-      toast.warn(
-        "Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu."
-      );
-      return;
-    }
+    // if (role === "instructor" && !isWithin15MinBefore) {
+    //   toast.warn(
+    //     "Giảng viên chỉ có thể vào phòng học trong vòng 15 phút trước giờ bắt đầu."
+    //   );
+    //   return;
+    // }
 
     const zoomId = session.ZoomID || session.zoomID || session.zoomId;
     const zoomPass =
@@ -217,6 +217,7 @@ export default function InstructorSchedulePage() {
       schedule: {
         ZoomID: zoomId,
         Zoompass: zoomPass,
+        SessionID: session.sessionId,
         ClassName: className,
         Date: session.Date || session.date,
         StartTime: session.StartTime || session.startTime,
@@ -230,9 +231,19 @@ export default function InstructorSchedulePage() {
 
     localStorage.setItem("zoomScheduleData", JSON.stringify(zoomPayload));
 
+    await axios.post(`${process.env.REACT_APP_API_URL}/zoom/webhook`, {
+          sessionId: session.sessionId,
+          accId: userId,
+          userRole: role,
+          userName: user.user.username,
+          startTime: session.startTime,
+          endTime: session.endTime,
+          date: session.date,
+          zoomId: zoomId,
+        });
+
     setTimeout(() => {
-      let url = `/zoom/${zoomId}`;
-      if (zoomPass) url += `/${zoomPass}`;
+      let url = `/zoom?zoomId=${zoomId}`;
       window.open(url, "_blank");
     }, 100);
   };

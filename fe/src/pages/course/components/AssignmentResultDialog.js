@@ -1,397 +1,306 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Button,
+  Alert,
+  Chip,
+  LinearProgress,
+  Grid,
+  CircularProgress,
+  Divider,
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Box,
-  Typography,
-  Button,
-  CircularProgress,
-  Alert,
-  Card,
-  Chip,
-  Divider,
-  IconButton,
 } from "@mui/material";
+import { EmojiEvents, Visibility, Refresh, Close } from "@mui/icons-material";
+
+// --- IMPORT CHUẨN ---
 import {
-  Close,
-  CheckCircle,
-  Cancel,
-  AccessTime,
-  Grade,
-  PlayArrow,
-  Description,
-} from "@mui/icons-material";
-import { getAssignmentResultsApi } from "../../../apiServices/learnerassignmentService";
-import { formatDate } from "./utils";
+  getExamResultApi,
+  getExamReviewApi,
+  retryExamApi,
+  formatDurationText,
+  getSubmissionStatusText,
+  getSubmissionStatusColor,
+} from "../../../apiServices/learnerExamService";
+// --------------------
 
-const AssignmentResultDialog = ({ open, onClose, assignment }) => {
-  const [loading, setLoading] = useState(false);
+const AssignmentResultDialog = ({
+  open,
+  onClose,
+  assignmentId,
+  onViewReview,
+  onRetry,
+}) => {
+  const [result, setResult] = useState(null);
+  const [reviewData, setReviewData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
-  const [results, setResults] = useState(null);
 
-  useEffect(() => {
-    if (open && assignment) {
-      fetchResults();
-    }
-  }, [open, assignment]);
-
-  const fetchResults = async () => {
+  const loadResult = async () => {
     try {
       setLoading(true);
       setError(null);
-      const response = await getAssignmentResultsApi(assignment.AssignmentID);
-      setResults(response.results);
+
+      const data = await getExamResultApi(assignmentId);
+      setResult(data);
+
+      try {
+        const review = await getExamReviewApi(assignmentId);
+        setReviewData(review);
+      } catch (reviewErr) {
+        console.warn("Could not load review data:", reviewErr);
+      }
     } catch (err) {
-      setError(err.message || "Không thể tải kết quả");
+      console.error("Load result error:", err);
+      setError(
+        err.response?.data?.message || err.message || "Không thể tải kết quả"
+      );
     } finally {
       setLoading(false);
     }
   };
 
-  const renderSubmissionContent = () => {
-    if (!results) return null;
+  useEffect(() => {
+    if (open && assignmentId) {
+      loadResult();
+    }
+  }, [open, assignmentId]);
 
-    const { submission, assignment: assignmentData } = results;
+  const handleRetry = async () => {
+    if (!window.confirm("Bạn muốn làm lại bài tập này?")) return;
 
-    return (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {/* Score Card */}
-        {submission.Score !== null && (
-          <Card
-            sx={{
-              p: 3,
-              bgcolor: "success.50",
-              border: "2px solid",
-              borderColor: "success.main",
-              textAlign: "center",
-            }}
-          >
-            <Grade sx={{ fontSize: 60, color: "success.main", mb: 1 }} />
-            <Typography
-              variant="h3"
-              sx={{ fontWeight: 700, color: "success.dark" }}
-            >
-              {Number(submission.Score).toFixed(2)}
-            </Typography>
-            <Typography variant="body1" color="text.secondary">
-              Điểm số
-            </Typography>
-          </Card>
-        )}
-
-        {/* Submission Info */}
-        <Card sx={{ p: 3 }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-            📊 Thông tin nộp bài
-          </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-            <InfoRow
-              label="Thời gian nộp"
-              value={formatDate(submission.SubmissionDate)}
-            />
-            <InfoRow
-              label="Trạng thái"
-              value={
-                <Chip
-                  label={
-                    submission.Status === "submitted" ? "Đúng hạn" : "Nộp muộn"
-                  }
-                  color={
-                    submission.Status === "submitted" ? "success" : "warning"
-                  }
-                  size="small"
-                />
-              }
-            />
-            {submission.Feedback && (
-              <Box>
-                <Typography variant="body2" sx={{ fontWeight: 600, mb: 1 }}>
-                  Nhận xét:
-                </Typography>
-                <Alert severity="info">{submission.Feedback}</Alert>
-              </Box>
-            )}
-          </Box>
-        </Card>
-
-        {/* Audio/Video/Document Submission */}
-        {assignmentData.Type === "audio" && submission.AudioURL && (
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              🎤 Bài làm audio
-            </Typography>
-            <audio controls style={{ width: "100%" }}>
-              <source src={submission.AudioURL} />
-            </audio>
-            {submission.DurationSec && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Thời lượng: {Math.floor(submission.DurationSec / 60)}:
-                {(submission.DurationSec % 60).toString().padStart(2, "0")}
-              </Typography>
-            )}
-          </Card>
-        )}
-
-        {assignmentData.Type === "video" && submission.FileURL && (
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              🎥 Bài làm video
-            </Typography>
-            <video
-              controls
-              style={{ width: "100%", maxHeight: 400, borderRadius: 8 }}
-            >
-              <source src={submission.FileURL} />
-            </video>
-          </Card>
-        )}
-
-        {assignmentData.Type === "document" && submission.FileURL && (
-          <Card sx={{ p: 3 }}>
-            <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
-              📄 Bài làm tài liệu
-            </Typography>
-            <Button
-              variant="outlined"
-              startIcon={<Description />}
-              href={submission.FileURL}
-              target="_blank"
-              fullWidth
-            >
-              Xem tài liệu đã nộp
-            </Button>
-          </Card>
-        )}
-
-        {/* Quiz Results with Answers */}
-        {results.canShowAnswers && results.questions && results.userAnswers && (
-          <QuizResults
-            questions={results.questions}
-            userAnswers={results.userAnswers}
-          />
-        )}
-
-        {!results.canShowAnswers &&
-          assignmentData.ShowAnswersAfter === "after_deadline" && (
-            <Alert severity="info">
-              Đáp án sẽ được hiển thị sau hạn nộp:{" "}
-              {formatDate(assignmentData.Deadline)}
-            </Alert>
-          )}
-
-        {!results.canShowAnswers &&
-          assignmentData.ShowAnswersAfter === "never" && (
-            <Alert severity="info">
-              Đáp án không được hiển thị cho bài tập này
-            </Alert>
-          )}
-      </Box>
-    );
+    try {
+      setRetrying(true);
+      await retryExamApi(assignmentId);
+      // Gọi callback để cha xử lý (ví dụ: mở lại Dialog làm bài)
+      if (onRetry) onRetry();
+      onClose();
+    } catch (err) {
+      alert(err.message || "Không thể reset bài thi");
+    } finally {
+      setRetrying(false);
+    }
   };
 
+  if (!open) return null;
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: "60vh" },
-      }}
-    >
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid",
-          borderColor: "divider",
         }}
       >
-        <Typography variant="h6" sx={{ fontWeight: 700 }}>
-          📈 Kết quả bài tập
-        </Typography>
-        <IconButton onClick={onClose} size="small">
+        Kết quả bài làm
+        <Button onClick={onClose} sx={{ minWidth: "auto" }}>
           <Close />
-        </IconButton>
+        </Button>
       </DialogTitle>
 
-      <DialogContent sx={{ p: 3 }}>
-        {loading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+      <DialogContent sx={{ bgcolor: "#f5f5f5", py: 3 }}>
+        {loading && (
+          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress />
+            <Typography sx={{ ml: 2 }}>Đang tải kết quả...</Typography>
           </Box>
-        ) : error ? (
-          <Alert severity="error">{error}</Alert>
-        ) : (
-          renderSubmissionContent()
+        )}
+
+        {!loading && error && (
+          <Alert severity="error" sx={{ mb: 2 }}>
+            {error}
+            <Button size="small" onClick={loadResult} sx={{ ml: 2 }}>
+              Thử lại
+            </Button>
+          </Alert>
+        )}
+
+        {!loading && !error && result && (
+          <Card>
+            <CardContent>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                <EmojiEvents sx={{ mr: 1, fontSize: 30 }} color="warning" />
+                <Typography variant="h5" fontWeight={600}>
+                  {result.examTitle || "Kết quả bài tập"}
+                </Typography>
+              </Box>
+
+              {result.isLate && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  Nộp muộn - Trạng thái:{" "}
+                  {getSubmissionStatusText(result.submissionStatus)}
+                </Alert>
+              )}
+
+              <Grid container spacing={2} sx={{ mb: 3 }}>
+                {/* Score Section */}
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Điểm số
+                  </Typography>
+                  {reviewData && reviewData.summary ? (
+                    <>
+                      <Typography variant="h4" fontWeight={700} color="primary">
+                        {reviewData.summary.totalEarnedPoints}/
+                        {reviewData.summary.totalMaxPoints}
+                      </Typography>
+                      <LinearProgress
+                        variant="determinate"
+                        value={result.score ? parseFloat(result.score) : 0}
+                        sx={{ mt: 1, height: 8, borderRadius: 4 }}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {result.score}%
+                      </Typography>
+                    </>
+                  ) : (
+                    <Typography variant="h4" fontWeight={700}>
+                      {result.score ? `${result.score}%` : "—"}
+                    </Typography>
+                  )}
+                </Grid>
+
+                {/* Duration Section */}
+                {result.durationSec !== undefined && (
+                  <Grid item xs={12} sm={4}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Thời gian làm bài
+                    </Typography>
+                    <Typography variant="h5">
+                      {formatDurationText(result.durationSec)}
+                    </Typography>
+                  </Grid>
+                )}
+
+                {/* Status Section */}
+                <Grid item xs={12} sm={4}>
+                  <Typography variant="subtitle2" color="text.secondary">
+                    Trạng thái
+                  </Typography>
+                  <Chip
+                    label={getSubmissionStatusText(
+                      result.submissionStatus || "submitted"
+                    )}
+                    color={getSubmissionStatusColor(
+                      result.submissionStatus || "submitted"
+                    )}
+                    sx={{ mt: 1, fontWeight: "bold" }}
+                  />
+                </Grid>
+              </Grid>
+
+              {reviewData && reviewData.summary && (
+                <>
+                  <Divider sx={{ my: 2 }} />
+                  <Typography
+                    variant="subtitle1"
+                    fontWeight={600}
+                    sx={{ mb: 2 }}
+                  >
+                    Thống kê chi tiết
+                  </Typography>
+
+                  <Grid container spacing={2} sx={{ mb: 2 }}>
+                    <StatsBox
+                      value={reviewData.summary.totalQuestions}
+                      label="Tổng câu hỏi"
+                      color="primary"
+                      bg="#e3f2fd"
+                    />
+                    <StatsBox
+                      value={reviewData.summary.correctAnswers}
+                      label="Câu đúng"
+                      color="success.main"
+                      bg="#e8f5e9"
+                    />
+                    <StatsBox
+                      value={
+                        reviewData.summary.totalQuestions -
+                        reviewData.summary.correctAnswers
+                      }
+                      label="Câu sai"
+                      color="error.main"
+                      bg="#ffebee"
+                    />
+                    <StatsBox
+                      value={`${reviewData.summary.accuracy}%`}
+                      label="Độ chính xác"
+                      color="warning.main"
+                      bg="#fff3e0"
+                    />
+                  </Grid>
+                </>
+              )}
+
+              {result.submissionDate && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mt: 2, textAlign: "right" }}
+                >
+                  Nộp lúc:{" "}
+                  {new Date(result.submissionDate).toLocaleString("vi-VN")}
+                </Typography>
+              )}
+            </CardContent>
+          </Card>
         )}
       </DialogContent>
 
-      <DialogActions
-        sx={{ px: 3, py: 2, borderTop: "1px solid", borderColor: "divider" }}
-      >
+      <DialogActions sx={{ p: 2 }}>
+        {result && (
+          <>
+            {result.remainingAttempt > 0 ? (
+              <Button
+                variant="contained"
+                color="secondary"
+                startIcon={<Refresh />}
+                onClick={handleRetry}
+                disabled={retrying}
+              >
+                Làm lại ({result.remainingAttempt} lượt)
+              </Button>
+            ) : (
+              <Button variant="outlined" color="error" disabled>
+                Hết lượt làm lại
+              </Button>
+            )}
+
+            <Button
+              variant="contained"
+              color="primary"
+              startIcon={<Visibility />}
+              onClick={() => onViewReview && onViewReview(assignmentId)}
+            >
+              Xem chi tiết bài làm
+            </Button>
+          </>
+        )}
         <Button onClick={onClose}>Đóng</Button>
       </DialogActions>
     </Dialog>
   );
 };
 
-const InfoRow = ({ label, value }) => (
-  <Box
-    sx={{
-      display: "flex",
-      justifyContent: "space-between",
-      alignItems: "center",
-    }}
-  >
-    <Typography variant="body2" color="text.secondary">
-      {label}:
-    </Typography>
-    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-      {value}
-    </Typography>
-  </Box>
-);
-
-const QuizResults = ({ questions, userAnswers }) => {
-  // Create answer map
-  const answerMap = new Map();
-  userAnswers.forEach((ans) => {
-    answerMap.set(ans.AssignmentQuestionId, ans.Answer);
-  });
-
-  return (
-    <Card sx={{ p: 3 }}>
-      <Typography variant="h6" sx={{ mb: 3, fontWeight: 600 }}>
-        📝 Chi tiết câu trả lời
+// Component con hiển thị hộp thống kê nhỏ
+const StatsBox = ({ value, label, color, bg }) => (
+  <Grid item xs={6} sm={3}>
+    <Box sx={{ textAlign: "center", p: 2, bgcolor: bg, borderRadius: 2 }}>
+      <Typography variant="h5" fontWeight={700} sx={{ color: color }}>
+        {value}
       </Typography>
-
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-        {questions.map((question, index) => {
-          const userAnswer = answerMap.get(question.AssignmentQuestionId);
-          const isCorrect = checkAnswer(question, userAnswer);
-
-          return (
-            <Box
-              key={question.QuestionID}
-              sx={{
-                p: 2,
-                border: "1px solid",
-                borderColor: isCorrect ? "success.main" : "error.main",
-                borderRadius: 2,
-                bgcolor: isCorrect ? "success.50" : "error.50",
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 2,
-                  mb: 2,
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    width: 32,
-                    height: 32,
-                    borderRadius: "50%",
-                    bgcolor: isCorrect ? "success.main" : "error.main",
-                    color: "white",
-                    fontWeight: 700,
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  {index + 1}
-                </Box>
-                <Box sx={{ flex: 1 }}>
-                  <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-                    {question.Content}
-                  </Typography>
-                  <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-                    <Chip
-                      icon={isCorrect ? <CheckCircle /> : <Cancel />}
-                      label={isCorrect ? "Đúng" : "Sai"}
-                      color={isCorrect ? "success" : "error"}
-                      size="small"
-                    />
-                    <Chip
-                      label={`${question.Point} điểm`}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </Box>
-                </Box>
-              </Box>
-
-              <Divider sx={{ my: 2 }} />
-
-              <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                <Typography variant="body2">
-                  <strong>Câu trả lời của bạn:</strong>{" "}
-                  {formatAnswer(question, userAnswer)}
-                </Typography>
-                {!isCorrect && (
-                  <Typography variant="body2" sx={{ color: "success.dark" }}>
-                    <strong>Đáp án đúng:</strong>{" "}
-                    {formatCorrectAnswer(question)}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          );
-        })}
-      </Box>
-    </Card>
-  );
-};
-
-const checkAnswer = (question, userAnswer) => {
-  if (!userAnswer) return false;
-
-  switch (question.Type) {
-    case "multiple_choice":
-      const correctOption = question.Options?.find(
-        (opt) => opt.IsCorrect === 1
-      );
-      return correctOption && userAnswer === correctOption.OptionID.toString();
-    case "true_false":
-      return userAnswer === question.CorrectAnswer;
-    case "fill_in_blank":
-      return (
-        userAnswer.toLowerCase().trim() ===
-        question.CorrectAnswer.toLowerCase().trim()
-      );
-    default:
-      return null;
-  }
-};
-
-const formatAnswer = (question, answer) => {
-  if (!answer) return "Chưa trả lời";
-
-  if (question.Type === "multiple_choice") {
-    const option = question.Options?.find(
-      (opt) => opt.OptionID.toString() === answer
-    );
-    return option ? option.Content : answer;
-  }
-
-  return answer;
-};
-
-const formatCorrectAnswer = (question) => {
-  if (question.Type === "multiple_choice") {
-    const correctOption = question.Options?.find((opt) => opt.IsCorrect === 1);
-    return correctOption ? correctOption.Content : question.CorrectAnswer;
-  }
-
-  return question.CorrectAnswer;
-};
+      <Typography variant="body2" color="text.secondary">
+        {label}
+      </Typography>
+    </Box>
+  </Grid>
+);
 
 export default AssignmentResultDialog;
