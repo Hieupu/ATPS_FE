@@ -29,7 +29,6 @@ const CourseCurriculum = ({ courseId, isEnrolled, courseData }) => {
           ? getCourseAssignmentsApi(courseId)
           : Promise.resolve({ assignments: [] }),
       ]);
-      console.log(curriculumData.curriculum, "curriculumData");
 
       setCurriculum(curriculumData.curriculum || []);
       setAssignments(assignmentsData.assignments || []);

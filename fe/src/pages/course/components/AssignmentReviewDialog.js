@@ -17,10 +17,9 @@ import {
 import { ArrowBack, CheckCircle, Cancel, Close } from "@mui/icons-material";
 
 // --- IMPORT CHUẨN ---
-import { getExamReviewApi } from "../../apiServices/learnerExamService";
-import { loadFileAsHtml } from "../../utils/fileToHtml";
-// Giả định file này nằm cùng cấp với QuestionComponents.js trong thư mục exam cũ
-// Nếu không, bạn cần copy file QuestionComponentsReadOnly.js về thư mục hiện tại
+import { getExamReviewApi } from "../../../apiServices/learnerExamService";
+import { loadFileAsHtml } from "../../../utils/fileToHtml";
+
 import { QuestionRendererReadOnly } from "../../exam/QuestionComponentsReadOnly";
 // --------------------
 

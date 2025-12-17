@@ -257,7 +257,8 @@ const AssignmentResultDialog = ({
       <DialogActions sx={{ p: 2 }}>
         {result && (
           <>
-            {result.remainingAttempt > 0 ? (
+            {result.remainingAttempt === undefined ||
+            result.remainingAttempt > 0 ? (
               <Button
                 variant="contained"
                 color="secondary"
@@ -265,7 +266,10 @@ const AssignmentResultDialog = ({
                 onClick={handleRetry}
                 disabled={retrying}
               >
-                Làm lại ({result.remainingAttempt} lượt)
+                Làm lại{" "}
+                {result.remainingAttempt !== undefined
+                  ? `(${result.remainingAttempt} lượt)`
+                  : ""}
               </Button>
             ) : (
               <Button variant="outlined" color="error" disabled>

@@ -9,12 +9,12 @@ import {
   ListItemText,
   Stack,
   CircularProgress,
+  Link,
 } from "@mui/material";
 import {
   Lock,
   Schedule,
   PlayArrow,
-  ContinueBox,
   FastForward,
   Visibility,
   Refresh,
@@ -25,8 +25,8 @@ import { toast } from "react-toastify";
 // --- IMPORT CÁC DIALOG ---
 import AssignmentTakingDialog from "./AssignmentTakingDialog";
 import AssignmentResultDialog from "./AssignmentResultDialog";
+import AssignmentReviewDialog from "./AssignmentReviewDialog"; // <--- [1] IMPORT MỚI
 
-// --- IMPORT UTILS & API ---
 import {
   getFileIcon,
   formatDate,
@@ -37,7 +37,9 @@ import { retryExamApi } from "../../../apiServices/learnerExamService";
 const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   const [openTaking, setOpenTaking] = useState(false);
   const [openResult, setOpenResult] = useState(false);
+  const [openReview, setOpenReview] = useState(false); // <--- [2] STATE MỚI
   const [loadingRetry, setLoadingRetry] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const isOverdue = isAssignmentOverdue(assignment.Deadline);
   const submission = assignment.Submission;
@@ -49,39 +51,35 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   };
 
   const isSubmitted = submission && checkIsSubmitted(submission.Status);
-
   const isInProgress = submission && !isSubmitted;
 
   // --- HANDLERS ---
+  const handleStartOrContinue = () => setOpenTaking(true);
 
-  const handleStartOrContinue = () => {
-    setOpenTaking(true);
-  };
+  // Mở dialog kết quả
+  const handleViewResult = () => setOpenResult(true);
 
-  const handleViewResult = () => {
-    setOpenResult(true);
+  // [3] HANDLER MỚI: Xử lý khi bấm "Xem chi tiết" từ Dialog Kết Quả
+  const handleViewReview = () => {
+    setOpenResult(false); // Đóng dialog kết quả (hoặc giữ nguyên tùy bạn)
+    setOpenReview(true); // Mở dialog xem lại bài
   };
 
   const handleRetry = async () => {
     if (
       !window.confirm(
-        "Bạn có chắc chắn muốn làm lại bài tập này? Kết quả cũ có thể bị ghi đè."
+        "Bạn có chắc chắn muốn làm lại bài tập này? Kết quả cũ sẽ bị ghi đè."
       )
     )
       return;
 
     try {
       setLoadingRetry(true);
-      // Gọi API reset đề
       await retryExamApi(assignment.InstanceID);
 
-      toast.success("Đã tạo lượt làm bài mới!");
-
-      // Sau khi reset thành công, mở ngay dialog làm bài
+      setOpenResult(false);
+      setOpenReview(false); // Đóng cả review nếu đang mở
       setOpenTaking(true);
-
-      // Nếu cần, gọi callback để load lại list bên ngoài (để cập nhật remaining attempts...)
-      if (onRefresh) onRefresh();
     } catch (error) {
       toast.error(error.message || "Không thể làm lại bài");
     } finally {
@@ -89,11 +87,13 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
     }
   };
 
-  // Callback khi đóng Dialog làm bài (có thể user đã nộp, cần reload list)
   const handleCloseTaking = () => {
     setOpenTaking(false);
     if (onRefresh) onRefresh();
   };
+
+  const hasLongDescription =
+    assignment.Description && assignment.Description.length > 60;
 
   return (
     <>
@@ -103,10 +103,127 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
           px: 3,
           borderBottom: "1px solid",
           borderColor: "divider",
-          flexWrap: "wrap", // Cho phép xuống dòng trên mobile
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 2,
         }}
-        secondaryAction={
-          // Truyền props cần thiết vào Actions
+      >
+        <Box
+          sx={{ display: "flex", alignItems: "center", flex: 1, minWidth: 0 }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 36,
+              height: 36,
+              borderRadius: "50%",
+              bgcolor: isSubmitted ? "success.light" : "primary.light",
+              mr: 2,
+              flexShrink: 0,
+              fontWeight: 600,
+              color: isSubmitted
+                ? "success.contrastText"
+                : "primary.contrastText",
+            }}
+          >
+            {isSubmitted ? <CheckCircle fontSize="small" /> : `A${index + 1}`}
+          </Box>
+
+          <ListItemIcon sx={{ minWidth: 40, flexShrink: 0 }}>
+            {getFileIcon("assignment")}
+          </ListItemIcon>
+
+          <ListItemText
+            sx={{ m: 0, flex: 1, minWidth: 0 }}
+            primary={
+              <Box
+                sx={{ display: "flex", alignItems: "center", gap: 1, mb: 0.5 }}
+              >
+                <Typography fontWeight={600} noWrap>
+                  {assignment.Title}
+                </Typography>
+                {isSubmitted && (
+                  <Chip
+                    label="Đã nộp"
+                    color="success"
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: "0.7rem" }}
+                  />
+                )}
+                {isInProgress && (
+                  <Chip
+                    label="Đang làm"
+                    color="warning"
+                    size="small"
+                    variant="outlined"
+                    sx={{ height: 20, fontSize: "0.7rem" }}
+                  />
+                )}
+              </Box>
+            }
+            secondary={
+              <Box component="span" sx={{ display: "block" }}>
+                {assignment.Description && (
+                  <Box sx={{ mb: 0.5 }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        display: "-webkit-box",
+                        WebkitLineClamp: isExpanded ? "unset" : 1,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        wordBreak: "break-word",
+                        lineHeight: "1.4em",
+                      }}
+                    >
+                      {assignment.Description}
+                    </Typography>
+
+                    {hasLongDescription && (
+                      <Link
+                        component="button"
+                        variant="caption"
+                        underline="hover"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        sx={{
+                          fontWeight: 600,
+                          color: "primary.main",
+                          cursor: "pointer",
+                          display: "block",
+                        }}
+                      >
+                        {isExpanded ? "Thu gọn" : "Xem thêm"}
+                      </Link>
+                    )}
+                  </Box>
+                )}
+
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <Schedule sx={{ fontSize: 16, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Hạn nộp: {formatDate(assignment.Deadline)}
+                  </Typography>
+                  {isOverdue && !isSubmitted && (
+                    <Chip
+                      label="Quá hạn"
+                      color="error"
+                      size="small"
+                      sx={{ height: 20, fontSize: "0.65rem" }}
+                    />
+                  )}
+                </Box>
+              </Box>
+            }
+          />
+        </Box>
+
+        <Box sx={{ flexShrink: 0 }}>
           <AssignmentActions
             isEnrolled={isEnrolled}
             isOverdue={isOverdue}
@@ -117,100 +234,40 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
             onViewResult={handleViewResult}
             onRetry={handleRetry}
           />
-        }
-      >
-        {/* Avatar số thứ tự */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: 36,
-            height: 36,
-            borderRadius: "50%",
-            bgcolor: isSubmitted ? "success.light" : "primary.light",
-            mr: 2,
-            fontWeight: 600,
-            color: isSubmitted
-              ? "success.contrastText"
-              : "primary.contrastText",
-          }}
-        >
-          {isSubmitted ? <CheckCircle fontSize="small" /> : `A${index + 1}`}
         </Box>
-
-        <ListItemIcon sx={{ minWidth: 40 }}>
-          {getFileIcon("assignment")}
-        </ListItemIcon>
-
-        <ListItemText
-          primary={
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <Typography fontWeight={600}>{assignment.Title}</Typography>
-              {isSubmitted && (
-                <Chip
-                  label="Đã nộp"
-                  color="success"
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem" }}
-                />
-              )}
-              {isInProgress && (
-                <Chip
-                  label="Đang làm"
-                  color="warning"
-                  size="small"
-                  variant="outlined"
-                  sx={{ height: 20, fontSize: "0.7rem" }}
-                />
-              )}
-            </Box>
-          }
-          secondary={
-            <>
-              {assignment.Description && (
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {assignment.Description}
-                </Typography>
-              )}
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}
-              >
-                <Schedule sx={{ fontSize: 16, color: "text.secondary" }} />
-                <Typography variant="body2" color="text.secondary">
-                  Hạn nộp: {formatDate(assignment.Deadline)}
-                </Typography>
-                {isOverdue && !isSubmitted && (
-                  <Chip label="Quá hạn" color="error" size="small" />
-                )}
-              </Box>
-            </>
-          }
-        />
       </ListItem>
 
-      {/* Dialog Làm bài */}
+      {/* 1. DIALOG LÀM BÀI */}
       <AssignmentTakingDialog
         open={openTaking}
         onClose={handleCloseTaking}
         assignmentId={assignment.InstanceID}
       />
 
-      {/* Dialog Kết quả (chỉ render nếu đã nộp) */}
+      {/* 2. DIALOG KẾT QUẢ (Chỉ render khi đã nộp) */}
       {isSubmitted && (
         <AssignmentResultDialog
           open={openResult}
           onClose={() => setOpenResult(false)}
           assignmentId={assignment.InstanceID}
-          onRetry={handleRetry} // Cho phép retry từ màn hình kết quả
+          onRetry={handleRetry}
+          onViewReview={handleViewReview} // <--- [4] TRUYỀN HÀM MỞ REVIEW VÀO ĐÂY
+        />
+      )}
+
+      {/* 3. DIALOG XEM LẠI BÀI (REVIEW) - [5] RENDER MỚI */}
+      {isSubmitted && (
+        <AssignmentReviewDialog
+          open={openReview}
+          onClose={() => setOpenReview(false)}
+          assignmentId={assignment.InstanceID}
         />
       )}
     </>
   );
 };
 
-// Component con tách biệt để xử lý logic hiển thị nút
+// Component Actions (Giữ nguyên)
 const AssignmentActions = ({
   isEnrolled,
   isOverdue,
@@ -221,16 +278,13 @@ const AssignmentActions = ({
   onViewResult,
   onRetry,
 }) => {
-  // 1. Chưa đăng ký khóa học
   if (!isEnrolled) {
     return <Chip icon={<Lock />} label="Cần đăng ký" size="small" />;
   }
 
-  // 2. Đã nộp bài (Hiển thị Xem kết quả + Làm lại)
   if (isSubmitted) {
     return (
       <Stack direction="row" spacing={1}>
-        {/* Nút Làm lại (nếu chưa quá hạn hoặc chính sách cho phép - ở đây check đơn giản) */}
         {!isOverdue && (
           <Button
             variant="outlined"
@@ -245,8 +299,6 @@ const AssignmentActions = ({
             Làm lại
           </Button>
         )}
-
-        {/* Nút Xem kết quả */}
         <Button
           variant="contained"
           color="success"
@@ -260,15 +312,14 @@ const AssignmentActions = ({
     );
   }
 
-  // 3. Đang làm dở (Tiếp tục)
   if (isInProgress) {
     return (
       <Button
         variant="contained"
-        color="warning" // Màu vàng cam để báo hiệu đang làm dở
+        color="warning"
         size="small"
         onClick={onStart}
-        disabled={isOverdue} // Quá hạn thì không cho tiếp tục (tùy logic business)
+        disabled={isOverdue}
         startIcon={<FastForward />}
       >
         Tiếp tục
@@ -276,7 +327,6 @@ const AssignmentActions = ({
     );
   }
 
-  // 4. Chưa làm (Bắt đầu)
   return (
     <Button
       variant="contained"
@@ -285,7 +335,7 @@ const AssignmentActions = ({
       disabled={isOverdue}
       startIcon={<PlayArrow />}
     >
-      {isOverdue ? "Quá hạn" : "Làm bài"}
+      {isOverdue ? "Quá hạn" : "LÀM BÀI"}
     </Button>
   );
 };

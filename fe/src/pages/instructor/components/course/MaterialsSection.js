@@ -30,6 +30,8 @@ import DescriptionIcon from "@mui/icons-material/Description";
 // --- MỚI THÊM: Icon Download ---
 import DownloadIcon from "@mui/icons-material/Download";
 
+import { toast } from "react-toastify";
+
 const MATERIAL_STATUS_OPTIONS = ["VISIBLE", "HIDDEN"];
 
 export default function MaterialsSection({
@@ -82,8 +84,10 @@ export default function MaterialsSection({
         await onUpdateMaterial(values.MaterialID, payload);
       }
       setDialogOpen(false);
+      toast.success("Lưu tài liệu thành công!");
     } catch (err) {
       console.error("Material dialog submit error:", err);
+      toast.error(err?.message || "Lỗi khi lưu tài liệu");
     }
   };
 
@@ -91,8 +95,10 @@ export default function MaterialsSection({
     if (!window.confirm(`Xóa tài liệu "${material.Title}"?`)) return;
     try {
       await onDeleteMaterial(material.MaterialID);
+      toast.success("Đã xóa tài liệu");
     } catch (err) {
       console.error("Delete material error:", err);
+      toast.error("Lỗi khi xóa tài liệu");
     }
   };
 
@@ -325,9 +331,12 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
     existingFileUrl: "",
   });
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     if (open && initialValues) {
       setValues((prev) => ({ ...prev, ...initialValues }));
+      setIsSubmitting(false);
     }
   }, [open, initialValues]);
 
@@ -343,8 +352,17 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
     }));
   };
 
-  const handleSave = () => {
-    onSubmit(values);
+  const handleSave = async () => {
+    if (isSubmitting) return; // Chặn double click
+
+    setIsSubmitting(true); // Bật loading
+    try {
+      await onSubmit(values); // Đợi upload xong
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false); // Tắt loading
+    }
   };
 
   const isEdit = mode === "edit";
@@ -366,6 +384,7 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
             required
             value={values.Title}
             onChange={handleChange("Title")}
+            disabled={isSubmitting}
           />
 
           <TextField
@@ -374,6 +393,7 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
             fullWidth
             value={values.Status}
             onChange={handleChange("Status")}
+            disabled={isSubmitting}
           >
             {MATERIAL_STATUS_OPTIONS.map((st) => (
               <MenuItem key={st} value={st}>
@@ -392,6 +412,7 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               component="label"
               variant="outlined"
               fullWidth
+              disabled={isSubmitting}
               sx={{
                 py: 2,
                 justifyContent: "flex-start",
@@ -429,6 +450,7 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
                         href={values.existingFileUrl}
                         target="_blank"
                         rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
                       >
                         Xem file hiện tại
                       </Typography>
@@ -462,11 +484,23 @@ function MaterialFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+        <Button onClick={onClose} color="inherit" disabled={isSubmitting}>
           Hủy
         </Button>
-        <Button variant="contained" onClick={handleSave}>
-          {isEdit ? "Cập nhật" : "Tạo tài liệu"}
+
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={isSubmitting}
+          startIcon={
+            isSubmitting ? <CircularProgress size={20} color="inherit" /> : null
+          }
+        >
+          {isSubmitting
+            ? "Đang xử lý..."
+            : isEdit
+            ? "Cập nhật"
+            : "Tạo tài liệu"}
         </Button>
       </DialogActions>
     </Dialog>
