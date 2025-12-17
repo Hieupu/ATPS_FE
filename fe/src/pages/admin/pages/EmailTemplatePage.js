@@ -194,11 +194,7 @@ const EVENT_TYPES = [
   {
     value: "REFUND_ACCOUNT_INFO_REQUEST",
     label: "Yêu cầu thông tin chuyển khoản",
-  },
-  {
-    value: "REFUND_ACCOUNT_SUCCESS",
-    label: "Thông báo đã chuyển khoản hoàn tiền",
-  },
+  }
 ];
 
 const PAGE_SIZE = 10;
