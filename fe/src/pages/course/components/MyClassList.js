@@ -59,6 +59,36 @@ const MyClassList = ({ courseId }) => {
     }
   }, [courseId]);
 
+    const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch song song cả hai API
+      const [myClassesResponse, allClassesResponse] = await Promise.all([
+        getMyClassesInCourseApi(courseId),
+        getClassesByCourseApi(courseId)
+      ]);
+      
+      console.log("My classes:", myClassesResponse);
+      console.log("All classes:", allClassesResponse);
+      
+      setClasses(myClassesResponse.classes || []);
+      setClassesInCourse(allClassesResponse.classes || []);
+      
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      setError(error.message || "Failed to load classes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    useEffect(() => {
+    if (courseId) {
+      fetchAllData();
+    }
+  }, [courseId]);
+
   useEffect(() => {
     const fetchClassesInCourse = async () => {
       try {
@@ -78,8 +108,10 @@ const MyClassList = ({ courseId }) => {
     }
   }, [courseId]);
 
-  const handleOpenTransferModal = (classItem) => {
-    setSelectedClass(classItem);
+const handleOpenTransferModal = (classItem) => {
+    // Tìm lớp hiện tại với thông tin mới nhất từ classes
+    const currentClass = classes.find(cls => cls.ClassID === classItem.ClassID);
+    setSelectedClass(currentClass || classItem);
     setTransferModalOpen(true);
   };
 
@@ -108,11 +140,10 @@ const MyClassList = ({ courseId }) => {
         success: true,
         message: response.message || "Chuyển lớp thành công!",
       });
-
-      // Refresh data
-      const myClassesResponse = await getMyClassesInCourseApi(courseId);
-      setClasses(myClassesResponse.classes || []);
-
+      
+      // Refresh tất cả dữ liệu
+      await fetchAllData();
+      
       // Close modal
       handleCloseTransferModal();
     } catch (error) {
