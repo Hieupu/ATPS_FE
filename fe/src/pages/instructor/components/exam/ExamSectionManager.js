@@ -45,7 +45,6 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
-  // Section Form
   const [openSectionForm, setOpenSectionForm] = useState(false);
   const [sectionFormMode, setSectionFormMode] = useState("create");
   const [selectedSection, setSelectedSection] = useState(null);
@@ -55,12 +54,10 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
     orderIndex: 0
   });
 
-  // Question Selection
   const [openQuestionSelector, setOpenQuestionSelector] = useState(false);
   const [availableQuestions, setAvailableQuestions] = useState([]);
   const [selectedQuestions, setSelectedQuestions] = useState([]);
 
-  // Menu
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuSection, setMenuSection] = useState(null);
 
@@ -360,7 +357,6 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Section Form Dialog */}
       <Dialog
         open={openSectionForm}
         onClose={() => setOpenSectionForm(false)}
@@ -412,7 +408,6 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Question Selector Dialog */}
       <Dialog
         open={openQuestionSelector}
         onClose={() => setOpenQuestionSelector(false)}
@@ -470,7 +465,6 @@ const ExamSectionManager = ({ open, onClose, exam }) => {
         </DialogActions>
       </Dialog>
 
-      {/* Section Menu */}
       <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
         <MenuItem
           onClick={() => {

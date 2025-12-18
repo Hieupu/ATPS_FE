@@ -9,8 +9,6 @@ import {
   Paper,
   IconButton,
   Chip,
-  Alert,
-  Tooltip,
   CircularProgress,
   Stack,
   Dialog,
@@ -23,6 +21,10 @@ import {
   Grid,
   Divider,
   alpha,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import {
   Add as AddIcon,
@@ -33,9 +35,9 @@ import {
   Unarchive as UnarchiveIcon,
   Assignment as AssignmentIcon,
   School as SchoolIcon,
-  QuestionAnswer as QuestionIcon,
-  AccessTime as TimeIcon,
+  AccessTime as AccessTimeIcon,
   SwapVert as SortIcon,
+  MoreVert as MoreVertIcon,
 } from "@mui/icons-material";
 
 import { ToastContainer, toast } from "react-toastify";
@@ -49,151 +51,159 @@ import {
   unarchiveExamApi,
   getArchivedExamsApi,
   getExamInstancesApi,
+  openExamInstanceNowApi,
+  closeExamInstanceNowApi,
 } from "../../../apiServices/instructorExamService";
 
 import ExamDetailDialog from "../components/exam/ExamDetailDialog";
-import ExamSectionManager from "../components/exam/ExamSectionManager";
 
 const ExamPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState(0);
-  const [allExams, setAllExams] = useState([]);
+  const [allItems, setAllItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
   const [openDetailDialog, setOpenDetailDialog] = useState(false);
-  const [openSectionManager, setOpenSectionManager] = useState(false);
-  const [openDeleteConfirm, setOpenDeleteConfirm] = useState(false);
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [openArchiveConfirm, setOpenArchiveConfirm] = useState(false);
+  const [examToArchive, setExamToArchive] = useState(null);
   const [typeFilter, setTypeFilter] = useState("All");
+  const [sortOrder, setSortOrder] = useState("desc");
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [menuItem, setMenuItem] = useState(null);
 
   const STATUS_TABS = [
-    { value: "Pending", label: "Chờ diễn ra", color: "#ff9800" },
-    { value: "Ongoing", label: "Đang diễn ra", color: "#2196f3" },
-    { value: "Completed", label: "Đã hoàn thành", color: "#4caf50" },
+
+    { value: "Scheduled", label: "Đã lên lịch", color: "#ff9800" },
+    { value: "Open", label: "Đang mở", color: "#2196f3" },
+    { value: "Closed", label: "Đã đóng", color: "#4caf50" },
     { value: "Archived", label: "Đã lưu trữ", color: "#757575" },
   ];
 
-  const STATUS_MAP = {
-    "Pending": "Nháp",
-    "Ongoing": "Đang diễn ra",
-    "Completed": "Hoàn thành",
-    "Archived": "Đã lưu trữ",
-    "Draft": "Nháp",
-    "Published": "Đã xuất bản",
-    "Scheduled": "Đã lên lịch"
-  };
-
   const currentStatus = STATUS_TABS[activeTab]?.value;
-
-  const normalizeExamStatus = (exam) => {
-    if (exam.Status === "Draft") {
-      return { ...exam, Status: "Pending" };
-    }
-    return exam;
+  const getActualStatus = (item) => {
+    if (item.isTemplate) return "Draft";
+    if (item.isArchived) return "Archived";
+    return item.Status;
   };
 
-  const currentExams = allExams
-    .filter((x) => {
-      if (x.Status !== currentStatus) return false;
+  const currentItems = allItems
+    .filter((item) => {
+      const actualStatus = getActualStatus(item);
+      if (actualStatus !== currentStatus) return false;
       if (typeFilter === "All") return true;
-      if (typeFilter === "Assignment") return x.Type === "Assignment";
-      if (typeFilter === "Exam") return x.Type === "Exam";
-      return true;
+      return item.examType === typeFilter;
     })
     .sort((a, b) => {
-      const dateA = new Date(a.CreatedAt || a.StartTime);
-      const dateB = new Date(b.CreatedAt || b.StartTime);
+      const dateA = new Date(a.StartTime || a.CreatedAt || 0);
+      const dateB = new Date(b.StartTime || b.CreatedAt || 0);
       return sortOrder === "desc" ? dateB - dateA : dateA - dateB;
     });
 
   const getStatusCount = (status) =>
-    allExams.filter((exam) => exam.Status === status).length;
+    allItems.filter((i) => getActualStatus(i) === status).length;
 
   const getTypeCount = (type) => {
-    const filtered = allExams.filter((x) => x.Status === currentStatus);
+    const filtered = allItems.filter((i) => getActualStatus(i) === currentStatus);
+
     if (type === "All") return filtered.length;
-    return filtered.filter((x) => x.Type === type).length;
+    return filtered.filter((i) => i.examType === type).length;
   };
 
   useEffect(() => {
+    loadAllExamsAndInstances();
+  }, []);
+
+  useEffect(() => {
     if (location.state?.message) {
-      toast[location.state.severity](location.state.message);
+      toast[location.state.severity || "success"](location.state.message);
       window.history.replaceState({}, document.title);
     }
   }, [location]);
 
-  const loadAllExams = async () => {
+
+  const loadAllExamsAndInstances = async () => {
     setLoading(true);
     try {
-      const [regular, archived] = await Promise.all([
-        getExamsApi(),
-        getArchivedExamsApi()
-      ]);
+      const regularExams = await getExamsApi();
+      const items = [];
+      const processedExamIds = new Set();
 
-      const loadExamWithInstances = async (exam) => {
+      for (const exam of regularExams) {
+        if (processedExamIds.has(exam.ExamID)) continue;
+
         try {
           const instances = await getExamInstancesApi(exam.ExamID);
-          
-          if (!instances || instances.length === 0) {
-            return {
-              ...exam,
-              StartTime: null,
-              EndTime: null,
-              ClassName: null,
-              UnitName: null,
-              CourseName: exam.CourseName || null,
-              instances: []
-            };
+          if (instances && instances.length > 0) {
+            instances.forEach((inst) => {
+              items.push({
+                ...inst,
+                examTitle: exam.Title,
+                examType: exam.Type,
+                examStatus: exam.Status,
+                ExamID: exam.ExamID,
+                isTemplate: false,
+                isArchived: exam.Status === "Archived",
+              });
+            });
+          } else {
+            if (exam.Status === "Draft") {
+              items.push({
+                ExamID: exam.ExamID,
+                examTitle: exam.Title,
+                examType: exam.Type,
+                examStatus: exam.Status,
+                Status: "Draft",
+                isTemplate: true,
+                isArchived: false,
+              });
+            }
           }
 
-          const firstInstance = instances[0];
-
-          return {
-            ...exam,
-            StartTime: firstInstance.StartTime,
-            EndTime: firstInstance.EndTime,
-            ClassName: firstInstance.ClassName,
-            UnitName: firstInstance.UnitName,
-            CourseName: firstInstance.CourseName || exam.CourseName,
-            instances: instances,
-            TotalQuestions: instances.reduce((sum, inst) => 
-              sum + (inst.TotalQuestions || 0), 0
-            )
-          };
+          processedExamIds.add(exam.ExamID);
         } catch (err) {
-          console.error(`Failed to load instances for exam ${exam.ExamID}:`, err);
-          return exam;
+          if (exam.Status === "Draft") {
+            items.push({
+              ExamID: exam.ExamID,
+              examTitle: exam.Title,
+              examType: exam.Type,
+              examStatus: exam.Status,
+              Status: "Draft",
+              isTemplate: true,
+              isArchived: false,
+            });
+          }
         }
-      };
-
-      const [regularWithInstances, archivedWithInstances] = await Promise.all([
-        Promise.all((regular || []).map(loadExamWithInstances)),
-        Promise.all((archived || []).map(loadExamWithInstances))
-      ]);
-
-      const cleanedRegular = regularWithInstances
-        .filter((x) => x.Status !== "Archived")
-        .map(normalizeExamStatus);
-
-      const cleanedArchived = archivedWithInstances.map(normalizeExamStatus);
-
-      setAllExams([...cleanedRegular, ...cleanedArchived]);
-      
-    } catch (err) {
-      console.error("Load exams error:", err);
-      toast.error("Không thể tải danh sách bài tập");
+      }
+      setAllItems(items);
+    } catch (error) {
+      toast.error("Không thể tải danh sách bài thi");
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadAllExams();
-  }, []);
+  const handleOpenNow = async (examId, instanceId) => {
+    if (!window.confirm("Mở bài thi ngay lập tức? Học viên sẽ có thể làm bài ngay.")) return;
+    try {
+      await openExamInstanceNowApi(examId, instanceId);
+      toast.success("Đã mở bài thi thành công!");
+      loadAllExamsAndInstances();
+    } catch (err) {
+      toast.error(err.message || "Lỗi khi mở bài thi");
+    }
+  };
 
-  const handleOpenCreate = () => navigate("/instructor/exams/create");
-  const handleEdit = (exam) => navigate(`/instructor/exams/edit/${exam.ExamID}`);
+  const handleCloseNow = async (examId, instanceId) => {
+    if (!window.confirm("Đóng bài thi ngay lập tức? Học viên sẽ không thể tiếp tục.")) return;
+    try {
+      await closeExamInstanceNowApi(examId, instanceId);
+      toast.success("Đã đóng bài thi thành công!");
+      loadAllExamsAndInstances();
+    } catch (err) {
+      toast.error(err.message || "Lỗi khi đóng bài thi");
+    }
+  };
 
   const handleViewDetail = async (exam) => {
     try {
@@ -201,121 +211,139 @@ const ExamPage = () => {
       setSelectedExam(detail);
       setOpenDetailDialog(true);
     } catch {
-      toast.error("Không thể tải chi tiết bài tập");
+      toast.error("Không thể tải chi tiết");
     }
   };
 
-  const handleDelete = (exam) => {
-    setSelectedExam(exam);
-    setOpenDeleteConfirm(true);
+  const handleEdit = (exam) => {
+    navigate(`/instructor/exams/edit/${exam.ExamID}`);
   };
 
-  const confirmDeleteExam = async () => {
-    try {
-      await deleteExamApi(selectedExam.ExamID);
-      toast.success("Xóa bài tập thành công!");
-      loadAllExams();
-    } catch {
-      toast.error("Xóa thất bại");
-    } finally {
-      setOpenDeleteConfirm(false);
-      setSelectedExam(null);
-    }
+  const handleArchive = (exam) => {
+    setExamToArchive(exam);
+    setOpenArchiveConfirm(true);
   };
 
-  const handleArchive = async (exam) => {
+  const confirmArchiveExam = async () => {
     try {
-      await archiveExamApi(exam.ExamID);
-      toast.success("Đã lưu trữ bài tập");
-      loadAllExams();
+      await archiveExamApi(examToArchive.ExamID);
+      toast.success("Đã lưu trữ bài thi thành công!");
+      loadAllExamsAndInstances();
     } catch {
       toast.error("Lưu trữ thất bại");
+    } finally {
+      setOpenArchiveConfirm(false);
+      setExamToArchive(null);
     }
   };
 
   const handleUnarchive = async (exam) => {
     try {
       await unarchiveExamApi(exam.ExamID);
-      toast.success("Đã khôi phục bài tập");
-      loadAllExams();
+      toast.success("Đã khôi phục bài thi");
+      loadAllExamsAndInstances();
     } catch {
       toast.error("Khôi phục thất bại");
     }
   };
 
-  const formatDateTime = (start, end) => {
-    if (!start) return { date: "Chưa đặt lịch", time: "" };
-    const s = new Date(start);
-    const e = end ? new Date(end) : null;
-    const date = s.toLocaleDateString("vi-VN");
-    const time = s.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    const endTime = e?.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
-    return { date, time: e ? `${time} - ${endTime}` : time };
+  const handleMenuOpen = (event, item) => {
+    setAnchorEl(event.currentTarget);
+    setMenuItem(item);
   };
 
-  const getTotalQuestions = (exam) => {
-    if (!exam.sections || !Array.isArray(exam.sections)) return 0;
-
-    return exam.sections.reduce((total, section) => {
-      if (section.childSections && Array.isArray(section.childSections)) {
-        return total + section.childSections.reduce((childTotal, child) => {
-          return childTotal + (child.TotalQuestions || child.QuestionCount || 0);
-        }, 0);
-      }
-      return total + (section.TotalQuestions || section.QuestionCount || 0);
-    }, 0);
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setMenuItem(null);
   };
 
-  const getAssignedInfo = (exam) => {
-    const isAssignment = exam.Type === "Assignment";
+  const handleMenuAction = (action) => {
+    handleMenuClose();
 
-    if (isAssignment) {
-      if (exam.UnitName) return { type: "Unit", name: exam.UnitName };
-      if (exam.unitName) return { type: "Unit", name: exam.unitName };
-      return { type: "Unit", name: "Chưa gán" };
-    } else {
-      if (exam.ClassName) {
-        const classCount = exam.ClassName.split(", ").length;
-        return {
-          type: "Lớp",
-          name: classCount > 1 ? `${classCount} lớp` : exam.ClassName
-        };
-      }
-      if (exam.classes && exam.classes.length > 0) {
-        return {
-          type: "Lớp",
-          name: exam.classes.length > 1 ? `${exam.classes.length} lớp` : exam.classes[0].Name
-        };
-      }
-      return { type: "Lớp", name: "Chưa gán" };
+    switch (action) {
+      case 'view':
+        handleViewDetail(menuItem);
+        break;
+      case 'edit':
+        handleEdit(menuItem);
+        break;
+      case 'archive':
+        handleArchive(menuItem);
+        break;
+      case 'open':
+        handleOpenNow(menuItem.ExamID, menuItem.InstanceId);
+        break;
+      case 'close':
+        handleCloseNow(menuItem.ExamID, menuItem.InstanceId);
+        break;
+      case 'unarchive':
+        handleUnarchive({ ExamID: menuItem.ExamID });
+        break;
+      default:
+        break;
     }
+  };
+
+  const formatDateTime = (start, end) => {
+    if (!start) return { displayText: "Chưa đặt lịch" };
+
+    const s = new Date(start);
+    const startDate = s.toLocaleDateString("vi-VN");
+    const startTime = s.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    if (!end) {
+      return { displayText: `${startDate} ${startTime}` };
+    }
+
+    const e = new Date(end);
+    const endDate = e.toLocaleDateString("vi-VN");
+    const endTime = e.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
+
+    return { displayText: ` ${startTime} ${startDate} - ${endTime} ${endDate} ` };
+  };
+
+  const getAssignedInfo = (item) => {
+    if (item.isTemplate) return { type: "Chưa gán", name: "-" };
+    if (item.ClassName) {
+      const classCount = item.ClassName.split(", ").length;
+      return {
+        type: "Lớp",
+        name: classCount > 1 ? `${classCount} lớp` : item.ClassName
+      };
+    }
+
+    if (item.UnitId) {
+      return {
+        type: "Unit",
+        name: item.UnitName || `Unit #${item.UnitId}`
+      };
+    }
+
+    return { type: "Chưa gán", name: "-" };
   };
 
   return (
     <Box sx={{ minHeight: "100vh", bgcolor: "#f5f7fa", p: 4 }}>
-      {/* Header */}
       <Box sx={{ mb: 4 }}>
-        <Stack direction="row" justifyContent="space-between">
+        <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h4" fontWeight="700">
-              Quản lý bài tập
+              Quản lý Bài thi & Bài tập
             </Typography>
             <Typography color="text.secondary">
-              Tạo và quản lý các bài tập cho học viên
+              Tạo và quản lý các bài thi, bài tập cho học viên
             </Typography>
           </Box>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={handleOpenCreate}
+            onClick={() => navigate("/instructor/exams/create")}
             sx={{ borderRadius: 2, px: 3 }}
           >
-            Tạo bài tập
+            Tạo bài thi mới
           </Button>
         </Stack>
       </Box>
-
-      {/* Status Tabs */}
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)} variant="fullWidth">
           {STATUS_TABS.map((tab) => (
@@ -327,11 +355,7 @@ const ExamPage = () => {
                   <Chip
                     label={getStatusCount(tab.value)}
                     size="small"
-                    sx={{
-                      bgcolor: alpha(tab.color, 0.12),
-                      color: tab.color,
-                      fontWeight: "700",
-                    }}
+                    sx={{ bgcolor: alpha(tab.color, 0.12), color: tab.color, fontWeight: 700 }}
                   />
                 </Stack>
               }
@@ -339,22 +363,14 @@ const ExamPage = () => {
           ))}
         </Tabs>
       </Paper>
-
-      {/* Type Filter + Sort */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <Box sx={{ mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <Stack direction="row" spacing={1}>
           <Chip
             label={`Tất cả (${getTypeCount("All")})`}
             onClick={() => setTypeFilter("All")}
             color={typeFilter === "All" ? "primary" : "default"}
             variant={typeFilter === "All" ? "filled" : "outlined"}
-            sx={{ 
-              cursor: "pointer",
-              fontWeight: typeFilter === "All" ? 600 : 400,
-              '&:hover': { 
-                bgcolor: typeFilter === "All" ? undefined : 'action.hover' 
-              }
-            }}
+            clickable
           />
           <Chip
             icon={<AssignmentIcon />}
@@ -362,13 +378,7 @@ const ExamPage = () => {
             onClick={() => setTypeFilter("Assignment")}
             color={typeFilter === "Assignment" ? "secondary" : "default"}
             variant={typeFilter === "Assignment" ? "filled" : "outlined"}
-            sx={{ 
-              cursor: "pointer",
-              fontWeight: typeFilter === "Assignment" ? 600 : 400,
-              '&:hover': { 
-                bgcolor: typeFilter === "Assignment" ? undefined : 'action.hover' 
-              }
-            }}
+            clickable
           />
           <Chip
             icon={<SchoolIcon />}
@@ -376,163 +386,166 @@ const ExamPage = () => {
             onClick={() => setTypeFilter("Exam")}
             color={typeFilter === "Exam" ? "success" : "default"}
             variant={typeFilter === "Exam" ? "filled" : "outlined"}
-            sx={{ 
-              cursor: "pointer",
-              fontWeight: typeFilter === "Exam" ? 600 : 400,
-              '&:hover': { 
-                bgcolor: typeFilter === "Exam" ? undefined : 'action.hover' 
-              }
-            }}
+            clickable
           />
         </Stack>
 
-        {!loading && currentExams.length > 0 && (
+        {!loading && currentItems.length > 0 && (
           <Chip
             icon={<SortIcon />}
             label={sortOrder === "desc" ? "Mới nhất" : "Cũ nhất"}
             onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
+            clickable
             sx={{ cursor: "pointer" }}
           />
         )}
       </Box>
-
-      {/* Loading */}
       {loading ? (
         <Box textAlign="center" mt={10}>
           <CircularProgress size={60} />
         </Box>
-      ) : currentExams.length === 0 ? (
+      ) : currentItems.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: "center" }}>
-          <Typography>
-            {typeFilter === "All" 
-              ? "Chưa có bài tập nào" 
-              : `Chưa có ${typeFilter === "Assignment" ? "Assignment" : "Exam"} nào`
-            }
+          <Typography variant="h6" color="text.secondary">
+            {currentStatus === "Draft"
+              ? "Chưa có bài thi nháp nào"
+              : `Không có bài thi nào ở trạng thái ${STATUS_TABS.find(t => t.value === currentStatus)?.label.toLowerCase()}`}
           </Typography>
         </Paper>
       ) : (
         <Grid container spacing={3}>
-          {currentExams.map((exam) => {
-            const { date, time } = formatDateTime(exam.StartTime, exam.EndTime);
-            const assignedInfo = getAssignedInfo(exam);
-            const totalQuestions = getTotalQuestions(exam);
+          {currentItems.map((item) => {
+            const isTemplate = item.isTemplate;
+            const status = getActualStatus(item);
+            const { displayText } = formatDateTime(item.StartTime, item.EndTime); const assignedInfo = getAssignedInfo(item);
 
             return (
-              <Grid item xs={12} md={6} lg={4} key={exam.ExamID}>
+              <Grid item xs={12} md={6} lg={4} key={isTemplate ? `${item.ExamID}-template` : `${item.InstanceId}-instance`}>
                 <Card
                   sx={{
                     borderRadius: 2,
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    transition: 'all 0.3s',
-                    '&:hover': {
-                      boxShadow: 4,
-                      transform: 'translateY(-4px)'
-                    }
+                    height: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                    transition: "all 0.3s",
+                    "&:hover": { boxShadow: 6, transform: "translateY(-4px)" },
+                    borderLeft: `5px solid ${status === "Open"
+                      ? "#2196f3"
+                      : status === "Scheduled"
+                        ? "#ff9800"
+                        : status === "Closed"
+                          ? "#4caf50"
+                          : status === "Draft"
+                            ? "#9e9e9e"
+                            : "#757575"
+                      }`,
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1, pb: 1 }}>
-                    {/* ✅ Status + Type chips - Status tiếng Việt */}
+                  <CardContent sx={{ flexGrow: 1, pb: 1, position: 'relative' }}>
+                    <IconButton
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        zIndex: 1
+                      }}
+                      onClick={(e) => handleMenuOpen(e, item)}
+                    >
+                      <MoreVertIcon />
+                    </IconButton>
+
                     <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
                       <Chip
-                        label={STATUS_MAP[currentStatus] || currentStatus}
+                        label={
+                          status === "Open"
+                            ? "Đang mở"
+                            : status === "Scheduled"
+                              ? "Đã lên lịch"
+                              : status === "Closed"
+                                ? "Đã đóng"
+                                : status === "Draft"
+                                  ? "Nháp"
+                                  : "Lưu trữ"
+                        }
                         size="small"
-                        color="primary"
+                        color={
+                          status === "Open"
+                            ? "primary"
+                            : status === "Scheduled"
+                              ? "warning"
+                              : status === "Closed"
+                                ? "success"
+                                : "default"
+                        }
                         variant="outlined"
                       />
                       <Chip
-                        icon={exam.Type === "Assignment" ? <AssignmentIcon /> : <SchoolIcon />}
-                        label={exam.Type || "Exam"}
+                        icon={item.examType === "Assignment" ? <AssignmentIcon /> : <SchoolIcon />}
+                        label={item.examType || "Exam"}
                         size="small"
-                        color={exam.Type === "Assignment" ? "secondary" : "success"}
+                        color={item.examType === "Assignment" ? "secondary" : "success"}
                       />
                     </Stack>
 
-                    {/* Title */}
                     <Typography
                       variant="h6"
                       fontWeight="600"
                       sx={{
                         mb: 1.5,
-                        display: '-webkit-box',
+                        display: "-webkit-box",
                         WebkitLineClamp: 2,
-                        WebkitBoxOrient: 'vertical',
-                        overflow: 'hidden',
-                        minHeight: '3.6em'
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        minHeight: "3.6em",
                       }}
                     >
-                      {exam.Title}
+                      {item.examTitle}
                     </Typography>
 
                     <Divider sx={{ my: 1.5 }} />
 
-                    {/* Course */}
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <SchoolIcon fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {exam.CourseName || "Chưa có khóa học"}
-                      </Typography>
-                    </Stack>
+                    <Stack spacing={1.5}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <SchoolIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary">
+                          <strong>{assignedInfo.type}: {assignedInfo.name}</strong>
+                        </Typography>
+                      </Stack>
 
-                    {/* Assigned to (Class or Unit) */}
-                    <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <AssignmentIcon fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {assignedInfo.type}: <strong>{assignedInfo.name}</strong>
-                      </Typography>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <AccessTimeIcon fontSize="small" color="action" />
+                        <Typography variant="body2" color="text.secondary">
+                          {displayText}
+                        </Typography>
+                      </Stack>
                     </Stack>
-
-                    {/* Date & Time */}
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <TimeIcon fontSize="small" color="action" />
-                      <Typography variant="body2" color="text.secondary">
-                        {date} {time && `• ${time}`}
-                      </Typography>
-                    </Stack>
-
-                    {/* ✅ BỎ Total Questions */}
                   </CardContent>
 
-                  <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
-                    <Tooltip title="Xem chi tiết">
-                      <IconButton onClick={() => handleViewDetail(exam)} size="small">
-                        <ViewIcon />
-                      </IconButton>
-                    </Tooltip>
+                  {status === "Scheduled" && (
+                    <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        fullWidth
+                        onClick={() => handleOpenNow(item.ExamID, item.InstanceId)}
+                      >
+                        Mở ngay
+                      </Button>
+                    </CardActions>
+                  )}
 
-                    {exam.Status === "Pending" && (
-                      <>
-                        <Tooltip title="Chỉnh sửa">
-                          <IconButton onClick={() => handleEdit(exam)} size="small">
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-
-                        <Tooltip title="Xóa">
-                          <IconButton onClick={() => handleDelete(exam)} color="error" size="small">
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      </>
-                    )}
-
-                    {exam.Status === "Archived" ? (
-                      <Tooltip title="Khôi phục">
-                        <IconButton onClick={() => handleUnarchive(exam)} color="success" size="small">
-                          <UnarchiveIcon />
-                        </IconButton>
-                      </Tooltip>
-                    ) : (
-                      exam.Status === "Completed" && (
-                        <Tooltip title="Lưu trữ">
-                          <IconButton onClick={() => handleArchive(exam)} size="small">
-                            <ArchiveIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )
-                    )}
-                  </CardActions>
+                  {status === "Open" && (
+                    <CardActions sx={{ px: 2, pb: 2, pt: 0 }}>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        fullWidth
+                        onClick={() => handleCloseNow(item.ExamID, item.InstanceId)}
+                      >
+                        Đóng ngay
+                      </Button>
+                    </CardActions>
+                  )}
                 </Card>
               </Grid>
             );
@@ -540,20 +553,59 @@ const ExamPage = () => {
         </Grid>
       )}
 
-      {/* Delete Dialog */}
-      <Dialog open={openDeleteConfirm} onClose={() => setOpenDeleteConfirm(false)}>
-        <DialogTitle>Xác nhận xóa</DialogTitle>
-        <DialogContent>Bạn có chắc muốn xóa bài tập này?</DialogContent>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+      >
+
+        {menuItem && (menuItem.isTemplate || menuItem.Status === "Scheduled") && (
+          <MenuItem onClick={() => handleMenuAction('edit')}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Chỉnh sửa</ListItemText>
+          </MenuItem>
+        )}
+        {menuItem && (menuItem.isTemplate || menuItem.Status === "Scheduled" || menuItem.Status === "Closed") && (
+          <MenuItem onClick={() => handleMenuAction('archive')}>
+            <ListItemIcon>
+              <ArchiveIcon fontSize="small" color="warning" />
+            </ListItemIcon>
+            <ListItemText>Lưu trữ</ListItemText>
+          </MenuItem>
+        )}
+        {menuItem && menuItem.isArchived && (
+          <MenuItem onClick={() => handleMenuAction('unarchive')}>
+            <ListItemIcon>
+              <UnarchiveIcon fontSize="small" color="success" />
+            </ListItemIcon>
+            <ListItemText>Khôi phục</ListItemText>
+          </MenuItem>
+        )}
+      </Menu>
+      <Dialog open={openArchiveConfirm} onClose={() => setOpenArchiveConfirm(false)}>
+        <DialogTitle>Xác nhận lưu trữ</DialogTitle>
+        <DialogContent>
+          Bạn có chắc muốn lưu trữ bài thi này? Bạn có thể khôi phục sau trong tab "Đã lưu trữ".
+        </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenDeleteConfirm(false)}>Hủy</Button>
-          <Button onClick={confirmDeleteExam} color="error">
-            Xóa
+          <Button onClick={() => setOpenArchiveConfirm(false)}>Hủy</Button>
+          <Button onClick={confirmArchiveExam} color="warning" variant="contained">
+            Lưu trữ
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Detail Dialog */}
-      {openDetailDialog && (
+      {openDetailDialog && selectedExam && (
         <ExamDetailDialog
           open={openDetailDialog}
           onClose={() => setOpenDetailDialog(false)}
@@ -561,7 +613,7 @@ const ExamPage = () => {
         />
       )}
 
-      <ToastContainer />
+      <ToastContainer position="bottom-right" />
     </Box>
   );
 };
