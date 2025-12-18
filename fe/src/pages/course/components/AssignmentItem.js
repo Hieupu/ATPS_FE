@@ -21,12 +21,9 @@ import {
   CheckCircle,
 } from "@mui/icons-material";
 import { toast } from "react-toastify";
-
-// --- IMPORT CÁC DIALOG ---
 import AssignmentTakingDialog from "./AssignmentTakingDialog";
 import AssignmentResultDialog from "./AssignmentResultDialog";
-import AssignmentReviewDialog from "./AssignmentReviewDialog"; // <--- [1] IMPORT MỚI
-
+import AssignmentReviewDialog from "./AssignmentReviewDialog";
 import {
   getFileIcon,
   formatDate,
@@ -37,7 +34,7 @@ import { retryExamApi } from "../../../apiServices/learnerExamService";
 const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   const [openTaking, setOpenTaking] = useState(false);
   const [openResult, setOpenResult] = useState(false);
-  const [openReview, setOpenReview] = useState(false); // <--- [2] STATE MỚI
+  const [openReview, setOpenReview] = useState(false);
   const [loadingRetry, setLoadingRetry] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -53,32 +50,26 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   const isSubmitted = submission && checkIsSubmitted(submission.Status);
   const isInProgress = submission && !isSubmitted;
 
-  // --- HANDLERS ---
   const handleStartOrContinue = () => setOpenTaking(true);
-
-  // Mở dialog kết quả
   const handleViewResult = () => setOpenResult(true);
 
-  // [3] HANDLER MỚI: Xử lý khi bấm "Xem chi tiết" từ Dialog Kết Quả
   const handleViewReview = () => {
-    setOpenResult(false); // Đóng dialog kết quả (hoặc giữ nguyên tùy bạn)
-    setOpenReview(true); // Mở dialog xem lại bài
+    setOpenResult(false);
+    setOpenReview(true);
   };
 
   const handleRetry = async () => {
-    if (
-      !window.confirm(
-        "Bạn có chắc chắn muốn làm lại bài tập này? Kết quả cũ sẽ bị ghi đè."
-      )
-    )
-      return;
+    const confirmRetry = window.confirm(
+      "Bạn có chắc chắn muốn làm lại bài tập này? Kết quả cũ sẽ bị ghi đè."
+    );
+
+    if (!confirmRetry) return;
 
     try {
       setLoadingRetry(true);
       await retryExamApi(assignment.InstanceID);
-
       setOpenResult(false);
-      setOpenReview(false); // Đóng cả review nếu đang mở
+      setOpenReview(false);
       setOpenTaking(true);
     } catch (error) {
       toast.error(error.message || "Không thể làm lại bài");
@@ -232,30 +223,27 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
             loadingRetry={loadingRetry}
             onStart={handleStartOrContinue}
             onViewResult={handleViewResult}
-            onRetry={handleRetry}
+            onHandleRetry={handleRetry}
           />
         </Box>
       </ListItem>
 
-      {/* 1. DIALOG LÀM BÀI */}
       <AssignmentTakingDialog
         open={openTaking}
         onClose={handleCloseTaking}
         assignmentId={assignment.InstanceID}
       />
 
-      {/* 2. DIALOG KẾT QUẢ (Chỉ render khi đã nộp) */}
       {isSubmitted && (
         <AssignmentResultDialog
           open={openResult}
           onClose={() => setOpenResult(false)}
           assignmentId={assignment.InstanceID}
           onRetry={handleRetry}
-          onViewReview={handleViewReview} // <--- [4] TRUYỀN HÀM MỞ REVIEW VÀO ĐÂY
+          onViewReview={handleViewReview}
         />
       )}
 
-      {/* 3. DIALOG XEM LẠI BÀI (REVIEW) - [5] RENDER MỚI */}
       {isSubmitted && (
         <AssignmentReviewDialog
           open={openReview}
@@ -267,7 +255,6 @@ const AssignmentItem = ({ assignment, isEnrolled, index, onRefresh }) => {
   );
 };
 
-// Component Actions (Giữ nguyên)
 const AssignmentActions = ({
   isEnrolled,
   isOverdue,
@@ -276,7 +263,7 @@ const AssignmentActions = ({
   loadingRetry,
   onStart,
   onViewResult,
-  onRetry,
+  onHandleRetry,
 }) => {
   if (!isEnrolled) {
     return <Chip icon={<Lock />} label="Cần đăng ký" size="small" />;
@@ -290,7 +277,7 @@ const AssignmentActions = ({
             variant="outlined"
             color="secondary"
             size="small"
-            onClick={onRetry}
+            onClick={onHandleRetry}
             disabled={loadingRetry}
             startIcon={
               loadingRetry ? <CircularProgress size={16} /> : <Refresh />

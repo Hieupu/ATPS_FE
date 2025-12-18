@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Card,
-  CardContent,
   Button,
   Alert,
   Chip,
@@ -15,19 +14,51 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  IconButton,
 } from "@mui/material";
-import { EmojiEvents, Visibility, Refresh, Close } from "@mui/icons-material";
-
-// --- IMPORT CHUẨN ---
+import {
+  EmojiEvents,
+  Visibility,
+  Refresh,
+  Close,
+  AccessTime,
+  Assessment,
+  PieChart,
+} from "@mui/icons-material";
 import {
   getExamResultApi,
   getExamReviewApi,
-  retryExamApi,
   formatDurationText,
   getSubmissionStatusText,
   getSubmissionStatusColor,
 } from "../../../apiServices/learnerExamService";
-// --------------------
+
+const StatsBoxHorizontal = ({ value, label, color, bg }) => (
+  <Box
+    sx={{
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      p: 1.5,
+      bgcolor: bg,
+      borderRadius: 2,
+      border: "1px solid",
+      borderColor: "divider",
+      mb: 1,
+    }}
+  >
+    <Typography variant="caption" fontWeight={700} color="text.secondary">
+      {label}
+    </Typography>
+    <Typography
+      variant="h6"
+      fontWeight={800}
+      sx={{ color: color, lineHeight: 1 }}
+    >
+      {value}
+    </Typography>
+  </Box>
+);
 
 const AssignmentResultDialog = ({
   open,
@@ -39,272 +70,310 @@ const AssignmentResultDialog = ({
   const [result, setResult] = useState(null);
   const [reviewData, setReviewData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
-
-  const loadResult = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const data = await getExamResultApi(assignmentId);
-      setResult(data);
-
-      try {
-        const review = await getExamReviewApi(assignmentId);
-        setReviewData(review);
-      } catch (reviewErr) {
-        console.warn("Could not load review data:", reviewErr);
-      }
-    } catch (err) {
-      console.error("Load result error:", err);
-      setError(
-        err.response?.data?.message || err.message || "Không thể tải kết quả"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     if (open && assignmentId) {
-      loadResult();
+      const fetchData = async () => {
+        try {
+          setLoading(true);
+          const [res, rev] = await Promise.all([
+            getExamResultApi(assignmentId),
+            getExamReviewApi(assignmentId),
+          ]);
+          setResult(res);
+          setReviewData(rev);
+        } catch (err) {
+          setError(err.message);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchData();
     }
   }, [open, assignmentId]);
-
-  const handleRetry = async () => {
-    if (!window.confirm("Bạn muốn làm lại bài tập này?")) return;
-
-    try {
-      setRetrying(true);
-      await retryExamApi(assignmentId);
-      // Gọi callback để cha xử lý (ví dụ: mở lại Dialog làm bài)
-      if (onRetry) onRetry();
-      onClose();
-    } catch (err) {
-      alert(err.message || "Không thể reset bài thi");
-    } finally {
-      setRetrying(false);
-    }
-  };
 
   if (!open) return null;
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: 3, backgroundImage: "none" } }}
+    >
       <DialogTitle
         sx={{
+          m: 0,
+          p: 2,
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
         }}
       >
-        Kết quả bài làm
-        <Button onClick={onClose} sx={{ minWidth: "auto" }}>
+        <Typography variant="h6" fontWeight={700}>
+          Kết Quả Bài Tập
+        </Typography>
+        <IconButton onClick={onClose} size="small">
           <Close />
-        </Button>
+        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ bgcolor: "#f5f5f5", py: 3 }}>
-        {loading && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress />
-            <Typography sx={{ ml: 2 }}>Đang tải kết quả...</Typography>
+      <DialogContent dividers sx={{ p: 0, bgcolor: "#fcfcfc" }}>
+        {loading ? (
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              py: 8,
+            }}
+          >
+            <CircularProgress size={40} />
+            <Typography sx={{ mt: 2 }} color="text.secondary">
+              Đang tải kết quả...
+            </Typography>
           </Box>
-        )}
-
-        {!loading && error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
+        ) : error ? (
+          <Alert severity="error" sx={{ m: 2 }}>
             {error}
-            <Button size="small" onClick={loadResult} sx={{ ml: 2 }}>
-              Thử lại
-            </Button>
           </Alert>
-        )}
+        ) : (
+          <Grid container sx={{ minHeight: "350px" }}>
+            <Grid
+              item
+              xs={12}
+              md={5}
+              sx={{
+                p: 4,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRight: { md: "1px solid #eee" },
+                bgcolor: "white",
+              }}
+            >
+              <EmojiEvents sx={{ fontSize: 70, color: "#ffb300", mb: 2 }} />
+              <Typography
+                variant="h5"
+                fontWeight={800}
+                align="center"
+                gutterBottom
+              >
+                {result?.score >= 50 ? "Hoàn Thành!" : "Đã Kết Thúc"}
+              </Typography>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                align="center"
+                sx={{ mb: 3 }}
+              >
+                {result?.examTitle}
+              </Typography>
 
-        {!loading && !error && result && (
-          <Card>
-            <CardContent>
-              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-                <EmojiEvents sx={{ mr: 1, fontSize: 30 }} color="warning" />
-                <Typography variant="h5" fontWeight={600}>
-                  {result.examTitle || "Kết quả bài tập"}
+              <Box
+                sx={{
+                  width: "100%",
+                  textAlign: "center",
+                  p: 2,
+                  bgcolor: "#f8faff",
+                  borderRadius: 3,
+                  border: "1px dashed #d0d7de",
+                }}
+              >
+                <Typography
+                  variant="caption"
+                  fontWeight={700}
+                  color="primary"
+                  sx={{ display: "block", mb: 0.5 }}
+                >
+                  ĐIỂM SỐ CHÍNH THỨC
+                </Typography>
+                <Typography variant="h3" fontWeight={900} color="primary.main">
+                  {reviewData?.summary?.totalEarnedPoints}
+                  <Typography
+                    component="span"
+                    variant="h5"
+                    color="text.secondary"
+                  >
+                    /{reviewData?.summary?.totalMaxPoints}
+                  </Typography>
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={result?.score || 0}
+                  sx={{ height: 8, borderRadius: 4, mt: 1.5, mb: 1 }}
+                />
+                <Typography
+                  variant="caption"
+                  fontWeight={600}
+                  color="text.secondary"
+                >
+                  Chính xác {result?.score}%
                 </Typography>
               </Box>
+            </Grid>
 
-              {result.isLate && (
-                <Alert severity="warning" sx={{ mb: 2 }}>
-                  Nộp muộn - Trạng thái:{" "}
-                  {getSubmissionStatusText(result.submissionStatus)}
-                </Alert>
-              )}
+            <Grid item xs={12} md={7} sx={{ p: 4 }}>
+              <Typography
+                variant="subtitle2"
+                fontWeight={800}
+                color="text.secondary"
+                sx={{ mb: 2, display: "flex", alignItems: "center", gap: 1 }}
+              >
+                <PieChart fontSize="small" /> CHI TIẾT BÀI LÀM
+              </Typography>
 
               <Grid container spacing={2} sx={{ mb: 3 }}>
-                {/* Score Section */}
-                <Grid item xs={12} sm={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Điểm số
-                  </Typography>
-                  {reviewData && reviewData.summary ? (
-                    <>
-                      <Typography variant="h4" fontWeight={700} color="primary">
-                        {reviewData.summary.totalEarnedPoints}/
-                        {reviewData.summary.totalMaxPoints}
-                      </Typography>
-                      <LinearProgress
-                        variant="determinate"
-                        value={result.score ? parseFloat(result.score) : 0}
-                        sx={{ mt: 1, height: 8, borderRadius: 4 }}
+                <Grid item xs={6}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: "white",
+                      borderRadius: 2,
+                      border: "1px solid #eee",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.5,
+                      }}
+                    >
+                      <AccessTime
+                        sx={{ fontSize: 18, color: "text.secondary" }}
                       />
-                      <Typography variant="caption" color="text.secondary">
-                        {result.score}%
+                      <Typography
+                        variant="caption"
+                        fontWeight={700}
+                        color="text.secondary"
+                      >
+                        THỜI GIAN
                       </Typography>
-                    </>
-                  ) : (
-                    <Typography variant="h4" fontWeight={700}>
-                      {result.score ? `${result.score}%` : "—"}
+                    </Box>
+                    <Typography variant="body1" fontWeight={800}>
+                      {formatDurationText(result?.durationSec)}
                     </Typography>
-                  )}
+                  </Box>
                 </Grid>
-
-                {/* Duration Section */}
-                {result.durationSec !== undefined && (
-                  <Grid item xs={12} sm={4}>
-                    <Typography variant="subtitle2" color="text.secondary">
-                      Thời gian làm bài
+                <Grid item xs={6}>
+                  <Box
+                    sx={{
+                      p: 2,
+                      bgcolor: "white",
+                      borderRadius: 2,
+                      border: "1px solid #eee",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        mb: 0.5,
+                      }}
+                    >
+                      <Assessment
+                        sx={{ fontSize: 18, color: "text.secondary" }}
+                      />
+                      <Typography
+                        variant="caption"
+                        fontWeight={700}
+                        color="text.secondary"
+                      >
+                        XẾP LOẠI
+                      </Typography>
+                    </Box>
+                    <Typography
+                      variant="body1"
+                      fontWeight={800}
+                      color={
+                        result?.score >= 50 ? "success.main" : "warning.main"
+                      }
+                    >
+                      {result?.score >= 80
+                        ? "Giỏi"
+                        : result?.score >= 50
+                        ? "Khá"
+                        : "Trung bình"}
                     </Typography>
-                    <Typography variant="h5">
-                      {formatDurationText(result.durationSec)}
-                    </Typography>
-                  </Grid>
-                )}
-
-                {/* Status Section */}
-                <Grid item xs={12} sm={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Trạng thái
-                  </Typography>
-                  <Chip
-                    label={getSubmissionStatusText(
-                      result.submissionStatus || "submitted"
-                    )}
-                    color={getSubmissionStatusColor(
-                      result.submissionStatus || "submitted"
-                    )}
-                    sx={{ mt: 1, fontWeight: "bold" }}
-                  />
+                  </Box>
                 </Grid>
               </Grid>
 
-              {reviewData && reviewData.summary && (
-                <>
-                  <Divider sx={{ my: 2 }} />
-                  <Typography
-                    variant="subtitle1"
-                    fontWeight={600}
-                    sx={{ mb: 2 }}
-                  >
-                    Thống kê chi tiết
-                  </Typography>
-
-                  <Grid container spacing={2} sx={{ mb: 2 }}>
-                    <StatsBox
-                      value={reviewData.summary.totalQuestions}
-                      label="Tổng câu hỏi"
-                      color="primary"
-                      bg="#e3f2fd"
-                    />
-                    <StatsBox
-                      value={reviewData.summary.correctAnswers}
-                      label="Câu đúng"
-                      color="success.main"
-                      bg="#e8f5e9"
-                    />
-                    <StatsBox
-                      value={
-                        reviewData.summary.totalQuestions -
-                        reviewData.summary.correctAnswers
-                      }
-                      label="Câu sai"
-                      color="error.main"
-                      bg="#ffebee"
-                    />
-                    <StatsBox
-                      value={`${reviewData.summary.accuracy}%`}
-                      label="Độ chính xác"
-                      color="warning.main"
-                      bg="#fff3e0"
-                    />
-                  </Grid>
-                </>
-              )}
-
-              {result.submissionDate && (
-                <Typography
-                  variant="body2"
-                  color="text.secondary"
-                  sx={{ mt: 2, textAlign: "right" }}
-                >
-                  Nộp lúc:{" "}
-                  {new Date(result.submissionDate).toLocaleString("vi-VN")}
-                </Typography>
-              )}
-            </CardContent>
-          </Card>
+              <Box sx={{ mt: 2 }}>
+                <StatsBoxHorizontal
+                  value={reviewData?.summary?.totalQuestions}
+                  label="TỔNG CÂU HỎI"
+                  color="#1976d2"
+                  bg="#eff6ff"
+                />
+                <StatsBoxHorizontal
+                  value={reviewData?.summary?.correctAnswers}
+                  label="SỐ CÂU ĐÚNG"
+                  color="#16a34a"
+                  bg="#f0fdf4"
+                />
+                <StatsBoxHorizontal
+                  value={
+                    reviewData?.summary?.totalQuestions -
+                    reviewData?.summary?.correctAnswers
+                  }
+                  label="SỐ CÂU SAI"
+                  color="#dc2626"
+                  bg="#fef2f2"
+                />
+                <StatsBoxHorizontal
+                  value={getSubmissionStatusText(result?.submissionStatus)}
+                  label="TRẠNG THÁI"
+                  color="#4b5563"
+                  bg="#f9fafb"
+                />
+              </Box>
+            </Grid>
+          </Grid>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 2 }}>
-        {result && (
-          <>
-            {result.remainingAttempt === undefined ||
-            result.remainingAttempt > 0 ? (
-              <Button
-                variant="contained"
-                color="secondary"
-                startIcon={<Refresh />}
-                onClick={handleRetry}
-                disabled={retrying}
-              >
-                Làm lại{" "}
-                {result.remainingAttempt !== undefined
-                  ? `(${result.remainingAttempt} lượt)`
-                  : ""}
-              </Button>
-            ) : (
-              <Button variant="outlined" color="error" disabled>
-                Hết lượt làm lại
-              </Button>
-            )}
-
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<Visibility />}
-              onClick={() => onViewReview && onViewReview(assignmentId)}
-            >
-              Xem chi tiết bài làm
-            </Button>
-          </>
-        )}
-        <Button onClick={onClose}>Đóng</Button>
+      <DialogActions sx={{ p: 2.5, px: 4, gap: 2, bgcolor: "white" }}>
+        <Button
+          variant="outlined"
+          color="inherit"
+          startIcon={<Visibility />}
+          onClick={() => onViewReview(assignmentId)}
+          sx={{
+            flex: 1,
+            fontWeight: 700,
+            borderRadius: 2,
+            textTransform: "none",
+            py: 1,
+          }}
+        >
+          Xem lại bài
+        </Button>
+        <Button
+          variant="contained"
+          color="primary"
+          startIcon={<Refresh />}
+          onClick={onRetry}
+          sx={{
+            flex: 1,
+            fontWeight: 700,
+            borderRadius: 2,
+            textTransform: "none",
+            py: 1,
+            boxShadow: "none",
+          }}
+        >
+          Làm lại bài
+        </Button>
       </DialogActions>
     </Dialog>
   );
 };
-
-// Component con hiển thị hộp thống kê nhỏ
-const StatsBox = ({ value, label, color, bg }) => (
-  <Grid item xs={6} sm={3}>
-    <Box sx={{ textAlign: "center", p: 2, bgcolor: bg, borderRadius: 2 }}>
-      <Typography variant="h5" fontWeight={700} sx={{ color: color }}>
-        {value}
-      </Typography>
-      <Typography variant="body2" color="text.secondary">
-        {label}
-      </Typography>
-    </Box>
-  </Grid>
-);
 
 export default AssignmentResultDialog;

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -11,38 +11,33 @@ import {
   MenuItem,
   Typography,
   CircularProgress,
+  Pagination,
 } from "@mui/material";
 import { Search, People, EditCalendar, Visibility } from "@mui/icons-material";
 import ClassCardItem from "./ClassCardItem";
 
-// --- HÀM HELPER SẮP XẾP (Đưa ra ngoài component để tái sử dụng) ---
 const sortClassesForInstructor = (classList) => {
   const statusPriority = {
-    ONGOING: 1, // Quan trọng nhất: Đang dạy
-    ACTIVE: 2, // Cần chuẩn bị: Đã mở/Đang tuyển
-    APPROVED: 3, // Sắp tới: Đã phân công
-    CLOSE: 4, // Lịch sử
-    CANCEL: 5, // Đã hủy
+    ONGOING: 1,
+    ACTIVE: 2,
+    APPROVED: 3,
+    CLOSE: 4,
+    CANCEL: 5,
   };
 
   return [...classList].sort((a, b) => {
-    // 1. So sánh theo Trạng thái (Priority)
     const priorityA = statusPriority[a.classStatus] || 99;
     const priorityB = statusPriority[b.classStatus] || 99;
     if (priorityA !== priorityB) return priorityA - priorityB;
 
-    // 2. So sánh phụ
-    // Nếu là lớp tương lai/đang học -> Lớp nào gần lịch học nhất lên đầu
     if (["ONGOING", "ACTIVE", "APPROVED"].includes(a.classStatus)) {
       const dateA = new Date(a.nextSessionDate || a.startDate || 0).getTime();
       const dateB = new Date(b.nextSessionDate || b.startDate || 0).getTime();
-      // Tránh lỗi NaN nếu date null, đẩy date null xuống cuối
       if (!dateA) return 1;
       if (!dateB) return -1;
       return dateA - dateB;
     }
 
-    // Nếu là lớp đã đóng -> Mới kết thúc lên đầu
     const endA = new Date(a.endDate || 0).getTime();
     const endB = new Date(b.endDate || 0).getTime();
     return endB - endA;
@@ -60,8 +55,9 @@ export default function ClassesLayout({
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedClass, setSelectedClass] = useState(null);
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 8;
 
-  // --- MENU ACTIONS ---
   const handleMenuOpen = (event, cls) => {
     setAnchorEl(event.currentTarget);
     setSelectedClass(cls);
@@ -99,28 +95,20 @@ export default function ClassesLayout({
     handleMenuClose();
   };
 
-  // --- LOGIC LỌC & SẮP XẾP ---
-
-  // 1. Định nghĩa nhóm trạng thái cho Tab
   const isOngoing = (status) => status === "ONGOING";
   const isUpcoming = (status) =>
     ["APPROVED", "ACTIVE", "PENDING", "WAITING"].includes(status);
   const isCompleted = (status) => ["CLOSE", "CANCEL"].includes(status);
 
-  // 2. Tính toán số lượng (Counts)
-  const allCount = classes.length;
   const ongoingCount = classes.filter((c) => isOngoing(c.classStatus)).length;
   const upcomingCount = classes.filter((c) => isUpcoming(c.classStatus)).length;
   const completedCount = classes.filter((c) =>
     isCompleted(c.classStatus)
   ).length;
 
-  // 3. Xử lý Filter chính
-  // Dùng useMemo để tối ưu hiệu năng khi render lại
-  const processedClasses = useMemo(() => {
+  const filteredAndSortedClasses = useMemo(() => {
     let filtered = [...classes];
 
-    // A. Lọc theo Tab
     if (tabValue === 1) {
       filtered = filtered.filter((c) => isOngoing(c.classStatus));
     } else if (tabValue === 2) {
@@ -129,24 +117,37 @@ export default function ClassesLayout({
       filtered = filtered.filter((c) => isCompleted(c.classStatus));
     }
 
-    // B. Lọc theo Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       filtered = filtered.filter(
         (c) =>
           (c.className || "").toLowerCase().includes(q) ||
-          (c.courseTitle || "").toLowerCase().includes(q) || // Lưu ý: ClassCardItem dùng courseTitle
+          (c.courseTitle || "").toLowerCase().includes(q) ||
           (c.classCode || "").toLowerCase().includes(q)
       );
     }
 
-    // C. Sắp xếp kết quả cuối cùng
     return sortClassesForInstructor(filtered);
   }, [classes, tabValue, searchQuery]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [tabValue, searchQuery]);
+
+  const pageCount = Math.ceil(filteredAndSortedClasses.length / itemsPerPage);
+  const currentItems = useMemo(() => {
+    const begin = (page - 1) * itemsPerPage;
+    const end = begin + itemsPerPage;
+    return filteredAndSortedClasses.slice(begin, end);
+  }, [filteredAndSortedClasses, page]);
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   return (
     <Box sx={{ p: { xs: 2, md: 3 } }}>
-      {/* Header */}
       <Box sx={{ mb: 4 }}>
         <Typography variant="h4" fontWeight={700} gutterBottom>
           Lớp học của tôi
@@ -156,7 +157,6 @@ export default function ClassesLayout({
         </Typography>
       </Box>
 
-      {/* Search Bar */}
       <Box sx={{ mb: 3 }}>
         <TextField
           fullWidth
@@ -184,7 +184,6 @@ export default function ClassesLayout({
         />
       </Box>
 
-      {/* Tabs Navigation */}
       <Tabs
         value={tabValue}
         onChange={(_, v) => setTabValue(v)}
@@ -209,58 +208,79 @@ export default function ClassesLayout({
           },
         }}
       >
-        <Tab label={`Tất cả (${allCount})`} />
+        <Tab label={`Tất cả (${classes.length})`} />
         <Tab label={`Đang giảng dạy (${ongoingCount})`} />
         <Tab label={`Sắp khai giảng (${upcomingCount})`} />
         <Tab label={`Lịch sử / Đã hủy (${completedCount})`} />
       </Tabs>
 
-      {/* Content Area */}
       {loading ? (
         <Box sx={{ display: "flex", justifyContent: "center", py: 10 }}>
           <CircularProgress sx={{ color: "#6366f1" }} />
         </Box>
       ) : (
-        <Grid container spacing={3}>
-          {processedClasses.length === 0 ? (
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  textAlign: "center",
-                  py: 10,
-                  bgcolor: "#f8fafc",
-                  borderRadius: 4,
-                  border: "1px dashed #cbd5e1",
-                }}
-              >
-                <Typography variant="h6" color="text.secondary" gutterBottom>
-                  Không tìm thấy lớp học nào
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {searchQuery
-                    ? `Không có kết quả nào khớp với từ khóa "${searchQuery}"`
-                    : "Hiện tại bạn chưa có lớp học nào ở trạng thái này."}
-                </Typography>
-              </Box>
-            </Grid>
-          ) : (
-            processedClasses.map((cls) => (
-              <Grid
-                item
-                xs={12}
-                sm={6}
-                md={4}
-                lg={3}
-                key={cls.classId || cls.id}
-              >
-                <ClassCardItem cls={cls} onMenuOpen={handleMenuOpen} />
+        <>
+          <Grid container spacing={3}>
+            {currentItems.length === 0 ? (
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    textAlign: "center",
+                    py: 10,
+                    bgcolor: "#f8fafc",
+                    borderRadius: 4,
+                    border: "1px dashed #cbd5e1",
+                  }}
+                >
+                  <Typography variant="h6" color="text.secondary" gutterBottom>
+                    Không tìm thấy lớp học nào
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {searchQuery
+                      ? `Không có kết quả nào khớp với từ khóa "${searchQuery}"`
+                      : "Hiện tại bạn chưa có lớp học nào ở trạng thái này."}
+                  </Typography>
+                </Box>
               </Grid>
-            ))
+            ) : (
+              currentItems.map((cls) => (
+                <Grid
+                  item
+                  xs={12}
+                  sm={6}
+                  md={4}
+                  lg={3}
+                  key={cls.classId || cls.id}
+                >
+                  <ClassCardItem cls={cls} onMenuOpen={handleMenuOpen} />
+                </Grid>
+              ))
+            )}
+          </Grid>
+
+          {pageCount > 1 && (
+            <Box sx={{ mt: 6, display: "flex", justifyContent: "center" }}>
+              <Pagination
+                count={pageCount}
+                page={page}
+                onChange={handlePageChange}
+                color="primary"
+                sx={{
+                  "& .MuiPaginationItem-root": {
+                    fontWeight: 600,
+                    "&.Mui-selected": {
+                      backgroundColor: "#6366f1",
+                      color: "#fff",
+                      "&:hover": { backgroundColor: "#4f46e5" },
+                    },
+                  },
+                }}
+              />
+            </Box>
           )}
-        </Grid>
+        </>
       )}
 
-      {/* Menu Actions Popup */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
