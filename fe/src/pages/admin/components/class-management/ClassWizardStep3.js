@@ -481,7 +481,8 @@ const ClassWizardStep3 = ({
             </span>
           )}
           {/* Button để kích hoạt tính năng tìm ngày bắt đầu khác */}
-          {!readonly && (
+          {/* Chế độ tìm kiếm ngày bắt đầu CHỈ dùng trong tạo lớp (không dùng khi chỉnh sửa) */}
+          {!readonly && !isEditMode && (
             <div style={{ marginTop: "12px" }}>
               <button
                 type="button"
@@ -554,8 +555,8 @@ const ClassWizardStep3 = ({
           )}
         </div>
 
-        {/* Tính năng tìm ngày bắt đầu khác */}
-        {alternativeStartDateSearch.showResults && (
+        {/* Tính năng tìm ngày bắt đầu khác (CHỈ dùng trong tạo lớp, không dùng khi chỉnh sửa) */}
+        {!isEditMode && alternativeStartDateSearch.showResults && (
           <div
             style={{
               marginBottom: "20px",
@@ -566,7 +567,7 @@ const ClassWizardStep3 = ({
             }}
           >
             <div style={{ fontWeight: 600, marginBottom: "12px" }}>
-              🔍 Chế độ tìm kiếm ngày bắt đầu
+              Chế độ tìm kiếm ngày bắt đầu
             </div>
             <div
               style={{

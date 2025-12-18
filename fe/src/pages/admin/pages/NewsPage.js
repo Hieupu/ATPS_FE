@@ -27,17 +27,18 @@ import {
   Tooltip,
   Avatar,
   Stack,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   Add,
   Search,
-  Edit,
-  Delete,
   CheckCircle,
   Cancel,
   HourglassEmpty,
   Article,
   UploadFile,
+  MoreVert,
 } from "@mui/icons-material";
 import newsService from "../../../apiServices/newsService";
 import { cloudinaryUpload } from "../../../utils/cloudinaryUpload";
@@ -87,6 +88,14 @@ export default function NewsPage() {
     StaffID: 1, // TODO: Lấy từ auth context
   });
 
+  // Menu & dialog xem chi tiết
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedNewsForView, setSelectedNewsForView] = useState(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [selectedNewsToReject, setSelectedNewsToReject] = useState(null);
+
   useEffect(() => {
     loadNews();
   }, []);
@@ -126,6 +135,39 @@ export default function NewsPage() {
     setSearchInput("");
     setPage(1);
     setSearchQuery("");
+  };
+
+  const handleMenuOpen = (event, newsItem) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedNewsForView(newsItem);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleOpenViewDialog = () => {
+    setViewDialogOpen(true);
+    handleMenuClose();
+  };
+
+  const handleCloseViewDialog = () => {
+    setViewDialogOpen(false);
+    setSelectedNewsForView(null);
+  };
+
+  const handleOpenRejectDialog = () => {
+    if (selectedNewsForView) {
+      setSelectedNewsToReject(selectedNewsForView);
+      setRejectReason("");
+      setRejectDialogOpen(true);
+    }
+  };
+
+  const handleCloseRejectDialog = () => {
+    setRejectDialogOpen(false);
+    setSelectedNewsToReject(null);
+    setRejectReason("");
   };
 
   const handleTriggerImageUpload = () => {
@@ -240,9 +282,9 @@ export default function NewsPage() {
     }
   };
 
-  const handleReject = async (newsItem) => {
+  const handleReject = async (newsItem, reason) => {
     try {
-      await newsService.rejectNews(newsItem.NewsID);
+      await newsService.rejectNews(newsItem.NewsID, reason);
       loadNews();
     } catch (error) {
       setError(error.message || "Không thể từ chối tin tức");
@@ -372,27 +414,9 @@ export default function NewsPage() {
               Quản lý Tin tức
             </Typography>
             <Typography variant="body2" sx={{ color: "#64748b" }}>
-              Quản lý và cập nhật nội dung hiển thị công khai trên website
+              Xem, duyệt hoặc từ chối tin tức do staff gửi lên
             </Typography>
           </Box>
-          <Button
-            variant="contained"
-            startIcon={<Add />}
-            onClick={() => handleOpenDialog()}
-            sx={{
-              backgroundColor: "#667eea",
-              textTransform: "none",
-              px: 3,
-              py: 1.5,
-              borderRadius: 2,
-              fontWeight: 600,
-              "&:hover": {
-                backgroundColor: "#5568d3",
-              },
-            }}
-          >
-            Tạo tin tức mới
-          </Button>
         </Box>
 
         {/* Search */}
@@ -617,54 +641,12 @@ export default function NewsPage() {
                         </Typography>
                       </TableCell>
                       <TableCell align="right">
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          justifyContent="flex-end"
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleMenuOpen(e, newsItem)}
                         >
-                          <Tooltip title="Chỉnh sửa">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenDialog(newsItem)}
-                            >
-                              <Edit fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
-                          {newsItem.Status?.toLowerCase() === "pending" && (
-                            <>
-                              <Tooltip title="Duyệt">
-                                <IconButton
-                                  size="small"
-                                  color="success"
-                                  onClick={() => handleApprove(newsItem)}
-                                >
-                                  <CheckCircle fontSize="inherit" />
-                                </IconButton>
-                              </Tooltip>
-                              <Tooltip title="Từ chối">
-                                <IconButton
-                                  size="small"
-                                  color="error"
-                                  onClick={() => handleReject(newsItem)}
-                                >
-                                  <Cancel fontSize="inherit" />
-                                </IconButton>
-                              </Tooltip>
-                            </>
-                          )}
-                          <Tooltip title="Xóa">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => {
-                                setSelectedNews(newsItem);
-                                setOpenDeleteDialog(true);
-                              }}
-                            >
-                              <Delete fontSize="inherit" />
-                            </IconButton>
-                          </Tooltip>
-                        </Stack>
+                          <MoreVert fontSize="small" />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   );
@@ -690,10 +672,28 @@ export default function NewsPage() {
         )}
       </Card>
 
-      {/* Create/Edit News Dialog */}
+      {/* Menu hành động: chỉ có "Xem" */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleMenuClose}
+        PaperProps={{
+          sx: {
+            borderRadius: 2,
+            boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+            minWidth: 180,
+          },
+        }}
+      >
+        {selectedNewsForView && (
+          <MenuItem onClick={handleOpenViewDialog}>Xem chi tiết</MenuItem>
+        )}
+      </Menu>
+
+      {/* Dialog xem chi tiết + duyệt / từ chối */}
       <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
+        open={viewDialogOpen && Boolean(selectedNewsForView)}
+        onClose={handleCloseViewDialog}
         maxWidth="md"
         fullWidth
         PaperProps={{
@@ -701,166 +701,153 @@ export default function NewsPage() {
         }}
       >
         <DialogTitle sx={{ fontWeight: 700 }}>
-          {selectedNews ? "Chỉnh sửa tin tức" : "Tạo tin tức mới"}
+          {selectedNewsForView?.Title || "Chi tiết tin tức"}
         </DialogTitle>
-        <DialogContent>
-          <Box sx={{ pt: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-            <TextField
-              label="Tiêu đề"
-              fullWidth
-              required
-              value={formData.Title}
-              onChange={(e) =>
-                setFormData({ ...formData, Title: e.target.value })
-              }
-              placeholder="Nhập tiêu đề tin tức"
-            />
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              ref={fileInputRef}
-              onChange={handleImageFileChange}
-            />
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1}>
-              <Button
-                variant="outlined"
-                startIcon={<UploadFile />}
-                onClick={handleTriggerImageUpload}
-                disabled={uploadingImage}
-                sx={{ textTransform: "none" }}
-              >
-                {uploadingImage ? "Đang tải..." : "Chọn ảnh"}
-              </Button>
-              {formData.Image && (
-                <Button
-                  variant="text"
-                  color="error"
-                  onClick={() => setFormData({ ...formData, Image: "" })}
-                  sx={{ textTransform: "none" }}
-                >
-                  Xóa ảnh
-                </Button>
+        <DialogContent dividers>
+          {selectedNewsForView && (
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {selectedNewsForView.Image && (
+                <Box
+                  component="img"
+                  src={buildImageUrl(selectedNewsForView.Image)}
+                  alt={selectedNewsForView.Title}
+                  sx={{
+                    width: "100%",
+                    maxHeight: 260,
+                    objectFit: "cover",
+                    borderRadius: 2,
+                    mb: 2,
+                  }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               )}
-            </Stack>
-            {imageUploadError && (
-              <Typography variant="caption" color="error">
-                {imageUploadError}
+              <Typography variant="subtitle2" sx={{ color: "#64748b" }}>
+                Tác giả: <strong>{selectedNewsForView.StaffName || "—"}</strong>
               </Typography>
-            )}
-            {formData.Image && (
-              <Box
-                component="img"
-                src={buildImageUrl(formData.Image)}
-                alt="News preview"
-                sx={{
-                  width: "100%",
-                  maxHeight: 220,
-                  objectFit: "cover",
-                  borderRadius: 2,
-                  border: "1px solid #e2e8f0",
-                }}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-              />
-            )}
-            <Box>
-              <Typography
-                variant="body2"
-                sx={{ mb: 1, fontWeight: 600, color: "#374151" }}
-              >
-                Nội dung <span style={{ color: "#ef4444" }}>*</span>
+              <Typography variant="subtitle2" sx={{ color: "#64748b" }}>
+                Ngày đăng:{" "}
+                <strong>
+                  {selectedNewsForView.PostedDate
+                    ? new Date(selectedNewsForView.PostedDate).toLocaleString(
+                        "vi-VN"
+                      )
+                    : "—"}
+                </strong>
               </Typography>
-              <TextareaAutosize
-                minRows={8}
-                placeholder="Nhập nội dung tin tức..."
-                value={formData.Content}
-                onChange={(e) =>
-                  setFormData({ ...formData, Content: e.target.value })
-                }
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "2px solid #e2e8f0",
-                  borderRadius: "8px",
-                  fontSize: "14px",
-                  fontFamily: "inherit",
-                  resize: "vertical",
-                }}
-              />
+              <Box sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ whiteSpace: "pre-wrap", lineHeight: 1.6 }}
+                >
+                  {selectedNewsForView.Content}
+                </Typography>
+              </Box>
             </Box>
-            <TextField
-              label="Trạng thái"
-              select
-              fullWidth
-              SelectProps={{
-                native: true,
-              }}
-              value={formData.Status}
-              onChange={(e) =>
-                setFormData({ ...formData, Status: e.target.value })
-              }
-            >
-              <option value="pending">Chờ duyệt</option>
-              <option value="published">Đã xuất bản</option>
-              <option value="rejected">Đã từ chối</option>
-            </TextField>
-          </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2.5 }}>
           <Button
-            onClick={handleCloseDialog}
+            onClick={handleCloseViewDialog}
             sx={{ textTransform: "none", color: "#64748b" }}
           >
-            Hủy
+            Đóng
           </Button>
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            sx={{
-              textTransform: "none",
-              backgroundColor: "#667eea",
-              "&:hover": { backgroundColor: "#5568d3" },
-            }}
-          >
-            {selectedNews ? "Cập nhật" : "Tạo"}
-          </Button>
+          {selectedNewsForView &&
+            selectedNewsForView.Status?.toLowerCase() === "pending" && (
+              <>
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleOpenRejectDialog}
+                  sx={{ textTransform: "none" }}
+                >
+                  Từ chối
+                </Button>
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={async () => {
+                    await handleApprove(selectedNewsForView);
+                    handleCloseViewDialog();
+                  }}
+                  sx={{ textTransform: "none" }}
+                >
+                  Duyệt
+                </Button>
+              </>
+            )}
         </DialogActions>
       </Dialog>
 
-      {/* Delete Confirmation Dialog */}
+      {/* Dialog nhập lý do từ chối tin tức */}
       <Dialog
-        open={openDeleteDialog}
-        onClose={() => setOpenDeleteDialog(false)}
-        PaperProps={{
-          sx: { borderRadius: 3 },
-        }}
+        open={rejectDialogOpen}
+        onClose={handleCloseRejectDialog}
+        maxWidth="sm"
+        fullWidth
       >
-        <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận xóa</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Bạn có chắc chắn muốn xóa tin tức "{selectedNews?.Title}"? Hành động
-            này không thể hoàn tác.
-          </Typography>
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
+          Từ chối tin tức
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {selectedNewsToReject && (
+            <Box>
+              <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
+                Vui lòng nhập lý do từ chối:
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Nội dung chưa phù hợp với định hướng truyền thông, vui lòng chỉnh sửa lại."
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+            </Box>
+          )}
         </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
           <Button
-            onClick={() => setOpenDeleteDialog(false)}
-            sx={{ textTransform: "none", color: "#64748b" }}
+            onClick={handleCloseRejectDialog}
+            sx={{
+              textTransform: "none",
+              color: "#64748b",
+            }}
           >
             Hủy
           </Button>
           <Button
+            onClick={async () => {
+              const trimmed = rejectReason.trim();
+              if (!trimmed) {
+                alert("Vui lòng nhập lý do từ chối.");
+                return;
+              }
+              if (!selectedNewsToReject) {
+                handleCloseRejectDialog();
+                return;
+              }
+              await handleReject(selectedNewsToReject, trimmed);
+              handleCloseRejectDialog();
+              handleCloseViewDialog();
+            }}
             variant="contained"
-            onClick={handleDelete}
+            color="error"
             sx={{
               textTransform: "none",
-              backgroundColor: "#ef4444",
-              "&:hover": { backgroundColor: "#dc2626" },
             }}
+            disabled={!rejectReason || rejectReason.trim() === ""}
           >
-            Xóa
+            Xác nhận từ chối
           </Button>
         </DialogActions>
       </Dialog>

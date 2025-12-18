@@ -21,9 +21,7 @@ import {
   Dashboard,
   Settings,
   School,
-  BarChart,
-  Group,
-  AdminPanelSettings,
+  BusinessCenter,
 } from "@mui/icons-material";
 import { useAuth } from "../../../contexts/AuthContext";
 import {
@@ -32,7 +30,7 @@ import {
   markNotificationReadApi,
 } from "../../../apiServices/notificationService";
 
-export function HeaderAdmin() {
+export function HeaderStaff() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -101,7 +99,7 @@ export function HeaderAdmin() {
               backdropFilter: "blur(10px)",
             }}
           >
-            <AdminPanelSettings sx={{ fontSize: 28, color: "#1d4ed8" }} />
+            <BusinessCenter sx={{ fontSize: 28, color: "#059669" }} />
           </Box>
           <Box>
             <Typography
@@ -113,7 +111,7 @@ export function HeaderAdmin() {
                 lineHeight: 1.2,
               }}
             >
-              {getGreeting()}, {user?.username || user?.Username || "Admin"}! 👋
+              {getGreeting()}, {user?.username || user?.Username || "Staff"}! 👋
             </Typography>
             <Typography
               variant="body2"
@@ -123,16 +121,15 @@ export function HeaderAdmin() {
                 fontWeight: 500,
               }}
             >
-              Quản lý hệ thống đào tạo ATPS
+              Quản lý lớp học và hỗ trợ học viên
             </Typography>
           </Box>
         </Box>
 
         {/* Right side - Actions */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
-          {/* Quick Actions */}
+        <Box sx={{ display: "flex", alignItems: "center" }}>
           <Button
-            startIcon={<Dashboard sx={{ color: "#4b5563" }} />}
+            startIcon={<School sx={{ color: "#4b5563" }} />}
             sx={{
               color: "#374151",
               fontWeight: 600,
@@ -140,29 +137,12 @@ export function HeaderAdmin() {
               fontSize: "0.9rem",
               "&:hover": {
                 background: "#f3f4f6",
-                color: "#1d4ed8",
+                color: "#059669",
               },
             }}
-            onClick={() => navigate("/admin/dashboard")}
+            onClick={() => navigate("/staff/classes")}
           >
-            Dashboard
-          </Button>
-
-          <Button
-            startIcon={<BarChart sx={{ color: "#4b5563" }} />}
-            sx={{
-              color: "#374151",
-              fontWeight: 600,
-              textTransform: "none",
-              fontSize: "0.9rem",
-              "&:hover": {
-                background: "#f3f4f6",
-                color: "#1d4ed8",
-              },
-            }}
-            onClick={() => navigate("/admin/statistics/revenue")}
-          >
-            Thống kê
+            Lớp học
           </Button>
 
           {/* Notifications */}
@@ -287,7 +267,7 @@ export function HeaderAdmin() {
               sx={{
                 width: 48,
                 height: 48,
-                background: "linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)",
+                background: "linear-gradient(45deg, #059669 30%, #10b981 90%)",
                 border: "2px solid #e5e7eb",
                 boxShadow: "0 4px 10px rgba(0, 0, 0, 0.2)",
                 fontWeight: 700,
@@ -296,7 +276,7 @@ export function HeaderAdmin() {
                 transition: "all 0.3s ease-in-out",
                 "&:hover": {
                   background:
-                    "linear-gradient(45deg, #1976D2 30%, #42A5F5 90%)",
+                    "linear-gradient(45deg, #047857 30%, #059669 90%)",
                   transform: "scale(1.05)",
                   boxShadow: "0 6px 15px rgba(0, 0, 0, 0.3)",
                 },
@@ -304,7 +284,7 @@ export function HeaderAdmin() {
             >
               {user?.username?.charAt(0).toUpperCase() ||
                 user?.Username?.charAt(0).toUpperCase() ||
-                "A"}
+                "S"}
             </Avatar>
           </IconButton>
 
@@ -328,10 +308,10 @@ export function HeaderAdmin() {
             {/* User Info */}
             <Box sx={{ px: 2, py: 1.5, borderBottom: "1px solid #e5e7eb" }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {user?.username || user?.Username || "Admin"}
+                {user?.username || user?.Username || "Staff"}
               </Typography>
               <Typography variant="caption" sx={{ color: "#64748b" }}>
-                {user?.email || user?.Email || "admin@atps.edu"}
+                {user?.email || user?.Email || "staff@atps.edu"}
               </Typography>
             </Box>
 
@@ -345,70 +325,31 @@ export function HeaderAdmin() {
                 fontSize: "1rem",
                 color: "#374151",
                 "&:hover": {
-                  background: "#f0f9ff",
-                  color: "#1e40af",
+                  background: "#f0fdf4",
+                  color: "#059669",
                 },
               }}
             >
               <Person sx={{ mr: 1, color: "#475569" }} />
               Hồ sơ cá nhân
             </MenuItem>
-
             <MenuItem
               onClick={() => {
                 handleMenuClose();
-                navigate("/admin/dashboard");
+                navigate("/staff/classes");
               }}
               sx={{
                 py: 1.5,
                 fontSize: "1rem",
                 color: "#374151",
                 "&:hover": {
-                  background: "#f0f9ff",
-                  color: "#1e40af",
-                },
-              }}
-            >
-              <Dashboard sx={{ mr: 1, color: "#475569" }} />
-              Dashboard
-            </MenuItem>
-
-            <MenuItem
-              onClick={() => {
-                handleMenuClose();
-                navigate("/admin/classes");
-              }}
-              sx={{
-                py: 1.5,
-                fontSize: "1rem",
-                color: "#374151",
-                "&:hover": {
-                  background: "#f0f9ff",
-                  color: "#1e40af",
+                  background: "#f0fdf4",
+                  color: "#059669",
                 },
               }}
             >
               <School sx={{ mr: 1, color: "#6b7280" }} />
               Quản lý lớp học
-            </MenuItem>
-
-            <MenuItem
-              onClick={() => {
-                handleMenuClose();
-                navigate("/admin/settings");
-              }}
-              sx={{
-                py: 1.5,
-                fontSize: "1rem",
-                color: "#374151",
-                "&:hover": {
-                  background: "#f0f9ff",
-                  color: "#1e40af",
-                },
-              }}
-            >
-              <Settings sx={{ mr: 1, color: "#6b7280" }} />
-              Cài đặt
             </MenuItem>
 
             <Divider sx={{ my: 0.5 }} />

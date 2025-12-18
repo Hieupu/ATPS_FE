@@ -10,36 +10,55 @@ import {
   MenuItem,
   Typography,
   Box,
+  CircularProgress,
 } from "@mui/material";
 import {
   MoreVert,
   Visibility,
-  Delete,
   Person,
   Email,
   Phone,
   CalendarToday,
+  SwapHoriz,
 } from "@mui/icons-material";
 import "./StudentSelector.css";
+import ChangeClassDialog from "../refund/ChangeClassDialog";
+import learnerService from "../../../../apiServices/learnerService";
+import classService from "../../../../apiServices/classService";
 
-const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
+const StudentSelector = ({
+  classData,
+  allLearners,
+  onClose,
+  onUpdate,
+  onChangeClass,
+  userRole, // "admin" hoặc "staff" - để ẩn nút đổi lớp cho staff
+}) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedLearner, setSelectedLearner] = useState(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [changeClassDialogOpen, setChangeClassDialogOpen] = useState(false);
+  const [selectedTargetClass, setSelectedTargetClass] = useState(null);
+
+  // States for learner detail
+  const [learnerDetail, setLearnerDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // States for change class dialog
+  const [classOptions, setClassOptions] = useState([]);
+  const [classScheduleSummaries, setClassScheduleSummaries] = useState({});
+  const [loadingClasses, setLoadingClasses] = useState(false);
+  const [errorClasses, setErrorClasses] = useState("");
+  const [learnerSchedule, setLearnerSchedule] = useState([]);
 
   // Lấy danh sách ID học viên đã enroll
   // enrolledStudents có thể là mảng IDs hoặc mảng enrollment objects
   const enrolledStudentIds = useMemo(() => {
     const enrolled = classData.enrolledStudents || [];
     if (!Array.isArray(enrolled)) {
-      console.warn("enrolledStudents is not an array:", enrolled);
       return [];
     }
-
-    // Debug log
-    console.log("Class enrolledStudents:", enrolled);
-    console.log("All learners count:", allLearners?.length || 0);
 
     // Nếu là mảng objects (enrollments), lấy LearnerID từ mỗi object
     if (
@@ -49,34 +68,27 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
     ) {
       const ids = enrolled
         .map((enrollment) => {
-          const id =
-            enrollment.LearnerID ||
-            enrollment.Learner?.LearnerID ||
-            enrollment.LearnerID ||
-            enrollment.id;
+          const id = enrollment.LearnerID || enrollment.Learner?.LearnerID;
           return id;
         })
         .filter((id) => id !== undefined && id !== null);
-      console.log("Extracted learner IDs from enrollments:", ids);
       return ids;
     }
 
     // Nếu là mảng IDs, trả về trực tiếp
     const ids = enrolled.filter((id) => id !== undefined && id !== null);
-    console.log("Using enrolled as IDs:", ids);
     return ids;
   }, [classData.enrolledStudents, allLearners]);
 
   // Lấy danh sách học viên đã enroll (chỉ hiển thị những người đã enroll)
   const enrolledLearners = useMemo(() => {
     if (!Array.isArray(allLearners)) {
-      console.warn("allLearners is not an array:", allLearners);
       return [];
     }
 
     const filtered = allLearners.filter((learner) => {
       if (!learner) return false;
-      const learnerId = learner.LearnerID || learner.id;
+      const learnerId = learner.LearnerID;
       // So sánh với nhiều cách để tránh type mismatch
       const isEnrolled = enrolledStudentIds.some(
         (id) =>
@@ -88,17 +100,6 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
       );
       return isEnrolled;
     });
-
-    console.log(
-      `Found ${filtered.length} enrolled learners out of ${allLearners.length} total learners`
-    );
-    console.log(
-      "Enrolled learners:",
-      filtered.map((l) => ({
-        id: l.LearnerID || l.id,
-        name: l.FullName || l.fullName,
-      }))
-    );
 
     return filtered;
   }, [allLearners, enrolledStudentIds]);
@@ -123,37 +124,268 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
     setSelectedLearner(learner);
   };
 
-  const handleMenuClose = () => {
+  const handleMenuClose = (keepSelected = false) => {
     setAnchorEl(null);
-    setSelectedLearner(null);
-  };
-
-  const handleViewDetail = () => {
-    setShowDetailDialog(true);
-    handleMenuClose();
-  };
-
-  const handleDeleteLearner = () => {
-    if (!selectedLearner) return;
-    const learnerId = selectedLearner.LearnerID || selectedLearner.id;
-    const confirmed = window.confirm(
-      `Bạn có chắc muốn xóa học viên "${
-        selectedLearner.FullName || selectedLearner.fullName
-      }" khỏi lớp học này?`
-    );
-    if (confirmed) {
-      // Xóa khỏi danh sách enrolled
-      const updatedEnrolled = enrolledStudentIds.filter(
-        (id) => id !== learnerId
-      );
-      onUpdate(updatedEnrolled);
-      handleMenuClose();
+    if (!keepSelected) {
+      setSelectedLearner(null);
     }
+  };
+
+  const handleViewDetail = async () => {
+    if (!selectedLearner) return;
+
+    const learnerId = selectedLearner.LearnerID || selectedLearner.id;
+    if (!learnerId) {
+      return;
+    }
+
+    setLoadingDetail(true);
+    setShowDetailDialog(true);
+    handleMenuClose(true); // giữ selectedLearner để dialog dùng
+
+    try {
+      const detail = await learnerService.getLearnerById(learnerId);
+      setLearnerDetail(detail);
+    } catch (error) {
+      console.error("[StudentSelector] Error fetching learner detail:", error);
+      // Fallback to selectedLearner if API fails
+      setLearnerDetail(selectedLearner);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleOpenChangeClassDialog = async () => {
+    if (!selectedLearner || !classData) return;
+
+    setChangeClassDialogOpen(true);
+    setSelectedTargetClass(null);
+    setLoadingClasses(true);
+    setErrorClasses("");
+    // Đóng menu nhưng giữ selectedLearner để dùng trong confirm
+    handleMenuClose(true);
+
+    try {
+      // Get learner schedule to check conflicts
+      const learnerId = selectedLearner.LearnerID || selectedLearner.id;
+      const schedule = await learnerService.getLearnerSchedule(learnerId);
+      const normalizedSchedule = Array.isArray(schedule) ? schedule : [];
+      setLearnerSchedule(normalizedSchedule);
+
+      // Get all classes with same CourseID and InstructorID, excluding current class
+      const currentClassId = classData.ClassID || classData.id;
+      const courseId = classData.CourseID || classData.courseId;
+      const instructorId = classData.InstructorID || classData.instructorId;
+
+      if (!courseId || !instructorId) {
+        throw new Error("Không tìm thấy thông tin khóa học hoặc giảng viên");
+      }
+
+      // Get all classes
+      const allClasses = await classService.getAllClasses();
+
+      // Filter: same CourseID and InstructorID, status ACTIVE, exclude current class
+      const relatedClasses = allClasses.filter((cls) => {
+        const clsId = cls.ClassID || cls.id;
+        const clsCourseId = cls.CourseID || cls.courseId;
+        const clsInstructorId = cls.InstructorID || cls.instructorId;
+        const clsStatus = cls.Status || cls.status;
+
+        return (
+          clsId !== currentClassId &&
+          clsCourseId === courseId &&
+          clsInstructorId === instructorId &&
+          clsStatus === "ACTIVE"
+        );
+      });
+
+      // Load schedule summaries + conflict check
+      const summaries = {};
+      const nonConflictClasses = [];
+
+      const hasConflict = (classSessions) => {
+        if (!Array.isArray(classSessions) || classSessions.length === 0) {
+          return false;
+        }
+        return classSessions.some((session) => {
+          const sessionDate = session.Date;
+          if (!sessionDate) return false;
+
+          // Normalize start/end
+          const toMinutes = (t) => {
+            if (!t) return null;
+            const [h, m] = String(t)
+              .split(":")
+              .map((x) => parseInt(x, 10));
+            if (Number.isNaN(h) || Number.isNaN(m)) return null;
+            return h * 60 + m;
+          };
+          const sStart = toMinutes(session.StartTime);
+          const sEnd = toMinutes(session.EndTime);
+          const sSlot = session.TimeslotID || session.timeslotId;
+
+          return normalizedSchedule.some((item) => {
+            if (!item.Date) return false;
+            if (
+              String(item.Date).slice(0, 10) !==
+              String(sessionDate).slice(0, 10)
+            ) {
+              return false;
+            }
+
+            const iStart = toMinutes(item.StartTime);
+            const iEnd = toMinutes(item.EndTime);
+            const iSlot = item.TimeslotID || item.timeslotId;
+
+            // If timeslot match and date match => conflict
+            if (sSlot && iSlot && String(sSlot) === String(iSlot)) {
+              return true;
+            }
+
+            // If both have time range -> check overlap
+            if (
+              sStart !== null &&
+              sEnd !== null &&
+              iStart !== null &&
+              iEnd !== null
+            ) {
+              return sStart < iEnd && iStart < sEnd;
+            }
+
+            return false;
+          });
+        });
+      };
+
+      await Promise.all(
+        relatedClasses.map(async (cls) => {
+          const classId = cls.ClassID || cls.id;
+          if (!classId) return;
+          try {
+            const sessions = await classService.getClassSessionsForFrontend(
+              classId
+            );
+            if (Array.isArray(sessions) && sessions.length > 0) {
+              const summary = buildClassScheduleSummary(sessions);
+              summaries[classId] = summary;
+              if (!hasConflict(sessions)) {
+                nonConflictClasses.push(cls);
+              }
+            } else {
+              // No sessions -> treat as non-conflict
+              nonConflictClasses.push(cls);
+            }
+          } catch (err) {
+            console.error(
+              "[StudentSelector] Error loading sessions for class:",
+              err
+            );
+          }
+        })
+      );
+
+      setClassScheduleSummaries(summaries);
+      setClassOptions(nonConflictClasses);
+
+      if (nonConflictClasses.length === 0) {
+        setErrorClasses("Không có lớp nào phù hợp (trùng lịch với học viên).");
+      }
+    } catch (error) {
+      const errorMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        "Không thể tải danh sách lớp";
+      setErrorClasses(errorMessage);
+      setClassOptions([]);
+    } finally {
+      setLoadingClasses(false);
+    }
+  };
+
+  // Build schedule summary string from sessions (e.g., "T2: 19:00-21:00 | T5: 19:00-21:00")
+  const buildClassScheduleSummary = (sessions) => {
+    if (!Array.isArray(sessions) || sessions.length === 0) return "";
+
+    const dayMap = {
+      0: "CN",
+      1: "T2",
+      2: "T3",
+      3: "T4",
+      4: "T5",
+      5: "T6",
+      6: "T7",
+    };
+
+    const byDay = {};
+
+    sessions.forEach((s) => {
+      if (!s.Date) return;
+      const date = new Date(s.Date);
+      if (Number.isNaN(date.getTime())) return;
+      const dayKey = dayMap[date.getDay()] || "";
+      if (!dayKey) return;
+
+      const start =
+        (s.StartTime && String(s.StartTime).slice(0, 5)) || undefined;
+      const end = (s.EndTime && String(s.EndTime).slice(0, 5)) || undefined;
+      const range =
+        start && end ? `${start}-${end}` : start || end || "Không rõ giờ";
+
+      if (!byDay[dayKey]) {
+        byDay[dayKey] = new Set();
+      }
+      byDay[dayKey].add(range);
+    });
+
+    const parts = Object.keys(byDay)
+      .sort()
+      .map((day) => {
+        const times = Array.from(byDay[day]).join(", ");
+        return `${day}: ${times}`;
+      });
+
+    return parts.join(" | ");
+  };
+
+  const getClassScheduleSummary = (cls) => {
+    if (!cls) return "";
+    const classId = cls.ClassID || cls.id;
+    if (!classId) return "";
+    return classScheduleSummaries[classId] || "";
+  };
+
+  const handleConfirmChangeClass = () => {
+    if (!selectedLearner || !selectedTargetClass) {
+      setChangeClassDialogOpen(false);
+      setSelectedTargetClass(null);
+      return;
+    }
+
+    const learnerId = selectedLearner.LearnerID || selectedLearner.id;
+    const targetClassId =
+      selectedTargetClass.ClassID ||
+      selectedTargetClass.id ||
+      selectedTargetClass.value;
+
+    if (typeof onChangeClass === "function") {
+      onChangeClass(
+        {
+          learnerId,
+          learner: selectedLearner,
+        },
+        targetClassId,
+        selectedTargetClass
+      );
+    }
+
+    setChangeClassDialogOpen(false);
+    setSelectedTargetClass(null);
   };
 
   const handleCloseDetailDialog = () => {
     setShowDetailDialog(false);
     setSelectedLearner(null);
+    setLearnerDetail(null);
   };
 
   return (
@@ -264,9 +496,12 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
           <MenuItem onClick={handleViewDetail}>
             <Visibility sx={{ fontSize: 18, mr: 1.5 }} /> Xem chi tiết
           </MenuItem>
-          <MenuItem onClick={handleDeleteLearner}>
-            <Delete sx={{ fontSize: 18, mr: 1.5 }} /> Xóa khỏi lớp
-          </MenuItem>
+          {/* Chỉ admin mới có quyền đổi lớp, staff chỉ xem */}
+          {onChangeClass && userRole !== "staff" && (
+            <MenuItem onClick={handleOpenChangeClassDialog}>
+              <SwapHoriz sx={{ fontSize: 18, mr: 1.5 }} /> Đổi lớp
+            </MenuItem>
+          )}
         </Menu>
 
         {/* Detail Dialog */}
@@ -290,7 +525,11 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
             </IconButton>
           </DialogTitle>
           <DialogContent>
-            {selectedLearner && (
+            {loadingDetail ? (
+              <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : learnerDetail || selectedLearner ? (
               <Box sx={{ pt: 2 }}>
                 <Box sx={{ display: "flex", alignItems: "center", mb: 3 }}>
                   <Box
@@ -309,20 +548,28 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                     }}
                   >
                     {
-                      (selectedLearner.FullName ||
-                        selectedLearner.fullName ||
+                      (learnerDetail?.FullName ||
+                        learnerDetail?.fullName ||
+                        selectedLearner?.FullName ||
+                        selectedLearner?.fullName ||
                         "?")[0]
                     }
                   </Box>
                   <Box>
                     <Typography variant="h6">
-                      {selectedLearner.FullName ||
-                        selectedLearner.fullName ||
+                      {learnerDetail?.FullName ||
+                        learnerDetail?.fullName ||
+                        selectedLearner?.FullName ||
+                        selectedLearner?.fullName ||
                         ""}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       ID:{" "}
-                      {selectedLearner.LearnerID || selectedLearner.id || ""}
+                      {learnerDetail?.LearnerID ||
+                        learnerDetail?.id ||
+                        selectedLearner?.LearnerID ||
+                        selectedLearner?.id ||
+                        ""}
                     </Typography>
                   </Box>
                 </Box>
@@ -332,55 +579,98 @@ const StudentSelector = ({ classData, allLearners, onClose, onUpdate }) => {
                     <Email sx={{ color: "#64748b" }} />
                     <Typography variant="body1">
                       <strong>Email:</strong>{" "}
-                      {selectedLearner.Email || selectedLearner.email || ""}
+                      {learnerDetail?.Email ||
+                        learnerDetail?.email ||
+                        selectedLearner?.Email ||
+                        selectedLearner?.email ||
+                        ""}
                     </Typography>
                   </Box>
                   <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                     <Phone sx={{ color: "#64748b" }} />
                     <Typography variant="body1">
                       <strong>Số điện thoại:</strong>{" "}
-                      {selectedLearner.Phone || selectedLearner.phone || ""}
+                      {learnerDetail?.Phone ||
+                        learnerDetail?.phone ||
+                        selectedLearner?.Phone ||
+                        selectedLearner?.phone ||
+                        ""}
                     </Typography>
                   </Box>
-                  {selectedLearner.DateOfBirth && (
+                  {(learnerDetail?.DateOfBirth ||
+                    selectedLearner?.DateOfBirth) && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <CalendarToday sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
                         <strong>Ngày sinh:</strong>{" "}
-                        {selectedLearner.DateOfBirth ||
-                          selectedLearner.dateOfBirth ||
+                        {learnerDetail?.DateOfBirth ||
+                          learnerDetail?.dateOfBirth ||
+                          selectedLearner?.DateOfBirth ||
+                          selectedLearner?.dateOfBirth ||
                           ""}
                       </Typography>
                     </Box>
                   )}
-                  {selectedLearner.Address && (
+                  {(learnerDetail?.Address || selectedLearner?.Address) && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Person sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
                         <strong>Địa chỉ:</strong>{" "}
-                        {selectedLearner.Address ||
-                          selectedLearner.address ||
+                        {learnerDetail?.Address ||
+                          learnerDetail?.address ||
+                          selectedLearner?.Address ||
+                          selectedLearner?.address ||
                           ""}
                       </Typography>
                     </Box>
                   )}
-                  {selectedLearner.Job && (
+                  {(learnerDetail?.Job || selectedLearner?.Job) && (
                     <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <Person sx={{ color: "#64748b" }} />
                       <Typography variant="body1">
                         <strong>Nghề nghiệp:</strong>{" "}
-                        {selectedLearner.Job || selectedLearner.job || ""}
+                        {learnerDetail?.Job ||
+                          learnerDetail?.job ||
+                          selectedLearner?.Job ||
+                          selectedLearner?.job ||
+                          ""}
                       </Typography>
                     </Box>
                   )}
                 </Box>
               </Box>
+            ) : (
+              <Typography variant="body2" color="text.secondary">
+                Không tìm thấy thông tin học viên
+              </Typography>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDetailDialog}>Đóng</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Change Class Dialog */}
+        <ChangeClassDialog
+          open={changeClassDialogOpen}
+          onClose={() => {
+            if (!loadingClasses) {
+              setChangeClassDialogOpen(false);
+              setSelectedTargetClass(null);
+              setClassOptions([]);
+              setClassScheduleSummaries({});
+              setErrorClasses("");
+            }
+          }}
+          loading={loadingClasses}
+          error={errorClasses}
+          options={classOptions}
+          selectedClass={selectedTargetClass}
+          onSelectClass={setSelectedTargetClass}
+          onConfirm={handleConfirmChangeClass}
+          title="Chọn lớp để chuyển học viên"
+          getScheduleSummary={getClassScheduleSummary}
+        />
       </div>
     </div>
   );

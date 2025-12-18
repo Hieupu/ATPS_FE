@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   format,
   startOfMonth,
@@ -41,14 +41,18 @@ import {
   CalendarToday,
 } from "@mui/icons-material";
 import classService from "../../../apiServices/classService";
+import { useAuth } from "../../../contexts/AuthContext";
 import { dayOfWeekToDay, getDayFromDate } from "../../../utils/validate";
 import SessionSuggestionModal from "../components/class-management/SessionSuggestionModal";
+import ClassSessionScheduleModal from "../components/class-management/ClassSessionScheduleModal";
 import dayjs from "dayjs";
 import "./style.css";
 
 const SchedulePage = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
 
   const [course, setCourse] = useState(null);
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -57,21 +61,15 @@ const SchedulePage = () => {
   const [loading, setLoading] = useState(true);
   const [timeslots, setTimeslots] = useState([]);
 
-  // Reschedule modal state
+  // Xác định role hiện tại (admin / staff) dựa trên AuthContext + URL
+  const userRole =
+    user?.role || (location.pathname.startsWith("/staff") ? "staff" : "admin");
+  const isStaff = userRole === "staff";
+
+  // Reschedule modal state (dùng chung ClassSessionScheduleModal)
   const [rescheduleModal, setRescheduleModal] = useState({
     open: false,
-    session: null,
-    currentTimeslot: null,
-    currentDate: null,
-    currentDayOfWeek: null,
-    suggestions: [],
-    selectedDate: null,
-    selectedTimeslotId: null,
-    loading: false,
-    fromDate: null,
-    toDate: null,
-    filterTimeslotId: null, // null => ca hiện tại, "ANY" => ca nào cũng được
-    filterDay: null, // "MONDAY"... hoặc null để lấy theo ngày đã chọn
+    session: null, // schedule đang được đổi lịch
   });
 
   // Conflict modal state
@@ -215,135 +213,12 @@ const SchedulePage = () => {
     return timeslots.find((ts) => (ts.TimeslotID || ts.id) === timeslotId);
   };
 
-  const sanitizeFutureDate = (dateStr) => {
-    if (!dateStr) return null;
-    const d = new Date(dateStr);
-    if (isNaN(d)) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    d.setHours(0, 0, 0, 0);
-    return d < today ? today : d;
-  };
-
-  const fetchRescheduleSuggestions = async ({
-    timeslotId,
-    fromDate,
-    toDate,
-    filterDay,
-    ClassID,
-  }) => {
-    if (!course) return;
-    const instructorId = getInstructorIdFromCourse(course);
-    if (!instructorId) return;
-
-    const start = sanitizeFutureDate(fromDate) || addDays(new Date(), 1);
-    const startStr = format(start, "yyyy-MM-dd");
-
-    setRescheduleModal((prev) => ({ ...prev, loading: true }));
-    const suggestionResults = [];
-
-    const dayParam =
-      filterDay ||
-      dayOfWeekToDay(start.getDay()) ||
-      (rescheduleModal.currentDayOfWeek !== null
-        ? dayOfWeekToDay(rescheduleModal.currentDayOfWeek)
-        : null);
-
-    const collectSuggestions = async (tsId, limit = 10) => {
-      try {
-        const response = await classService.findInstructorAvailableSlots({
-          InstructorID: instructorId,
-          TimeslotID: tsId,
-          Day: dayParam,
-          startDate: startStr,
-          numSuggestions: limit,
-          excludeClassId: parseInt(courseId),
-          ClassID: ClassID || parseInt(courseId),
-        });
-        const all = response?.data?.suggestions || [];
-        all.forEach((item) => {
-          if (item.available) {
-            const tsMeta =
-              timeslots.find((t) => (t.TimeslotID || t.id) === tsId) ||
-              rescheduleModal.currentTimeslot;
-            suggestionResults.push({
-              date: item.date,
-              timeslotId: tsId,
-              timeslot: tsMeta,
-              type: "auto",
-            });
-          }
-        });
-      } catch (err) {
-        console.warn("fetchRescheduleSuggestions error", err);
-      }
-    };
-
-    if (timeslotId === "ANY") {
-      const uniqueTs = Array.from(
-        new Set(timeslots.map((t) => t.TimeslotID || t.id))
-      ).slice(0, 8);
-      for (const ts of uniqueTs) {
-        if (suggestionResults.length >= 15) break;
-        await collectSuggestions(ts, 3);
-      }
-    } else {
-      await collectSuggestions(timeslotId, 10);
-    }
-
-    setRescheduleModal((prev) => ({
-      ...prev,
-      loading: false,
-      suggestions: suggestionResults,
-    }));
-  };
-
   const isDatePast = (date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const compareDate = new Date(date);
     compareDate.setHours(0, 0, 0, 0);
     return compareDate < today;
-  };
-
-  const handleRescheduleFilterChange = async (updates) => {
-    const next = {
-      ...rescheduleModal,
-      ...updates,
-    };
-
-    // Đảm bảo from/to không ở quá khứ và toDate >= fromDate
-    const normalizedFrom =
-      sanitizeFutureDate(next.fromDate) || addDays(new Date(), 1);
-    const normalizedToRaw =
-      sanitizeFutureDate(next.toDate) || addDays(normalizedFrom, 30);
-    const normalizedTo =
-      normalizedToRaw < normalizedFrom ? normalizedFrom : normalizedToRaw;
-
-    next.fromDate = format(normalizedFrom, "yyyy-MM-dd");
-    next.toDate = format(normalizedTo, "yyyy-MM-dd");
-
-    // Khi đổi filter, reset lựa chọn
-    next.selectedDate = null;
-    next.selectedTimeslotId =
-      next.filterTimeslotId && next.filterTimeslotId !== "ANY"
-        ? next.filterTimeslotId
-        : null;
-
-    setRescheduleModal((prev) => ({
-      ...prev,
-      ...next,
-      loading: true,
-      suggestions: [],
-    }));
-
-    await fetchRescheduleSuggestions({
-      timeslotId: next.filterTimeslotId,
-      fromDate: next.fromDate,
-      toDate: next.toDate,
-      filterDay: next.filterDay,
-      ClassID: parseInt(courseId),
-    });
   };
 
   // Helper function để parse conflict từ error message
@@ -1124,57 +999,22 @@ const SchedulePage = () => {
     }
   };
 
-  const handleOpenRescheduleModal = async (schedule) => {
+  const handleOpenRescheduleModal = (schedule) => {
     // Check xem buổi học đã qua chưa
     if (isDatePast(schedule.date)) {
       alert(" Không thể đổi lịch học đã qua hoặc đang diễn ra!");
       return;
     }
 
-    // Lấy thông tin session hiện tại
-    const currentTimeslot = getTimeslotById(schedule.timeslotId);
-    const currentDate = new Date(schedule.date);
-    const currentDayOfWeek = currentDate.getDay();
-    const currentDayName = dayOfWeekToDay(currentDayOfWeek);
-
-    // Lấy InstructorID từ course
-    const instructorId = getInstructorIdFromCourse(course);
-    if (!instructorId) {
-      alert(" Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!");
-        return;
-      }
-
-    const defaultFrom = format(addDays(currentDate, 1), "yyyy-MM-dd");
-    const defaultTo = format(addDays(currentDate, 30), "yyyy-MM-dd");
-
-    setRescheduleModal((prev) => ({
-      ...prev,
+    setRescheduleModal({
       open: true,
       session: schedule,
-      currentTimeslot: currentTimeslot,
-      currentDate: currentDate,
-      currentDayOfWeek: currentDayOfWeek,
-      suggestions: [],
-      selectedDate: null,
-      selectedTimeslotId: schedule.timeslotId,
-      loading: true,
-      fromDate: defaultFrom,
-      toDate: defaultTo,
-      filterTimeslotId: schedule.timeslotId,
-      filterDay: currentDayName,
-    }));
-
-    await fetchRescheduleSuggestions({
-      timeslotId: schedule.timeslotId,
-      fromDate: defaultFrom,
-      toDate: defaultTo,
-      filterDay: currentDayName,
-      ClassID: parseInt(courseId),
     });
   };
 
-  const handleRescheduleSession = async () => {
-    if (!rescheduleModal.selectedDate || !rescheduleModal.selectedTimeslotId) {
+  // newSlot: { Date: "YYYY-MM-DD", TimeslotID: number|string }
+  const handleRescheduleSession = async (newSlot) => {
+    if (!newSlot || !newSlot.Date || !newSlot.TimeslotID) {
       alert(" Vui lòng chọn ngày và ca học mới!");
       return;
     }
@@ -1193,29 +1033,30 @@ const SchedulePage = () => {
       return;
     }
 
+    const newDateStr = newSlot.Date;
+    const newTimeslotId = newSlot.TimeslotID;
+
     try {
       // Check learner conflict trước khi đổi lịch
       const learnerCheck =
         (await classService.checkLearnerConflicts(
           parseInt(courseId),
-          format(rescheduleModal.selectedDate, "yyyy-MM-dd"),
-          rescheduleModal.selectedTimeslotId
+          newDateStr,
+          newTimeslotId
         )) || {};
       if (learnerCheck?.conflicts?.length > 0 || learnerCheck?.hasConflicts) {
-      alert(
+        alert(
           learnerCheck?.message ||
             "Học viên của lớp có buổi trùng lịch với ca học mới. Vui lòng chọn lịch khác."
-      );
-      return;
-    }
-
-      setRescheduleModal((prev) => ({ ...prev, loading: true }));
+        );
+        return;
+      }
 
       // Gọi API reschedule
       await classService.rescheduleSession(
         parseInt(sessionId),
-        format(rescheduleModal.selectedDate, "yyyy-MM-dd"),
-        rescheduleModal.selectedTimeslotId
+        newDateStr,
+        newTimeslotId
       );
 
       // Reload schedules
@@ -1224,19 +1065,12 @@ const SchedulePage = () => {
       setRescheduleModal({
         open: false,
         session: null,
-        currentTimeslot: null,
-        currentDate: null,
-        currentDayOfWeek: null,
-        suggestions: [],
-        selectedDate: null,
-        selectedTimeslotId: null,
-        loading: false,
       });
 
       alert(" Đã đổi lịch học thành công!");
-        } catch (error) {
+    } catch (error) {
       console.error("Lỗi khi đổi lịch session:", error);
-          const errorMessage =
+      const errorMessage =
         error?.message ||
         error?.response?.data?.message ||
         "Không thể đổi lịch học. Vui lòng thử lại!";
@@ -1308,8 +1142,38 @@ const SchedulePage = () => {
     );
   }
 
+  // Lớp đã kết thúc hoặc đã hủy → không cho thêm / đổi lịch
+  const isClassFinal =
+    course &&
+    (course.Status === "CLOSE" ||
+      course.Status === "CANCEL" ||
+      course.status === "CLOSE" ||
+      course.status === "CANCEL");
+
+  // Với staff: chỉ cho phép thêm/đổi lịch khi lớp ở trạng thái DRAFT
+  const isDraftClass =
+    course &&
+    (course.Status === "DRAFT" ||
+      course.status === "DRAFT" ||
+      course.Status === "Nháp" ||
+      course.status === "Nháp");
+
+  // Quyền chỉnh sửa lịch: admin luôn được (trừ khi lớp final),
+  // staff chỉ được khi lớp DRAFT
+  const canEditSchedule = !isStaff
+    ? !isClassFinal
+    : !isClassFinal && isDraftClass;
+
   const days = getDaysInMonth();
-  const weekDays = ["MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY"];
+  const weekDays = [
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+  ];
   const dayFilterOptions = [
     { value: "", label: "Theo ngày đã chọn" },
     { value: "MONDAY", label: "Thứ 2" },
@@ -1345,7 +1209,9 @@ const SchedulePage = () => {
             <Button
               variant="outlined"
               startIcon={<ArrowBack />}
-              onClick={() => navigate("/admin/classes")}
+              onClick={() =>
+                navigate(isStaff ? "/staff/classes" : "/admin/classes")
+              }
               sx={{
                 textTransform: "none",
                 borderRadius: 2,
@@ -1485,7 +1351,7 @@ const SchedulePage = () => {
                           <span className="past-label"> (Đã qua)</span>
                         )}
                       </div>
-                      {!isPast && (
+                      {!isPast && canEditSchedule && (
                         <button
                           className="btn btn-primary btn-sm"
                           onClick={() => handleOpenRescheduleModal(sch)}
@@ -1501,7 +1367,7 @@ const SchedulePage = () => {
           )}
 
           {/* Form thêm nhiều ca */}
-          {!isDatePast(selectedDate) && (
+          {!isDatePast(selectedDate) && canEditSchedule && (
             <div className="add-sessions-form">
               <h4> Thêm lịch học mới</h4>
 
@@ -1606,349 +1472,44 @@ const SchedulePage = () => {
       )}
 
       {/* Reschedule Modal */}
-      <Dialog
+      {/* Reschedule Modal - dùng chung ClassSessionScheduleModal */}
+      <ClassSessionScheduleModal
         open={rescheduleModal.open}
         onClose={() =>
-          setRescheduleModal({
-            ...rescheduleModal,
+          setRescheduleModal((prev) => ({
+            ...prev,
             open: false,
-          })
+            session: null,
+          }))
         }
-        maxWidth="md"
-        fullWidth
-      >
-        <DialogTitle sx={{ pb: 1, fontWeight: 600 }}>Đổi lịch học</DialogTitle>
-        <DialogContent>
-          {rescheduleModal.loading ? (
-            <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            <Box>
-              {/* Thông tin lịch hiện tại */}
-              {rescheduleModal.session && rescheduleModal.currentTimeslot && (
-                <Card sx={{ p: 2, mb: 3, backgroundColor: "#f0f4ff" }}>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 600, mb: 1 }}
-                  >
-                    Lịch hiện tại:
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Ngày:</strong>{" "}
-                    {format(rescheduleModal.currentDate, "dd/MM/yyyy", {
-                      locale: vi,
-                    })}{" "}
-                    ({dayOfWeekToDay(rescheduleModal.currentDayOfWeek)})
-                  </Typography>
-                  <Typography variant="body2">
-                    <strong>Ca học:</strong>{" "}
-                    {rescheduleModal.currentTimeslot.StartTime?.substring(
-                      0,
-                      5
-                    ) || ""}{" "}
-                    -{" "}
-                    {rescheduleModal.currentTimeslot.EndTime?.substring(0, 5) ||
-                      ""}
-                  </Typography>
-                </Card>
-              )}
-
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: { md: "1fr 1fr" },
-                  gap: 2,
-                  mb: 2,
-                }}
-              >
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 600, mb: 1 }}
-                  >
-                    Chọn ca học & khoảng thời gian
-                  </Typography>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Chọn ca học</InputLabel>
-                    <Select
-                      value={rescheduleModal.filterTimeslotId || ""}
-                      label="Chọn ca học"
-                      onChange={(e) =>
-                        handleRescheduleFilterChange({
-                          filterTimeslotId: e.target.value,
-                        })
-                      }
-                    >
-                      {rescheduleModal.session?.timeslotId && (
-                        <MenuItem value={rescheduleModal.session.timeslotId}>
-                          Ca hiện tại (
-                          {rescheduleModal.currentTimeslot?.StartTime?.substring(
-                            0,
-                            5
-                          ) || ""}{" "}
-                          -{" "}
-                          {rescheduleModal.currentTimeslot?.EndTime?.substring(
-                            0,
-                            5
-                          ) || ""}
-                          )
-                        </MenuItem>
-                      )}
-                      <MenuItem value="ANY">Ca nào cũng được</MenuItem>
-                      {timeslots.map((ts) => {
-                        const id = ts.TimeslotID || ts.id;
-                        return (
-                          <MenuItem key={id} value={id}>
-                            {(ts.StartTime || ts.startTime || "").substring(
-                              0,
-                              5
-                            )}{" "}
-                            - {(ts.EndTime || ts.endTime || "").substring(0, 5)}
-                            {ts.Day || ts.day ? ` (${ts.Day || ts.day})` : ""}
-                          </MenuItem>
-                        );
-                      })}
-                    </Select>
-                  </FormControl>
-
-                  <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        Từ ngày
-                      </Typography>
-                  <input
-                    type="date"
-                        value={rescheduleModal.fromDate || ""}
-                    onChange={(e) =>
-                          handleRescheduleFilterChange({
-                            fromDate: e.target.value,
-                          })
-                        }
-                        min={format(addDays(new Date(), 1), "yyyy-MM-dd")}
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "6px",
-                        }}
-                      />
-                    </Box>
-                    <Box sx={{ flex: 1 }}>
-                      <Typography variant="body2" sx={{ mb: 0.5 }}>
-                        Đến ngày
-                      </Typography>
-                  <input
-                    type="date"
-                        value={rescheduleModal.toDate || ""}
-                    onChange={(e) =>
-                          handleRescheduleFilterChange({
-                            toDate: e.target.value,
-                          })
-                        }
-                        min={
-                          rescheduleModal.fromDate ||
-                          format(addDays(new Date(), 1), "yyyy-MM-dd")
-                        }
-                        style={{
-                          width: "100%",
-                          padding: "10px",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: "6px",
-                        }}
-                      />
-                    </Box>
-                  </Box>
-
-                  <FormControl fullWidth sx={{ mb: 1.5 }}>
-                    <InputLabel>Lọc theo thứ</InputLabel>
-                    <Select
-                      value={rescheduleModal.filterDay || ""}
-                      label="Lọc theo thứ"
-                      onChange={(e) =>
-                        handleRescheduleFilterChange({
-                          filterDay: e.target.value || null,
-                        })
-                      }
-                    >
-                      {dayFilterOptions.map((d) => (
-                        <MenuItem key={d.value || "any"} value={d.value}>
-                          {d.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <Typography variant="caption" sx={{ color: "#64748b" }}>
-                    Chỉ gợi ý các lịch chưa qua (từ ngày hiện tại trở đi).
-                  </Typography>
-                </Box>
-
-                <Box>
-                  <Typography
-                    variant="subtitle2"
-                    sx={{ fontWeight: 600, mb: 1 }}
-                  >
-                    Chọn lịch mới
-                  </Typography>
-                  <FormControl fullWidth sx={{ mb: 2 }}>
-                    <InputLabel>Chọn ngày (từ gợi ý)</InputLabel>
-                    <Select
-                      value={
-                        rescheduleModal.selectedDate
-                          ? format(rescheduleModal.selectedDate, "yyyy-MM-dd")
-                          : ""
-                      }
-                      label="Chọn ngày (từ gợi ý)"
-                      onChange={(e) => {
-                        const selectedDate = new Date(e.target.value);
-                        setRescheduleModal((prev) => ({
-                          ...prev,
-                          selectedDate: selectedDate,
-                          selectedTimeslotId: null,
-                        }));
-                      }}
-                    >
-                      {rescheduleModal.suggestions.map((suggestion, idx) => (
-                        <MenuItem key={idx} value={suggestion.date}>
-                          {format(new Date(suggestion.date), "dd/MM/yyyy", {
-                            locale: vi,
-                          })}{" "}
-                          ({dayOfWeekToDay(new Date(suggestion.date).getDay())})
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  {rescheduleModal.selectedDate && (
-                    <FormControl fullWidth>
-                      <InputLabel>Chọn ca học</InputLabel>
-                      <Select
-                        value={rescheduleModal.selectedTimeslotId || ""}
-                        label="Chọn ca học"
-                        onChange={(e) =>
-                          setRescheduleModal((prev) => ({
-                            ...prev,
-                            selectedTimeslotId:
-                              e.target.value === "ANY"
-                                ? null
-                                : parseInt(e.target.value),
-                          }))
-                        }
-                      >
-                        {rescheduleModal.suggestions
-                          .filter(
-                            (s) =>
-                              format(new Date(s.date), "yyyy-MM-dd") ===
-                              format(rescheduleModal.selectedDate, "yyyy-MM-dd")
-                          )
-                          .map((suggestion, idx) => {
-                            const timeslot = suggestion.timeslot;
-                      return (
-                              <MenuItem key={idx} value={suggestion.timeslotId}>
-                                {timeslot.StartTime?.substring(0, 5) || ""} -{" "}
-                                {timeslot.EndTime?.substring(0, 5) || ""}
-                              </MenuItem>
-                            );
-                          })}
-                      </Select>
-                    </FormControl>
-                  )}
-                </Box>
-              </Box>
-
-              {/* Gợi ý buổi bù tự động */}
-              <Box>
-                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
-                  Gợi ý buổi bù tự động:
-                </Typography>
-                <Box sx={{ maxHeight: 260, overflowY: "auto" }}>
-                  {rescheduleModal.suggestions.length === 0 && (
-                    <Typography variant="body2" sx={{ color: "#64748b" }}>
-                      Không tìm thấy gợi ý phù hợp. Hãy thử đổi ca hoặc khoảng
-                      thời gian.
-                    </Typography>
-                  )}
-                  {rescheduleModal.suggestions.map((suggestion, idx) => {
-                    const timeslot = suggestion.timeslot || {};
-                                const isSelected =
-                      rescheduleModal.selectedDate &&
-                      format(new Date(suggestion.date), "yyyy-MM-dd") ===
-                        format(rescheduleModal.selectedDate, "yyyy-MM-dd") &&
-                      rescheduleModal.selectedTimeslotId ===
-                        suggestion.timeslotId;
-                                return (
-                      <Card
-                        key={idx}
-                        sx={{
-                          p: 1.5,
-                          mb: 1,
-                                      cursor: "pointer",
-                          border: isSelected
-                            ? "2px solid #667eea"
-                            : "1px solid #e2e8f0",
-                          backgroundColor: isSelected ? "#f0f4ff" : "#fff",
-                        }}
-                        onClick={() => {
-                          setRescheduleModal((prev) => ({
-                            ...prev,
-                            selectedDate: new Date(suggestion.date),
-                            selectedTimeslotId: suggestion.timeslotId,
-                          }));
-                        }}
-                      >
-                        <Typography variant="body2">
-                          <strong>
-                            {format(new Date(suggestion.date), "dd/MM/yyyy", {
-                              locale: vi,
-                            })}{" "}
-                            (
-                            {dayOfWeekToDay(new Date(suggestion.date).getDay())}
-                            )
-                          </strong>
-                        </Typography>
-                        <Typography variant="body2" sx={{ color: "#64748b" }}>
-                          {timeslot.StartTime?.substring(0, 5) || ""} -{" "}
-                          {timeslot.EndTime?.substring(0, 5) || ""}
-                        </Typography>
-                      </Card>
-                                );
-                              })}
-                </Box>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button
-            onClick={() =>
-              setRescheduleModal({
-                ...rescheduleModal,
-                open: false,
-              })
-            }
-            disabled={rescheduleModal.loading}
-          >
-            Hủy
-          </Button>
-          <Button
-            onClick={handleRescheduleSession}
-            variant="contained"
-            disabled={
-              rescheduleModal.loading ||
-              !rescheduleModal.selectedDate ||
-              !rescheduleModal.selectedTimeslotId
-            }
-            sx={{
-              backgroundColor: "#667eea",
-              "&:hover": {
-                backgroundColor: "#5568d3",
-              },
-            }}
-          >
-            {rescheduleModal.loading ? "Đang xử lý..." : "Đổi lịch"}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onConfirm={async (newSlot) => {
+          await handleRescheduleSession(newSlot);
+        }}
+        instructorId={getInstructorIdFromCourse(course)}
+        classId={parseInt(courseId)}
+        baseDate={
+          rescheduleModal.session
+            ? rescheduleModal.session.date
+            : selectedDate || null
+        }
+        timeslots={timeslots}
+        existingSessions={schedules.map((sch) => ({
+          Date: sch.date,
+          TimeslotID: sch.timeslotId,
+          isDisabled:
+            rescheduleModal.session &&
+            (sch.sessionId === rescheduleModal.session.sessionId ||
+              sch.id === rescheduleModal.session.id),
+        }))}
+        sessionToReschedule={
+          rescheduleModal.session
+            ? {
+                Date: rescheduleModal.session.date,
+                TimeslotID: rescheduleModal.session.timeslotId,
+              }
+            : null
+        }
+      />
 
       {/* Conflict Modal */}
       <Dialog

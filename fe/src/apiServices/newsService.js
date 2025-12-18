@@ -88,9 +88,11 @@ const newsService = {
   },
 
   // Từ chối tin tức
-  rejectNews: async (newsId) => {
+  rejectNews: async (newsId, reason) => {
     try {
-      const response = await apiClient.post(`/news/${newsId}/reject`);
+      const response = await apiClient.post(`/news/${newsId}/reject`, {
+        reason,
+      });
       return response.data;
     } catch (error) {
       console.error("Reject news error:", error);
