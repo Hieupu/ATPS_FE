@@ -88,10 +88,6 @@ const normalizeQuestion = (q) => {
     };
 };
 
-
-
-
-
 const SortableParentSection = ({
     parent,
     index,
@@ -142,7 +138,6 @@ const SortableParentSection = ({
                 mb: 3,
             }}
         >
-            {/* Parent Header */}
             <Box
                 sx={{
                     bgcolor: "#f8f9fa",
@@ -161,7 +156,6 @@ const SortableParentSection = ({
                         spacing={2}
                         sx={{ flex: 1 }}
                     >
-                        {/* Drag handle */}
                         <Box
                             {...attributes}
                             {...listeners}
@@ -177,7 +171,6 @@ const SortableParentSection = ({
                             <DragIcon />
                         </Box>
 
-                        {/* Clickable header */}
                         <Box
                             onClick={() => setIsExpanded(!isExpanded)}
                             sx={{
@@ -283,7 +276,6 @@ const SortableParentSection = ({
                 </Stack>
             </Box>
 
-            {/* Child sections */}
             {isExpanded && (
                 <Box sx={{ p: 2 }}>
                     {childSections.length === 0 ? (
@@ -713,7 +705,7 @@ const Step2Content = ({ examId, sections, setSections }) => {
                         ? {
                             ...s,
                             ...sectionData,
-                            fileURL: sectionData.fileURL || s.fileURL // Giữ file cũ nếu không thay đổi
+                            fileURL: sectionData.fileURL || s.fileURL 
                         }
                         : s
                 )
@@ -875,9 +867,6 @@ const Step2Content = ({ examId, sections, setSections }) => {
                     parentType={currentParentType}
                     editData={editingSection}
                 />
-
-
-                {/* Preview dialog vẫn render được nếu có */}
                 <Dialog
                     open={openPreview}
                     onClose={() => setOpenPreview(false)}
@@ -906,8 +895,6 @@ const Step2Content = ({ examId, sections, setSections }) => {
             </Box>
         );
     }
-
-    // MAIN CONTENT
     return (
         <Box>
             <Stack
@@ -976,7 +963,6 @@ const Step2Content = ({ examId, sections, setSections }) => {
                 childSectionId={currentChildId}
             />
 
-            {/* Preview Question Dialog */}
             <Dialog
                 open={openPreview}
                 onClose={() => setOpenPreview(false)}
@@ -1006,11 +992,9 @@ const Step2Content = ({ examId, sections, setSections }) => {
     );
 };
 
-/** Tách phần JSX preview câu hỏi cho gọn */
 const QuestionPreviewContent = ({ question: previewQuestion }) => {
     return (
         <Stack spacing={3}>
-            {/* Content */}
             <Box>
                 <Typography
                     variant="subtitle2"
@@ -1025,8 +1009,6 @@ const QuestionPreviewContent = ({ question: previewQuestion }) => {
             </Box>
 
             <Divider />
-
-            {/* Info */}
             <Box>
                 <Typography
                     variant="subtitle2"
@@ -1068,8 +1050,6 @@ const QuestionPreviewContent = ({ question: previewQuestion }) => {
                     />
                 </Stack>
             </Box>
-
-            {/* Multiple choice options */}
             {(previewQuestion.Type === "multiple_choice" ||
                 previewQuestion.type === "multiple_choice") && (
                     <>
@@ -1147,8 +1127,6 @@ const QuestionPreviewContent = ({ question: previewQuestion }) => {
                         </Box>
                     </>
                 )}
-
-            {/* Correct answer (except essay / speaking) */}
             {!["essay", "speaking"].includes(
                 previewQuestion.Type || previewQuestion.type
             ) && (
@@ -1162,8 +1140,6 @@ const QuestionPreviewContent = ({ question: previewQuestion }) => {
                             >
                                 Đáp án đúng
                             </Typography>
-
-                            {/* Matching */}
                             {previewQuestion.Type === "matching" ||
                                 previewQuestion.type === "matching" ? (
                                 <Stack spacing={1}>

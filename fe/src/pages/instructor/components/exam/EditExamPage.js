@@ -44,7 +44,7 @@ const EditExamPage = () => {
                 childSection.questions = detail.questions || [];
               } catch (err) {
                 console.error(
-                  `❌ Error loading questions for section ${childSection.SectionId}:`,
+                  `Error loading questions for section ${childSection.SectionId}:`,
                   err
                 );
                 childSection.questions = [];
@@ -77,7 +77,7 @@ const EditExamPage = () => {
           if (found) {
             examData.courseId = found.value;
           } else {
-            console.warn("⚠ Course not found for CourseID:", examData.CourseID);
+            console.warn(" Course not found for CourseID:", examData.CourseID);
           }
         }
 

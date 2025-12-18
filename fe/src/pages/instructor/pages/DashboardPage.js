@@ -128,11 +128,35 @@ export default function InstructorDashboard() {
   }, [dashboardData]);
 
   const averageScoreData = useMemo(() => {
-    if (!dashboardData) return [];
-    return dashboardData.examResults.map((result) => ({
-      date: new Date(result.submittedAt).toLocaleDateString("vi-VN"),
-      score: result.averageScore,
-    }));
+    if (!dashboardData || !dashboardData.examResults) return [];
+
+    const today = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(today.getDate() - 7);
+
+    const groupedByDate = dashboardData.examResults.reduce((acc, result) => {
+      const dateStr = new Date(result.submittedAt).toLocaleDateString("vi-VN");
+      const fullDate = new Date(result.submittedAt);
+
+      if (fullDate >= sevenDaysAgo && fullDate <= today) {
+        if (!acc[dateStr]) {
+          acc[dateStr] = { sum: 0, count: 0, fullDate: fullDate };
+        }
+        acc[dateStr].sum += result.averageScore;
+        acc[dateStr].count += 1;
+      }
+      return acc;
+    }, {});
+
+    return Object.keys(groupedByDate)
+      .map((date) => ({
+        date: date,
+        score: Number(
+          (groupedByDate[date].sum / groupedByDate[date].count).toFixed(2)
+        ),
+        fullDate: groupedByDate[date].fullDate,
+      }))
+      .sort((a, b) => a.fullDate - b.fullDate);
   }, [dashboardData]);
 
   const learnersByClass = useMemo(() => {
@@ -174,7 +198,7 @@ export default function InstructorDashboard() {
       !dashboardData?.attendance ||
       !dashboardData?.classes ||
       !dashboardData?.learners ||
-      !dashboardData?.submissions
+      !dashboardData?.examResults
     ) {
       return [];
     }
@@ -196,17 +220,18 @@ export default function InstructorDashboard() {
             .map((e) => e.examId)
         : [];
 
-      const relevantSubmissions = dashboardData.submissions.filter(
-        (s) =>
-          s.learnerId === att.learnerId &&
-          s.score !== null &&
-          (classExamIds.length === 0 || classExamIds.includes(s.examId))
+      const relevantResults = dashboardData.examResults.filter(
+        (er) =>
+          er.learnerId === att.learnerId &&
+          (classExamIds.length === 0 || classExamIds.includes(er.examId))
       );
 
       const avgScore =
-        relevantSubmissions.length > 0
-          ? relevantSubmissions.reduce((sum, s) => sum + Number(s.score), 0) /
-            relevantSubmissions.length
+        relevantResults.length > 0
+          ? relevantResults.reduce(
+              (sum, r) => sum + Number(r.averageScore),
+              0
+            ) / relevantResults.length
           : null;
 
       const warningTypes = [];
@@ -235,8 +260,11 @@ export default function InstructorDashboard() {
   }, [dashboardData]);
 
   const pendingRequests = useMemo(() => {
-    if (!dashboardData) return [];
-    return dashboardData.sessionChangeRequests;
+    if (!dashboardData || !dashboardData.sessionChangeRequests) return [];
+
+    return dashboardData.sessionChangeRequests.filter(
+      (req) => req.status === "PENDING"
+    );
   }, [dashboardData]);
 
   const attendanceAlerts = useMemo(() => {
@@ -479,7 +507,7 @@ export default function InstructorDashboard() {
                   <TrendingUp sx={{ mr: 1.5, color: "#1976d2" }} />
                   <Box>
                     <Typography variant="h6" fontWeight={600}>
-                      Điểm trung bình theo thời gian
+                      Điểm trung bình bài kiểm tra
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Xu hướng điểm số của học viên
@@ -511,8 +539,11 @@ export default function InstructorDashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 11 }}
                       stroke="#999"
+                      interval="preserveStartEnd"
+                      minTickGap={10}
+                      padding={{ left: 10, right: 10 }}
                     />
                     <YAxis
                       domain={[0, 10]}
@@ -564,8 +595,14 @@ export default function InstructorDashboard() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="className"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 10 }}
                       stroke="#999"
+                      interval={0}
+                      tickFormatter={(value) =>
+                        value.length > 15
+                          ? `${value.substring(0, 15)}...`
+                          : value
+                      }
                     />
                     <YAxis tick={{ fontSize: 12 }} stroke="#999" />
                     <Tooltip
@@ -1071,11 +1108,7 @@ export default function InstructorDashboard() {
                         >
                           <LinearProgress
                             variant="determinate"
-                            value={
-                              exam.totalLearners > 0
-                                ? (exam.gradedCount / exam.totalLearners) * 100
-                                : 0
-                            }
+                            value={exam.progress > 100 ? 100 : exam.progress}
                             sx={{
                               flex: 1,
                               height: 8,
@@ -1109,32 +1142,50 @@ export default function InstructorDashboard() {
                         </Box>
                       </TableCell>
                       <TableCell sx={{ borderBottom: "1px solid #f1f5f9" }}>
-                        <Chip
-                          label={exam.status}
-                          size="small"
-                          icon={
-                            exam.status === "Đã chấm" ? (
-                              <CheckCircle sx={{ fontSize: 16 }} />
-                            ) : (
-                              <Schedule sx={{ fontSize: 16 }} />
-                            )
-                          }
-                          sx={{
-                            bgcolor:
-                              exam.status === "Đã chấm" ? "#10b981" : "#f59e0b",
-                            color: "white",
-                            fontWeight: 600,
-                            fontSize: "0.813rem",
-                            height: 28,
-                            borderRadius: 2,
-                            "& .MuiChip-label": {
-                              px: 1.5,
-                            },
-                            "& .MuiChip-icon": {
+                        {exam.submittedCount === 0 ? (
+                          /* Trường hợp chưa có ai nộp bài */
+                          <Chip
+                            label="Chưa có bài nộp"
+                            size="small"
+                            icon={<Schedule sx={{ fontSize: 16 }} />}
+                            sx={{
+                              bgcolor: "#94a3b8", // Màu xám trung tính
                               color: "white",
-                            },
-                          }}
-                        />
+                              fontWeight: 600,
+                              fontSize: "0.813rem",
+                              height: 28,
+                              borderRadius: 2,
+                              "& .MuiChip-label": { px: 1.5 },
+                              "& .MuiChip-icon": { color: "white" },
+                            }}
+                          />
+                        ) : (
+                          /* Trường hợp đã có bài nộp, hiển thị theo trạng thái chấm điểm */
+                          <Chip
+                            label={exam.status}
+                            size="small"
+                            icon={
+                              exam.status === "Đã chấm" ? (
+                                <CheckCircle sx={{ fontSize: 16 }} />
+                              ) : (
+                                <Schedule sx={{ fontSize: 16 }} />
+                              )
+                            }
+                            sx={{
+                              bgcolor:
+                                exam.status === "Đã chấm"
+                                  ? "#10b981"
+                                  : "#f59e0b",
+                              color: "white",
+                              fontWeight: 600,
+                              fontSize: "0.813rem",
+                              height: 28,
+                              borderRadius: 2,
+                              "& .MuiChip-label": { px: 1.5 },
+                              "& .MuiChip-icon": { color: "white" },
+                            }}
+                          />
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}

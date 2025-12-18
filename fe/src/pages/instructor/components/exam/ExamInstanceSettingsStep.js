@@ -130,6 +130,8 @@ const ExamInstanceSettingsStep = ({
 
   const validateTimes = () => {
     const errors = { startTime: "", endTime: "" };
+    const now = new Date();
+    now.setSeconds(0, 0);
 
     if (instanceType === "Exam") {
       if (!startTime) errors.startTime = "Exam bắt buộc phải có thời gian bắt đầu";
@@ -143,6 +145,13 @@ const ExamInstanceSettingsStep = ({
       }
       if (!hasStart && hasEnd) {
         errors.startTime = "Vui lòng chọn thời gian bắt đầu hoặc bỏ trống cả 2 để vô thời hạn";
+      }
+    }
+
+    if (startTime) {
+      const selectedStartTime = new Date(startTime);
+      if (selectedStartTime < now) {
+        errors.startTime = "Thời gian bắt đầu không thể là thời điểm trong quá khứ";
       }
     }
 
@@ -232,10 +241,6 @@ const ExamInstanceSettingsStep = ({
 
       onDone?.();
     } catch (err) {
-      console.error("❌ Submit error:", err);
-      console.error("  - Response:", err?.response?.data);
-      console.error("  - Message:", err?.message);
-
       alert(
         err?.response?.data?.message || err?.message || "Lỗi khi lưu dữ liệu!"
       );
@@ -244,7 +249,9 @@ const ExamInstanceSettingsStep = ({
       setLoading(false);
     }
   };
+  
   const isUnlimitedTime = instanceType === "Assignment" && !startTime && !endTime;
+  
   return (
     <Box>
       <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
@@ -338,6 +345,9 @@ const ExamInstanceSettingsStep = ({
                   setTimeErrors({ ...timeErrors, startTime: "" });
                 }
               }}
+              inputProps={{
+                min: new Date().toISOString().slice(0, 16)
+              }}
               error={!!timeErrors.startTime}
               helperText={timeErrors.startTime}
             />
@@ -347,7 +357,7 @@ const ExamInstanceSettingsStep = ({
             <TextField
               fullWidth
               type="datetime-local"
-              label={instanceType === "Exam" ? "End time *" : "End time (tùy chọn)"}
+              label={instanceType === "Exam" ? "Ngày kết thúc *" : "Ngày kết thúc *"}
               InputLabelProps={{ shrink: true }}
               value={endTime}
               onChange={(e) => {
@@ -360,11 +370,15 @@ const ExamInstanceSettingsStep = ({
               helperText={timeErrors.endTime}
             />
           </Grid>
+          
           {instanceType === "Assignment" && (
-            <Alert severity="info" sx={{ mb: 2 }}>
-              <strong>Assignment:</strong> Có thể bỏ trống cả 2 trường thời gian để tạo bài tập vô thời hạn
-            </Alert>
+            <Grid item xs={12}>
+              <Alert severity="info">
+                <strong>Assignment:</strong> Có thể bỏ trống cả 2 trường thời gian để tạo bài tập vô thời hạn
+              </Alert>
+            </Grid>
           )}
+          
           <Grid item xs={12}>
             <FormControlLabel
               control={
@@ -403,6 +417,7 @@ const ExamInstanceSettingsStep = ({
           </Grid>
         </Grid>
       </Paper>
+      
       <Box mt={3} textAlign="right">
         <Button
           variant="contained"

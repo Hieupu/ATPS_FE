@@ -37,6 +37,7 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import QuizIcon from "@mui/icons-material/Quiz";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { toast } from "react-toastify";
 
 const UNIT_STATUS_OPTIONS = ["VISIBLE", "HIDDEN"];
 const LESSON_TYPE_OPTIONS = ["video", "document", "audio"];
@@ -307,7 +308,7 @@ export default function CurriculumSection({
     };
 
     if (!payload.Title) {
-      alert("Title Unit là bắt buộc");
+      toast.warning("Tên chương là bắt buộc");
       return;
     }
 
@@ -315,8 +316,9 @@ export default function CurriculumSection({
       if (unitDialogMode === "create") await onCreateUnit(payload);
       else await onUpdateUnit(values.UnitID, { ...payload });
       setUnitDialogOpen(false);
+      toast.success("Lưu chương thành công!");
     } catch (err) {
-      alert(err?.message || "Lỗi lưu Unit");
+      toast.error(err?.message || "Lỗi khi lưu chương");
     }
   };
 
@@ -324,8 +326,10 @@ export default function CurriculumSection({
     if (!window.confirm(`Xóa Unit "${unit.Title}"?`)) return;
     try {
       await onDeleteUnit(unit.UnitID);
+      toast.success("Đã xóa chương thành công");
     } catch (err) {
       console.error(err);
+      toast.error("Lỗi khi xóa chương");
     }
   };
 
@@ -389,8 +393,10 @@ export default function CurriculumSection({
         await onUpdateLesson(lessonDialogUnitId, values.LessonID, basePayload);
       }
       setLessonDialogOpen(false);
+      toast.success("Lưu bài học thành công!");
     } catch (err) {
       console.error(err);
+      toast.error(err?.message || "Lỗi khi lưu bài học");
     }
   };
 
@@ -398,8 +404,10 @@ export default function CurriculumSection({
     if (!window.confirm(`Xóa Lesson "${lesson.Title}"?`)) return;
     try {
       await onDeleteLesson(unitId, lesson.LessonID);
+      toast.success("Đã xóa bài học");
     } catch (err) {
       console.error(err);
+      toast.error("Lỗi khi xóa bài học");
     }
   };
 
@@ -1031,14 +1039,28 @@ function AssignmentsList({ assignments, onViewDetail }) {
   );
 }
 
-// UnitFormDialog và LessonFormDialog code giữ nguyên như cũ...
 function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
   const [values, setValues] = useState(initialValues || {});
+  const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     if (open && initialValues) setValues(initialValues);
+    setIsSubmitting(false);
   }, [open, initialValues]);
   const handleChange = (field) => (e) =>
     setValues({ ...values, [field]: e.target.value });
+
+  const handleSave = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>
@@ -1053,6 +1075,7 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               value={values.Title || ""}
               onChange={handleChange("Title")}
               required
+              disabled={isSubmitting} // (Tuỳ chọn) Disable input khi đang lưu
             />
           </Grid>
           <Grid item xs={12}>
@@ -1063,6 +1086,7 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               rows={3}
               value={values.Description || ""}
               onChange={handleChange("Description")}
+              disabled={isSubmitting}
             />
           </Grid>
           <Grid item xs={6}>
@@ -1072,6 +1096,7 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               label="Thời lượng (giờ)"
               value={values.Duration || ""}
               onChange={handleChange("Duration")}
+              disabled={isSubmitting}
             />
           </Grid>
           <Grid item xs={6}>
@@ -1081,10 +1106,11 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               label="Trạng thái"
               value={values.Status || "VISIBLE"}
               onChange={handleChange("Status")}
+              disabled={isSubmitting}
             >
               {UNIT_STATUS_OPTIONS.map((o) => (
                 <MenuItem key={o} value={o}>
-                  {o}
+                  {o === "VISIBLE" ? "Hiển thị" : "Ẩn"}
                 </MenuItem>
               ))}
             </TextField>
@@ -1092,9 +1118,18 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
         </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Hủy</Button>
-        <Button variant="contained" onClick={() => onSubmit(values)}>
-          Lưu
+        <Button onClick={onClose} disabled={isSubmitting}>
+          Hủy
+        </Button>
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={isSubmitting}
+          startIcon={
+            isSubmitting ? <CircularProgress size={20} color="inherit" /> : null
+          }
+        >
+          {isSubmitting ? "Đang lưu..." : "Lưu"}
         </Button>
       </DialogActions>
     </Dialog>
@@ -1103,13 +1138,28 @@ function UnitFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
 
 function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
   const [values, setValues] = useState(initialValues || {});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open && initialValues) setValues(initialValues);
+    setIsSubmitting(false);
   }, [open, initialValues]);
 
   const handleChange = (field) => (e) =>
     setValues({ ...values, [field]: e.target.value });
+
+  const handleSave = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await onSubmit(values);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
@@ -1125,6 +1175,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               value={values.Title || ""}
               onChange={handleChange("Title")}
               required
+              disabled={isSubmitting}
             />
           </Grid>
           <Grid item xs={4}>
@@ -1134,6 +1185,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               label="Thời lượng (phút)"
               value={values.Duration || ""}
               onChange={handleChange("Duration")}
+              disabled={isSubmitting}
             />
           </Grid>
           <Grid item xs={4}>
@@ -1143,6 +1195,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               label="Loại"
               value={values.Type || "video"}
               onChange={handleChange("Type")}
+              disabled={isSubmitting}
             >
               {LESSON_TYPE_OPTIONS.map((o) => (
                 <MenuItem key={o} value={o}>
@@ -1158,18 +1211,17 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               label="Trạng thái"
               value={values.Status || "VISIBLE"}
               onChange={handleChange("Status")}
+              disabled={isSubmitting}
             >
               {LESSON_STATUS_OPTIONS.map((o) => (
                 <MenuItem key={o} value={o}>
-                  {o}
+                  {o === "VISIBLE" ? "Hiển thị" : "Ẩn"}
                 </MenuItem>
               ))}
             </TextField>
           </Grid>
 
-          {/* --- PHẦN ĐÃ CHỈNH SỬA: TÁCH RIÊNG HIỂN THỊ FILE VÀ NÚT UPLOAD --- */}
           <Grid item xs={12}>
-            {/* Nếu có file cũ VÀ chưa chọn file mới thay thế thì hiện Link xem */}
             {!values.file && values.existingFileUrl && (
               <Box
                 sx={{
@@ -1219,6 +1271,7 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
               component="label"
               variant="outlined"
               fullWidth
+              disabled={isSubmitting}
               sx={{ borderStyle: "dashed", py: 2 }}
             >
               <Stack alignItems="center" spacing={1}>
@@ -1251,9 +1304,19 @@ function LessonFormDialog({ open, onClose, mode, initialValues, onSubmit }) {
         </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Hủy</Button>
-        <Button variant="contained" onClick={() => onSubmit(values)}>
-          Lưu
+        <Button onClick={onClose} disabled={isSubmitting}>
+          Hủy
+        </Button>
+
+        <Button
+          variant="contained"
+          onClick={handleSave}
+          disabled={isSubmitting}
+          startIcon={
+            isSubmitting ? <CircularProgress size={20} color="inherit" /> : null
+          }
+        >
+          {isSubmitting ? "Đang xử lý..." : "Lưu"}
         </Button>
       </DialogActions>
     </Dialog>

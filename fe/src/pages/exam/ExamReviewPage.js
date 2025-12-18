@@ -207,6 +207,14 @@ const ExamReviewPage = () => {
     }
   };
 
+ 
+  const calculatePercentage = () => {
+    if (!reviewData?.summary) return 0;
+    const { totalEarnedPoints, totalMaxPoints } = reviewData.summary;
+    if (totalMaxPoints === 0) return 0;
+    return Math.round((totalEarnedPoints / totalMaxPoints) * 100);
+  };
+
   return (
     <>
       <Box>
@@ -255,7 +263,7 @@ const ExamReviewPage = () => {
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
             {reviewData && reviewData.summary && (
               <Chip
-                label={`Điểm: ${reviewData.summary.totalEarnedPoints}/${reviewData.summary.totalMaxPoints}`}
+                label={`Điểm: ${calculatePercentage()}%`}
                 color="primary"
                 variant="outlined"
               />

@@ -23,56 +23,47 @@ import {
 import { Send, Timer } from "@mui/icons-material";
 import { debounce } from "lodash";
 import { toast } from "react-toastify";
-
 import "./Assignment.css";
-
 import {
   getExamToDoApi,
   saveAnswerApi,
   submitExamApi,
   buildSubmitPayload,
 } from "../../../apiServices/learnerExamService";
-
 import { loadFileAsHtml } from "../../../utils/fileToHtml";
 import { QuestionRenderer } from "../../exam/QuestionComponents";
-// ----------------------------------
-
-/* ================= AUDIO PLAYER ================= */
 
 const AudioPlayer = memo(({ audioUrl }) => {
   if (!audioUrl) return null;
-
   return (
-    <Box sx={{ mb: 3, p: 2, bgcolor: "#f5f5f5", borderRadius: 2 }}>
+    <Box
+      sx={{
+        mb: 3,
+        p: 2,
+        bgcolor: "#f5f5f5",
+        borderRadius: 2,
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+      }}
+    >
       <Typography variant="subtitle2" sx={{ mb: 1 }}>
         Audio Listening
       </Typography>
-      <audio controls style={{ width: "100%" }}>
+      <audio controls style={{ width: "100%" }} key={audioUrl}>
         <source src={audioUrl} type="audio/mpeg" />
-        Trình duyệt không hỗ trợ audio.
       </audio>
     </Box>
   );
 });
-AudioPlayer.displayName = "AudioPlayer";
-
-/* ================= QUESTION BLOCK ================= */
 
 const QuestionBlock = memo(({ question, answers, onChange }) => {
   const value = answers[question.examQuestionId] || "";
-
   const handleChange = useCallback(
     (val) => onChange(question.examQuestionId, val),
     [question.examQuestionId, onChange]
   );
-
-  const handleUpload = useCallback(async (file) => {
-    console.warn("Chức năng upload chưa được bật trong Dialog này");
-    return null;
-  }, []);
-
   return (
-    // Đã thêm lại className="question-card"
     <Card
       className="question-card"
       id={`q_${question.examQuestionId}`}
@@ -88,24 +79,19 @@ const QuestionBlock = memo(({ question, answers, onChange }) => {
           />
           <Typography variant="caption">{question.point} điểm</Typography>
         </Box>
-
         <Typography sx={{ mb: 2, fontWeight: 500 }}>
           {question.content}
         </Typography>
-
         <QuestionRenderer
           question={question}
           value={value}
           onChange={handleChange}
-          onUpload={handleUpload}
+          onUpload={async () => null}
         />
       </CardContent>
     </Card>
   );
 });
-QuestionBlock.displayName = "QuestionBlock";
-
-/* ================= MAIN COMPONENT ================= */
 
 const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
   const [sections, setSections] = useState([]);
@@ -117,74 +103,68 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
   const [submitting, setSubmitting] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
-
+  const [leftWidth, setLeftWidth] = useState(42);
+  const [startTime, setStartTime] = useState(null);
+  const containerRef = useRef(null);
   const elapsedTimerRef = useRef(null);
+  const dragging = useRef(false);
 
-  // Load Data
   useEffect(() => {
     if (!open || !assignmentId) return;
-
     const loadAssignment = async () => {
       try {
         setLoading(true);
         const data = await getExamToDoApi(assignmentId);
-
-        if (!data || !data.sections)
-          throw new Error("Không có dữ liệu bài tập");
-
         setSections(data.sections || []);
-
         if (data.sections.length > 0) {
-          const firstSec = data.sections[0];
-          setActiveSection(firstSec);
-          const firstChild = firstSec?.childSections?.[0] || null;
-          setActiveChildSection(firstChild);
+          setActiveSection(data.sections[0]);
+          setActiveChildSection(data.sections[0]?.childSections?.[0] || null);
         }
-
+        const storageKey = `assignment_start_${assignmentId}`;
+        let savedStart = localStorage.getItem(storageKey);
+        if (!savedStart) {
+          savedStart = Date.now();
+          localStorage.setItem(storageKey, savedStart);
+        }
+        setStartTime(parseInt(savedStart));
         const answerMap = {};
         data.sections.forEach((s) =>
           s.childSections?.forEach((c) =>
             c.questions?.forEach((q) => {
-              if (q.learnerAnswer !== null && q.learnerAnswer !== undefined) {
+              if (q.learnerAnswer !== null)
                 answerMap[q.examQuestionId] = q.learnerAnswer;
-              }
             })
           )
         );
         setAnswers(answerMap);
       } catch (error) {
-        console.error(error);
-        toast.error("Lỗi tải đề bài: " + (error.message || "Unknown error"));
+        toast.error("Lỗi: " + error.message);
       } finally {
         setLoading(false);
       }
     };
-
     loadAssignment();
   }, [open, assignmentId]);
 
-  // Load Passage HTML
   useEffect(() => {
-    if (!activeChildSection?.FileURL) {
+    if (activeChildSection?.FileURL) {
+      loadFileAsHtml(activeChildSection.FileURL)
+        .then(setHtmlPassage)
+        .catch(() => setHtmlPassage(""));
+    } else {
       setHtmlPassage("");
-      return;
     }
-    loadFileAsHtml(activeChildSection.FileURL)
-      .then(setHtmlPassage)
-      .catch((err) => console.error("Lỗi load bài đọc:", err));
   }, [activeChildSection]);
 
-  // Timer
   useEffect(() => {
-    if (open) {
+    if (open && startTime) {
       elapsedTimerRef.current = setInterval(() => {
-        setElapsedTime((prev) => prev + 1);
+        setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
       }, 1000);
     }
     return () => clearInterval(elapsedTimerRef.current);
-  }, [open]);
+  }, [open, startTime]);
 
-  // Auto Save
   const debouncedSave = useMemo(
     () =>
       debounce(async (dataToSave) => {
@@ -195,7 +175,7 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
           }));
           await saveAnswerApi(assignmentId, payload);
         } catch (error) {
-          console.error("Auto-save error:", error);
+          console.error(error);
         }
       }, 1500),
     [assignmentId]
@@ -212,48 +192,41 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
     [debouncedSave]
   );
 
-  // Navigation Handlers
-  const handleSectionChange = (section) => {
-    setActiveSection(section);
-    if (section.childSections && section.childSections.length > 0) {
-      setActiveChildSection(section.childSections[0]);
-    } else {
-      setActiveChildSection(null);
-    }
+  const startDragging = () => {
+    dragging.current = true;
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", stopDragging);
   };
 
-  const handleChildTabClick = (child) => {
-    setActiveChildSection(child);
+  const stopDragging = () => {
+    dragging.current = false;
+    document.removeEventListener("mousemove", onMouseMove);
+    document.removeEventListener("mouseup", stopDragging);
   };
 
-  const scrollToQuestion = (questionId) => {
-    const el = document.getElementById(`q_${questionId}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+  const onMouseMove = (e) => {
+    if (!dragging.current || !containerRef.current) return;
+    const newWidth = (e.clientX / containerRef.current.offsetWidth) * 100;
+    if (newWidth > 20 && newWidth < 80) setLeftWidth(newWidth);
   };
 
-  // Submit Logic
   const handleConfirmSubmit = async () => {
     try {
       setSubmitting(true);
-      setSubmitDialogOpen(false);
-
       const payload = buildSubmitPayload(
         Object.entries(answers).map(([id, ans]) => ({
           examQuestionId: Number(id),
           answer: ans,
         })),
-        Date.now(),
+        startTime,
         { metadata: { duration: elapsedTime } }
       );
-
       await submitExamApi(assignmentId, payload);
-
+      localStorage.removeItem(`assignment_start_${assignmentId}`);
       toast.success("Nộp bài thành công!");
       onClose();
     } catch (error) {
-      toast.error(error.message || "Lỗi khi nộp bài");
+      toast.error(error.message);
     } finally {
       setSubmitting(false);
     }
@@ -263,14 +236,12 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
 
   return (
     <Dialog open={open} fullScreen onClose={onClose}>
-      {/* HEADER */}
       <DialogTitle
         sx={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
           borderBottom: "1px solid #ddd",
-          py: 1,
           bgcolor: "#fff",
         }}
       >
@@ -278,25 +249,26 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
           <Typography variant="h6" sx={{ fontWeight: 700 }}>
             Assignment
           </Typography>
-
           <Box sx={{ display: "flex", gap: 1 }}>
             {sections.map((sec, idx) => (
               <Button
-                key={sec.sectionId || idx}
+                key={idx}
                 variant={
                   activeSection?.sectionId === sec.sectionId
                     ? "contained"
                     : "outlined"
                 }
                 size="small"
-                onClick={() => handleSectionChange(sec)}
+                onClick={() => {
+                  setActiveSection(sec);
+                  setActiveChildSection(sec.childSections?.[0]);
+                }}
               >
                 {(sec.Type || `Section ${idx + 1}`).toUpperCase()}
               </Button>
             ))}
           </Box>
         </Box>
-
         <Chip
           icon={<Timer />}
           label={`${Math.floor(elapsedTime / 60)}:${(elapsedTime % 60)
@@ -308,7 +280,6 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
         />
       </DialogTitle>
 
-      {/* BODY */}
       <DialogContent sx={{ p: 0, bgcolor: "#f9f9f9", overflow: "hidden" }}>
         {loading ? (
           <Box
@@ -322,12 +293,11 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
             <CircularProgress />
           </Box>
         ) : (
-          <Box sx={{ display: "flex", height: "100%" }}>
-            {/* Cột Trái: Bài đọc + Audio */}
+          <Box ref={containerRef} sx={{ display: "flex", height: "100%" }}>
             <Box
-              className="scroll-panel" // Đã thêm lại class này
+              className="scroll-panel"
               sx={{
-                width: "40%",
+                width: `${leftWidth}%`,
                 p: 3,
                 borderRight: "1px solid #ddd",
                 overflowY: "auto",
@@ -335,115 +305,98 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
               }}
             >
               <AudioPlayer audioUrl={activeChildSection?.audioUrl} />
-              {htmlPassage ? (
-                <div dangerouslySetInnerHTML={{ __html: htmlPassage }} />
-              ) : (
-                <Typography
-                  color="text.secondary"
-                  align="center"
-                  sx={{ mt: 5 }}
-                >
-                  Không có nội dung bài đọc
-                </Typography>
-              )}
+              <div
+                dangerouslySetInnerHTML={{
+                  __html: htmlPassage || "Không có nội dung",
+                }}
+              />
             </Box>
-
-            {/* Cột Phải: Danh sách câu hỏi */}
             <Box
-              className="scroll-panel" // Đã thêm lại class này
-              sx={{ width: "60%", p: 3, overflowY: "auto", pb: 10 }}
+              onMouseDown={startDragging}
+              sx={{
+                width: "5px",
+                cursor: "col-resize",
+                background: "#ddd",
+                "&:hover": { background: "#999" },
+              }}
+            />
+            <Box
+              className="scroll-panel"
+              sx={{
+                width: `${100 - leftWidth}%`,
+                p: 3,
+                overflowY: "auto",
+                pb: 10,
+              }}
             >
-              {activeChildSection?.questions?.length > 0 ? (
-                activeChildSection.questions.map((q) => (
-                  <QuestionBlock
-                    key={q.examQuestionId}
-                    question={q}
-                    answers={answers}
-                    onChange={handleAnswerChange}
-                  />
-                ))
-              ) : (
-                <Alert severity="info">Phần này không có câu hỏi nào.</Alert>
-              )}
+              {activeChildSection?.questions?.map((q) => (
+                <QuestionBlock
+                  key={q.examQuestionId}
+                  question={q}
+                  answers={answers}
+                  onChange={handleAnswerChange}
+                />
+              ))}
             </Box>
           </Box>
         )}
       </DialogContent>
 
-      {/* FOOTER */}
       <DialogActions
         sx={{
           p: 1.5,
           borderTop: "1px solid #ddd",
-          display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
-          gap: 1,
           bgcolor: "#fff",
         }}
       >
-        {!loading && (
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              width: "100%",
-              overflowX: "auto",
-              gap: 4,
-            }}
-          >
-            <Box sx={{ display: "flex", gap: 1, mr: 2 }}>
-              {activeSection?.childSections?.map((child, index) => (
-                <Button
-                  key={child.childSectionId || index}
-                  variant={
-                    activeChildSection?.childSectionId === child.childSectionId
-                      ? "contained"
-                      : "outlined"
-                  }
-                  size="small"
-                  onClick={() => handleChildTabClick(child)}
-                >
-                  Part{" "}
-                  {child.orderIndex !== undefined
-                    ? child.orderIndex + 1
-                    : index + 1}
-                </Button>
-              ))}
-            </Box>
-
-            <Box sx={{ display: "flex", gap: 0.5 }}>
-              {activeChildSection?.questions?.map((q, idx) => {
-                const hasAnswer = answers[q.examQuestionId];
-                return (
-                  <Button
-                    key={q.examQuestionId}
-                    variant={hasAnswer ? "contained" : "outlined"}
-                    color={hasAnswer ? "success" : "primary"}
-                    sx={{ minWidth: 36, p: 0 }}
-                    size="small"
-                    onClick={() => scrollToQuestion(q.examQuestionId)}
-                  >
-                    {idx + 1}
-                  </Button>
-                );
-              })}
-            </Box>
+        <Box sx={{ display: "flex", justifyContent: "center", gap: 4, mb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1 }}>
+            {activeSection?.childSections?.map((child, index) => (
+              <Button
+                key={index}
+                variant={
+                  activeChildSection?.childSectionId === child.childSectionId
+                    ? "contained"
+                    : "outlined"
+                }
+                size="small"
+                onClick={() => setActiveChildSection(child)}
+              >
+                Part {child.orderIndex + 1 || index + 1}
+              </Button>
+            ))}
           </Box>
-        )}
-
+          <Box sx={{ display: "flex", gap: 0.5 }}>
+            {activeChildSection?.questions?.map((q, idx) => (
+              <Button
+                key={idx}
+                variant={answers[q.examQuestionId] ? "contained" : "outlined"}
+                color={answers[q.examQuestionId] ? "success" : "primary"}
+                sx={{ minWidth: 36 }}
+                size="small"
+                onClick={() =>
+                  document
+                    .getElementById(`q_${q.examQuestionId}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+              >
+                {idx + 1}
+              </Button>
+            ))}
+          </Box>
+        </Box>
         <Box
           sx={{
             display: "flex",
             justifyContent: "flex-end",
-            width: "100%",
             gap: 2,
             pt: 1,
             borderTop: "1px dashed #eee",
           }}
         >
-          <Button onClick={onClose} color="inherit" disabled={submitting}>
+          <Button onClick={onClose} color="inherit">
             Thoát
           </Button>
           <Button
@@ -451,28 +404,20 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
             color="primary"
             startIcon={<Send />}
             onClick={() => setSubmitDialogOpen(true)}
-            disabled={submitting || loading}
           >
-            {submitting ? "Đang nộp..." : "Nộp bài"}
+            Nộp bài
           </Button>
         </Box>
       </DialogActions>
 
-      {/* Confirm Dialog */}
       <Dialog
         open={submitDialogOpen}
         onClose={() => setSubmitDialogOpen(false)}
       >
         <DialogTitle>Xác nhận nộp bài?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            Bạn đã trả lời {Object.keys(answers).length} câu hỏi. Bạn có chắc
-            chắn muốn nộp bài ngay không?
-          </Typography>
-        </DialogContent>
         <DialogActions>
           <Button onClick={() => setSubmitDialogOpen(false)}>Hủy</Button>
-          <Button onClick={handleConfirmSubmit} variant="contained" autoFocus>
+          <Button onClick={handleConfirmSubmit} variant="contained">
             Đồng ý
           </Button>
         </DialogActions>

@@ -367,28 +367,15 @@ export const createExamInstanceApi = async (examId, instanceData) => {
   }
 };
 
-// Cập nhật exam instance
 export const updateExamInstanceApi = async (examId, instanceId, instanceData) => {
   try {
-    // ✅ LOG TRƯỚC KHI GỬI
-    console.log("📤 UPDATE EXAM INSTANCE REQUEST:");
-    console.log("  - URL:", `/instructor/exams/${examId}/instances/${instanceId}`);
-    console.log("  - Payload BEFORE stringify:", instanceData);
-    console.log("  - classId type:", typeof instanceData.classId);
-    console.log("  - classId isArray:", Array.isArray(instanceData.classId));
-    console.log("  - classId value:", instanceData.classId);
-    
-    // ✅ ĐẢNG BẢO KHÔNG BỊ STRINGIFY 2 LẦN
     const response = await apiClient.put(
       `/instructor/exams/${examId}/instances/${instanceId}`,
-      instanceData  // ← KHÔNG stringify ở đây, để axios tự xử lý
+      instanceData  
     );
     
-    console.log("✅ Response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Update exam instance error:", error);
-    console.error("  - Request data:", error.config?.data);
     throw error.response?.data || { message: "Không thể cập nhật phiên thi" };
   }
 };
@@ -447,6 +434,30 @@ export const createFullExamApi = async (fullExamData) => {
   } catch (error) {
     console.error("Create Full Exam API error:", error);
     throw error.response?.data || { message: "Không thể tạo full exam" };
+  }
+};
+
+export const openExamInstanceNowApi = async (examId, instanceId) => {
+  try {
+    const response = await apiClient.post(
+      `/instructor/exams/${examId}/instances/${instanceId}/open-now`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Open instance now error:", error);
+    throw error.response?.data || { message: "Không thể mở bài thi ngay" };
+  }
+};
+
+export const closeExamInstanceNowApi = async (examId, instanceId) => {
+  try {
+    const response = await apiClient.post(
+      `/instructor/exams/${examId}/instances/${instanceId}/close-now`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Close instance now error:", error);
+    throw error.response?.data || { message: "Không thể đóng bài thi ngay" };
   }
 };
 

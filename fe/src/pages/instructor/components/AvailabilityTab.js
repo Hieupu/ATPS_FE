@@ -41,7 +41,7 @@ const DAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 export default function AvailabilityTab({
   instructorId,
-  instructorType = "parttime", // 'fulltime' hoặc 'parttime'
+  instructorType = "parttime", 
   existingSessions = [],
   availabilitySlots = [],
   loading = false,

@@ -69,7 +69,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
       const data = await getQuestionsApi(filterParams);
       setQuestions(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error("Load questions error:", err);
       setError("Không thể tải câu hỏi. Vui lòng thử lại.");
       setQuestions([]);
     } finally {
@@ -302,7 +301,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                                 {question.Content}
                               </Typography>
                               
-                              {/* Improved chips layout - horizontal row */}
                               <Stack direction="row" spacing={1} mt={1.5} flexWrap="wrap" useFlexGap>
                                 <Chip
                                   label={question.Type}
@@ -447,8 +445,7 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                           <Typography variant="body2" sx={{ mb: 1, lineHeight: 1.4 }}>
                             {question.Content}
                           </Typography>
-                          
-                          {/* Compact chips */}
+  
                           <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap>
                             <Chip
                               label={question.Type}
@@ -483,7 +480,6 @@ const QuestionBankTab = ({ selectedQuestions, setSelectedQuestions }) => {
                           </Stack>
                         </Box>
 
-                        {/* Remove button */}
                         <IconButton
                           size="small"
                           onClick={() => handleRemoveSelected(question.QuestionID)}

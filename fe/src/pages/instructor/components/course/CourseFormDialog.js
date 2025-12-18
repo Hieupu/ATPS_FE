@@ -10,10 +10,10 @@ import {
   Stack,
   Box,
   Typography,
+  CircularProgress,
 } from "@mui/material";
 
 const LEVEL_OPTIONS = ["BEGINNER", "INTERMEDIATE", "ADVANCED"];
-const STATUS_OPTIONS = ["DRAFT", "IN_REVIEW", "APPROVED", "PUBLISHED"];
 
 export default function CourseFormDialog({
   open,
@@ -35,12 +35,14 @@ export default function CourseFormDialog({
     ImageFile: null,
     _localPreview: "",
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEdit = mode === "edit";
 
   useEffect(() => {
     if (!open) return;
 
+    setIsSubmitting(false);
     if (initialValues) {
       // EDIT
       setValues((prev) => ({
@@ -73,18 +75,27 @@ export default function CourseFormDialog({
     }));
   };
 
-  const handleSubmit = () => {
-    const payload = {
-      ...values,
-      Duration: values.Duration ? Number(values.Duration) : null,
-    };
-    onSubmit(payload);
-  };
+  const handleSubmit = async () => {
+    if (isSubmitting) return;
 
+    setIsSubmitting(true);
+    try {
+      const payload = {
+        ...values,
+        Duration: values.Duration ? Number(values.Duration) : null,
+      };
+
+      await onSubmit(payload);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
   return (
     <Dialog
       open={open}
-      onClose={onClose}
+      onClose={isSubmitting ? null : onClose}
       maxWidth="md" // 🔥 rộng hơn "sm"
       fullWidth
       PaperProps={{ sx: { borderRadius: 2 } }}
@@ -103,6 +114,7 @@ export default function CourseFormDialog({
             fullWidth
             required
             placeholder="Ví dụ: Lập trình React cho người mới bắt đầu"
+            disabled={isSubmitting}
           />
 
           <TextField
@@ -113,6 +125,7 @@ export default function CourseFormDialog({
             multiline
             minRows={4}
             placeholder="Mô tả chi tiết về nội dung, giá trị và đối tượng học viên của khóa học..."
+            disabled={isSubmitting}
           />
 
           <Box>
@@ -156,6 +169,7 @@ export default function CourseFormDialog({
               <Button
                 variant="outlined"
                 component="label"
+                disabled={isSubmitting}
                 sx={{ fontWeight: 600 }}
               >
                 Chọn ảnh
@@ -187,6 +201,7 @@ export default function CourseFormDialog({
               onChange={handleChange("Duration")}
               type="number"
               fullWidth
+              disabled={isSubmitting}
               InputProps={{ inputProps: { min: 0, step: 0.5 } }}
             />
             <TextField
@@ -195,6 +210,7 @@ export default function CourseFormDialog({
               value={values.Level}
               onChange={handleChange("Level")}
               fullWidth
+              disabled={isSubmitting}
             >
               {LEVEL_OPTIONS.map((lv) => (
                 <MenuItem key={lv} value={lv}>
@@ -215,6 +231,7 @@ export default function CourseFormDialog({
               "Mục tiêu 1: Nắm được kiến thức cơ bản về...\n" +
               "Mục tiêu 2: ..."
             }
+            disabled={isSubmitting}
           />
 
           <TextField
@@ -225,20 +242,33 @@ export default function CourseFormDialog({
             multiline
             minRows={3}
             placeholder={"Đã làm quen với máy tính và internet\n" + "..."}
+            disabled={isSubmitting}
           />
         </Stack>
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} sx={{ textTransform: "none" }}>
+        <Button
+          onClick={onClose}
+          sx={{ textTransform: "none" }}
+          disabled={isSubmitting}
+        >
           Hủy
         </Button>
         <Button
           variant="contained"
           onClick={handleSubmit}
+          disabled={isSubmitting}
+          startIcon={
+            isSubmitting ? <CircularProgress size={20} color="inherit" /> : null
+          }
           sx={{ textTransform: "none", fontWeight: 600 }}
         >
-          {isEdit ? "Cập nhật" : "Tạo khóa học"}
+          {isSubmitting
+            ? "Đang xử lý..."
+            : isEdit
+            ? "Cập nhật"
+            : "Tạo khóa học"}
         </Button>
       </DialogActions>
     </Dialog>
