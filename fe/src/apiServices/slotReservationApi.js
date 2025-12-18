@@ -2,12 +2,15 @@
 import apiClient from "./apiClient";
 
 export const slotReservationApi = {
+  // ⭐️ FIX: Thêm instructorId vào các API calls
+  
   // Giữ chỗ slot
-  reserveSlot: async (timeslotId, date) => {
+  reserveSlot: async (timeslotId, date, instructorId) => {
     try {
       const response = await apiClient.post('/slot-reservation/reserve', {
         timeslotId,
-        date
+        date,
+        instructorId // ⭐️ Thêm instructorId
       });
       return response.data;
     } catch (error) {
@@ -16,11 +19,12 @@ export const slotReservationApi = {
   },
 
   // Hủy giữ chỗ slot
-  releaseSlot: async (timeslotId, date) => {
+  releaseSlot: async (timeslotId, date, instructorId) => {
     try {
       const response = await apiClient.post('/slot-reservation/release', {
         timeslotId,
-        date
+        date,
+        instructorId // ⭐️ Thêm instructorId
       });
       return response.data;
     } catch (error) {
@@ -29,10 +33,14 @@ export const slotReservationApi = {
   },
 
   // Kiểm tra trạng thái slot
-  checkSlotStatus: async (timeslotId, date) => {
+  checkSlotStatus: async (timeslotId, date, instructorId) => {
     try {
       const response = await apiClient.get('/slot-reservation/check', {
-        params: { timeslotId, date }
+        params: { 
+          timeslotId, 
+          date, 
+          instructorId // ⭐️ Thêm instructorId
+        }
       });
       return response.data;
     } catch (error) {

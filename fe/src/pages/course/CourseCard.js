@@ -127,7 +127,7 @@ const CourseCard = ({ course }) => {
             lineHeight: 1.35,
             color: "text.primary",
             fontFamily: "'Poppins', 'Segoe UI', sans-serif",
-            mb:-2
+            mb:1
           }}
         >
           {course.Title}
