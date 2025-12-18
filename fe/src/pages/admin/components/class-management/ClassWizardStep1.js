@@ -28,6 +28,7 @@ const ClassWizardStep1 = ({
   selectedCourse,
   setSelectedCourse,
   loadingInstructorData,
+  lockBasicInfo = false, // Khi true: khóa Giảng viên & Khóa/Môn (chỉ cho đổi các phần khác)
 }) => {
   return (
     <div className="wizard-step-content">
@@ -66,7 +67,7 @@ const ClassWizardStep1 = ({
                 : "")
             }
             onChange={(e) => {
-              if (readonly) return;
+              if (readonly || lockBasicInfo) return;
               setInstructorSearchTerm(e.target.value);
               setInstructorDropdownOpen(true);
               if (!e.target.value) {
@@ -79,7 +80,7 @@ const ClassWizardStep1 = ({
               }
             }}
             onFocus={() => {
-              if (!readonly) setInstructorDropdownOpen(true);
+              if (!readonly && !lockBasicInfo) setInstructorDropdownOpen(true);
             }}
             onBlur={() => {
               // Delay để cho phép click vào dropdown item
@@ -87,8 +88,8 @@ const ClassWizardStep1 = ({
             }}
             placeholder="Tìm kiếm giảng viên..."
             className={errors.InstructorID ? "error" : ""}
-            disabled={readonly}
-            readOnly={readonly}
+            disabled={readonly || lockBasicInfo}
+            readOnly={readonly || lockBasicInfo}
             style={{
               width: "100%",
               padding: "10px",
@@ -212,7 +213,7 @@ const ClassWizardStep1 = ({
                 : "")
             }
             onChange={(e) => {
-              if (readonly) return;
+              if (readonly || lockBasicInfo) return;
               setCourseSearchTerm(e.target.value);
               setCourseDropdownOpen(true);
               if (!e.target.value) {
@@ -221,7 +222,7 @@ const ClassWizardStep1 = ({
               }
             }}
             onFocus={() => {
-              if (!readonly && formData.InstructorID) {
+              if (!readonly && !lockBasicInfo && formData.InstructorID) {
                 setCourseDropdownOpen(true);
               }
             }}
@@ -233,8 +234,8 @@ const ClassWizardStep1 = ({
                 ? "Tìm kiếm khóa học..."
                 : "Vui lòng chọn giảng viên trước"
             }
-            disabled={readonly || !formData.InstructorID}
-            readOnly={readonly}
+            disabled={readonly || lockBasicInfo || !formData.InstructorID}
+            readOnly={readonly || lockBasicInfo}
             className={errors.CourseID ? "error" : ""}
             style={{
               width: "100%",

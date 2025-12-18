@@ -42,6 +42,9 @@ export default function OAuthCallback() {
         navigate("/instructor");
       } else if (user?.role === "admin") {
         navigate("/admin");
+      }
+      else if (user?.role === "staff") {
+        navigate("/staff");
       } else {
         navigate("/");
       }

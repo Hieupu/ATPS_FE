@@ -49,6 +49,7 @@ import {
 import refundService from "../../../apiServices/refundService";
 import classService from "../../../apiServices/classService";
 import "./style.css";
+import ChangeClassDialog from "../components/refund/ChangeClassDialog";
 
 export default function RefundPage() {
   const [tabValue, setTabValue] = useState(0);
@@ -84,6 +85,7 @@ export default function RefundPage() {
   const [classModalError, setClassModalError] = useState("");
   const [classOptions, setClassOptions] = useState([]);
   const [selectedClassOption, setSelectedClassOption] = useState(null);
+  const [classScheduleSummaries, setClassScheduleSummaries] = useState({});
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [appliedDateFrom, setAppliedDateFrom] = useState("");
@@ -419,7 +421,39 @@ export default function RefundPage() {
         targetRefund.RefundID
       );
       const options = response?.data || response || [];
-      setClassOptions(Array.isArray(options) ? options : []);
+      const normalizedOptions = Array.isArray(options) ? options : [];
+      setClassOptions(normalizedOptions);
+
+      // Load schedule summaries for each candidate class so that admin can see days/timeslots
+      try {
+        const summaries = {};
+        await Promise.all(
+          normalizedOptions.map(async (cls) => {
+            const classId = cls.ClassID || cls.id;
+            if (!classId) return;
+            try {
+              const sessions = await classService.getClassSessionsForFrontend(
+                classId
+              );
+              if (Array.isArray(sessions) && sessions.length > 0) {
+                const summary = buildClassScheduleSummary(sessions);
+                summaries[classId] = summary;
+              }
+            } catch (err) {
+              console.error(
+                "Error loading sessions for class in refund change dialog:",
+                err
+              );
+            }
+          })
+        );
+        setClassScheduleSummaries(summaries);
+      } catch (scheduleError) {
+        console.error(
+          "Error building class schedule summaries for refund change dialog:",
+          scheduleError
+        );
+      }
     } catch (error) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -461,6 +495,56 @@ export default function RefundPage() {
     } finally {
       setClassModalLoading(false);
     }
+  };
+
+  // Build a human-readable schedule summary from class sessions
+  const buildClassScheduleSummary = (sessions) => {
+    if (!Array.isArray(sessions) || sessions.length === 0) return "";
+
+    const dayMap = {
+      0: "CN",
+      1: "T2",
+      2: "T3",
+      3: "T4",
+      4: "T5",
+      5: "T6",
+      6: "T7",
+    };
+
+    const byDay = {};
+
+    sessions.forEach((s) => {
+      if (!s.Date) return;
+      const date = new Date(s.Date);
+      if (Number.isNaN(date.getTime())) return;
+      const dayKey = dayMap[date.getDay()] || "";
+      if (!dayKey) return;
+
+      const start =
+        (s.StartTime && String(s.StartTime).slice(0, 5)) || undefined;
+      const end = (s.EndTime && String(s.EndTime).slice(0, 5)) || undefined;
+      const range =
+        start && end ? `${start}-${end}` : start || end || "Không rõ giờ";
+
+      if (!byDay[dayKey]) {
+        byDay[dayKey] = new Set();
+      }
+      byDay[dayKey].add(range);
+    });
+
+    const parts = Object.entries(byDay).map(([day, rangesSet]) => {
+      const ranges = Array.from(rangesSet);
+      return `${day}: ${ranges.join(", ")}`;
+    });
+
+    return parts.join(" | ");
+  };
+
+  const getClassScheduleSummary = (cls) => {
+    if (!cls) return "";
+    const classId = cls.ClassID || cls.id;
+    if (!classId) return "";
+    return classScheduleSummaries[classId] || "";
   };
 
   const handleSendAccountEmail = async (refund) => {
@@ -1134,12 +1218,12 @@ export default function RefundPage() {
               "&:hover": { backgroundColor: "#dc2626" },
             }}
           >
-            Hủy
+            Gửi
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog
+      <ChangeClassDialog
         open={classModalOpen}
         onClose={() => {
           if (!classModalLoading) {
@@ -1147,73 +1231,15 @@ export default function RefundPage() {
             setSelectedClassOption(null);
           }
         }}
-        fullWidth
-        maxWidth="sm"
-        PaperProps={{ sx: { borderRadius: 3 } }}
-      >
-        <DialogTitle sx={{ fontWeight: 700 }}>Chọn lớp chuyển</DialogTitle>
-        <DialogContent dividers>
-          {classModalError && (
-            <Alert severity="error" sx={{ mb: 2 }}>
-              {classModalError}
-            </Alert>
-          )}
-          {classModalLoading ? (
-            <Box sx={{ py: 4, display: "flex", justifyContent: "center" }}>
-              <CircularProgress size={24} />
-            </Box>
-          ) : classOptions.length === 0 ? (
-            <Typography>Không tìm thấy lớp phù hợp</Typography>
-          ) : (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1 }}>
-              {classOptions.map((cls) => (
-                <Button
-                  key={cls.ClassID || cls.id}
-                  variant={
-                    selectedClassOption &&
-                    (selectedClassOption.ClassID || selectedClassOption.id) ===
-                      (cls.ClassID || cls.id)
-                      ? "contained"
-                      : "outlined"
-                  }
-                  onClick={() => setSelectedClassOption(cls)}
-                  sx={{ justifyContent: "space-between" }}
-                >
-                  <span>
-                    {cls.Name || cls.name || `Lớp ${cls.ClassID || cls.id}`}
-                  </span>
-                  <Typography variant="caption" sx={{ color: "#64748b" }}>
-                    {cls.Status || "active"}
-                  </Typography>
-                </Button>
-              ))}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2.5 }}>
-          <Button
-            onClick={() => {
-              setClassModalOpen(false);
-              setSelectedClassOption(null);
-            }}
-            disabled={classModalLoading}
-            sx={{ textTransform: "none", color: "#64748b" }}
-          >
-            Đóng
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleConfirmClassSelection}
-            disabled={!selectedClassOption || classModalLoading}
-            startIcon={
-              classModalLoading ? <CircularProgress size={16} /> : null
-            }
-            sx={{ textTransform: "none" }}
-          >
-            Xác nhận
-          </Button>
-        </DialogActions>
-      </Dialog>
+        loading={classModalLoading}
+        error={classModalError}
+        options={classOptions}
+        selectedClass={selectedClassOption}
+        onSelectClass={setSelectedClassOption}
+        onConfirm={handleConfirmClassSelection}
+        title="Chọn lớp chuyển"
+        getScheduleSummary={getClassScheduleSummary}
+      />
 
       {/* Snackbar Notification */}
       <Snackbar

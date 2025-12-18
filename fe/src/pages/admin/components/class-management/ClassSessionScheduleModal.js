@@ -137,6 +137,20 @@ const ClassSessionScheduleModal = ({
     };
   }, [existingSessions]);
 
+  // Map từ TimeslotID → StartTime-EndTime (để hiển thị unique time ranges)
+  const timeslotIdToTimeRange = useMemo(() => {
+    const map = new Map();
+    (timeslots || []).forEach((ts) => {
+      const tsId = ts.TimeslotID || ts.id;
+      const start = (ts.StartTime || ts.startTime || "").substring(0, 5);
+      const end = (ts.EndTime || ts.endTime || "").substring(0, 5);
+      if (tsId != null && start && end) {
+        map.set(tsId, `${start}-${end}`);
+      }
+    });
+    return map;
+  }, [timeslots]);
+
   // Map từ (StartTime-EndTime, Day) → TimeslotID
   // Key: "StartTime-EndTime_Day" (ví dụ: "08:00-10:00_Monday")
   // Value: TimeslotID
@@ -678,8 +692,11 @@ const ClassSessionScheduleModal = ({
                   helperText="Chọn khoảng thời gian (StartTime - EndTime)"
                 >
                   <MenuItem value="">-- Chọn ca --</MenuItem>
-                  {timeslotOptions.map((opt) => (
-                    <MenuItem key={opt.value} value={opt.value}>
+                  {timeslotOptions.map((opt, index) => (
+                    <MenuItem
+                      key={`timeslot-opt-${opt.value}-${index}`}
+                      value={opt.value}
+                    >
                       {opt.label}
                     </MenuItem>
                   ))}
@@ -704,8 +721,8 @@ const ClassSessionScheduleModal = ({
                   helperText="Chỉ hiển thị các thứ có trong khoảng ngày đã chọn."
                 >
                   <MenuItem value="">-- Chọn thứ --</MenuItem>
-                  {availableDayIndices.map((idx) => (
-                    <MenuItem key={idx} value={idx}>
+                  {availableDayIndices.map((idx, index) => (
+                    <MenuItem key={`day-opt-${idx}-${index}`} value={idx}>
                       {getWeekdayLabel(idx)}
                     </MenuItem>
                   ))}
@@ -817,9 +834,9 @@ const ClassSessionScheduleModal = ({
                           mt: 0.5,
                         }}
                       >
-                        {classDaysAndTimeslots.days.map((dayIdx) => (
+                        {classDaysAndTimeslots.days.map((dayIdx, index) => (
                           <Chip
-                            key={dayIdx}
+                            key={`day-${dayIdx}-${index}`}
                             label={getWeekdayLabel(dayIdx)}
                             size="small"
                             variant="outlined"
@@ -830,31 +847,45 @@ const ClassSessionScheduleModal = ({
                     </Box>
                   )}
 
-                  {classDaysAndTimeslots.timeslots.length > 0 && (
-                    <Box>
-                      <Typography variant="caption" color="text.secondary">
-                        Các ca đang học:
-                      </Typography>
-                      <Box
-                        sx={{
-                          display: "flex",
-                          gap: 0.5,
-                          flexWrap: "wrap",
-                          mt: 0.5,
-                        }}
-                      >
-                        {classDaysAndTimeslots.timeslots.map((tsId) => (
-                          <Chip
-                            key={tsId}
-                            label={getTimeslotLabel(tsId)}
-                            size="small"
-                            variant="outlined"
-                            color="secondary"
-                          />
-                        ))}
+                  {(() => {
+                    // Gộp các TimeslotID có cùng StartTime-EndTime lại với nhau
+                    // Chỉ hiển thị các ca khác nhau (unique time ranges)
+                    const uniqueTimeRanges = new Set();
+                    classDaysAndTimeslots.timeslots.forEach((tsId) => {
+                      const timeRange = timeslotIdToTimeRange.get(tsId);
+                      if (timeRange) {
+                        uniqueTimeRanges.add(timeRange);
+                      }
+                    });
+                    const sortedTimeRanges =
+                      Array.from(uniqueTimeRanges).sort();
+
+                    return sortedTimeRanges.length > 0 ? (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">
+                          Các ca đang học:
+                        </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            gap: 0.5,
+                            flexWrap: "wrap",
+                            mt: 0.5,
+                          }}
+                        >
+                          {sortedTimeRanges.map((timeRange, index) => (
+                            <Chip
+                              key={`time-range-${timeRange}-${index}`}
+                              label={timeRange.replace("-", " - ")}
+                              size="small"
+                              variant="outlined"
+                              color="secondary"
+                            />
+                          ))}
+                        </Box>
                       </Box>
-                    </Box>
-                  )}
+                    ) : null;
+                  })()}
 
                   {/* Ngày cuối cùng */}
                   {lastSession && (
@@ -930,7 +961,7 @@ const ClassSessionScheduleModal = ({
                       borderRadius: 1,
                     }}
                   >
-                    {availableSlots.map((slot) => {
+                    {availableSlots.map((slot, index) => {
                       const d = dayjs(slot.date);
                       const display = d.isValid()
                         ? d.format("DD/MM/YYYY")
@@ -942,7 +973,10 @@ const ClassSessionScheduleModal = ({
                       const isSelected = chosenSlotKey === slot.key;
 
                       return (
-                        <ListItem key={slot.key} disablePadding>
+                        <ListItem
+                          key={`slot-${slot.key}-${index}`}
+                          disablePadding
+                        >
                           <ListItemButton
                             selected={isSelected}
                             onClick={() => setChosenSlotKey(slot.key)}

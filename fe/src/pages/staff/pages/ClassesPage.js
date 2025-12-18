@@ -23,10 +23,6 @@ import {
   Divider,
   Autocomplete,
   Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
 import {
   Add,
@@ -48,17 +44,19 @@ import {
   ClassForm,
   ClassWizard,
   StudentSelector,
-} from "../components/class-management";
+} from "../../admin/components/class-management";
 import {
   CLASS_STATUS,
   getStatusInfo,
   normalizeStatus,
 } from "../../../constants/classStatus";
-import "./style.css";
+import { useAuth } from "../../../contexts/AuthContext";
 
 const ClassesPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth(); // Lấy thông tin user từ AuthContext
+  const currentStaffId = user?.StaffID; // Lấy StaffID của staff hiện tại
   const urlInstructorId = searchParams.get("instructorId");
   const urlCourseId = searchParams.get("courseId");
 
@@ -74,11 +72,6 @@ const ClassesPage = () => {
   const [showClassWizard, setShowClassWizard] = useState(false);
   const [showStudentSelector, setShowStudentSelector] = useState(false);
   const [selectedClass, setSelectedClass] = useState(null);
-
-  // State cho dialog từ chối
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-  const [classToReject, setClassToReject] = useState(null);
 
   // Filter and search
   const [searchInput, setSearchInput] = useState(""); // Input value for class name search
@@ -137,7 +130,11 @@ const ClassesPage = () => {
         coursesData,
         timeslotResponse,
       ] = await Promise.all([
-        classService.getAllClasses(),
+        // Lấy tất cả lớp học, truyền role và staffID để backend filter
+        classService.getAllClasses({
+          userRole: user?.role,
+          staffID: currentStaffId,
+        }),
         classService.getAllInstructors(),
         classService.getAllLearners(),
         classService.getAllCourses(),
@@ -147,11 +144,9 @@ const ClassesPage = () => {
       // Đảm bảo dữ liệu là array
       let classesArray = Array.isArray(classesData) ? classesData : [];
 
-      // Cảnh báo nếu không có timeslots (có thể do backend lỗi)
       const timeslotsArray = Array.isArray(timeslotResponse?.data)
         ? timeslotResponse.data
         : [];
-
       // Load enrollments và sessions cho từng lớp học nếu chưa có trong data
       classesArray = await Promise.all(
         classesArray.map(async (classItem) => {
@@ -272,20 +267,65 @@ const ClassesPage = () => {
 
   // Handlers
   const handleAddClass = () => {
-    navigate("/admin/classes/new");
+    navigate("/staff/classes/new");
   };
 
   const handleEditClass = (classItem) => {
     const status = normalizeStatus(classItem.Status || classItem.status);
-    // Chỉ cho phép chỉnh sửa khi status là DRAFT, còn lại chỉ xem
+    // Staff chỉ có thể chỉnh sửa khi status là DRAFT, còn lại chỉ xem
     if (status === CLASS_STATUS.DRAFT) {
       // Cho phép chỉnh sửa - navigate đến edit page
-      navigate(`/admin/classes/edit/${classItem.ClassID || classItem.id}`);
+      navigate(`/staff/classes/edit/${classItem.ClassID || classItem.id}`);
     } else {
       // Chỉ xem - navigate đến edit page với mode readonly
-      navigate(`/admin/classes/edit/${classItem.ClassID || classItem.id}`, {
+      navigate(`/staff/classes/edit/${classItem.ClassID || classItem.id}`, {
         state: { readonly: true },
       });
+    }
+  };
+
+  // Staff gửi lớp để duyệt (DRAFT → PENDING)
+  // Backend sẽ tự động gửi notification đến toàn bộ admin
+  const handleSubmitForApproval = async (classId) => {
+    const confirmed = window.confirm(
+      "Bạn có chắc muốn gửi lớp học này để duyệt? Lớp sẽ chuyển sang trạng thái 'Chờ duyệt' và thông báo sẽ được gửi đến tất cả admin."
+    );
+    if (confirmed) {
+      try {
+        await classService.submitClassForApproval(classId);
+        alert(
+          "✅ Đã gửi yêu cầu duyệt lớp thành công! Lớp sẽ được duyệt bởi admin."
+        );
+        await loadData();
+      } catch (error) {
+        console.error("Lỗi khi gửi duyệt lớp:", error);
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể gửi duyệt lớp học. Vui lòng thử lại!";
+        alert(`❌ Lỗi: ${errorMessage}`);
+      }
+    }
+  };
+
+  // Staff hủy yêu cầu duyệt (PENDING → DRAFT)
+  const handleCancelApproval = async (classId) => {
+    const confirmed = window.confirm(
+      "Bạn có chắc muốn hủy yêu cầu duyệt lớp này? Lớp sẽ chuyển về trạng thái 'Nháp'."
+    );
+    if (confirmed) {
+      try {
+        await classService.updateClass(classId, { Status: CLASS_STATUS.DRAFT });
+        alert("✅ Đã hủy yêu cầu duyệt lớp thành công!");
+        await loadData();
+      } catch (error) {
+        console.error("Lỗi khi hủy yêu cầu duyệt:", error);
+        const errorMessage =
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể hủy yêu cầu duyệt. Vui lòng thử lại!";
+        alert(`❌ Lỗi: ${errorMessage}`);
+      }
     }
   };
 
@@ -497,92 +537,17 @@ const ClassesPage = () => {
     }
   };
 
-  const handleApproveClass = async (classId) => {
-    // Admin duyệt lớp PENDING (do staff gửi duyệt)
-    const confirmed = window.confirm(
-      "✅ Bạn có chắc muốn duyệt lớp học này? Lớp sẽ chuyển sang trạng thái 'Đã duyệt'."
-    );
-    if (confirmed) {
-      try {
-        // Dùng reviewClass với action="APPROVE" để duyệt lớp PENDING
-        await classService.reviewClass(classId, "APPROVE");
-        alert(" ✅ Đã duyệt lớp học thành công!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi duyệt lớp:", error);
-        const errorMessage =
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể duyệt lớp học. Vui lòng thử lại!";
-        alert(` ❌ Lỗi: ${errorMessage}`);
-      }
-    }
-  };
-
-  const handleRejectClass = (classId, classItem) => {
-    setClassToReject({ classId, classItem });
-    setRejectDialogOpen(true);
-  };
-
-  const handleConfirmReject = async () => {
-    if (!classToReject) return;
-    if (!rejectReason || rejectReason.trim() === "") {
-      alert("Vui lòng nhập lý do từ chối!");
-      return;
-    }
-
-    try {
-      await classService.rejectClass(classToReject.classId, rejectReason);
-      alert(" Đã từ chối lớp học thành công!");
-      setRejectDialogOpen(false);
-      setRejectReason("");
-      setClassToReject(null);
-      await loadData();
-    } catch (error) {
-      console.error("Lỗi khi từ chối lớp:", error);
-      const errorMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        "Không thể từ chối lớp học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
-    }
-  };
-
-  const handleCloseRejectDialog = () => {
-    setRejectDialogOpen(false);
-    setRejectReason("");
-    setClassToReject(null);
-  };
-
-  // Admin thay đổi trạng thái lớp
-  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
-  const [revertReason, setRevertReason] = useState("");
-  const [classToRevert, setClassToRevert] = useState(null);
+  // Staff không có quyền duyệt lớp - chỉ có quyền gửi duyệt (handleSubmitForApproval)
 
   const handleChangeStatus = async (classId, newStatus) => {
-    console.log("[AdminClasses][handleChangeStatus] CALLED", {
-      classId,
-      newStatus,
-    });
-
-    // Xử lý riêng cho trường hợp ADMIN muốn chuyển APPROVED/ACTIVE → DRAFT
-    if (newStatus === "DRAFT") {
-      const targetClass = classes.find((c) => c.ClassID === classId);
-      console.log("[AdminClasses][handleChangeStatus] Open revert dialog", {
-        classId,
-        targetClass,
-      });
-      setClassToRevert(targetClass || null);
-      setRevertReason("");
-      setRevertDialogOpen(true);
-      return;
-    }
-
-    // Các trường hợp khác (ví dụ: CANCEL) dùng confirm cũ
     let confirmMessage = "";
     let successMessage = "";
 
-    if (newStatus === "CANCEL") {
+    if (newStatus === "DRAFT") {
+      confirmMessage =
+        "⚠️ Bạn có chắc muốn chuyển lớp học này về trạng thái 'Nháp'?";
+      successMessage = "Đã chuyển lớp học về trạng thái 'Nháp' thành công!";
+    } else if (newStatus === "CANCEL") {
       confirmMessage = "⚠️ Bạn có chắc muốn hủy lớp học này?";
       successMessage = "Đã hủy lớp học thành công!";
     }
@@ -590,76 +555,18 @@ const ClassesPage = () => {
     const confirmed = window.confirm(confirmMessage);
     if (confirmed) {
       try {
+        // Dùng updateClass để cập nhật Status
         await classService.updateClass(classId, { Status: newStatus });
         alert(` ${successMessage}`);
         await loadData();
       } catch (error) {
         console.error(`Lỗi khi chuyển trạng thái lớp:`, error);
-        const errorMessage =
-          error?.message || error?.response?.data?.message || "";
-        alert(
-          `Không thể chuyển trạng thái lớp học. ${
-            errorMessage ? `Chi tiết: ${errorMessage}` : "Vui lòng thử lại!"
-          }`
-        );
+        alert(" Không thể chuyển trạng thái lớp học. Vui lòng thử lại!");
       }
     }
   };
 
-  const handleConfirmRevertToDraft = async () => {
-    if (!classToRevert) return;
-    const classId = classToRevert.ClassID;
-
-    const trimmedReason = revertReason.trim();
-    if (!trimmedReason) {
-      alert("Vui lòng nhập lý do khi chuyển lớp về trạng thái Nháp.");
-      return;
-    }
-
-    try {
-      console.log("[AdminClasses][handleConfirmRevertToDraft] START", {
-        classId,
-        reason: trimmedReason,
-      });
-      await classService.revertClassToDraft(classId, trimmedReason);
-      alert("Đã chuyển lớp về trạng thái 'Nháp' và gửi thông báo cho staff.");
-      setRevertDialogOpen(false);
-      setRevertReason("");
-      setClassToRevert(null);
-      await loadData();
-    } catch (error) {
-      console.error("Lỗi khi chuyển lớp về DRAFT:", error);
-      const errorMessage =
-        error?.message || error?.response?.data?.message || "";
-      alert(
-        `Không thể chuyển lớp về trạng thái 'Nháp'. ${
-          errorMessage ? `Chi tiết: ${errorMessage}` : "Vui lòng thử lại!"
-        }`
-      );
-    }
-  };
-
-  const handleCloseRevertDialog = () => {
-    setRevertDialogOpen(false);
-    setRevertReason("");
-    setClassToRevert(null);
-  };
-
-  const handlePublishClass = async (classId) => {
-    const confirmed = window.confirm(
-      "🚀 Bạn có chắc muốn xuất bản lớp học này? Học viên có thể đăng ký sau khi xuất bản."
-    );
-    if (confirmed) {
-      try {
-        await classService.publishClass(classId);
-        alert(" Đã xuất bản lớp học thành công!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi xuất bản lớp:", error);
-        alert(" Không thể xuất bản lớp học. Vui lòng thử lại!");
-      }
-    }
-  };
+  // Staff không có quyền xuất bản lớp - chỉ admin mới có quyền này
 
   const handleUpdateStudents = async (updatedEnrolledIds) => {
     try {
@@ -712,7 +619,7 @@ const ClassesPage = () => {
     setEndDateFilter("");
 
     // Navigate to base URL without query params
-    navigate("/admin/classes");
+    navigate("/staff/classes");
   };
 
   const handleSearchKeyPress = (e) => {
@@ -855,15 +762,18 @@ const ClassesPage = () => {
   };
 
   // Filter by status tab
+  // Lưu ý: Backend đã filter CHỈ lấy các lớp do staff hiện tại tạo (CreatedByStaffID = staffID)
+  // Nên frontend chỉ cần filter theo status
+  // Bỏ tab "Sắp tới hạn mở lớp" cho staff
   const getFilteredClasses = () => {
     switch (tabValue) {
-      case 0: // All
+      case 0: // All - hiển thị tất cả lớp do staff hiện tại tạo
         return searchFilteredClasses;
-      case 1: // Opening Soon - di chuyển lên trên (sau tab "Tất cả")
-        return searchFilteredClasses.filter((c) =>
-          isOpeningSoon(c, openingSoonDays)
+      case 1: // DRAFT
+        return searchFilteredClasses.filter(
+          (c) => normalizeStatus(c.Status) === CLASS_STATUS.DRAFT
         );
-      case 2: // PENDING (Chờ duyệt) - Admin xem lớp do staff gửi duyệt
+      case 2: // PENDING
         return searchFilteredClasses.filter(
           (c) => normalizeStatus(c.Status) === CLASS_STATUS.PENDING
         );
@@ -917,9 +827,13 @@ const ClassesPage = () => {
     openingSoonDays,
   ]);
 
-  // Statistics
+  // Statistics - Backend đã filter CHỈ lấy các lớp do staff hiện tại tạo
+  // Nên chỉ cần filter theo status
   const stats = {
-    total: classes.length,
+    total: classes.length, // Đã được filter bởi backend (chỉ lớp do staff hiện tại tạo)
+    draft: classes.filter(
+      (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.DRAFT
+    ).length,
     pending: classes.filter(
       (c) => normalizeStatus(c.Status || c.status) === CLASS_STATUS.PENDING
     ).length,
@@ -947,6 +861,13 @@ const ClassesPage = () => {
       icon: <Class sx={{ fontSize: 32 }} />,
       color: "#667eea",
       bgColor: "#f0f4ff",
+    },
+    {
+      label: "Nháp",
+      value: stats.draft,
+      icon: <EditNote sx={{ fontSize: 32 }} />,
+      color: "#f59e0b",
+      bgColor: "#fffbeb",
     },
     {
       label: "Chờ duyệt",
@@ -1012,7 +933,23 @@ const ClassesPage = () => {
               Quản lý lớp học, lịch lớp học
             </Typography>
           </Box>
-          {/* Admin không còn quyền tạo lớp - button đã bị xóa */}
+          <Button
+            variant="contained"
+            onClick={handleAddClass}
+            sx={{
+              backgroundColor: "#667eea",
+              textTransform: "none",
+              px: 3,
+              py: 1.5,
+              borderRadius: 2,
+              fontWeight: 600,
+              "&:hover": {
+                backgroundColor: "#5568d3",
+              },
+            }}
+          >
+            Tạo lớp
+          </Button>
         </Box>
 
         {/* Statistics Cards */}
@@ -1383,9 +1320,10 @@ const ClassesPage = () => {
         >
           <Tab label={`Tất cả (${searchFilteredClasses.length})`} />
           <Tab
-            label={`Sắp tới hạn mở lớp (${
-              searchFilteredClasses.filter((c) =>
-                isOpeningSoon(c, openingSoonDays)
+            label={`Nháp (${
+              searchFilteredClasses.filter(
+                (c) =>
+                  normalizeStatus(c.Status || c.status) === CLASS_STATUS.DRAFT
               ).length
             })`}
           />
@@ -1396,6 +1334,7 @@ const ClassesPage = () => {
                   normalizeStatus(c.Status || c.status) === CLASS_STATUS.PENDING
               ).length
             })`}
+            iconPosition="start"
           />
           <Tab
             label={`Đã duyệt (${
@@ -1440,51 +1379,6 @@ const ClassesPage = () => {
             })`}
           />
         </Tabs>
-
-        {/* Filter options cho "Sắp tới hạn mở lớp" */}
-        {tabValue === 1 && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 2,
-              px: 2,
-              py: 1.5,
-              backgroundColor: "#f8fafc",
-              borderBottom: "1px solid #e2e8f0",
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{ color: "#64748b", fontWeight: 500 }}
-            >
-              Ngày đến hạn:
-            </Typography>
-            <FormControl component="fieldset" size="small">
-              <RadioGroup
-                row
-                value={openingSoonDays.toString()}
-                onChange={(e) => setOpeningSoonDays(parseInt(e.target.value))}
-              >
-                <FormControlLabel
-                  value="3"
-                  control={<Radio size="small" />}
-                  label="3 ngày"
-                />
-                <FormControlLabel
-                  value="5"
-                  control={<Radio size="small" />}
-                  label="5 ngày"
-                />
-                <FormControlLabel
-                  value="10"
-                  control={<Radio size="small" />}
-                  label="10 ngày"
-                />
-              </RadioGroup>
-            </FormControl>
-          </Box>
-        )}
       </Box>
 
       {/* Class List */}
@@ -1523,11 +1417,10 @@ const ClassesPage = () => {
             instructors={instructors}
             onEdit={handleEditClass}
             onManageStudents={handleManageStudents}
-            onApprove={handleApproveClass}
-            onReject={handleRejectClass}
-            onPublish={handlePublishClass}
             onChangeStatus={handleChangeStatus}
-            userRole="admin"
+            onSubmitForApproval={handleSubmitForApproval}
+            onCancelApproval={handleCancelApproval}
+            userRole="staff"
           />
           {filteredClasses.length > 0 && (
             <>
@@ -1577,168 +1470,37 @@ const ClassesPage = () => {
         />
       )}
 
+      {/* Modals */}
+      {showClassWizard && (
+        <ClassWizard
+          classData={selectedClass}
+          instructors={instructors}
+          courses={courses}
+          timeslots={timeslots}
+          onSubmit={handleSubmitWizard}
+          onCancel={() => setShowClassWizard(false)}
+        />
+      )}
+
+      {showClassForm && (
+        <ClassForm
+          classData={selectedClass}
+          instructors={instructors}
+          onSubmit={handleSubmitClassForm}
+          onCancel={() => setShowClassForm(false)}
+        />
+      )}
+
       {showStudentSelector && selectedClass && (
         <StudentSelector
           classData={selectedClass}
           allLearners={learners}
           onClose={() => setShowStudentSelector(false)}
           onUpdate={handleUpdateStudents}
-          onChangeClass={async (
-            learnerInfo,
-            targetClassId,
-            targetClassData
-          ) => {
-            const learnerId = learnerInfo.learnerId;
-            const fromClassId =
-              selectedClass?.ClassID || selectedClass?.id || null;
-
-            if (!learnerId || !fromClassId || !targetClassId) {
-              console.warn(
-                "[ClassesPage] Missing learnerId/fromClassId/targetClassId when changing class",
-                { learnerId, fromClassId, targetClassId }
-              );
-              alert("Thiếu thông tin để đổi lớp. Vui lòng thử lại sau.");
-              return;
-            }
-
-            try {
-              console.log("[ClassesPage] changeClass payload:", {
-                learnerId,
-                fromClassId,
-                toClassId: targetClassId,
-                targetClassData,
-              });
-
-              await enrollmentService.changeClassForLearner({
-                learnerId,
-                fromClassId,
-                toClassId: targetClassId,
-              });
-
-              alert(
-                `Đã đổi lớp cho học viên ${
-                  learnerInfo.learner?.FullName ||
-                  learnerInfo.learner?.fullName ||
-                  learnerInfo.learnerId
-                } sang lớp ${targetClassId}.`
-              );
-
-              // Reload dữ liệu lớp/học viên để phản ánh thay đổi
-              await loadData();
-              setShowStudentSelector(false);
-            } catch (error) {
-              const message =
-                error?.response?.data?.message ||
-                error?.message ||
-                error?.error ||
-                "Không thể đổi lớp cho học viên";
-              console.error("[ClassesPage] Change class error:", error);
-              alert(message);
-            }
-          }}
-          userRole="admin" // Admin có quyền đổi lớp
+          onChangeClass={undefined} // Staff không có quyền đổi lớp
+          userRole="staff" // Truyền userRole để ẩn nút đổi lớp
         />
       )}
-
-      {/* Dialog: Admin chuyển lớp APPROVED/ACTIVE về DRAFT với lý do */}
-      <Dialog
-        open={revertDialogOpen}
-        onClose={handleCloseRevertDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Chuyển lớp về trạng thái "Nháp"</DialogTitle>
-        <DialogContent dividers>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>
-            Bạn đang chuẩn bị chuyển lớp <strong>{classToRevert?.Name}</strong>{" "}
-            (ClassID: {classToRevert?.ClassID}) về trạng thái{" "}
-            <strong>Nháp</strong>.
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 2, color: "#ef4444" }}>
-            Lưu ý: Chỉ có thể chuyển về Nháp khi lớp{" "}
-            <strong>chưa có học viên</strong>.
-          </Typography>
-          <TextField
-            label="Lý do"
-            placeholder="Nhập lý do chi tiết để thông báo cho nhân viên phụ trách lớp..."
-            multiline
-            minRows={3}
-            fullWidth
-            value={revertReason}
-            onChange={(e) => setRevertReason(e.target.value)}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseRevertDialog} color="inherit">
-            Hủy
-          </Button>
-          <Button
-            onClick={handleConfirmRevertToDraft}
-            color="primary"
-            variant="contained"
-          >
-            Xác nhận
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog từ chối lớp */}
-      <Dialog
-        open={rejectDialogOpen}
-        onClose={handleCloseRejectDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle
-          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
-        >
-          Từ chối lớp học
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          {classToReject && (
-            <Box>
-              <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
-                Vui lòng nhập lý do từ chối:
-              </Typography>
-              <TextField
-                fullWidth
-                multiline
-                rows={4}
-                value={rejectReason}
-                onChange={(e) => setRejectReason(e.target.value)}
-                placeholder="Ví dụ: Lớp học chưa đủ điều kiện để mở, vui lòng bổ sung thông tin."
-                sx={{
-                  "& .MuiOutlinedInput-root": {
-                    borderRadius: 2,
-                  },
-                }}
-              />
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
-          <Button
-            onClick={handleCloseRejectDialog}
-            sx={{
-              textTransform: "none",
-              color: "#64748b",
-            }}
-          >
-            Hủy
-          </Button>
-          <Button
-            onClick={handleConfirmReject}
-            variant="contained"
-            color="error"
-            sx={{
-              textTransform: "none",
-            }}
-            disabled={!rejectReason || rejectReason.trim() === ""}
-          >
-            Xác nhận từ chối
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 };

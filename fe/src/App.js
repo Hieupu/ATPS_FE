@@ -9,9 +9,14 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import AdminLayout from "./layouts/AdminLayout";
+import StaffLayout from "./layouts/StaffLayout";
+import StaffNewsPage from "./pages/staff/pages/NewsPage";
+import StaffPromotionsPage from "./pages/staff/pages/PromotionsPage";
 import DashboardPage from "./pages/admin/pages/DashboardPage";
 import ClassesPage from "./pages/admin/pages/ClassesPage";
 import CreateClassPage from "./pages/admin/pages/CreateClassPage";
+import StaffClassesPage from "./pages/staff/pages/ClassesPage";
+import StaffCreateClassPage from "./pages/staff/pages/CreateClassPage";
 import InstructorsPageAdmin from "./pages/admin/pages/InstructorsPage";
 import LearnersPage from "./pages/admin/pages/LearnersPage";
 import StaffPage from "./pages/admin/pages/StaffPage";
@@ -84,7 +89,6 @@ import ExamResultPage from "./pages/exam/ExamResultPage";
 import AssignmentsPage from "./pages/assignment/AssignmentsPage";
 import ExamReviewPage from "./pages/exam/ExamReviewPage";
 
-
 import InstructorDashboardPage from "./pages/instructor/pages/DashboardPage";
 import InstructorCoursesPage from "./pages/instructor/pages/CoursesPage";
 import InstructorClassesPage from "./pages/instructor/pages/ClassesPage";
@@ -141,8 +145,8 @@ function AppRoutes() {
       <Route path="/progress" element={<ProgressPage />} />
       <Route path="/materials" element={<MaterialsPage />} />
 
-       <Route path="/new" element={<NewsPages />} />
-       <Route path="/new/:newsId" element={<NewsDetailPage />} />
+      <Route path="/new" element={<NewsPages />} />
+      <Route path="/new/:newsId" element={<NewsDetailPage />} />
       {/* Admin Routes */}
       <Route element={<RequireAuth allowedRoles={["admin"]} />}>
         <Route path="/admin" element={<AdminLayout />}>
@@ -225,6 +229,24 @@ function AppRoutes() {
           <Route path="settings" element={<InstructorSettings />} />
           <Route path="exams/create" element={<CreateExamPage />} />
           <Route path="exams/edit/:examId" element={<EditExamPage />} />
+        </Route>
+      </Route>
+      {/* Staff Routes */}
+      <Route element={<RequireAuth allowedRoles={["staff"]} />}>
+        <Route path="/staff" element={<StaffLayout />}>
+          <Route index element={<Navigate to="classes" replace />} />
+          <Route path="classes" element={<StaffClassesPage />} />
+          <Route path="classes/new" element={<StaffCreateClassPage />} />
+          <Route
+            path="classes/edit/:classId"
+            element={<StaffCreateClassPage />}
+          />
+          <Route
+            path="classes/:courseId/schedule"
+            element={<SchedulePageAdmin />}
+          />
+          <Route path="news" element={<StaffNewsPage />} />
+          <Route path="finance/promotions" element={<StaffPromotionsPage />} />
         </Route>
       </Route>
       {/* </Route> */}

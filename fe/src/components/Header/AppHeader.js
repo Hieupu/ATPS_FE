@@ -54,7 +54,7 @@ const AppHeader = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Sử dụng AuthContext thay vì localStorage trực tiếp
-  const { user, isLearner, isInstructor, isParent, isAdmin, logout } = useAuth();
+  const { user, isLearner, isInstructor, isParent, isAdmin,isStaff, logout } = useAuth();
 
   // Load notifications on mount and when user changes
   useEffect(() => {
@@ -250,7 +250,14 @@ const AppHeader = () => {
         </MenuItem>
       );
     }
-
+    if (isStaff) {
+      items.push(
+        <MenuItem key="staff-dashboard" onClick={() => navigate("/staff")}>
+          <Dashboard sx={{ mr: 1, color: "#6b7280" }} />
+          Quản lý lớp học
+        </MenuItem>
+      );
+    }
     if (isParent) {
       items.push(
         <MenuItem

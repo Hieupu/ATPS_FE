@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-import ClassWizard from "../components/class-management/ClassWizard";
-import ErrorModal from "../components/class-management/ErrorModal";
+import ClassWizard from "../../admin/components/class-management/ClassWizard";
+import ErrorModal from "../../admin/components/class-management/ErrorModal";
 import classService from "../../../apiServices/classService";
 import dayjs from "dayjs";
 import { getDayFromDate } from "../../../utils/validate";
@@ -19,7 +19,6 @@ const CreateClassPage = () => {
   const { classId } = useParams(); // Lấy classId từ URL nếu đang edit
   const [classData, setClassData] = useState(null); // Class data khi edit
   const isReadonly = location.state?.readonly || false; // Kiểm tra mode readonly
-  const lockBasicInfoFromState = location.state?.lockBasicInfo || false;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [instructors, setInstructors] = useState([]);
@@ -103,7 +102,7 @@ const CreateClassPage = () => {
   }, [classId]);
 
   const handleCancel = () => {
-    navigate("/admin/classes");
+    navigate("/staff/classes");
   };
 
   const handleErrorModalClose = () => {
@@ -167,7 +166,7 @@ const CreateClassPage = () => {
         await classService.updateClass(classId, metadataPayload);
 
         // Thành công → quay lại trang danh sách
-        navigate("/admin/classes", {
+        navigate("/staff/classes", {
           state: {
             message: "Cập nhật lớp học thành công.",
           },
@@ -443,7 +442,7 @@ const CreateClassPage = () => {
               isEdit ? "đã cập nhật" : "đã tạo"
             } thành công (ClassID: ${finalClassId}), nhưng có lỗi khi tạo buổi học:\n\n${errorMessage}\n\nVui lòng kiểm tra và tạo lại buổi học trong màn lịch.`,
             errors: fieldErrors,
-            redirectPath: "/admin/classes",
+            redirectPath: "/staff/classes",
             redirectState: {
               message: `Lớp ${
                 isEdit ? "đã cập nhật" : "đã tạo"
@@ -484,7 +483,7 @@ const CreateClassPage = () => {
       }
 
       // 3) Thành công → quay lại trang danh sách
-      navigate("/admin/classes", {
+      navigate("/staff/classes", {
         state: {
           message: isEdit
             ? `Cập nhật lớp học thành công. Đã tạo ${submitData.sessions.length} buổi học.`
@@ -601,8 +600,7 @@ const CreateClassPage = () => {
             variant="page"
             readonly={isReadonly}
             classId={classId}
-            userRole="admin"
-            lockBasicInfo={lockBasicInfoFromState}
+            userRole="staff"
           />
         </div>
       )}

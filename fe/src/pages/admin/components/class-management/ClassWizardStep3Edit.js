@@ -364,15 +364,27 @@ const ClassWizardStep3Edit = ({
                           </Box>
                         }
                         secondary={
-                          <Box display="flex" alignItems="center" mt={0.5}>
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              mt: 0.5,
+                            }}
+                          >
                             <AccessTimeIcon
                               sx={{ fontSize: 16, mr: 0.5 }}
                               color="action"
                             />
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              color="text.secondary"
+                            >
                               {renderTimeslotLabel(session)}
                             </Typography>
-                          </Box>
+                          </Typography>
                         }
                       />
                     </ListItem>

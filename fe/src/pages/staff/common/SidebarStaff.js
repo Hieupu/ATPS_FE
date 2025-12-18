@@ -10,34 +10,27 @@ import {
   AttachMoney as AttachMoneyIcon,
   LocalOffer as LocalOfferIcon,
   AccountBalanceWallet as AccountBalanceWalletIcon,
-  Receipt as ReceiptIcon,
-  EventBusy as EventBusyIcon,
   Settings as SettingsIcon,
-  Payment as PaymentIcon,
-  Email as EmailIcon,
-  Schedule as ScheduleIcon,
-  PersonAdd as PersonAddIcon,
-  Edit as EditIcon,
-  BarChart as BarChartIcon,
-  TrendingUp as TrendingUpIcon,
+  Book as BookIcon,
   Class as ClassIcon,
-  Group as GroupIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
-  Book as BookIcon,
-  CheckCircle as CheckCircleIcon,
-  SwapHoriz as SwapHorizIcon,
-  School,
 } from "@mui/icons-material";
-import "../pages/style.css";
 
 const menuItems = [
   {
-    id: "dashboard",
-    label: "Trang chủ",
-    icon: <DashboardIcon />,
-    path: "/admin/dashboard",
-    type: "single",
+    id: "class-management",
+    label: "Quản lý lớp học",
+    icon: <SchoolIcon />,
+    type: "dropdown",
+    children: [
+      {
+        id: "classes",
+        label: "Danh sách lớp học",
+        icon: <ClassIcon />,
+        path: "/staff/classes",
+      },
+    ],
   },
   {
     id: "general-info",
@@ -49,119 +42,9 @@ const menuItems = [
         id: "news",
         label: "Quản lý tin tức",
         icon: <ArticleIcon />,
-        path: "/admin/news",
+        path: "/staff/news",
       },
     ],
-  },
-  {
-    id: "statistics",
-    label: "Thống kê",
-    icon: <BarChartIcon />,
-    type: "dropdown",
-    children: [
-      {
-        id: "revenue",
-        label: "Doanh thu",
-        icon: <TrendingUpIcon />,
-        path: "/admin/statistics/revenue",
-      },
-      {
-        id: "learners",
-        label: "Học viên",
-        icon: <PeopleIcon />,
-        path: "/admin/statistics/learners",
-      },
-      {
-        id: "classes",
-        label: "Lớp học",
-        icon: <ClassIcon />,
-        path: "/admin/statistics/classes",
-      },
-      {
-        id: "staff",
-        label: "Nhân viên",
-        icon: <GroupIcon />,
-        path: "/admin/statistics/staff",
-      },
-    ],
-  },
-  {
-    id: "user-management",
-    label: "Quản lý người dùng",
-    icon: <PeopleIcon />,
-    type: "dropdown",
-    children: [
-      {
-        id: "learners",
-        label: "Quản lý học sinh",
-        icon: <PeopleIcon />,
-        path: "/admin/users/learners",
-      },
-      {
-        id: "instructor-management",
-        label: "Quản lý giảng viên",
-        icon: <PeopleIcon />,
-        children: [
-          {
-            id: "instructor-accounts",
-            label: "Quản lý tài khoản giảng viên",
-            icon: <PeopleIcon />,
-            path: "/admin/users/instructors",
-          },
-          {
-            id: "instructor-leave",
-            label: "Quản lý lịch nghỉ",
-            icon: <EventBusyIcon />,
-            path: "/admin/instructor-leave",
-          },
-          {
-            id: "instructor-certificates",
-            label: "Quản lý chứng chỉ giảng viên",
-            icon: <CheckCircleIcon />,
-            path: "/admin/instructor-certificates",
-          },
-          {
-            id: "session-change-requests",
-            label: "Quản lý yêu cầu chuyển lịch",
-            icon: <SwapHorizIcon />,
-            path: "/admin/session-change-requests",
-          },
-        ],
-      },
-      {
-        id: "staff",
-        label: "Quản lý nhân viên",
-        icon: <PeopleIcon />,
-        path: "/admin/users/staff",
-      },
-      {
-        id: "admins",
-        label: "Quản lý admin",
-        icon: <PeopleIcon />,
-        path: "/admin/users/admins",
-      },
-    ],
-  },
-  {
-    id: "class-schedule",
-    label: "Lớp học & Lịch học",
-    icon: <SchoolIcon />,
-    type: "dropdown",
-    children: [
-      {
-        id: "classes",
-        label: "Quản lý lớp học",
-        icon: <ClassIcon />,
-        path: "/admin/classes",
-      },
-    ],
-  },
-  {
-    id: "course-management",
-    label: "Quản lý khóa học",
-    icon: <BookIcon />,
-    type: "single",
-    path: "/admin/courses",
   },
   {
     id: "finance",
@@ -170,74 +53,16 @@ const menuItems = [
     type: "dropdown",
     children: [
       {
-        id: "payment-history",
-        label: "Lịch sử thanh toán",
-        icon: <ReceiptIcon />,
-        path: "/admin/finance/payment-history",
-      },
-      {
         id: "promotions",
         label: "Quản lý promotion",
         icon: <LocalOfferIcon />,
-        path: "/admin/finance/promotions",
-      },
-      {
-        id: "payroll",
-        label: "Báo cáo lương giảng viên",
-        icon: <ReceiptIcon />,
-        path: "/admin/finance/payroll",
-      },
-      {
-        id: "refunds",
-        label: "Xử lý yêu cầu",
-        icon: <AccountBalanceWalletIcon />,
-        path: "/admin/finance/refunds",
-      },
-    ],
-  },
-  {
-    id: "system",
-    label: "Hệ thống",
-    icon: <SettingsIcon />,
-    type: "dropdown",
-    children: [
-      {
-        id: "payment-gateways",
-        label: "Quản lý cổng thanh toán",
-        icon: <PaymentIcon />,
-        path: "/admin/system/payment-gateways",
-      },
-      {
-        id: "email-management",
-        label: "Quản lý mail",
-        icon: <EmailIcon />,
-        type: "dropdown",
-        children: [
-          {
-            id: "email-templates",
-            label: "Quản lý mẫu gửi mail",
-            icon: <EmailIcon />,
-            path: "/admin/system/email-templates",
-          },
-          {
-            id: "email-logs",
-            label: "Lịch sử gửi mail",
-            icon: <EmailIcon />,
-            path: "/admin/system/email-logs",
-          },
-        ],
-      },
-      {
-        id: "timeslots",
-        label: "Quản lý ca học",
-        icon: <ScheduleIcon />,
-        path: "/admin/system/timeslots",
+        path: "/staff/finance/promotions",
       },
     ],
   },
 ];
 
-export function SidebarAdmin() {
+export function SidebarStaff() {
   const location = useLocation();
   const [expandedMenus, setExpandedMenus] = useState({});
   const [expandedSubMenus, setExpandedSubMenus] = useState({});
@@ -322,7 +147,7 @@ export function SidebarAdmin() {
           <GridViewIcon sx={{ fontSize: 24 }} />
         </div>
         <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>
-          ATPS Admin
+          ATPS Staff
         </h3>
       </div>
 

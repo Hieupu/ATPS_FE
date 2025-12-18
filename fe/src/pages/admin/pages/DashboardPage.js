@@ -49,8 +49,7 @@ export default function DashboardPage() {
   // Quick Actions
   const quickActions = [
     {
-      title: "Tạo lớp mới",
-
+      title: "Quản lý lớp học",
       icon: <Add />,
       color: "#667eea",
       bgColor: "#f0f4ff",

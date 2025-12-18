@@ -6,13 +6,13 @@ import { getDayFromDate } from "../../../../utils/validate";
  */
 
 export const weekdayLabelMap = {
-  CN: "Chủ Nhật",
-  T2: "Thứ 2",
-  T3: "Thứ 3",
-  T4: "Thứ 4",
-  T5: "Thứ 5",
-  T6: "Thứ 6",
-  T7: "Thứ 7",
+  0: "Chủ Nhật",
+  1: "Thứ 2",
+  2: "Thứ 3",
+  3: "Thứ 4",
+  4: "Thứ 5",
+  5: "Thứ 6",
+  6: "Thứ 7",
 };
 
 export const formatDateForDisplay = (value) => {
@@ -82,4 +82,3 @@ export const countSelectionSlots = (selection = {}) =>
     if (!Array.isArray(slots)) return total;
     return total + slots.length;
   }, 0);
-
