@@ -54,7 +54,8 @@ const AppHeader = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Sử dụng AuthContext thay vì localStorage trực tiếp
-  const { user, isLearner, isInstructor, isParent, isAdmin, logout } = useAuth();
+  const { user, isLearner, isInstructor, isParent, isAdmin, logout } =
+    useAuth();
 
   // Load notifications on mount and when user changes
   useEffect(() => {
@@ -89,7 +90,7 @@ const AppHeader = () => {
       label: "Lịch khai giảng",
       path: "/openingCeremony",
     },
-       {
+    {
       label: "Tin tức",
       path: "/new",
     },
@@ -405,29 +406,27 @@ const AppHeader = () => {
                 background: "rgba(255, 255, 255, 0.2)",
                 backdropFilter: "blur(10px)",
                 mr: 1.5,
+                overflow: "hidden", // Đảm bảo ảnh không tràn ra ngoài góc bo tròn của Box
               }}
             >
-              <School sx={{ fontSize: 28, color: "white" }} />
+              {/* Thay thế icon School bằng thẻ img */}
+              <img
+                src="/logo192.png"
+                alt="Logo"
+                style={{
+                  width: "120%",
+                  height: "100%",
+                  objectFit: "cover",
+                }}
+              />
             </Box>
             <Box>
-              <Typography
-                variant="h6"
-                component="div"
-                sx={{
-                  fontWeight: 800,
-                  color: "white",
-                  letterSpacing: 1,
-                  lineHeight: 1,
-                }}
-              >
-                ATPS
-              </Typography>
               <Typography
                 variant="caption"
                 sx={{
                   color: "rgba(255, 255, 255, 0.8)",
-                  fontSize: "0.7rem",
-                  fontWeight: 500,
+                  fontSize: "120%",
+                  fontWeight: 700,
                   letterSpacing: 0.5,
                 }}
               >
