@@ -136,34 +136,16 @@ const ExamResultPage = () => {
                 <Grid container spacing={2} sx={{ mb: 3 }}>
                   <Grid item xs={12} sm={4}>
                     <Typography variant="subtitle2" color="text.secondary">
-                      Điểm
+                      Độ chính xác
                     </Typography>
-                    {reviewData && reviewData.summary ? (
-                      <>
-                        <Typography variant="h5" fontWeight={700}>
-                          {reviewData.summary.totalEarnedPoints}/{reviewData.summary.totalMaxPoints}
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={result.score ? parseFloat(result.score) : 0}
-                          sx={{ mt: 1 }}
-                        />
-                        <Typography variant="caption" color="text.secondary">
-                          {result.score}%
-                        </Typography>
-                      </>
-                    ) : (
-                      <>
-                        <Typography variant="h5" fontWeight={700}>
-                          {result.score ? `${result.score}%` : '—'}
-                        </Typography>
-                        <LinearProgress
-                          variant="determinate"
-                          value={result.score ? parseFloat(result.score) : 0}
-                          sx={{ mt: 1 }}
-                        />
-                      </>
-                    )}
+                    <Typography variant="h5" fontWeight={700}>
+                      {result.score ? `${result.score}%` : '—'}
+                    </Typography>
+                    <LinearProgress
+                      variant="determinate"
+                      value={result.score ? parseFloat(result.score) : 0}
+                      sx={{ mt: 1 }}
+                    />
                   </Grid>
 
                   {result.durationSec && (
@@ -198,7 +180,7 @@ const ExamResultPage = () => {
                     </Typography>
 
                     <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={6} sm={3}>
+                      <Grid item xs={4}>
                         <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
                           <Typography variant="h4" fontWeight={700} color="primary">
                             {reviewData.summary.totalQuestions}
@@ -209,7 +191,7 @@ const ExamResultPage = () => {
                         </Box>
                       </Grid>
 
-                      <Grid item xs={6} sm={3}>
+                      <Grid item xs={4}>
                         <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#e8f5e9', borderRadius: 1 }}>
                           <Typography variant="h4" fontWeight={700} color="success.main">
                             {reviewData.summary.correctAnswers}
@@ -220,24 +202,13 @@ const ExamResultPage = () => {
                         </Box>
                       </Grid>
 
-                      <Grid item xs={6} sm={3}>
+                      <Grid item xs={4}>
                         <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
                           <Typography variant="h4" fontWeight={700} color="error.main">
                             {reviewData.summary.totalQuestions - reviewData.summary.correctAnswers}
                           </Typography>
                           <Typography variant="body2" color="text.secondary">
                             Câu sai
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      <Grid item xs={6} sm={3}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#fff3e0', borderRadius: 1 }}>
-                          <Typography variant="h4" fontWeight={700} color="warning.main">
-                            {reviewData.summary.accuracy}%
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Độ chính xác
                           </Typography>
                         </Box>
                       </Grid>

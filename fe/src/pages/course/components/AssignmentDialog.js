@@ -226,13 +226,6 @@ const AssignmentDialog = ({ open, onClose, assignment, onSubmitSuccess }) => {
       onFileChange: handleFileChange,
     };
 
-    console.log(
-      "Rendering assignment - Type:",
-      type,
-      "Has speaking:",
-      hasSpeaking
-    );
-
     switch (type) {
       case "quiz":
         return <QuizAssignment {...props} />;

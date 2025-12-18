@@ -131,15 +131,8 @@ export const FillInBlankQuestionReadOnly = ({ question }) => {
                 }}
               />
               <Box sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                {isCorrect ? (
+                {isCorrect && (
                   <Chip icon={<CheckCircle />} label="Đúng" color="success" size="small" />
-                ) : (
-                  <>
-                    <Chip icon={<Cancel />} label="Sai" color="error" size="small" />
-                    <Typography variant="caption" color="success.main">
-                      Đáp án đúng: <strong>{correctAns}</strong>
-                    </Typography>
-                  </>
                 )}
               </Box>
             </Box>
@@ -164,16 +157,14 @@ export const FillInBlankQuestionReadOnly = ({ question }) => {
           }
         }}
       />
-      <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-        {isCorrect ? (
-          <Chip icon={<CheckCircle />} label="Đúng" color="success" size="small" />
-        ) : (
-          <>
-            <Chip icon={<Cancel />} label="Sai" color="error" size="small" />
-            <Typography variant="caption" color="success.main">
-              Đáp án đúng: <strong>{correctAnswers}</strong>
-            </Typography>
-          </>
+      <Box sx={{ mt: 1 }}>
+        {isCorrect && (
+          <Chip
+            icon={<CheckCircle />}
+            label="Đúng"
+            color="success"
+            size="small"
+          />
         )}
       </Box>
     </Box>
@@ -239,19 +230,11 @@ export const MatchingQuestionReadOnly = ({ question }) => {
             </FormControl>
 
             <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              {isCorrect ? (
+              {isCorrect && (
                 <Chip icon={<CheckCircle />} label="Đúng" color="success" size="small" />
-              ) : (
-                <>
-                  <Chip icon={<Cancel />} label="Sai" color="error" size="small" />
-                  {correctChoice && (
-                    <Typography variant="caption" color="success.main">
-                      Đáp án đúng: <strong>{correctChoice}</strong>
-                    </Typography>
-                  )}
-                </>
               )}
             </Box>
+
           </Box>
         );
       })}

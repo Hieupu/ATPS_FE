@@ -20,100 +20,80 @@ const steps = ["Thông tin bài tập", "Cấu trúc & Câu hỏi", "Cài đặt
 const ExamWizard = ({ open, onClose, exam }) => {
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
-
     const [examId, setExamId] = useState(null);
     const [sections, setSections] = useState([]);
-
     const [examData, setExamData] = useState({
         title: "",
         description: "",
     });
-
     const [instanceData, setInstanceData] = useState(null);
-
     const [errors, setErrors] = useState({});
 
-    /* ==========================================================
-       LOAD DATA KHI EDIT
-    ========================================================== */
-  /* ==========================================================
-   LOAD DATA KHI EDIT
-========================================================== */
-useEffect(() => {
-  if (!exam) return;
-
-  console.log("LOAD exam vào Wizard:", exam);
-
-  // Fill Step 1
-  setExamData({
-    title: exam.Title || "",
-    description: exam.Description || "",
-  });
-
-  setExamId(exam.ExamID);
-
-  // Fill Step 2 - Convert sections
-  if (Array.isArray(exam.sections)) {
-    const flat = [];
-
-    exam.sections.forEach((parent) => {
-      const parentId = `p-${parent.SectionID}`;
-
-      flat.push({
-        id: parentId,
-        type: parent.Type,
-        title: parent.Title,
-        parentSectionId: null,
-        orderIndex: parent.OrderIndex,
-      });
-
-      (parent.childSections || []).forEach((child) => {
-        const childId = `c-${child.SectionID}`;
-        flat.push({
-          id: childId,
-          type: child.Type,
-          title: child.Title,
-          parentSectionId: parentId,
-          orderIndex: child.OrderIndex,
-          questions: child.questions || [],
-          fileURL: child.FileURL || null,
+    useEffect(() => {
+        if (!exam) return;
+        setExamData({
+            title: exam.Title || "",
+            description: exam.Description || "",
         });
-      });
-    });
 
-    setSections(flat);
-  }
+        setExamId(exam.ExamID);
 
-  // Fill Step 3 - Instance - CHUẨN HÓA MẢNG
-  if (exam.instances && exam.instances.length > 0) {
-    const rawInstance = exam.instances[0];
+        if (Array.isArray(exam.sections)) {
+            const flat = [];
 
-    const normalizedInstance = {
-      ...rawInstance,
-      InstanceId: rawInstance.InstanceId || rawInstance.instanceId,
-      ExamId: rawInstance.ExamId || rawInstance.examId,
-      Type: rawInstance.Type || (rawInstance.UnitId ? "Assignment" : "Exam"),
-      CourseName: rawInstance.CourseName || rawInstance.courseName,
+            exam.sections.forEach((parent) => {
+                const parentId = `p-${parent.SectionID}`;
 
-      // CHUẨN HÓA MẢNG
-      ClassId: rawInstance.ClassId != null 
-        ? (Array.isArray(rawInstance.ClassId) ? rawInstance.ClassId : [rawInstance.ClassId])
-        : null,
-      UnitId: rawInstance.UnitId != null 
-        ? (Array.isArray(rawInstance.UnitId) ? rawInstance.UnitId : [rawInstance.UnitId])
-        : null,
-    };
+                flat.push({
+                    id: parentId,
+                    type: parent.Type,
+                    title: parent.Title,
+                    parentSectionId: null,
+                    orderIndex: parent.OrderIndex,
+                });
 
-    console.log("Normalized Instance:", normalizedInstance);
-    setInstanceData(normalizedInstance);
-  }
+                (parent.childSections || []).forEach((child) => {
+                    const childId = `c-${child.SectionID}`;
+                    flat.push({
+                        id: childId,
+                        type: child.Type,
+                        title: child.Title,
+                        parentSectionId: parentId,
+                        orderIndex: child.OrderIndex,
+                        questions: child.questions || [],
+                        fileURL: child.FileURL || null,
+                    });
+                });
+            });
 
-  setActiveStep(0);
-}, [exam]);
+            setSections(flat);
+        }
 
-    /* ==========================================================
-       RESET KHI TẠO BÀI MỚI
-    ========================================================== */
+        if (exam.instances && exam.instances.length > 0) {
+            const rawInstance = exam.instances[0];
+
+            const normalizedInstance = {
+                ...rawInstance,
+                InstanceId: rawInstance.InstanceId || rawInstance.instanceId,
+                ExamId: rawInstance.ExamId || rawInstance.examId,
+                Type: rawInstance.Type || (rawInstance.UnitId ? "Assignment" : "Exam"),
+                CourseName: rawInstance.CourseName || rawInstance.courseName,
+
+                ClassId: rawInstance.ClassId != null
+                    ? (Array.isArray(rawInstance.ClassId) ? rawInstance.ClassId : [rawInstance.ClassId])
+                    : null,
+                UnitId: rawInstance.UnitId != null
+                    ? (Array.isArray(rawInstance.UnitId) ? rawInstance.UnitId : [rawInstance.UnitId])
+                    : null,
+            };
+
+            setInstanceData(normalizedInstance);
+        }
+
+        setActiveStep(0);
+    }, [exam]);
+
+
     useEffect(() => {
         if (!open || exam) return;
         resetWizard();
@@ -127,9 +107,6 @@ useEffect(() => {
         setActiveStep(0);
     };
 
-    /* ==========================================================
-       VALIDATE
-    ========================================================== */
     const validateStep1 = () => {
         const newErrors = {};
         if (!examData.title.trim()) newErrors.title = "Tiêu đề bắt buộc";
@@ -166,9 +143,6 @@ useEffect(() => {
         return true;
     };
 
-    /* ==========================================================
-       CHUYỂN SECTIONS → PAYLOAD GỬI BE
-    ========================================================== */
     const convertToHierarchical = (flat) => {
         const parents = flat.filter(s => !s.parentSectionId);
 
@@ -214,9 +188,6 @@ useEffect(() => {
         });
     };
 
-    /* ==========================================================
-       HANDLE NEXT
-    ========================================================== */
     const handleNext = () => {
         if (activeStep === 0) {
             if (!validateStep1()) return;
@@ -237,9 +208,6 @@ useEffect(() => {
         if (activeStep > 0) setActiveStep(activeStep - 1);
     };
 
-    /* ==========================================================
-       HIỂN THỊ CÁC STEP
-    ========================================================== */
     const renderStepContent = () => {
         if (activeStep === 0) {
             return (
@@ -267,7 +235,7 @@ useEffect(() => {
                                 label="Mô tả *"
                                 fullWidth
                                 multiline
-                                rows={3}
+                                rows={8}
                                 value={examData.description}
                                 onChange={(e) =>
                                     setExamData({ ...examData, description: e.target.value })
@@ -297,7 +265,7 @@ useEffect(() => {
                     examData={examData}
                     sections={window.examTempSections}
                     examId={examId}
-                    initialInstance={instanceData}   
+                    initialInstance={instanceData}
                     onDone={() => {
                         onClose();
                     }}
@@ -306,9 +274,6 @@ useEffect(() => {
         }
     };
 
-    /* ==========================================================
-       MAIN UI
-    ========================================================== */
     return (
         <Box sx={{ bgcolor: "#f8fafc", minHeight: "100vh" }}>
             <Container maxWidth="lg">

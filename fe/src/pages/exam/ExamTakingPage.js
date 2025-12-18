@@ -174,7 +174,7 @@ const ExamTakingPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [startTime] = useState(Date.now());
+  const [startTime, setStartTime] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
   const [elapsedTime, setElapsedTime] = useState(0);
   const timerIntervalRef = useRef(null);
@@ -186,6 +186,17 @@ const ExamTakingPage = () => {
   const currentAudioUrl = useMemo(() => {
     return activeChildSection?.audioUrl || null;
   }, [activeChildSection?.audioUrl]);
+
+  const stopAllTimers = useCallback(() => {
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    if (elapsedTimerRef.current) {
+      clearInterval(elapsedTimerRef.current);
+      elapsedTimerRef.current = null;
+    }
+  }, []);
 
   useEffect(() => {
     const loadExam = async () => {
@@ -207,6 +218,17 @@ const ExamTakingPage = () => {
 
         setInstance(data.instance);
         setSections(data.sections || []);
+
+        const storageKey = `exam_start_time_${instanceId}`;
+        const savedStartTime = localStorage.getItem(storageKey);
+
+        if (savedStartTime) {
+          setStartTime(parseInt(savedStartTime));
+        } else {
+          const newStartTime = Date.now();
+          setStartTime(newStartTime);
+          localStorage.setItem(storageKey, newStartTime.toString());
+        }
 
         const answerMap = {};
         data.sections.forEach((section) => {
@@ -248,14 +270,9 @@ const ExamTakingPage = () => {
     }
 
     return () => {
-      if (timerIntervalRef.current) {
-        clearInterval(timerIntervalRef.current);
-      }
-      if (elapsedTimerRef.current) {
-        clearInterval(elapsedTimerRef.current);
-      }
+      stopAllTimers();
     };
-  }, [instanceId, navigate]);
+  }, [instanceId, navigate, stopAllTimers]);
 
   useEffect(() => {
     const loadPassage = async () => {
@@ -298,8 +315,11 @@ const ExamTakingPage = () => {
   }, [timeLeft]);
 
   useEffect(() => {
+    if (!startTime) return;
+
     elapsedTimerRef.current = setInterval(() => {
-      setElapsedTime((prev) => prev + 1);
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedTime(elapsed);
     }, 1000);
 
     return () => {
@@ -307,7 +327,7 @@ const ExamTakingPage = () => {
         clearInterval(elapsedTimerRef.current);
       }
     };
-  }, []);
+  }, [startTime]);
 
   const formatTime = (seconds) => {
     if (seconds === null) return "--:--:--";
@@ -382,6 +402,11 @@ const ExamTakingPage = () => {
       setSubmitting(true);
       setSubmitDialogOpen(false);
 
+      stopAllTimers();
+
+      const storageKey = `exam_start_time_${instanceId}`;
+      localStorage.removeItem(storageKey);
+
       const payload = buildSubmitPayload(
         Object.entries(answers).map(([examQuestionId, answer]) => ({
           examQuestionId: parseInt(examQuestionId),
@@ -405,6 +430,13 @@ const ExamTakingPage = () => {
     } catch (err) {
       console.error("Submit error:", err);
       alert(err.message || "Lỗi khi nộp bài");
+      // Restart timers if submission fails
+      if (elapsedTimerRef.current === null) {
+        elapsedTimerRef.current = setInterval(() => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          setElapsedTime(elapsed);
+        }, 1000);
+      }
     } finally {
       setSubmitting(false);
     }

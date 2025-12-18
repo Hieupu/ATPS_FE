@@ -322,10 +322,14 @@ const MyCourses = () => {
   const [page, setPage] = useState(1);
   const coursesPerPage = 6;
   const navigate = useNavigate();
-  const { isLearner } = useAuth();
+  const { isLearner, loading: authLoading } = useAuth();
   const courseContainerRef = useRef(null);
 
-  useEffect(() => {
+   useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
     if (!isLearner) {
       setError("Chỉ người học mới có thể truy cập trang này");
       setLoading(false);
@@ -333,7 +337,7 @@ const MyCourses = () => {
     }
 
     fetchEnrolledCourses();
-  }, [isLearner]);
+  }, [isLearner, authLoading]);
 
   const fetchEnrolledCourses = async () => {
     try {
@@ -370,6 +374,20 @@ const MyCourses = () => {
     setSearchTerm("");
     setPage(1);
   }, []);
+
+    if (authLoading) {
+    return (
+      <Box sx={{ minHeight: "100vh", bgcolor: "#f8f9fe" }}>
+        <AppHeader />
+        <Container maxWidth="lg" sx={{ py: 8, textAlign: "center" }}>
+          <CircularProgress size={60} thickness={4} />
+          <Typography variant="h6" sx={{ mt: 3, color: "text.secondary" }}>
+            Đang kiểm tra quyền truy cập...
+          </Typography>
+        </Container>
+      </Box>
+    );
+  }
 
   if (!isLearner) {
     return (

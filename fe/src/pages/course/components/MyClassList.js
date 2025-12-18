@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Card,
@@ -15,10 +15,14 @@ import {
   DialogContentText,
   DialogTitle,
   Snackbar,
-} from '@mui/material';
-import { Schedule, People, Assignment, SwapHoriz } from '@mui/icons-material';
-import { getMyClassesInCourseApi, getClassesByCourseApi, transferClassApi } from '../../../apiServices/courseService';
-import TransferClassModal from './TransferClassModal'; 
+} from "@mui/material";
+import { Schedule, People, Assignment, SwapHoriz } from "@mui/icons-material";
+import {
+  getMyClassesInCourseApi,
+  getClassesByCourseApi,
+  transferClassApi,
+} from "../../../apiServices/courseService";
+import TransferClassModal from "./TransferClassModal";
 
 const MyClassList = ({ courseId }) => {
   const [classes, setClasses] = useState([]);
@@ -30,14 +34,17 @@ const MyClassList = ({ courseId }) => {
   const [selectedClass, setSelectedClass] = useState(null);
   const [transferResult, setTransferResult] = useState(null);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [transferData, setTransferData] = useState({ fromClassId: null, toClassId: null });
+  const [transferData, setTransferData] = useState({
+    fromClassId: null,
+    toClassId: null,
+  });
 
   useEffect(() => {
     const fetchMyClasses = async () => {
       try {
         setLoading(true);
         const response = await getMyClassesInCourseApi(courseId);
-        console.log("getMyClassesInCourseApi", response);
+
         setClasses(response.classes || []);
       } catch (error) {
         console.error("Error fetching my classes:", error);
@@ -52,12 +59,42 @@ const MyClassList = ({ courseId }) => {
     }
   }, [courseId]);
 
+    const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch song song cả hai API
+      const [myClassesResponse, allClassesResponse] = await Promise.all([
+        getMyClassesInCourseApi(courseId),
+        getClassesByCourseApi(courseId)
+      ]);
+      
+      console.log("My classes:", myClassesResponse);
+      console.log("All classes:", allClassesResponse);
+      
+      setClasses(myClassesResponse.classes || []);
+      setClassesInCourse(allClassesResponse.classes || []);
+      
+    } catch (error) {
+      console.error("Error fetching classes:", error);
+      setError(error.message || "Failed to load classes");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+    useEffect(() => {
+    if (courseId) {
+      fetchAllData();
+    }
+  }, [courseId]);
+
   useEffect(() => {
     const fetchClassesInCourse = async () => {
       try {
         setLoading(true);
         const response = await getClassesByCourseApi(courseId);
-        console.log("getClassesByCourseApi", response);
+
         setClassesInCourse(response.classes || []);
       } catch (error) {
         console.error("Error fetching classes in course:", error);
@@ -71,8 +108,10 @@ const MyClassList = ({ courseId }) => {
     }
   }, [courseId]);
 
-  const handleOpenTransferModal = (classItem) => {
-    setSelectedClass(classItem);
+const handleOpenTransferModal = (classItem) => {
+    // Tìm lớp hiện tại với thông tin mới nhất từ classes
+    const currentClass = classes.find(cls => cls.ClassID === classItem.ClassID);
+    setSelectedClass(currentClass || classItem);
     setTransferModalOpen(true);
   };
 
@@ -90,30 +129,28 @@ const MyClassList = ({ courseId }) => {
     try {
       setTransferLoading(true);
       setConfirmDialogOpen(false);
-      
+
       const response = await transferClassApi(
         transferData.fromClassId,
         transferData.toClassId,
         courseId
       );
-      
+
       setTransferResult({
         success: true,
-        message: response.message || 'Chuyển lớp thành công!'
+        message: response.message || "Chuyển lớp thành công!",
       });
       
-      // Refresh data
-      const myClassesResponse = await getMyClassesInCourseApi(courseId);
-      setClasses(myClassesResponse.classes || []);
+      // Refresh tất cả dữ liệu
+      await fetchAllData();
       
       // Close modal
       handleCloseTransferModal();
-      
     } catch (error) {
       console.error("Transfer class error:", error);
       setTransferResult({
         success: false,
-        message: error.message || 'Chuyển lớp thất bại. Vui lòng thử lại.'
+        message: error.message || "Chuyển lớp thất bại. Vui lòng thử lại.",
       });
     } finally {
       setTransferLoading(false);
@@ -121,39 +158,40 @@ const MyClassList = ({ courseId }) => {
   };
 
   const formatTime = (timeString) => {
-    if (!timeString) return '';
+    if (!timeString) return "";
     const time = new Date(`2000-01-01T${timeString}`);
-    return time.toLocaleTimeString('vi-VN', { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return time.toLocaleTimeString("vi-VN", {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
   const getDayVietnamese = (day) => {
     const dayMap = {
-      'Monday': 'Thứ 2',
-      'Tuesday': 'Thứ 3', 
-      'Wednesday': 'Thứ 4',
-      'Thursday': 'Thứ 5',
-      'Friday': 'Thứ 6',
-      'Saturday': 'Thứ 7',
-      'Sunday': 'Chủ nhật'
+      Monday: "Thứ 2",
+      Tuesday: "Thứ 3",
+      Wednesday: "Thứ 4",
+      Thursday: "Thứ 5",
+      Friday: "Thứ 6",
+      Saturday: "Thứ 7",
+      Sunday: "Chủ nhật",
     };
     return dayMap[day] || day;
   };
 
   // Filter available classes for transfer (ACTIVE and not full)
   const getAvailableClassesForTransfer = () => {
-    return classesInCourse.filter(cls => 
-      cls.Status === 'ACTIVE' && 
-      cls.StudentCount < cls.Maxstudent &&
-      (!selectedClass || cls.ClassID !== selectedClass.ClassID)
+    return classesInCourse.filter(
+      (cls) =>
+        cls.Status === "ACTIVE" &&
+        cls.StudentCount < cls.Maxstudent &&
+        (!selectedClass || cls.ClassID !== selectedClass.ClassID)
     );
   };
 
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <Box sx={{ display: "flex", justifyContent: "center", py: 4 }}>
         <CircularProgress />
       </Box>
     );
@@ -182,10 +220,10 @@ const MyClassList = ({ courseId }) => {
         open={!!transferResult}
         autoHideDuration={6000}
         onClose={() => setTransferResult(null)}
-        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
       >
-        <Alert 
-          severity={transferResult?.success ? "success" : "error"} 
+        <Alert
+          severity={transferResult?.success ? "success" : "error"}
           onClose={() => setTransferResult(null)}
         >
           {transferResult?.message}
@@ -209,12 +247,12 @@ const MyClassList = ({ courseId }) => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirmDialogOpen(false)}>Hủy</Button>
-          <Button 
-            onClick={handleTransferClass} 
+          <Button
+            onClick={handleTransferClass}
             variant="contained"
             disabled={transferLoading}
           >
-            {transferLoading ? <CircularProgress size={24} /> : 'Xác nhận'}
+            {transferLoading ? <CircularProgress size={24} /> : "Xác nhận"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -230,7 +268,14 @@ const MyClassList = ({ courseId }) => {
       />
 
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 3,
+        }}
+      >
         <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
           <Typography
             variant="h5"
@@ -257,22 +302,29 @@ const MyClassList = ({ courseId }) => {
       <Grid container spacing={3}>
         {classes.map((classItem) => (
           <Grid item xs={12} md={6} key={classItem.ClassID}>
-            <Card 
+            <Card
               elevation={0}
-              sx={{ 
+              sx={{
                 borderRadius: 4,
                 border: "1px solid rgba(99,102,241,0.15)",
                 boxShadow: "0 10px 25px rgba(15,23,42,0.06)",
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  boxShadow: '0 15px 35px rgba(99,102,241,0.2)',
-                  transform: 'translateY(-3px)',
-                  borderColor: 'rgba(99,102,241,0.3)',
-                }
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  boxShadow: "0 15px 35px rgba(99,102,241,0.2)",
+                  transform: "translateY(-3px)",
+                  borderColor: "rgba(99,102,241,0.3)",
+                },
               }}
             >
               <CardContent sx={{ p: 3 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 3 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    mb: 3,
+                  }}
+                >
                   <Box>
                     <Typography
                       variant="h6"
@@ -285,57 +337,70 @@ const MyClassList = ({ courseId }) => {
                     >
                       {classItem.ClassName || `Lớp ${classItem.ClassID}`}
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.9rem" }}>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ fontSize: "0.9rem" }}
+                    >
                       👨‍🏫 Giảng viên: <strong>{classItem.InstructorName}</strong>
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
-                   <Chip
-  label={
-    classItem.Status?.toLowerCase() === "active"
-      ? "Đang mở"
-      : classItem.Status?.toLowerCase() === "ongoing"
-      ? "Đang học"
-      : classItem.Status?.toLowerCase() === "close" || classItem.Status?.toLowerCase() === "closed"
-      ? "Đã kết thúc"
-      : classItem.Status
-  }
-  sx={{
-    bgcolor: "white",
-    border: "1.5px solid",
-    borderColor:
-      classItem.Status?.toLowerCase() === "active"
-        ? "success.main"
-        : classItem.Status?.toLowerCase() === "ongoing"
-        ? "info.main"
-        : classItem.Status?.toLowerCase() === "close" ||
-          classItem.Status?.toLowerCase() === "closed"
-        ? "grey.500"
-        : "grey.400",
-    color:
-      classItem.Status?.toLowerCase() === "active"
-        ? "success.main"
-        : classItem.Status?.toLowerCase() === "ongoing"
-        ? "info.main"
-        : classItem.Status?.toLowerCase() === "close" ||
-          classItem.Status?.toLowerCase() === "closed"
-        ? "grey.700"
-        : "text.secondary",
-    fontWeight: 600,
-  }}
-  size="small"
-/>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "flex-end",
+                      gap: 1,
+                    }}
+                  >
+                    <Chip
+                      label={
+                        classItem.Status?.toLowerCase() === "active"
+                          ? "Đang mở"
+                          : classItem.Status?.toLowerCase() === "ongoing"
+                          ? "Đang học"
+                          : classItem.Status?.toLowerCase() === "close" ||
+                            classItem.Status?.toLowerCase() === "closed"
+                          ? "Đã kết thúc"
+                          : classItem.Status
+                      }
+                      sx={{
+                        bgcolor: "white",
+                        border: "1.5px solid",
+                        borderColor:
+                          classItem.Status?.toLowerCase() === "active"
+                            ? "success.main"
+                            : classItem.Status?.toLowerCase() === "ongoing"
+                            ? "info.main"
+                            : classItem.Status?.toLowerCase() === "close" ||
+                              classItem.Status?.toLowerCase() === "closed"
+                            ? "grey.500"
+                            : "grey.400",
+                        color:
+                          classItem.Status?.toLowerCase() === "active"
+                            ? "success.main"
+                            : classItem.Status?.toLowerCase() === "ongoing"
+                            ? "info.main"
+                            : classItem.Status?.toLowerCase() === "close" ||
+                              classItem.Status?.toLowerCase() === "closed"
+                            ? "grey.700"
+                            : "text.secondary",
+                        fontWeight: 600,
+                      }}
+                      size="small"
+                    />
 
-                    
                     {/* Transfer Button - Only show for ACTIVE classes */}
-                    {(classItem.Status === 'ACTIVE' || classItem.Status === 'active' || classItem.Status === 'Ongoing') && (
+                    {(classItem.Status === "ACTIVE" ||
+                      classItem.Status === "active" ||
+                      classItem.Status === "Ongoing") && (
                       <Button
                         variant="outlined"
                         size="small"
                         startIcon={<SwapHoriz />}
                         onClick={() => handleOpenTransferModal(classItem)}
                         sx={{
-                          fontSize: '0.75rem',
+                          fontSize: "0.75rem",
                           py: 0.5,
                           borderRadius: 2,
                         }}
@@ -345,11 +410,11 @@ const MyClassList = ({ courseId }) => {
                     )}
                   </Box>
                 </Box>
-                
+
                 <Box
                   sx={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
+                    display: "flex",
+                    flexWrap: "wrap",
                     gap: 2,
                     mb: 3,
                     p: 2,
@@ -357,8 +422,8 @@ const MyClassList = ({ courseId }) => {
                     borderRadius: 3,
                   }}
                 >
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <People sx={{ fontSize: 20, color: 'primary.main' }} />
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <People sx={{ fontSize: 20, color: "primary.main" }} />
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {classItem.StudentCount || 0}
                     </Typography>
@@ -366,8 +431,8 @@ const MyClassList = ({ courseId }) => {
                       học viên
                     </Typography>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                    <Schedule sx={{ fontSize: 20, color: 'primary.main' }} />
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Schedule sx={{ fontSize: 20, color: "primary.main" }} />
                     <Typography variant="body2" sx={{ fontWeight: 600 }}>
                       {classItem.TotalSessions || 0}
                     </Typography>
@@ -376,103 +441,138 @@ const MyClassList = ({ courseId }) => {
                     </Typography>
                   </Box>
                   {classItem.Opendate && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                      <Assignment sx={{ fontSize: 20, color: 'primary.main' }} />
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+                    >
+                      <Assignment
+                        sx={{ fontSize: 20, color: "primary.main" }}
+                      />
                       <Typography variant="caption" color="text.secondary">
-                        Khai giảng: <strong>{new Date(classItem.Opendate).toLocaleDateString('vi-VN')}</strong>
+                        Khai giảng:{" "}
+                        <strong>
+                          {new Date(classItem.Opendate).toLocaleDateString(
+                            "vi-VN"
+                          )}
+                        </strong>
                       </Typography>
                     </Box>
                   )}
                 </Box>
 
-                 {classItem.weeklySchedule && classItem.weeklySchedule.length > 0 && (
-  <Box>
-    <Typography
-      variant="subtitle2"
-      gutterBottom
-      sx={{
-        fontWeight: 700,
-        color: "text.primary",
-        mb: 1.5,
-      }}
-    >
-       Lịch học hàng tuần:
-    </Typography>
-    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5 }}>
-      {Array.from(
-        new Map(
-          classItem.weeklySchedule.map(schedule => [
-            // Tạo key duy nhất từ ngày + giờ bắt đầu + giờ kết thúc
-            `${schedule.Day}-${schedule.StartTime}-${schedule.EndTime}`,
-            schedule
-          ])
-        ).values()
-      ).map((schedule, index) => (
-        <Chip
-          key={index}
-          label={`${getDayVietnamese(schedule.Day)} ${formatTime(schedule.StartTime)}-${formatTime(schedule.EndTime)}`}
-          sx={{
-            bgcolor: "rgba(102,126,234,0.1)",
-            color: "primary.main",
-            fontWeight: 600,
-            borderRadius: 2,
-          }}
-          size="small"
-        />
-      ))}
-    </Box>
-    
-    {/* Thêm phần hiển thị ngày bắt đầu và kết thúc */}
-    {(() => {
-      // Tính ngày bắt đầu và kết thúc từ weeklySchedule
-      const sortedSchedule = [...classItem.weeklySchedule].sort((a, b) => 
-        new Date(a.Date) - new Date(b.Date)
-      );
-      const startDate = sortedSchedule[0]?.Date;
-      const endDate = sortedSchedule[sortedSchedule.length - 1]?.Date;
-      
-      return startDate && endDate && (
-        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography
-            variant="caption"
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              color: 'text.secondary',
-            }}
-          >
-            <span role="img" aria-label="calendar">📅</span>
-            <span>
-              <strong>Thời gian khóa học:</strong>{' '}
-              {new Date(startDate).toLocaleDateString('vi-VN')} - {new Date(endDate).toLocaleDateString('vi-VN')}
-            </span>
-          </Typography>
-          
-          {/* Tùy chọn: Tính tổng số tuần học */}
-          {(() => {
-            const start = new Date(startDate);
-            const end = new Date(endDate);
-            const diffTime = Math.abs(end - start);
-            const diffWeeks = Math.ceil(diffTime / (1000 * 60 * 60 * 24 * 7));
-            return (
-              <Chip
-                label={`${diffWeeks} tuần`}
-                size="small"
-                sx={{
-                  bgcolor: 'rgba(255,193,7,0.1)',
-                  color: '#ff9800',
-                  fontWeight: 600,
-                  fontSize: '0.7rem',
-                }}
-              />
-            );
-          })()}
-        </Box>
-      );
-    })()}
-  </Box>
-)}
+                {classItem.weeklySchedule &&
+                  classItem.weeklySchedule.length > 0 && (
+                    <Box>
+                      <Typography
+                        variant="subtitle2"
+                        gutterBottom
+                        sx={{
+                          fontWeight: 700,
+                          color: "text.primary",
+                          mb: 1.5,
+                        }}
+                      >
+                        Lịch học hàng tuần:
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5 }}>
+                        {Array.from(
+                          new Map(
+                            classItem.weeklySchedule.map((schedule) => [
+                              // Tạo key duy nhất từ ngày + giờ bắt đầu + giờ kết thúc
+                              `${schedule.Day}-${schedule.StartTime}-${schedule.EndTime}`,
+                              schedule,
+                            ])
+                          ).values()
+                        ).map((schedule, index) => (
+                          <Chip
+                            key={index}
+                            label={`${getDayVietnamese(
+                              schedule.Day
+                            )} ${formatTime(schedule.StartTime)}-${formatTime(
+                              schedule.EndTime
+                            )}`}
+                            sx={{
+                              bgcolor: "rgba(102,126,234,0.1)",
+                              color: "primary.main",
+                              fontWeight: 600,
+                              borderRadius: 2,
+                            }}
+                            size="small"
+                          />
+                        ))}
+                      </Box>
+
+                      {/* Thêm phần hiển thị ngày bắt đầu và kết thúc */}
+                      {(() => {
+                        // Tính ngày bắt đầu và kết thúc từ weeklySchedule
+                        const sortedSchedule = [
+                          ...classItem.weeklySchedule,
+                        ].sort((a, b) => new Date(a.Date) - new Date(b.Date));
+                        const startDate = sortedSchedule[0]?.Date;
+                        const endDate =
+                          sortedSchedule[sortedSchedule.length - 1]?.Date;
+
+                        return (
+                          startDate &&
+                          endDate && (
+                            <Box
+                              sx={{
+                                mt: 2,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 0.5,
+                                  color: "text.secondary",
+                                }}
+                              >
+                                <span role="img" aria-label="calendar">
+                                  📅
+                                </span>
+                                <span>
+                                  <strong>Thời gian khóa học:</strong>{" "}
+                                  {new Date(startDate).toLocaleDateString(
+                                    "vi-VN"
+                                  )}{" "}
+                                  -{" "}
+                                  {new Date(endDate).toLocaleDateString(
+                                    "vi-VN"
+                                  )}
+                                </span>
+                              </Typography>
+
+                              {/* Tùy chọn: Tính tổng số tuần học */}
+                              {(() => {
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                const diffTime = Math.abs(end - start);
+                                const diffWeeks = Math.ceil(
+                                  diffTime / (1000 * 60 * 60 * 24 * 7)
+                                );
+                                return (
+                                  <Chip
+                                    label={`${diffWeeks} tuần`}
+                                    size="small"
+                                    sx={{
+                                      bgcolor: "rgba(255,193,7,0.1)",
+                                      color: "#ff9800",
+                                      fontWeight: 600,
+                                      fontSize: "0.7rem",
+                                    }}
+                                  />
+                                );
+                              })()}
+                            </Box>
+                          )
+                        );
+                      })()}
+                    </Box>
+                  )}
               </CardContent>
             </Card>
           </Grid>

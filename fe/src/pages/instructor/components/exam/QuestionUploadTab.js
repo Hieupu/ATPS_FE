@@ -1,7 +1,24 @@
 import React, { useState } from "react";
-import { Box, Button, Typography, CircularProgress } from "@mui/material";
+import {
+  Box,
+  Button,
+  Typography,
+  CircularProgress,
+  Paper,
+  Chip,
+  Divider,
+  Alert,
+  Stack,
+  Card,
+  CardContent,
+} from "@mui/material";
+import {
+  CloudUpload as UploadIcon,
+  Download as DownloadIcon,
+  CheckCircle as CheckIcon,
+  Info as InfoIcon,
+} from "@mui/icons-material";
 import * as XLSX from "xlsx";
-
 
 const normalizeQuestion = (row, index) => {
   const rawType = (row["Loại"] || "").toString().trim().toLowerCase();
@@ -117,9 +134,17 @@ const normalizeQuestion = (row, index) => {
   };
 };
 
-
 const QuestionUploadTab = ({ uploadedQuestions = [], setUploadedQuestions }) => {
   const [loading, setLoading] = useState(false);
+
+  const handleDownloadTemplate = () => {
+    const link = document.createElement('a');
+    link.href = '/templates/questions_template.xlsx';
+    link.download = 'questions_template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const handleFileSelect = async (e) => {
     const file = e.target.files?.[0];
@@ -151,50 +176,195 @@ const QuestionUploadTab = ({ uploadedQuestions = [], setUploadedQuestions }) => 
 
   return (
     <Box p={3}>
-      <Typography variant="subtitle1" mb={2}>
-        Tải file Excel chứa danh sách câu hỏi
-      </Typography>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 4,
+          border: "2px dashed",
+          borderColor: "grey.300",
+          bgcolor: "grey.50",
+          borderRadius: 2,
+          textAlign: "center",
+          mb: 3,
+        }}
+      >
+        <UploadIcon sx={{ fontSize: 60, color: "grey.400", mb: 2 }} />
+        <Typography variant="h6" mb={2}>
+          Tải file Excel của bạn
+        </Typography>
 
-      <Button variant="outlined" component="label" disabled={loading} fullWidth>
-        {loading ? <CircularProgress size={22} /> : "Chọn file Excel"}
-        <input type="file" accept=".xlsx,.xls" hidden onChange={handleFileSelect} />
-      </Button>
+        <Button
+          variant="contained"
+          component="label"
+          disabled={loading}
+          startIcon={loading ? <CircularProgress size={20} /> : <UploadIcon />}
+          sx={{ textTransform: "none" }}
+        >
+          {loading ? "Đang xử lý..." : "Chọn file Excel"}
+          <input type="file" accept=".xlsx,.xls" hidden onChange={handleFileSelect} />
+        </Button>
+      </Paper>
+
+      {uploadedQuestions.length === 0 && (
+        <Paper
+          elevation={0}
+          sx={{
+            p: 3,
+            mb: 3,
+            border: "2px dashed",
+            borderColor: "primary.main",
+            bgcolor: "primary.50",
+            borderRadius: 2,
+          }}
+        >
+          <Stack direction="row" spacing={2} alignItems="center" mb={2}>
+            <DownloadIcon color="primary" sx={{ fontSize: 32 }} />
+            <Box>
+              <Typography variant="h6" fontWeight={600} color="primary">
+                Tải File Mẫu
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                Chưa biết cách tạo file Excel? Tải file mẫu về để tham khảo định dạng chuẩn.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Button
+            variant="contained"
+            startIcon={<DownloadIcon />}
+            onClick={handleDownloadTemplate}
+            sx={{ textTransform: "none" }}
+          >
+            Tải File Mẫu
+          </Button>
+        </Paper>
+      )}
 
       {uploadedQuestions.length > 0 && (
-        <Box mt={3}>
-          <Typography fontWeight={600} mb={1}>
-            Đã import {uploadedQuestions.length} câu hỏi
-          </Typography>
+        <Box mt={4}>
+          <Stack direction="row" spacing={1} alignItems="center" mb={3}>
+            <CheckIcon color="success" sx={{ fontSize: 28 }} />
+            <Typography variant="h6" fontWeight={600}>
+              Đã import {uploadedQuestions.length} câu hỏi
+            </Typography>
+          </Stack>
 
-          {uploadedQuestions.map((q, index) => (
-            <Box
-              key={index}
-              sx={{
-                p: 1.5,
-                mb: 1,
-                borderRadius: "6px",
-                background: "#f5f5f5",
-              }}
-            >
-              <Typography fontWeight={600}>
-                Q{index + 1}: {q.content}
-              </Typography>
+          <Stack spacing={2}>
+            {uploadedQuestions.map((q, index) => (
+              <Card
+                key={index}
+                elevation={1}
+                sx={{
+                  transition: "all 0.3s",
+                  "&:hover": {
+                    boxShadow: 4,
+                    transform: "translateY(-2px)",
+                  },
+                }}
+              >
+                <CardContent>
+                  <Typography variant="h6" fontWeight={600} mb={2}>
+                    Câu {index + 1}: {q.content}
+                  </Typography>
 
-              <Typography variant="body2">Loại: {q.type}</Typography>
-              <Typography variant="body2">Độ khó: {q.level}</Typography>
-              <Typography variant="body2">Điểm: {q.point}</Typography>
+                  <Stack direction="row" spacing={1} mb={2} flexWrap="wrap">
+                    <Chip
+                      label={`Loại: ${q.type}`}
+                      color="primary"
+                      size="small"
+                      variant="outlined"
+                    />
+                    <Chip
+                      label={`Độ khó: ${q.level}`}
+                      color="secondary"
+                      size="small"
+                      variant="outlined"
+                    />
+                    <Chip
+                      label={`Điểm: ${q.point}`}
+                      color="success"
+                      size="small"
+                      variant="outlined"
+                    />
+                    {q.topic && (
+                      <Chip
+                        label={`Chủ đề: ${q.topic}`}
+                        color="info"
+                        size="small"
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
 
-              {q.type === "matching" && (
-                <Box mt={1}>
-                  {q.matchingPairs.map((pair, i) => (
-                    <Typography key={i} variant="body2">
-                      {pair.left} → {pair.right}
-                    </Typography>
-                  ))}
-                </Box>
-              )}
-            </Box>
-          ))}
+                  {q.type === "matching" && q.matchingPairs && (
+                    <Box mt={2}>
+                      <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                        Các cặp ghép đôi:
+                      </Typography>
+                      <Box pl={2}>
+                        {q.matchingPairs.map((pair, i) => (
+                          <Typography key={i} variant="body2" color="text.secondary">
+                            • {pair.left} → {pair.right}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {q.type === "multiple_choice" && q.options && (
+                    <Box mt={2}>
+                      <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                        Các lựa chọn:
+                      </Typography>
+                      <Box pl={2}>
+                        {q.options.map((opt, i) => (
+                          <Typography
+                            key={i}
+                            variant="body2"
+                            sx={{
+                              color: opt.isCorrect ? "success.main" : "text.secondary",
+                              fontWeight: opt.isCorrect ? 600 : 400,
+                            }}
+                          >
+                            {String.fromCharCode(65 + i)}. {opt.content}{" "}
+                            {opt.isCorrect}
+                          </Typography>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+
+                  {q.type === "true_false" && (
+                    <Box mt={2}>
+                      <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                        Đáp án đúng:
+                      </Typography>
+                      <Box >
+                        <Chip
+                          label={q.correctAnswer === "true" ? "True" : "False"}
+                          color="success"
+                          size="small"
+                        />
+                      </Box>
+                    </Box>
+                  )}
+
+                  {q.type === "fill_in_blank" && q.correctAnswer && (
+                    <Box mt={2}>
+                      <Typography variant="subtitle2" fontWeight={600} mb={1}>
+                        Đáp án đúng:
+                      </Typography>
+                      <Box>
+                        <Typography variant="body2" color="success.main" fontWeight={600}>
+                          "{q.correctAnswer}"
+                        </Typography>
+                      </Box>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </Stack>
         </Box>
       )}
     </Box>
