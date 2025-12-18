@@ -48,6 +48,24 @@ const ScheduleGrid = ({
   const [myReservedSlots, setMyReservedSlots] = useState(new Set());
   const [checkingReservations, setCheckingReservations] = useState(false);
 
+  const getInstructorId = (slot) => {
+    // Kiểm tra các trường có thể chứa instructorId
+    return slot.InstructorID || slot.InstructorId || slot.instructorId || 
+           slot.Instructor?.InstructorID || slot.teacherId || null;
+  };
+
+  const getSlotKey = (slot) => {
+    const slotDate = normalizeDate(slot.Date);
+    const instructorId = getInstructorId(slot);
+    return `${instructorId}_${slot.TimeslotID}_${slotDate}`;
+  };
+
+  // ⭐️ FIX: Tách riêng slot key để check selected (không cần instructorId)
+  const getSlotKeyForSelected = (slot) => {
+    const slotDate = normalizeDate(slot.Date);
+    return `${slot.TimeslotID}_${slotDate}`;
+  };
+
   // ⭐️ ANTI-SPAM: Theo dõi lịch sử reserve của từng slot
   const [slotReserveHistory, setSlotReserveHistory] = useState(() => {
     const saved = localStorage.getItem('slotReserveHistory');
@@ -70,21 +88,8 @@ const ScheduleGrid = ({
     return {};
   });
 
-  // ⭐️ ANTI-SPAM: Theo dõi tổng số clicks trong 1 phút
-  const [clickHistory, setClickHistory] = useState(() => {
-    const saved = localStorage.getItem('clickHistory');
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        const now = Date.now();
-        // Chỉ giữ lại clicks trong 1 phút gần đây
-        return data.filter(ts => now - ts < 60000);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  });
+  // ⭐️ FIX: Theo dõi tổng số clicks trong 1 phút - sửa lỗi state initialization
+  const [clickHistory, setClickHistory] = useState([]);
 
   // ⭐️ ANTI-SPAM: Trạng thái bị khóa (banned)
   const [isBanned, setIsBanned] = useState(false);
@@ -92,54 +97,68 @@ const ScheduleGrid = ({
   const [banTimeRemaining, setBanTimeRemaining] = useState(0);
   const [banReason, setBanReason] = useState('');
 
-
-useEffect(() => {
-  const checkBanStatus = () => {
-    const banData = localStorage.getItem('slotReserveBan');
-    if (banData) {
+  // ⭐️ FIX: Thêm useEffect để load click history
+  useEffect(() => {
+    const saved = localStorage.getItem('clickHistory');
+    if (saved) {
       try {
-        const { endTime, reason } = JSON.parse(banData);
+        const data = JSON.parse(saved);
         const now = Date.now();
-        
-        if (now < endTime) {
-          // ⭐️ THÊM: Giải phóng tất cả slot khi bị ban
-          if (selectedSlots.length > 0) {
-            slotReservationApi.releaseAllSlots().catch(console.error);
-            // Xóa selected slots
-            selectedSlots.forEach(slot => {
-              const slotDate = normalizeDate(slot.Date);
-              const slotKey = `${slot.TimeslotID}_${slotDate}`;
-              setMyReservedSlots(prev => {
-                const newSet = new Set(prev);
-                newSet.delete(slotKey);
-                return newSet;
-              });
-              handleSlotClick(slot); // Bỏ chọn slot
-            });
-          }
-          
-          setIsBanned(true);
-          setBanEndTime(endTime);
-          setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
-          setBanReason(reason || 'spam');
-        } else {
-          // Hết thời gian ban, xóa và reset
-          localStorage.removeItem('slotReserveBan');
-          setIsBanned(false);
-          setBanEndTime(null);
-          setBanReason('');
-        }
+        // Chỉ giữ lại clicks trong 1 phút gần đây
+        const filtered = data.filter(ts => now - ts < 60000);
+        setClickHistory(filtered);
       } catch {
-        localStorage.removeItem('slotReserveBan');
+        setClickHistory([]);
       }
     }
-  };
+  }, []);
 
-  checkBanStatus();
-  
-  const interval = setInterval(checkBanStatus, 1000);
-  return () => clearInterval(interval);
-}, [selectedSlots, handleSlotClick]); // ⭐️ THÊM dependencies
+  useEffect(() => {
+    const checkBanStatus = () => {
+      const banData = localStorage.getItem('slotReserveBan');
+      if (banData) {
+        try {
+          const { endTime, reason } = JSON.parse(banData);
+          const now = Date.now();
+          
+          if (now < endTime) {
+            // ⭐️ THÊM: Giải phóng tất cả slot khi bị ban
+            if (selectedSlots.length > 0) {
+              slotReservationApi.releaseAllSlots().catch(console.error);
+              // Xóa selected slots
+              selectedSlots.forEach(slot => {
+                const key = getSlotKey(slot);
+                setMyReservedSlots(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(key);
+                  return newSet;
+                });
+                handleSlotClick(slot); // Bỏ chọn slot
+              });
+            }
+            
+            setIsBanned(true);
+            setBanEndTime(endTime);
+            setBanTimeRemaining(Math.ceil((endTime - now) / 1000));
+            setBanReason(reason || 'spam');
+          } else {
+            // Hết thời gian ban, xóa và reset
+            localStorage.removeItem('slotReserveBan');
+            setIsBanned(false);
+            setBanEndTime(null);
+            setBanReason('');
+          }
+        } catch {
+          localStorage.removeItem('slotReserveBan');
+        }
+      }
+    };
+
+    checkBanStatus();
+    
+    const interval = setInterval(checkBanStatus, 1000);
+    return () => clearInterval(interval);
+  }, [selectedSlots, handleSlotClick]);
 
   // ⭐️ ANTI-SPAM: Cleanup history - tối ưu hơn
   useEffect(() => {
@@ -184,13 +203,13 @@ useEffect(() => {
     // Cleanup ngay lập tức khi mount
     cleanupHistory();
     
-    // Cleanup mỗi 10 giây (thay vì 1 phút để responsive hơn)
+    // Cleanup mỗi 10 giây
     const interval = setInterval(cleanupHistory, 10000);
     return () => clearInterval(interval);
   }, []);
 
   // ⭐️ ANTI-SPAM: Function để check spam behavior
-  const checkSpamBehavior = (slotKey) => {
+  const checkSpamBehavior = useCallback((slotKey) => {
     const now = Date.now();
     const fiveMinutes = 5 * 60 * 1000;
     const oneMinute = 60000;
@@ -243,7 +262,7 @@ useEffect(() => {
     }
     
     return false;
-  };
+  }, [clickHistory, slotReserveHistory]);
 
   // ⭐️ ANTI-SPAM: Record click và reserve action
   const recordClickAction = useCallback(() => {
@@ -279,12 +298,21 @@ useEffect(() => {
       
       const checkPromises = weeklySchedule.map(async (slot) => {
         try {
+          const slotDate = normalizeDate(slot.Date);
+          const instructorId = getInstructorId(slot);
+          
+          if (!instructorId) {
+            console.warn("No instructorId found for slot:", slot);
+            return;
+          }
+          
           const result = await slotReservationApi.checkSlotStatus(
             slot.TimeslotID, 
-            normalizeDate(slot.Date)
+            slotDate,
+            instructorId
           );
           
-          const key = `${slot.TimeslotID}_${normalizeDate(slot.Date)}`;
+          const key = getSlotKey(slot);
           
           if (result.data.reserved) {
             reserved.add(key);
@@ -303,12 +331,11 @@ useEffect(() => {
       
       if (expiredSlots.length > 0) {
         expiredSlots.forEach(slot => {
-          const slotDate = normalizeDate(slot.Date);
-          const slotKey = `${slot.TimeslotID}_${slotDate}`;
+          const key = getSlotKey(slot);
           
           setMyReservedSlots(prev => {
             const newSet = new Set(prev);
-            newSet.delete(slotKey);
+            newSet.delete(key);
             return newSet;
           });
           
@@ -437,7 +464,9 @@ useEffect(() => {
     }
 
     const slotDate = normalizeDate(slot.Date);
-    const slotKey = `${slot.TimeslotID}_${slotDate}`;
+    const instructorId = getInstructorId(slot);
+    const slotKey = getSlotKey(slot);
+    const selectedKey = getSlotKeyForSelected(slot);
     
     if (reservedSlots.has(slotKey) && !myReservedSlots.has(slotKey)) {
       setConflictAlert({
@@ -449,14 +478,23 @@ useEffect(() => {
 
     if (slot.Status !== "available") return;
 
+    // ⭐️ FIX: Sử dụng selectedKey để check (không có instructorId)
     const isSelected = selectedSlots.some(
-      s => s.TimeslotID === slot.TimeslotID && normalizeDate(s.Date) === slotDate
+      s => getSlotKeyForSelected(s) === selectedKey
     );
 
     // Nếu đang bỏ chọn slot
     if (isSelected) {
       try {
-        await slotReservationApi.releaseSlot(slot.TimeslotID, slotDate);
+        if (!instructorId) {
+          throw new Error("Không tìm thấy instructorId");
+        }
+        
+        await slotReservationApi.releaseSlot(
+          slot.TimeslotID, 
+          slotDate,
+          instructorId
+        );
         setReservedSlots(prev => {
           const newSet = new Set(prev);
           newSet.delete(slotKey);
@@ -469,6 +507,11 @@ useEffect(() => {
         });
       } catch (error) {
         console.error("Error releasing slot:", error);
+        setConflictAlert({
+          severity: "error",
+          message: "Lỗi khi hủy giữ chỗ: " + (error.message || "Không tìm thấy instructor")
+        });
+        return;
       }
       handleSlotClick(slot);
       return;
@@ -512,7 +555,15 @@ useEffect(() => {
     if (hasConflict) return;
 
     try {
-      const reserveResult = await slotReservationApi.reserveSlot(slot.TimeslotID, slotDate);
+      if (!instructorId) {
+        throw new Error("Không tìm thấy instructorId");
+      }
+      
+      const reserveResult = await slotReservationApi.reserveSlot(
+        slot.TimeslotID, 
+        slotDate,
+        instructorId
+      );
       
       if (reserveResult.success) {
         // ⭐️ ANTI-SPAM: Record reserve action
@@ -532,7 +583,8 @@ useEffect(() => {
             severity: "warning",
             message: `Bạn đã giữ slot này ${recentSlotCount} lần trong 15 phút. Giới hạn: 5 lần.`
           });
-        }} else {
+        }
+      } else {
         setConflictAlert({
           severity: "warning",
           message: reserveResult.message || "Không thể giữ slot này"
@@ -542,7 +594,7 @@ useEffect(() => {
       console.error("Error reserving slot:", error);
       setConflictAlert({
         severity: "error",
-        message: "Lỗi khi giữ chỗ slot. Vui lòng thử lại."
+        message: "Lỗi khi giữ chỗ slot: " + (error.message || "Vui lòng thử lại.")
       });
     }
   };
@@ -636,7 +688,7 @@ useEffect(() => {
         </Alert>
       )}
 
-      {/* Hiển thị cảnh báo khi gần đạt giới hạn */}
+      {/* ⭐️ FIX: Hiển thị cảnh báo khi gần đạt giới hạn */}
       {!isBanned && clickHistory.length > 15 && (
         <Alert severity="warning" sx={{ mb: 2 }}>
           Bạn đã click {clickHistory.filter(ts => Date.now() - ts < 60000).length}/20 lần trong phút này. Hãy chậm lại!
@@ -758,18 +810,17 @@ useEffect(() => {
                     );
                   }
 
-                  const slotDate = normalizeDate(slot.Date);
-                  const slotKey = `${slot.TimeslotID}_${slotDate}`;
+                  const slotKey = getSlotKey(slot);
+                  const selectedKey = getSlotKeyForSelected(slot);
                   
+                  // ⭐️ FIX: Sử dụng selectedKey để check (không có instructorId)
                   const isSelected = selectedSlots.some(
-                    (s) =>
-                      s.TimeslotID === slot.TimeslotID &&
-                      normalizeDate(s.Date) === slotDate
+                    s => getSlotKeyForSelected(s) === selectedKey
                   );
 
                   const isReservedByOthers = reservedSlots.has(slotKey) && !myReservedSlots.has(slotKey);
 
-                  const currentWeekKey = getWeekKey(slotDate);
+                  const currentWeekKey = getWeekKey(normalizeDate(slot.Date));
                   const slotsInSameWeek = selectedSlots.filter((s) => {
                     const sWeekKey = getWeekKey(normalizeDate(s.Date));
                     return sWeekKey === currentWeekKey;
@@ -778,7 +829,7 @@ useEffect(() => {
                     slotsInSameWeek.length >= 6 && !isSelected;
 
                   const isDisabled =
-                    isBanned || // ⭐️ Disable khi bị ban
+                    isBanned ||
                     !selectedCourseId ||
                     !courseInfo ||
                     hasReachedMaxSlotsInWeek ||

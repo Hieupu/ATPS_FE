@@ -20,6 +20,8 @@ const ProgressBarCard = ({
     if (percentage >= 50) return "info";
     return "warning";
   };
+  const averageScore10 = averageScore / 10;
+
 
   return (
     <Paper
@@ -71,34 +73,41 @@ const ProgressBarCard = ({
           </Box>
           
           {/* Thông tin chính */}
-          <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <Typography variant="body2" color="text.secondary">
-              {showAverage ? "Điểm trung bình:" : showHours ? "Tổng giờ học:" : ""}
-            </Typography>
-            {showAverage && (
-              <Typography
-                variant="body1"
-                sx={{
-                  fontWeight: 800,
-                  color: averageScore >= 8 ? "success.main" : 
-                         averageScore >= 6.5 ? "warning.main" : "error.main",
-                }}
-              >
-                {averageScore.toFixed(1)}
-              </Typography>
-            )}
-            {showHours && (
-              <Typography
-                variant="body1"
-                sx={{
-                  fontWeight: 800,
-                  color: "primary.main",
-                }}
-              >
-                {totalHours}h
-              </Typography>
-            )}
-          </Box>
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+  <Typography variant="body2" color="text.secondary">
+    {showAverage ? "Điểm trung bình:" : showHours ? "Tổng giờ học:" : ""}
+  </Typography>
+
+  {showAverage && (
+    <Typography
+      variant="body1"
+      sx={{
+        fontWeight: 800,
+        color:
+          averageScore10 >= 8
+            ? "success.main"
+            : averageScore10 >= 6.5
+            ? "warning.main"
+            : "error.main",
+      }}
+    >
+      {averageScore10.toFixed(1)}
+    </Typography>
+  )}
+
+  {showHours && (
+    <Typography
+      variant="body1"
+      sx={{
+        fontWeight: 800,
+        color: "primary.main",
+      }}
+    >
+      {totalHours}h
+    </Typography>
+  )}
+</Box>
+
           
         </>
       ) : (
