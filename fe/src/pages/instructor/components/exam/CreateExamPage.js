@@ -59,7 +59,7 @@ const CreateExamPage = () => {
         {error && (
           <Box sx={{ mb: 3 }}>
             <Typography color="error" sx={{ p: 2, bgcolor: "#ffebee", borderRadius: 1 }}>
-              ❌ {error}
+               {error}
             </Typography>
           </Box>
         )}
