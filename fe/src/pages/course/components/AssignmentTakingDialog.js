@@ -117,6 +117,7 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
   const [submitting, setSubmitting] = useState(false);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [startTime] = useState(Date.now());
 
   const elapsedTimerRef = useRef(null);
 
@@ -244,7 +245,7 @@ const AssignmentTakingDialog = ({ open, onClose, assignmentId }) => {
           examQuestionId: Number(id),
           answer: ans,
         })),
-        Date.now(),
+        startTime,
         { metadata: { duration: elapsedTime } }
       );
 

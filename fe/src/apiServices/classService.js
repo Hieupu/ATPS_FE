@@ -459,24 +459,33 @@ const classService = {
   },
 
   // Update Class Schedule (Edit Wizard) - Xoá session cũ trong vùng, tạo lại session mới
-  updateClassSchedule: async (classId, sessionsData, options = {}) => {
+  // sessionsData phải có dạng { sessions: [...], startDate?, endDate?, scheduleDetail? }
+  updateClassSchedule: async (classId, sessionsData) => {
     try {
-      const payload = {
-        sessions: sessionsData,
-      };
-      if (options.startDate) payload.startDate = options.startDate;
-      if (options.endDate) payload.endDate = options.endDate;
+      // Payload mới: sessionsData phải là object với cấu trúc:
+      // { sessions: { update: [], create: [], delete: [], reschedule: [] }, OpendatePlan?, Numofsession?, ... }
+      const payload = { ...(sessionsData || {}) };
+
+      // Validate payload format
+      if (
+        !payload.sessions ||
+        typeof payload.sessions !== "object" ||
+        Array.isArray(payload.sessions)
+      ) {
+        throw new Error(
+          "Payload không hợp lệ: sessions phải là object với các trường update, create, delete, hoặc reschedule"
+        );
+      }
 
       const response = await apiClient.post(
         `/classes/${classId}/schedule/update`,
         payload
       );
 
-      // Backend trả { success, conflicts, summary } hoặc bọc trong data
+      // Backend trả { success, summary, details, conflicts } hoặc bọc trong data
       return response.data?.data || response.data;
     } catch (error) {
       console.error("Update class schedule error:", error);
-      // Trả về error structured (nếu có) để FE vẫn đọc được conflicts
       throw (
         error.response?.data || {
           message: "Failed to update class schedule",
@@ -490,6 +499,7 @@ const classService = {
     TimeslotID,
     Day,
     startDate,
+    endDate,
     numSuggestions,
     excludeClassId,
     ClassID,
@@ -502,6 +512,9 @@ const classService = {
       });
       if (startDate) {
         params.append("startDate", startDate);
+      }
+      if (endDate) {
+        params.append("endDate", endDate);
       }
       if (numSuggestions) {
         params.append("numSuggestions", numSuggestions);
@@ -521,6 +534,46 @@ const classService = {
     }
   },
 
+  // Gợi ý ca học cho EDIT schedule (dùng API riêng /instructor/available-slots/edit)
+  findSlotsForEdit: async ({
+    InstructorID,
+    TimeslotID,
+    Day,
+    startDate,
+    endDate,
+    numSuggestions,
+    excludeClassId,
+    ClassID,
+  }) => {
+    try {
+      const params = new URLSearchParams({
+        InstructorID,
+        TimeslotID,
+        Day,
+      });
+      if (startDate) {
+        params.append("startDate", startDate);
+      }
+      if (endDate) {
+        params.append("endDate", endDate);
+      }
+      if (numSuggestions) {
+        params.append("numSuggestions", numSuggestions);
+      }
+      if (excludeClassId) {
+        params.append("excludeClassId", excludeClassId);
+      }
+      if (ClassID) {
+        params.append("ClassID", ClassID);
+      }
+      const url = `/classes/instructor/available-slots/edit?${params.toString()}`;
+      const response = await apiClient.get(url);
+      return response.data;
+    } catch (error) {
+      console.error("Find slots for edit error:", error);
+      throw error.response?.data || { message: "Failed to get edit slots" };
+    }
+  },
 
   // Get Sessions by Date Range
   getSessionsByDateRange: async (startDate, endDate) => {
@@ -1062,6 +1115,76 @@ const classService = {
     } catch (error) {
       console.error("Get holiday dates error:", error);
       throw error.response?.data || { message: "Failed to get holiday dates" };
+    }
+  },
+
+  // Wrapper function: Cancel tất cả lớp của instructor (trừ CANCEL)
+  // Sử dụng cancelClass có sẵn, không tạo hàm mới
+  cancelAllInstructorClasses: async (instructorId) => {
+    try {
+      // 1. Lấy danh sách lớp của instructor (đã có sẵn)
+      const classes = await classService.getClassesByInstructorId(instructorId);
+
+      // 2. Filter lớp (Status != "CANCEL")
+      const activeClasses = classes.filter(
+        (cls) => (cls.Status || "").toUpperCase() !== "CANCEL"
+      );
+
+      if (activeClasses.length === 0) {
+        return {
+          success: true,
+          total: 0,
+          cancelled: 0,
+          failed: 0,
+          details: [],
+          message: "Không có lớp nào cần hủy",
+        };
+      }
+
+      // 3. Cancel từng lớp bằng hàm cancelClass có sẵn
+      // cancelClass() đã xử lý: xóa sessions, refund, email notification
+      const results = [];
+      for (const cls of activeClasses) {
+        try {
+          // Gọi hàm cancelClass có sẵn (đã xử lý đầy đủ logic)
+          const result = await classService.cancelClass(cls.ClassID);
+          results.push({
+            classId: cls.ClassID,
+            className: cls.Name || cls.ClassName,
+            success: true,
+            result,
+          });
+        } catch (error) {
+          results.push({
+            classId: cls.ClassID,
+            className: cls.Name || cls.ClassName,
+            success: false,
+            error: error.message || error.response?.data?.message,
+          });
+        }
+      }
+
+      const successCount = results.filter((r) => r.success).length;
+      const failedCount = results.filter((r) => !r.success).length;
+
+      return {
+        success: failedCount === 0, // true nếu tất cả thành công
+        total: activeClasses.length,
+        cancelled: successCount,
+        failed: failedCount,
+        details: results,
+        message:
+          failedCount === 0
+            ? `Đã hủy thành công ${successCount} lớp học`
+            : `Đã hủy ${successCount} lớp, ${failedCount} lớp thất bại`,
+      };
+    } catch (error) {
+      console.error("Cancel all instructor classes error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to cancel instructor classes",
+        }
+      );
     }
   },
 };

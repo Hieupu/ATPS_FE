@@ -24,6 +24,8 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
   Edit as EditIcon,
+  Lock,
+  LockOpen,
 } from "@mui/icons-material";
 import uploadService from "../../../apiServices/uploadService";
 import accountService from "../../../apiServices/accountService";
@@ -35,12 +37,12 @@ import {
   validateFullName,
   validateConfirmPassword,
 } from "../../../utils/validate";
+import {
+  handleStatusToggle,
+  getStatusButtonLabel,
+  getStatusLabel,
+} from "../../../utils/statusToggle";
 import UserFormModal from "../components/UserFormModal";
-
-const statusOptions = [
-  { value: "active", label: "Hoạt động" },
-  { value: "inactive", label: "Không hoạt động" },
-];
 
 const genderOptions = [
   { value: "male", label: "Nam" },
@@ -53,7 +55,6 @@ const defaultForm = {
   Email: "",
   Phone: "",
   Password: "",
-  Status: "active",
   Address: "",
   DateOfBirth: "",
   ProfilePicture: "",
@@ -77,16 +78,21 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
     const [pageSize] = useState(10);
     const [newErrors, setNewErrors] = useState({});
 
-    // Kiểm tra xem đang edit chính account của mình không
-    const isEditingSelf = useMemo(() => {
-      if (!selectedItem || !user) return false;
+    // Helper function để check xem có phải đang edit chính mình không
+    const checkIsEditingSelf = (item) => {
+      if (!item || !user) return false;
       const currentUserAccID = user.AccID || user.accID || user.id;
-      const selectedItemAccID = selectedItem.AccID || selectedItem.accID;
+      const itemAccID = item.AccID || item.accID;
       return (
         currentUserAccID &&
-        selectedItemAccID &&
-        currentUserAccID === selectedItemAccID
+        itemAccID &&
+        currentUserAccID === itemAccID
       );
+    };
+
+    // Kiểm tra xem đang edit chính account của mình không (cho modal)
+    const isEditingSelf = useMemo(() => {
+      return checkIsEditingSelf(selectedItem);
     }, [selectedItem, user]);
 
     const loadItems = async () => {
@@ -171,11 +177,6 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
         FullName: item?.FullName || "",
         Email: item?.Email || "",
         Phone: item?.Phone || "",
-        Status:
-          (item?.Status || item?.AccountStatus || "active").toLowerCase() ===
-          "inactive"
-            ? "inactive"
-            : "active",
         Address: item?.Address || "",
         DateOfBirth: item?.DateOfBirth ? item.DateOfBirth.split("T")[0] : "",
         ProfilePicture: item?.ProfilePicture || "",
@@ -284,19 +285,6 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
             ) {
               accountPayload.Phone = formData.Phone.trim();
             }
-            const currentStatus = (
-              selectedItem.Status ||
-              selectedItem.AccountStatus ||
-              ""
-            ).toLowerCase();
-            // Không cho phép sửa Status của chính mình
-            if (
-              formData.Status &&
-              formData.Status !== currentStatus &&
-              !isEditingSelf
-            ) {
-              accountPayload.Status = formData.Status;
-            }
             if (formData.Password) {
               accountPayload.Password = formData.Password;
             }
@@ -322,7 +310,6 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
             ...payload,
             Email: formData.Email.trim().toLowerCase(),
             Phone: formData.Phone?.trim() || "",
-            Status: formData.Status || "active",
             Password: formData.Password,
             Gender: formData.Gender || "other",
           };
@@ -413,11 +400,8 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
                 sx={{ minWidth: 200 }}
               >
                 <MenuItem value="all">Tất cả</MenuItem>
-                {statusOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
+                <MenuItem value="active">Hoạt động</MenuItem>
+                <MenuItem value="inactive">Không hoạt động</MenuItem>
               </TextField>
               <Stack direction="row" spacing={1}>
                 <Button
@@ -490,18 +474,9 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
                         <TableCell>{item.Phone || "—"}</TableCell>
                         <TableCell>
                           <Chip
-                            label={(() => {
-                              const statusValue = (
-                                item.Status ||
-                                item.AccountStatus ||
-                                "active"
-                              ).toLowerCase();
-                              return (
-                                statusOptions.find(
-                                  (opt) => opt.value === statusValue
-                                )?.label || "Không rõ"
-                              );
-                            })()}
+                            label={getStatusLabel(
+                              item.Status || item.AccountStatus || "active"
+                            )}
                             color={
                               (
                                 item.Status ||
@@ -515,12 +490,42 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
                           />
                         </TableCell>
                         <TableCell align="right">
-                          <IconButton
-                            color="primary"
-                            onClick={() => openModal(item)}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
+                          <Stack direction="row" spacing={1} justifyContent="flex-end">
+                            <IconButton
+                              color="primary"
+                              onClick={() => openModal(item)}
+                            >
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                            {!checkIsEditingSelf(item) && (
+                              <IconButton
+                                color={
+                                  (item.Status || item.AccountStatus || "active")
+                                    .toLowerCase() === "active"
+                                    ? "error"
+                                    : "success"
+                                }
+                                onClick={() =>
+                                  handleStatusToggle(
+                                    item,
+                                    accountService,
+                                    loadItems,
+                                    entityLabel.toLowerCase()
+                                  )
+                                }
+                                title={getStatusButtonLabel(
+                                  item.Status || item.AccountStatus || "active"
+                                )}
+                              >
+                                {(item.Status || item.AccountStatus || "active")
+                                  .toLowerCase() === "active" ? (
+                                  <Lock fontSize="small" />
+                                ) : (
+                                  <LockOpen fontSize="small" />
+                                )}
+                              </IconButton>
+                            )}
+                          </Stack>
                         </TableCell>
                       </TableRow>
                     ))

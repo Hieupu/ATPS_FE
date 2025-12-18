@@ -2,11 +2,16 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import ClassWizard from "../components/class-management/ClassWizard";
 import ErrorModal from "../components/class-management/ErrorModal";
-import SessionConflictModal from "../components/class-management/SessionConflictModal";
-import SessionSuggestionModal from "../components/class-management/SessionSuggestionModal";
 import classService from "../../../apiServices/classService";
 import dayjs from "dayjs";
 import { getDayFromDate } from "../../../utils/validate";
+import {
+  detectMetadataChanges,
+  detectScheduleChanges,
+  determineChangeType,
+  buildMetadataPayload,
+  buildSchedulePayload,
+} from "../../../utils/classUpdateHelper";
 
 const CreateClassPage = () => {
   const navigate = useNavigate();
@@ -28,38 +33,7 @@ const CreateClassPage = () => {
     redirectPath: null,
     redirectState: null,
   });
-  const [conflictModal, setConflictModal] = useState({
-    open: false,
-    conflicts: [],
-    createdCount: 0,
-    totalCount: 0,
-  });
-  const [suggestionModal, setSuggestionModal] = useState({
-    open: false,
-    suggestions: [],
-    classId: null,
-  });
-  const [suggestionFetching, setSuggestionFetching] = useState(false);
-  const [suggestionApplying, setSuggestionApplying] = useState(false);
   const submissionRef = useRef(null);
-  const conflictContextRef = useRef(null);
-
-  const getTimeslotMeta = (timeslotId) =>
-    timeslots.find((t) => (t.TimeslotID || t.id) === timeslotId);
-
-  const extractConflicts = (result) => {
-    if (!result) return [];
-    if (Array.isArray(result.data?.conflicts)) {
-      return result.data.conflicts;
-    }
-    if (Array.isArray(result.conflicts)) {
-      return result.conflicts;
-    }
-    return [];
-  };
-
-  const extractSummary = (result) =>
-    result?.data?.summary || result?.summary || {};
 
   useEffect(() => {
     let isMounted = true;
@@ -157,321 +131,65 @@ const CreateClassPage = () => {
     }
   };
 
-  const handleConflictModalClose = () => {
-    setConflictModal((prev) => ({ ...prev, open: false }));
-    conflictContextRef.current = null;
-    navigate("/admin/classes", {
-      state: {
-        message:
-          "Lớp đã được tạo. Một số buổi học chưa thêm được do xung đột, vui lòng kiểm tra lại.",
-        warning: true,
-      },
-      replace: true,
-    });
-  };
-
-  const handleSuggestionModalClose = () => {
-    setSuggestionModal((prev) => ({ ...prev, open: false }));
-    conflictContextRef.current = null;
-    navigate("/admin/classes", {
-      state: {
-        message:
-          "Lớp đã được tạo. Bạn có thể thêm buổi học bù trong màn lịch lớp.",
-      },
-      replace: true,
-    });
-  };
-
-  const handleGenerateSuggestions = async () => {
-    if (!conflictContextRef.current) {
-      console.error(
-        "[handleGenerateSuggestions] conflictContextRef.current không có dữ liệu"
-      );
-      return;
-    }
-    const { sessions, instructorId, classId } = conflictContextRef.current;
-
-    const orderedConflicts = [...(conflictModal.conflicts || [])].sort(
-      (a, b) => (a.sessionIndex || 0) - (b.sessionIndex || 0)
-    );
-
-    // Tìm buổi cuối cùng từ tất cả sessions (không chỉ conflict)
-    const maxDate = (sessions || []).reduce((latest, session) => {
-      if (!session?.Date) return latest;
-      const dateValue = dayjs(session.Date);
-      if (!dateValue.isValid()) return latest;
-      if (!latest || dateValue.isAfter(latest)) {
-        return dateValue;
-      }
-      return latest;
-    }, null);
-    let rollingStart = (maxDate || dayjs()).add(1, "day");
-
-    setSuggestionFetching(true);
+  const handleSubmit = async (submitData) => {
+    setSubmitting(true);
+    setError("");
+    submissionRef.current = submitData;
     try {
-      const suggestionResults = [];
+      const isEdit = !!classId;
 
-      for (const conflict of orderedConflicts) {
-        const sessionIndex = (conflict.sessionIndex || 1) - 1;
-        const sessionInfo = sessions?.[sessionIndex];
-        if (!sessionInfo) {
-          suggestionResults.push({
-            conflict,
-            suggestion: null,
-            error: "Không tìm thấy dữ liệu buổi học gốc.",
-          });
-          continue;
-        }
+      // 1. Detect changes (chỉ cho edit mode)
+      let metadataChanges = {};
+      let scheduleChanges = {
+        update: [],
+        create: [],
+        delete: [],
+        reschedule: [],
+      };
+      let changeType = "NONE";
 
-        // Lấy timeslotID từ sessionInfo của conflict này (không thử timeslot khác)
-        const timeslotMeta = getTimeslotMeta(sessionInfo.TimeslotID) || {};
+      if (isEdit && classData) {
+        // Detect metadata changes
+        metadataChanges = detectMetadataChanges(submitData, classData);
 
-        // Logic mới: Lấy Day từ Date của session gốc thay vì từ timeslot.Day
-        // Vì timeslot có thể được dùng cho nhiều ngày khác nhau
-        const sessionDate =
-          sessionInfo.Date ||
-          conflict.conflictInfo?.date ||
-          conflict.sessionData?.Date;
-        let timeslotDay = null;
+        // Detect schedule changes
+        const newSessions = submitData.sessions || [];
+        const oldSessions = classData.sessions || [];
+        scheduleChanges = detectScheduleChanges(newSessions, oldSessions);
 
-        if (sessionDate) {
-          // Lấy Day từ Date của session gốc
-          timeslotDay = getDayFromDate(sessionDate);
-        }
+        // Determine change type
+        changeType = determineChangeType(metadataChanges, scheduleChanges);
 
-        // Fallback: Nếu không lấy được từ Date, thử từ sessionInfo hoặc timeslotMeta
-        if (!timeslotDay) {
-          timeslotDay =
-            sessionInfo.TimeslotDay ||
-            timeslotMeta.Day ||
-            timeslotMeta.day ||
-            null;
-        }
-
-        if (!timeslotDay || !sessionInfo.TimeslotID) {
-          suggestionResults.push({
-            conflict,
-            suggestion: null,
-            error: "Không xác định được thứ hoặc ca học của buổi học gốc.",
-          });
-          continue;
-        }
-
-        let searchPointer = rollingStart.clone();
-        let suggestion = null;
-        let suggestionError = null;
-
-        // Tìm slot rảnh chỉ cho timeslotID của session này (theo thứ trong tuần)
-        // Chỉ cần tìm 1 buổi hợp lệ, không cần tìm nhiều
-        for (let attempt = 0; attempt < 6 && !suggestion; attempt++) {
-          try {
-            const response = await classService.findInstructorAvailableSlots({
-              InstructorID: instructorId,
-              TimeslotID: sessionInfo.TimeslotID,
-              Day: timeslotDay,
-              startDate: searchPointer.format("YYYY-MM-DD"),
-              numSuggestions: 1, // Chỉ cần tìm 1 buổi hợp lệ
-              excludeClassId: classId, // Loại trừ các sessions đã tạo của class này
-              ClassID: classId,
-            });
-
-            // Lấy tất cả suggestions (cả available và busy)
-            const allSuggestions = response?.data?.suggestions || [];
-
-            // Tìm candidate available đầu tiên
-            const candidate =
-              allSuggestions.find((item) => item.available) || null;
-
-            // Nếu không có candidate, log lý do
-            if (!candidate && allSuggestions.length > 0) {
-            }
-
-            if (candidate) {
-              suggestion = {
-                date: candidate.date,
-                timeslotId: sessionInfo.TimeslotID,
-                startTime:
-                  sessionInfo.TimeslotStart ||
-                  timeslotMeta.StartTime ||
-                  timeslotMeta.startTime ||
-                  null,
-                endTime:
-                  sessionInfo.TimeslotEnd ||
-                  timeslotMeta.EndTime ||
-                  timeslotMeta.endTime ||
-                  null,
-                title:
-                  sessionInfo.Title ||
-                  conflict.conflictInfo?.sessionTitle ||
-                  `Buổi ${conflict.sessionIndex}`,
-                description: sessionInfo.Description || "",
-              };
-              // Buổi bù tiếp theo sẽ được thêm sau buổi bù vừa tạo
-              rollingStart = dayjs(candidate.date).add(1, "day");
-              break;
-            } else {
-              // Không tìm thấy slot rảnh, tăng searchPointer lên 7 ngày (1 tuần) để tìm thứ tiếp theo
-              searchPointer = searchPointer.add(7, "day");
-              suggestionError =
-                "Không tìm thấy lịch trống phù hợp cho ca học này.";
-            }
-          } catch (error) {
-            console.error(
-              `[handleGenerateSuggestions] Lỗi khi tìm slot cho TimeslotID ${sessionInfo.TimeslotID}:`,
-              error
-            );
-            suggestionError = error?.message || "Không thể lấy gợi ý.";
-            break;
-          }
-        }
-
-        suggestionResults.push({
-          conflict,
-          suggestion,
-          error: suggestion ? null : suggestionError,
+        console.log("[CreateClassPage] Change detection:", {
+          metadataChanges,
+          scheduleChanges: {
+            update: scheduleChanges.update.length,
+            create: scheduleChanges.create.length,
+            delete: scheduleChanges.delete.length,
+            reschedule: scheduleChanges.reschedule.length,
+          },
+          changeType,
         });
       }
 
-      setSuggestionModal({
-        open: true,
-        suggestions: suggestionResults,
-        classId,
-      });
-      setConflictModal((prev) => ({ ...prev, open: false }));
-    } catch (error) {
-      console.error("[handleGenerateSuggestions] Lỗi khi tạo gợi ý:", error);
-      setErrorModal({
-        open: true,
-        title: "Lỗi gợi ý lịch bù",
-        message:
-          error?.message ||
-          error?.response?.data?.message ||
-          "Không thể tạo gợi ý buổi học bù.",
-        errors: {},
-        redirectPath: "/admin/classes",
-        redirectState: {
-          message:
-            "Lớp đã tạo nhưng chưa thêm được toàn bộ buổi học. Vui lòng kiểm tra lại.",
-          warning: true,
-        },
-      });
-    } finally {
-      setSuggestionFetching(false);
-    }
-  };
+      // 2. Xử lý theo change type (chỉ cho edit mode)
+      if (isEdit && changeType === "METADATA_ONLY") {
+        // Chỉ có metadata changes → chỉ gọi updateClass()
+        const metadataPayload = buildMetadataPayload(metadataChanges);
+        await classService.updateClass(classId, metadataPayload);
 
-  const handleApplySuggestions = async () => {
-    if (!suggestionModal.classId) {
-      handleSuggestionModalClose();
-      return;
-    }
-
-    const payloads = suggestionModal.suggestions
-      .filter((item) => item.suggestion)
-      .map((item) => {
-        const { suggestion, conflict } = item;
-        return {
-          Title:
-            suggestion.title ||
-            `${conflict.conflictInfo?.sessionTitle || "Buổi học"} (bù)`,
-          Description:
-            suggestion.description ||
-            `Buổi bù cho ${conflict.conflictInfo?.sessionTitle || "buổi học"}`,
-          Date: suggestion.date,
-          TimeslotID: suggestion.timeslotId,
-        };
-      });
-
-    if (payloads.length === 0) {
-      handleSuggestionModalClose();
-      return;
-    }
-
-    setSuggestionApplying(true);
-    try {
-      for (const payload of payloads) {
-        await classService.addMakeupSession(suggestionModal.classId, payload);
+        // Thành công → quay lại trang danh sách
+        navigate("/admin/classes", {
+          state: {
+            message: "Cập nhật lớp học thành công.",
+          },
+          replace: true,
+        });
+        setSubmitting(false);
+        return;
       }
-      setSuggestionModal((prev) => ({ ...prev, open: false }));
-      conflictContextRef.current = null;
-      navigate("/admin/classes", {
-        state: {
-          message:
-            "Đã thêm buổi học bù theo gợi ý. Vui lòng kiểm tra lại lịch.",
-        },
-        replace: true,
-      });
-    } catch (error) {
-      setErrorModal({
-        open: true,
-        title: "Lỗi thêm buổi học bù",
-        message:
-          error?.message ||
-          error?.response?.data?.message ||
-          "Không thể thêm buổi học bù.",
-        errors: {},
-        redirectPath: "/admin/classes",
-        redirectState: {
-          message:
-            "Lớp đã tạo nhưng một số buổi bù chưa thêm được. Vui lòng kiểm tra lại.",
-          warning: true,
-        },
-      });
-    } finally {
-      setSuggestionApplying(false);
-      setSuggestionModal((prev) => ({ ...prev, open: false }));
-    }
-  };
 
-  const handleSubmit = async (submitData) => { 
-    setSubmitting(true);
-    setError("");
-    conflictContextRef.current = null;
-    submissionRef.current = submitData;
-    try {
-    const first = submitData.sessions[0];
-
-    const start_time = `${first.Date}T${first.TimeslotStart}`;
-
-    const [h1, m1] = first.TimeslotStart.split(":").map(Number);
-    const [h2, m2] = first.TimeslotEnd.split(":").map(Number);
-      const duration = h2 * 60 + m2 - (h1 * 60 + m1);
-
-    const dayStringToNumber = {
-      MONDAY: 2,
-      TUESDAY: 3,
-      WEDNESDAY: 4,
-      THURSDAY: 5,
-      FRIDAY: 6,
-      SATURDAY: 7,
-        SUNDAY: 8,
-    };
-
-    const weekly_days = [
-        ...new Set(
-          submitData.sessions.map((s) => dayStringToNumber[s.TimeslotDay])
-        ),
-    ]
-    .sort((a, b) => a - b)
-    .join(",");
-
-    const result = {
-      start_time,
-      weekly_days,
-        duration,
-    };
-
-      const zoomPayload = {
-          topic: submitData.Name,
-        start_time: result.start_time,
-          duration: result.duration || 120,
-          weekly_days: result.weekly_days,
-          end_times: submitData.sessions.length,
-        };
-        const zoomResponse = await classService.createZoomMeeting(zoomPayload);
-        console.log("Zoom meeting created:", zoomResponse);
-
-      const isEdit = !!classId;
+      // 3. Tạo hoặc cập nhật class (nếu có schedule changes hoặc create mode)
       const classPayload = {
         Name: submitData.Name,
         InstructorID: submitData.InstructorID,
@@ -481,12 +199,11 @@ const CreateClassPage = () => {
         EnddatePlan: submitData.EnddatePlan,
         Numofsession: submitData.Numofsession,
         Maxstudent: submitData.Maxstudent,
-        ZoomID: zoomResponse.id,
-        Zoompass: zoomResponse.password,
         Status: submitData.Status || "DRAFT",
         CourseID: submitData.CourseID || null,
-        
-        // Trường cũ (backward compatibility - sẽ bỏ khi backend cập nhật)
+
+        // Backward compatibility fields (deprecated - giữ lại để tương thích với API cũ)
+        // TODO: Remove sau khi backend không còn sử dụng
         StartDate: submitData.StartDate || submitData.OpendatePlan,
         ExpectedSessions:
           submitData.ExpectedSessions || submitData.Numofsession,
@@ -494,11 +211,18 @@ const CreateClassPage = () => {
       };
 
       let resultClass;
-      let classIdToUse = classId; 
+      let classIdToUse = classId;
 
       if (isEdit) {
-        // Update existing class (metadata)
-        resultClass = await classService.updateClass(classId, classPayload);
+        // Update existing class (metadata không ảnh hưởng sessions)
+        // Lưu ý: OpendatePlan, Numofsession, InstructorID sẽ được xử lý trong updateClassSchedule
+        const metadataOnlyPayload = buildMetadataPayload(metadataChanges);
+        if (Object.keys(metadataOnlyPayload).length > 0) {
+          resultClass = await classService.updateClass(
+            classId,
+            metadataOnlyPayload
+          );
+        }
         classIdToUse = classId; // Giữ nguyên classId khi edit
       } else {
         // Create new class
@@ -572,23 +296,6 @@ const CreateClassPage = () => {
               return null;
             }
 
-            const matchedZoom = zoomResponse.occurrences.find((z) => {
-              const zoomDate = new Date(z.start_time);
-              zoomDate.setHours(zoomDate.getHours() + 7); // Zoom UTC → GMT+7
-
-              const zDate = zoomDate.toISOString().split("T")[0];
-
-              return zDate === dateStr;
-            }); 
-            console.log(matchedZoom);
-            localStorage.setItem(
-              "zoomCreateResult",
-              JSON.stringify(zoomResponse)
-            );
-
-            const saved = localStorage.getItem("zoomCreateResult");
-            const zoomData = saved ? JSON.parse(saved) : null;
-
             const mappedSession = {
               SessionID: s.SessionID || s.sessionId || s.id || null,
               Title: s.Title || `Session ${s.number || index + 1}`,
@@ -597,8 +304,21 @@ const CreateClassPage = () => {
               TimeslotID: timeslotId, // Integer
               InstructorID: submitData.InstructorID, // Integer
               ClassID: finalClassId, // Integer
-              ZoomUUID: zoomData.occurrence_id || null,
+              ZoomUUID: s.ZoomUUID || null,
+              // Nếu là buổi rescheduled, gửi originalSessionID để backend biết cần xóa buổi cũ
+              originalSessionID: s.originalSessionID || null,
             };
+
+            // Logging để debug
+            if (s.originalSessionID) {
+              console.log(`[CreateClassPage] Session có originalSessionID:`, {
+                Date: dateStr,
+                TimeslotID: timeslotId,
+                originalSessionID: s.originalSessionID,
+                mappedOriginalSessionID: mappedSession.originalSessionID,
+              });
+            }
+
             return mappedSession;
           })
           .filter((s) => s !== null); // Loại bỏ sessions không hợp lệ
@@ -654,259 +374,46 @@ const CreateClassPage = () => {
           let bulkResult;
 
           if (isEdit) {
-            // EDIT MODE: giữ UUID - reschedule hoặc tạo mới, tránh xoá toàn bộ
-            const existingSessions = Array.isArray(classData?.sessions)
-              ? classData.sessions
-              : [];
-            const existingById = new Map();
-            existingSessions.forEach((s) => {
-              const sid = s.SessionID || s.id || s.sessionId;
-              if (sid) existingById.set(parseInt(sid, 10), s);
+            // EDIT MODE: Gửi schedule với format mới
+            // Build payload mới từ schedule changes
+            const schedulePayload = buildSchedulePayload(scheduleChanges, {
+              OpendatePlan: submitData.OpendatePlan,
+              EnddatePlan: submitData.EnddatePlan,
+              Numofsession: submitData.Numofsession,
+              InstructorID: submitData.InstructorID,
             });
 
-            const toReschedule = [];
-            const toCreate = [];
+            console.log(
+              "[CreateClassPage] Gửi schedule payload mới:",
+              schedulePayload
+            );
 
-            sessionsPayload.forEach((s) => {
-              const sid = s.SessionID ? parseInt(s.SessionID, 10) : null;
-              if (sid && existingById.has(sid)) {
-                const original = existingById.get(sid);
-                const originalDate = original.Date || original.date;
-                const originalTimeslot =
-                  original.TimeslotID ||
-                  original.timeslotId ||
-                  original.Timeslot?.TimeslotID;
-                if (
-                  originalDate !== s.Date ||
-                  parseInt(originalTimeslot, 10) !== s.TimeslotID
-                ) {
-                  toReschedule.push({
-                    sessionId: sid,
-                    Date: s.Date,
-                    TimeslotID: s.TimeslotID,
-                  });
-                }
-              } else {
-                // Buổi mới
-                toCreate.push(s);
-              }
-            });
-
-            const conflicts = [];
-            const created = [];
-
-            // Helper: check learner conflict
-            const checkLearnerConflict = async (Date, TimeslotID) => {
-              try {
-                const res = await classService.checkLearnerConflicts(
-                  finalClassId,
-                  Date,
-                  TimeslotID
-                );
-                return res;
-              } catch (err) {
-                console.warn("checkLearnerConflicts error", err);
-                return null;
-              }
-            };
-
-            // Reschedule các buổi thay đổi
-            for (const item of toReschedule) {
-              try {
-                const learnerCheck = await checkLearnerConflict(
-                  item.Date,
-                  item.TimeslotID
-                );
-                if (
-                  learnerCheck?.conflicts?.length > 0 ||
-                  learnerCheck?.hasConflicts
-                ) {
-                  conflicts.push({
-                    sessionIndex: item.sessionId,
-                    conflictInfo: {
-                      message:
-                        learnerCheck?.message ||
-                        "Học viên của lớp có buổi trùng (learner conflict)",
-                    },
-                  });
-                  continue;
-                }
-
-                await classService.rescheduleSession(
-                  item.sessionId,
-                  item.Date,
-                  item.TimeslotID
-                );
-                created.push({ sessionId: item.sessionId, type: "reschedule" });
-              } catch (err) {
-                conflicts.push({
-                  sessionIndex: item.sessionId,
-                  conflictInfo: {
-                    message:
-                      err?.response?.data?.message ||
-                      err?.message ||
-                      "Không thể đổi lịch (reschedule)",
-                  },
-                });
-              }
-            }
-
-            // Tạo mới các buổi chưa có SessionID
-            for (const item of toCreate) {
-              try {
-                const learnerCheck = await checkLearnerConflict(
-                  item.Date,
-                  item.TimeslotID
-                );
-                if (
-                  learnerCheck?.conflicts?.length > 0 ||
-                  learnerCheck?.hasConflicts
-                ) {
-                  conflicts.push({
-                    sessionIndex: item.Title,
-                    conflictInfo: {
-                      message:
-                        learnerCheck?.message ||
-                        "Học viên của lớp có buổi trùng (learner conflict)",
-                    },
-                  });
-                  continue;
-                }
-
-                const result = await classService.createSession(item);
-                if (result?.SessionID || result?.sessionId) {
-                  created.push({
-                    sessionId: result.SessionID || result.sessionId,
-                    type: "create",
-                  });
-                } else {
-                  conflicts.push({
-                    sessionIndex: item.Title,
-                    conflictInfo: {
-                      message: "Không xác định được SessionID sau khi tạo",
-                    },
-                  });
-                }
-              } catch (err) {
-                conflicts.push({
-                  sessionIndex: item.Title,
-                  conflictInfo: {
-                    message:
-                      err?.response?.data?.message ||
-                      err?.message ||
-                      "Không thể tạo buổi học mới",
-                  },
-                });
-              }
-            }
-
-            if (conflicts.length > 0) {
-              setConflictModal({
-                open: true,
-                conflicts,
-                createdCount: created.length,
-                totalCount: toReschedule.length + toCreate.length,
-              });
-              setSubmitting(false);
-              return;
-            }
-
-            bulkResult = { success: true, created };
+            bulkResult = await classService.updateClassSchedule(
+              finalClassId,
+              schedulePayload
+            );
           } else {
-            // CREATE MODE: dùng bulkCreateSessions như hiện tại
+            // CREATE MODE: bulk create như hiện tại (backend sẽ tạo ZoomUUID nếu có ZoomID)
             bulkResult = await classService.bulkCreateSessions(sessionsPayload);
-            setTimeout(() => {
-              localStorage.removeItem("zoomCreateResult");
-            }, 10000);
           }
 
-          // Kiểm tra kết quả
+          // Logic mới: backend phải tạo đủ sessions hoặc trả lỗi; FE không còn xử lý kiểu
+          // "tạo được một phần + gợi ý buổi học bù". Nếu backend vẫn trả flags hasConflicts,
+          // cứ coi đó là lỗi và hiển thị ErrorModal chung.
           if (
             bulkResult?.hasConflicts ||
             bulkResult?.hasConflict ||
             bulkResult?.success === false
           ) {
-            const rawConflicts = extractConflicts(bulkResult);
-            const summary = extractSummary(bulkResult);
-            const createdCount =
-              summary.created ??
-              summary.success ??
-              bulkResult?.data?.created?.length ??
-              bulkResult?.created?.length ??
-              0;
-            const totalAttempted = sessionsPayload.length;
-
-            conflictContextRef.current = {
-              sessions: submitData.sessions,
-              instructorId: submitData.InstructorID,
-              classId: finalClassId,
+            const message =
+              bulkResult?.message ||
+              "Backend báo có xung đột khi tạo buổi học. Vui lòng kiểm tra lại bước 3.";
+            throw {
+              response: {
+                data: { message },
+                status: 400,
+              },
             };
-
-            const decoratedConflicts = rawConflicts.map((conflict) => {
-              const sessionIndex = (conflict.sessionIndex || 1) - 1;
-              const sessionInfo = submitData.sessions?.[sessionIndex];
-              const sessionData = conflict.sessionData || {};
-              const timeslotMeta = sessionInfo
-                ? getTimeslotMeta(sessionInfo.TimeslotID)
-                : sessionData.TimeslotID
-                ? getTimeslotMeta(sessionData.TimeslotID)
-                : null;
-
-              // Lấy thông tin từ nhiều nguồn với fallback
-              const sessionTitle =
-                conflict.conflictInfo?.sessionTitle ||
-                sessionData.Title ||
-                sessionInfo?.Title ||
-                `Buổi ${conflict.sessionIndex}`;
-
-              const date =
-                conflict.conflictInfo?.date ||
-                sessionData.Date ||
-                sessionInfo?.Date ||
-                null;
-
-              const startTime =
-                conflict.conflictInfo?.startTime ||
-                sessionInfo?.TimeslotStart ||
-                sessionData.TimeslotStart ||
-                timeslotMeta?.StartTime ||
-                timeslotMeta?.startTime ||
-                null;
-
-              const endTime =
-                conflict.conflictInfo?.endTime ||
-                sessionInfo?.TimeslotEnd ||
-                sessionData.TimeslotEnd ||
-                timeslotMeta?.EndTime ||
-                timeslotMeta?.endTime ||
-                null;
-
-              return {
-                ...conflict,
-                conflictInfo: {
-                  ...conflict.conflictInfo,
-                  sessionTitle,
-                  date: date || conflict.conflictInfo?.date || null,
-                  startTime,
-                  endTime,
-                  message:
-                    conflict.conflictInfo?.message ||
-                    conflict.error ||
-                    "Giảng viên trùng lịch",
-                },
-              };
-            });
-
-            setConflictModal({
-              open: true,
-              conflicts: decoratedConflicts,
-              createdCount,
-              totalCount: totalAttempted,
-            });
-            setSubmitting(false);
-            return;
-          } else {
-            // Không có conflicts - tất cả sessions đã được tạo thành công
           }
         } catch (sessionError) {
           // Lỗi khi tạo sessions - hiển thị modal lỗi chi tiết
@@ -1117,22 +624,6 @@ const CreateClassPage = () => {
         title={errorModal.title}
         message={errorModal.message}
         errors={errorModal.errors}
-      />
-      <SessionConflictModal
-        open={conflictModal.open}
-        conflicts={conflictModal.conflicts}
-        createdCount={conflictModal.createdCount}
-        totalCount={conflictModal.totalCount}
-        onClose={handleConflictModalClose}
-        onSuggest={handleGenerateSuggestions}
-        loadingSuggestions={suggestionFetching}
-      />
-      <SessionSuggestionModal
-        open={suggestionModal.open}
-        suggestions={suggestionModal.suggestions}
-        onClose={handleSuggestionModalClose}
-        onApply={handleApplySuggestions}
-        applying={suggestionApplying}
       />
     </div>
   );

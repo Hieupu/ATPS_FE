@@ -267,12 +267,9 @@ export const determineSlotStatus = ({
 
   const normalizedTimeslotId = normalizeTimeslotId(timeslotId);
 
-
-
   const { isDayBlocked, blockedTimeslots } = normalizeBlockedDayValue(
     blockedDays?.[dayOfWeek]
   );
-
 
   // Nếu cả ngày bị block (theo phân tích thống kê), disable TẤT CẢ timeslot trong ngày đó
   if (isDayBlocked) {
@@ -389,7 +386,7 @@ export const determineSlotStatus = ({
     // - OTHER: Đã được book và chuyển vào session, busy
     // - AVAILABLE: Giảng viên chọn để dạy (parttime tự thêm lịch dạy), không busy
     const isHoliday = busyStatus === "HOLIDAY";
-    const isOther = busyStatus === "OTHER" || busyStatus === "OTHERS"; // Backward compatibility với OTHERS
+    const isOther = busyStatus === "OTHER"; // Backward compatibility với OTHERS
     const isAvailable = busyStatus === "AVAILABLE";
     const isInstructortimeslot = sourceType === "INSTRUCTORTIMESLOT";
 
@@ -468,7 +465,7 @@ export const determineSlotStatus = ({
       source: "busySchedule",
       busyCount,
     };
-    
+
     return result;
   }
 
