@@ -3,9 +3,17 @@ import apiClient from "./apiClient";
 
 const classService = {
   // Lấy danh sách tất cả lớp học
-  getAllClasses: async () => {
+  getAllClasses: async (options = {}) => {
     try {
-      const response = await apiClient.get("/classes");
+      // Truyền userRole và staffID qua query params để backend filter
+      const params = {};
+      if (options.userRole) {
+        params.userRole = options.userRole;
+      }
+      if (options.staffID) {
+        params.staffID = options.staffID;
+      }
+      const response = await apiClient.get("/classes", { params });
       return response.data?.data || response.data || [];
     } catch (error) {
       // Silently fallback to mock data if endpoint not available (404/403)
@@ -60,6 +68,58 @@ const classService = {
     } catch (error) {
       console.error("Update class error:", error);
       throw error.response?.data || { message: "Failed to update class" };
+    }
+  },
+
+  // Staff gửi lớp để duyệt (DRAFT → PENDING)
+  submitClassForApproval: async (classId) => {
+    try {
+      const response = await apiClient.post(
+        `/classes/${classId}/submit-for-approval`
+      );
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Submit class for approval error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to submit class for approval",
+        }
+      );
+    }
+  },
+
+  // Admin chuyển lớp APPROVED/ACTIVE về DRAFT với lý do
+  revertClassToDraft: async (classId, reason) => {
+    try {
+      const response = await apiClient.post(
+        `/classes/${classId}/revert-to-draft`,
+        { reason }
+      );
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Revert class to draft error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to revert class to draft",
+        }
+      );
+    }
+  },
+
+  // Admin từ chối lớp (PENDING → DRAFT) với lý do
+  rejectClass: async (classId, reason) => {
+    try {
+      const response = await apiClient.post(`/classes/${classId}/reject`, {
+        reason,
+      });
+      return response.data?.data || response.data;
+    } catch (error) {
+      console.error("Reject class error:", error);
+      throw (
+        error.response?.data || {
+          message: "Failed to reject class",
+        }
+      );
     }
   },
 

@@ -60,6 +60,8 @@ const ClassWizard = ({
   variant = "modal", // "modal" | "page"
   readonly = false, // Mode chỉ xem (không cho chỉnh sửa)
   classId = null, // ClassID khi đang edit
+  userRole = "admin", // "admin" | "staff" - để xác định base path cho redirect
+  lockBasicInfo = false, // Khi true: Step 1 khóa Giảng viên & Khóa/Môn (admin sửa lớp đã duyệt/đang tuyển sinh)
 }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -77,14 +79,10 @@ const ClassWizard = ({
 
     // Step 3: Sessions Detail
     scheduleDetail: {
-      OpendatePlan: "", // Đổi từ StartDate
-      EnddatePlan: "", // Đổi từ EndDate, sẽ tự tính
+      OpendatePlan: "",
+      EnddatePlan: "",
       DaysOfWeek: [],
-      // Cấu trúc mới: mỗi ngày trong tuần có thể chọn nhiều ca
-      // Format: { dayOfWeek: [timeslotIDs] }
-      // Ví dụ: { 1: [1, 2], 3: [3], 5: [4, 5] } = T2 học ca 1,2; T4 học ca 3; T6 học ca 4,5
-      TimeslotsByDay: {}, // Object với key là dayOfWeek (0-6), value là array timeslotIDs
-      // SessionsPerWeek đã bỏ, tự động tính từ TimeslotsByDay
+      TimeslotsByDay: {},
     },
     sessions: [],
   });
@@ -118,7 +116,7 @@ const ClassWizard = ({
   const [impactedSessions, setImpactedSessions] = useState([]);
   const [hasUnresolvedImpactedSessions, setHasUnresolvedImpactedSessions] =
     useState(false);
-  
+
   const [redirectModal, setRedirectModal] = useState({
     open: false,
     classId: null,
@@ -177,13 +175,6 @@ const ClassWizard = ({
     totalSlots: 0,
     suggestion: null,
   });
-  // const [isSearchMode, setIsSearchMode] = useState(false); // Không dùng cho logic mới
-  // const [searchModeSelections, setSearchModeSelections] = useState({}); // Không dùng cho logic mới
-  // const [searchModeStatus, setSearchModeStatus] = useState(SEARCH_MODE_INITIAL_STATUS); // Không dùng cho logic mới
-  // State để lưu lock reasons chi tiết cho tooltip - Không dùng cho logic mới (grid đã bị comment)
-  // const [lockReasonsCache, setLockReasonsCache] = useState({}); // {`${dayOfWeek}-${timeslotId}`: {isLocked, reasons, summary}}
-  // const [loadingLockReason, setLoadingLockReason] = useState(null); // `${dayOfWeek}-${timeslotId}` đang load
-  // const [gridRefreshKey, setGridRefreshKey] = useState(0); // Key để force re-render grid khi blockedDays/instructorBusySchedule thay đổi - Không dùng cho logic mới
   // Logic mới: Chốt timeslot cho lớp DRAFT hoặc tạo mới
   const [lockedTimeslotId, setLockedTimeslotId] = useState(null); // Timeslot đã chốt cho toàn bộ lớp
   const [isDraftClass, setIsDraftClass] = useState(false); // Class có Status = 'DRAFT'?
@@ -3053,7 +3044,7 @@ const ClassWizard = ({
           "Giảng viên";
         setErrors((prev) => ({
           ...prev,
-          preview: `Giảng viên ${instructorName} không đủ lịch trống để dạy cho ${numOfSessions} buổi. Vui lòng chọn thêm các ngày học trong tuần hoặc chọn giảng viên khác.`,
+          preview: `Giảng viên phải được giao ít nhất 2 buổi/tuần.`,
         }));
         return;
       }
@@ -3484,6 +3475,16 @@ const ClassWizard = ({
 
   // Hàm tìm ngày bắt đầu khác dựa trên ca học đã chọn
   const handleSearchAlternativeStartDate = async () => {
+    // Chế độ tìm kiếm ngày bắt đầu CHỈ dùng trong tạo lớp mới (không dùng khi chỉnh sửa)
+    if (isEditMode) {
+      return;
+    }
+
+    console.log(
+      "[Wizard][AltStart] handleSearchAlternativeStartDate CALLED, isEditMode=",
+      isEditMode
+    );
+
     // Nếu chưa ở chế độ tìm kiếm, chỉ bật chế độ tìm kiếm và reset để cho phép chọn lại
     if (!alternativeStartDateSearch.showResults) {
       setAlternativeStartDateSearch({
@@ -3523,6 +3524,14 @@ const ClassWizard = ({
       (!hasDaysOfWeek && !hasSelectedTimeslots) ||
       (!hasTimeslotsByDay && !hasSelectedTimeslots)
     ) {
+      console.log("[Wizard][AltStart] INVALID CORE INFO", {
+        hasScheduleCoreInfo,
+        hasDaysOfWeek,
+        hasTimeslotsByDay,
+        hasSelectedTimeslots,
+        daysOfWeek: formData.scheduleDetail.DaysOfWeek,
+        timeslotsByDay: formData.scheduleDetail.TimeslotsByDay,
+      });
       setAlternativeStartDateSearch((prev) => ({
         ...prev,
         loading: false,
@@ -3593,10 +3602,21 @@ const ClassWizard = ({
           selectedTimeslotIds.size * normalizedDaysOfWeek.length;
       }
 
+      console.log("[Wizard][AltStart] NORMALIZED DATA", {
+        DaysOfWeek: normalizedDaysOfWeek,
+        TimeslotsByDay: normalizedTimeslotsByDay,
+        calculatedSessionsPerWeek,
+        hasDaysOfWeek,
+        hasTimeslotsByDay,
+        hasSelectedTimeslots,
+      });
+
       // Fallback: ít nhất 1 session/tuần
       if (calculatedSessionsPerWeek === 0) {
         calculatedSessionsPerWeek = 1;
       }
+
+      const isEditMode = Boolean(classId);
 
       const payload = {
         InstructorID: parseInt(formData.InstructorID, 10),
@@ -3609,11 +3629,16 @@ const ClassWizard = ({
           scheduleStartDate && scheduleStartDate.trim() !== ""
             ? scheduleStartDate
             : null,
+        // Chỉ truyền ClassID khi đang chỉnh sửa lớp để BE check trùng lịch học viên cho đúng lớp
+        ClassID: isEditMode ? classId : null,
       };
+
+      console.log("[Wizard][AltStart] REQUEST PAYLOAD", payload);
 
       const result = await classService.searchTimeslots(payload);
 
       const suggestions = result?.suggestions || result || [];
+      console.log("[Wizard][AltStart] RESPONSE SUGGESTIONS", suggestions);
       setAlternativeStartDateSearch({
         loading: false,
         suggestions: Array.isArray(suggestions) ? suggestions : [],
@@ -3731,6 +3756,7 @@ const ClassWizard = ({
               setFormData={setFormData}
               errors={errors}
               readonly={readonly}
+              lockBasicInfo={lockBasicInfo}
               instructors={instructors}
               filteredInstructors={filteredInstructors}
               instructorSearchTerm={instructorSearchTerm}
@@ -3987,15 +4013,6 @@ const ClassWizard = ({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div
-              style={{
-                fontSize: "24px",
-                marginBottom: "16px",
-                textAlign: "center",
-              }}
-            >
-              ℹ️
-            </div>
             <h3
               style={{
                 fontSize: "20px",
@@ -4053,7 +4070,8 @@ const ClassWizard = ({
                   setCancelModal({ ...cancelModal, open: false });
                   // Điều hướng sang màn quản lý lịch
                   if (classId) {
-                    window.location.href = `/admin/classes/${classId}/schedule`;
+                    const basePath = userRole === "staff" ? "/staff" : "/admin";
+                    window.location.href = `${basePath}/classes/${classId}/schedule`;
                   } else {
                     onCancel();
                   }
@@ -4386,7 +4404,8 @@ const ClassWizard = ({
                 onClick={() => {
                   setRedirectModal({ ...redirectModal, open: false });
                   if (redirectModal.classId) {
-                    window.location.href = `/admin/classes/${redirectModal.classId}/schedule`;
+                    const basePath = userRole === "staff" ? "/staff" : "/admin";
+                    window.location.href = `${basePath}/classes/${redirectModal.classId}/schedule`;
                   }
                 }}
                 style={{

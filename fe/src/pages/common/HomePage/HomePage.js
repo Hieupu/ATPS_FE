@@ -40,19 +40,19 @@ import {
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import AppHeader from "../../../components/Header/AppHeader";
-import { useAuth } from '../../../contexts/AuthContext';
-import { getPopularCoursesApi } from '../../../apiServices/courseService';
-import { getPopularClassesApi } from '../../../apiServices/courseService';
-import { getFeaturedInstructorsApi } from '../../../apiServices/instructorService';
+import { useAuth } from "../../../contexts/AuthContext";
+import { getPopularCoursesApi } from "../../../apiServices/courseService";
+import { getPopularClassesApi } from "../../../apiServices/courseService";
+import { getFeaturedInstructorsApi } from "../../../apiServices/instructorService";
 
 // Import các component mới
-import PopularCoursesSection from '../../../components/HomePageSections/PopularCoursesSection';
-import PopularClassesSection from '../../../components/HomePageSections/PopularClassesSection';
-import TestimonialsSection from '../../../components/HomePageSections/TestimonialsSection';
-import FAQSection from '../../../components/HomePageSections/FAQSection';
-import FeaturedInstructorsSection from '../../../components/HomePageSections/FeaturedInstructorsSection';
-import PartnersSection from '../../../components/HomePageSections/PartnersSection';
-import AchievementsSection from '../../../components/HomePageSections/AchievementsSection';
+import PopularCoursesSection from "../../../components/HomePageSections/PopularCoursesSection";
+import PopularClassesSection from "../../../components/HomePageSections/PopularClassesSection";
+import TestimonialsSection from "../../../components/HomePageSections/TestimonialsSection";
+import FAQSection from "../../../components/HomePageSections/FAQSection";
+import FeaturedInstructorsSection from "../../../components/HomePageSections/FeaturedInstructorsSection";
+import PartnersSection from "../../../components/HomePageSections/PartnersSection";
+import AchievementsSection from "../../../components/HomePageSections/AchievementsSection";
 
 const HomePage = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -66,8 +66,23 @@ const HomePage = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const navigate = useNavigate();
 
-  const navItems = ["Home", "Features", "Courses", "openingCeremony", "About", "Contact"];
-  const { user, isAuthenticated, isInstructor, isLearner, isParent } = useAuth();
+  const navItems = [
+    "Home",
+    "Features",
+    "Courses",
+    "openingCeremony",
+    "About",
+    "Contact",
+  ];
+  const {
+    user,
+    isAuthenticated,
+    isInstructor,
+    isLearner,
+    isParent,
+    isStaff,
+    isAdmin,
+  } = useAuth();
 
   // Fetch popular courses
   useEffect(() => {
@@ -87,7 +102,7 @@ const HomePage = () => {
     fetchPopularCourses();
   }, []);
 
- useEffect(() => {
+  useEffect(() => {
     const fetchPopularClasses = async () => {
       try {
         setLoadingClasses(true);
@@ -125,7 +140,7 @@ const HomePage = () => {
   }, []);
 
   const handleViewAllCourses = () => {
-    navigate('/courses');
+    navigate("/courses");
   };
 
   const handleViewCourseDetails = (courseId) => {
@@ -170,7 +185,11 @@ const HomePage = () => {
 
   const stats = [
     { icon: <People />, number: "10,000+", label: "Học viên tích cực" },
-    { icon: <WorkspacePremium />, number: "500+", label: "Giảng viên chuyên gia" },
+    {
+      icon: <WorkspacePremium />,
+      number: "500+",
+      label: "Giảng viên chuyên gia",
+    },
     { icon: <MenuBook />, number: "1,000+", label: "Khóa học có sẵn" },
     { icon: <Star />, number: "95%", label: "Tỷ lệ thành công" },
   ];
@@ -181,24 +200,36 @@ const HomePage = () => {
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      console.log('=== USER ROLE INFORMATION ===');
-      console.log('User:', user);
-      console.log('Role:', user.role);
-      console.log('Username:', user.Username);
-      console.log('Email:', user.Email);
-      
+      console.log("=== USER ROLE INFORMATION ===");
+      console.log("User:", user);
+      console.log("Role:", user.role);
+      console.log("Username:", user.Username);
+      console.log("Email:", user.Email);
+
       // Log theo từng role cụ thể
       if (isInstructor) {
-        console.log('🎯 This user is an INSTRUCTOR');
+        console.log("🎯 This user is an INSTRUCTOR");
       } else if (isLearner) {
-        console.log('📚 This user is a LEARNER');
+        console.log("📚 This user is a LEARNER");
       } else if (isParent) {
-        console.log('👨‍👩‍👧‍👦 This user is a PARENT');
+        console.log("👨‍👩‍👧‍👦 This user is a PARENT");
+      } else if (isStaff) {
+        console.log("👨‍💼 This user is a STAFF");
+      } else if (isAdmin) {
+        console.log("👨‍💼 This user is a ADMIN");
       } else {
-        console.log('❓ Unknown role');
+        console.log("❓ Unknown role");
       }
     }
-  }, [isAuthenticated, user, isInstructor, isLearner, isParent]);
+  }, [
+    isAuthenticated,
+    user,
+    isInstructor,
+    isLearner,
+    isParent,
+    isStaff,
+    isAdmin,
+  ]);
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
@@ -210,7 +241,8 @@ const HomePage = () => {
         {/* Hero Section */}
         <Box
           sx={{
-            background: "linear-gradient(135deg, #E8F3FF 0%, #F3E7FF 25%, #FFE8F0 50%, #FFF4E8 75%, #E8F3FF 100%)",
+            background:
+              "linear-gradient(135deg, #E8F3FF 0%, #F3E7FF 25%, #FFE8F0 50%, #FFF4E8 75%, #E8F3FF 100%)",
             position: "relative",
             overflow: "hidden",
             py: { xs: 4, md: 6 },
@@ -227,7 +259,8 @@ const HomePage = () => {
               width: "60px",
               height: "60px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.15))",
+              background:
+                "radial-gradient(circle, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.15))",
               filter: "blur(20px)",
               animation: "float 6s ease-in-out infinite",
               "@keyframes float": {
@@ -244,7 +277,8 @@ const HomePage = () => {
               width: "45px",
               height: "45px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(156, 39, 176, 0.25), rgba(156, 39, 176, 0.08))",
+              background:
+                "radial-gradient(circle, rgba(156, 39, 176, 0.25), rgba(156, 39, 176, 0.08))",
               filter: "blur(15px)",
               animation: "float 8s ease-in-out infinite 1s",
             }}
@@ -257,7 +291,8 @@ const HomePage = () => {
               width: "75px",
               height: "75px",
               borderRadius: "50%",
-              background: "radial-gradient(circle, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.08))",
+              background:
+                "radial-gradient(circle, rgba(255, 152, 0, 0.25), rgba(255, 152, 0, 0.08))",
               filter: "blur(25px)",
               animation: "float 7s ease-in-out infinite 0.5s",
             }}
@@ -286,7 +321,7 @@ const HomePage = () => {
           >
             ✨
           </Box>
-          
+
           {/* Floating UI elements - positioned away from text */}
           <Box
             sx={{
@@ -297,9 +332,7 @@ const HomePage = () => {
               opacity: 0.5,
               animation: "float 7s ease-in-out infinite 0.8s",
             }}
-          >
-          
-          </Box>
+          ></Box>
           <Box
             sx={{
               position: "absolute",
@@ -321,10 +354,8 @@ const HomePage = () => {
               opacity: 0.5,
               animation: "float 8s ease-in-out infinite 2.5s",
             }}
-          >
-            
-          </Box>
-          
+          ></Box>
+
           <Container maxWidth="lg" sx={{ position: "relative", zIndex: 2 }}>
             <Grid container spacing={4} alignItems="center">
               <Grid item xs={12} md={6}>
@@ -354,7 +385,7 @@ const HomePage = () => {
                       All-in-One Test Preparation System
                     </Typography>
                   </Box>
-                  
+
                   <Typography
                     variant="h2"
                     component="h1"
@@ -367,7 +398,8 @@ const HomePage = () => {
                       mb: 2.5,
                     }}
                   >
-                    Hệ Thống Luyện Thi<br />
+                    Hệ Thống Luyện Thi
+                    <br />
                     <Box
                       component="span"
                       sx={{
@@ -389,26 +421,27 @@ const HomePage = () => {
                       IELTS All-in-One.
                     </Box>
                   </Typography>
-                  
-                  <Typography 
-                    variant="body1" 
-                    sx={{ 
-                      mb: 3.5, 
+
+                  <Typography
+                    variant="body1"
+                    sx={{
+                      mb: 3.5,
                       color: "text.secondary",
                       fontWeight: 400,
                       lineHeight: 1.8,
                       fontSize: { xs: "0.95rem", md: "1.05rem" },
                     }}
                   >
-                    Hợp nhất tài liệu học tập, lớp học trực tuyến, bài tập và theo dõi tiến độ vào một nền tảng mạnh mẽ duy nhất.
+                    Hợp nhất tài liệu học tập, lớp học trực tuyến, bài tập và
+                    theo dõi tiến độ vào một nền tảng mạnh mẽ duy nhất.
                   </Typography>
-                  
+
                   <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                     <Button
                       variant="contained"
                       size="large"
                       endIcon={<ArrowForward />}
-                      onClick={() => navigate('/courses')}
+                      onClick={() => navigate("/courses")}
                       sx={{
                         backgroundColor: "#2196F3",
                         color: "white",
@@ -419,7 +452,7 @@ const HomePage = () => {
                         fontWeight: 600,
                         textTransform: "none",
                         boxShadow: "0 4px 14px rgba(33, 150, 243, 0.4)",
-                        "&:hover": { 
+                        "&:hover": {
                           backgroundColor: "#1976D2",
                           boxShadow: "0 6px 20px rgba(33, 150, 243, 0.5)",
                           transform: "translateY(-2px)",
@@ -432,7 +465,7 @@ const HomePage = () => {
                     <Button
                       variant="outlined"
                       size="large"
-                      startIcon={<span style={{ fontSize: '1.2rem' }}>▶️</span>}
+                      startIcon={<span style={{ fontSize: "1.2rem" }}>▶️</span>}
                       sx={{
                         borderColor: "#2196F3",
                         color: "#2196F3",
@@ -455,10 +488,9 @@ const HomePage = () => {
                       Xem Video
                     </Button>
                   </Box>
-
                 </Box>
               </Grid>
-              
+
               <Grid item xs={12} md={6}>
                 <Box
                   sx={{
@@ -476,7 +508,8 @@ const HomePage = () => {
                       width: "340px",
                       height: "340px",
                       borderRadius: "50%",
-                      background: "linear-gradient(135deg, rgba(255, 107, 107, 0.7), rgba(255, 142, 83, 0.7))",
+                      background:
+                        "linear-gradient(135deg, rgba(255, 107, 107, 0.7), rgba(255, 142, 83, 0.7))",
                       top: "50%",
                       left: "50%",
                       transform: "translate(-50%, -50%)",
@@ -484,7 +517,7 @@ const HomePage = () => {
                       filter: "blur(2px)",
                     }}
                   />
-                  
+
                   {/* Main image with circular frame and shadow */}
                   <Box
                     sx={{
@@ -497,7 +530,8 @@ const HomePage = () => {
                       display: "flex",
                       justifyContent: "center",
                       alignItems: "center",
-                      boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(255, 107, 107, 0.3)",
+                      boxShadow:
+                        "0 20px 60px rgba(0, 0, 0, 0.25), 0 10px 30px rgba(255, 107, 107, 0.3)",
                     }}
                   >
                     <Box
@@ -512,7 +546,7 @@ const HomePage = () => {
                       }}
                     />
                   </Box>
-                  
+
                   {/* Rocket icon - pastel tone */}
                   <Box
                     sx={{
@@ -528,7 +562,7 @@ const HomePage = () => {
                   >
                     🚀
                   </Box>
-                  
+
                   {/* Trophy icon - pastel tone */}
                   <Box
                     sx={{
@@ -544,7 +578,7 @@ const HomePage = () => {
                   >
                     🏆
                   </Box>
-                  
+
                   {/* Blue circle - reduced size */}
                   <Box
                     sx={{
@@ -561,7 +595,7 @@ const HomePage = () => {
                       boxShadow: "0 4px 12px rgba(33, 150, 243, 0.3)",
                     }}
                   />
-                  
+
                   {/* Purple circle - reduced size */}
                   <Box
                     sx={{
@@ -578,7 +612,7 @@ const HomePage = () => {
                       boxShadow: "0 4px 12px rgba(156, 39, 176, 0.3)",
                     }}
                   />
-                  
+
                   {/* Small red circle - reduced size */}
                   <Box
                     sx={{
@@ -595,7 +629,7 @@ const HomePage = () => {
                       boxShadow: "0 4px 12px rgba(244, 67, 54, 0.3)",
                     }}
                   />
-                  
+
                   {/* Yellow circle - reduced size */}
                   <Box
                     sx={{
@@ -612,7 +646,7 @@ const HomePage = () => {
                       boxShadow: "0 4px 12px rgba(255, 179, 0, 0.3)",
                     }}
                   />
-                  
+
                   {/* Sparkle icons - reduced size */}
                   <Box
                     sx={{
@@ -696,14 +730,14 @@ const HomePage = () => {
           onViewCourseDetails={handleViewCourseDetails}
         />
 
-          <PopularClassesSection 
-        popularClasses={popularClasses}
-        loadingClasses={loadingClasses}
-        onViewCourseDetails={handleViewCourseDetails} 
-      />
+        <PopularClassesSection
+          popularClasses={popularClasses}
+          loadingClasses={loadingClasses}
+          onViewCourseDetails={handleViewCourseDetails}
+        />
 
         {/* Featured Instructors Section */}
-        <FeaturedInstructorsSection 
+        <FeaturedInstructorsSection
           instructors={featuredInstructors}
           loading={loadingInstructors}
         />
@@ -711,7 +745,11 @@ const HomePage = () => {
         {/* Features Section */}
         <Container maxWidth="lg" sx={{ my: 10 }}>
           <Box sx={{ textAlign: "center", mb: 6 }}>
-            <Chip label="TÍNH NĂNG" color="primary" sx={{ mb: 2, fontWeight: 600 }} />
+            <Chip
+              label="TÍNH NĂNG"
+              color="primary"
+              sx={{ mb: 2, fontWeight: 600 }}
+            />
             <Typography
               variant="h3"
               component="h2"
@@ -774,7 +812,9 @@ const HomePage = () => {
                   Tại Sao Chọn ATPS?
                 </Typography>
                 <Typography variant="body1" color="text.secondary" paragraph>
-                  Nền tảng của chúng tôi được thiết kế để cung cấp trải nghiệm học tập liền mạch, thích ứng với nhu cầu của bạn, đồng thời hỗ trợ các tổ chức mở rộng dịch vụ hiệu quả.
+                  Nền tảng của chúng tôi được thiết kế để cung cấp trải nghiệm
+                  học tập liền mạch, thích ứng với nhu cầu của bạn, đồng thời hỗ
+                  trợ các tổ chức mở rộng dịch vụ hiệu quả.
                 </Typography>
                 <Box sx={{ mt: 3 }}>
                   {benefits.map((benefit, index) => (
@@ -811,7 +851,8 @@ const HomePage = () => {
                       Đáng Tin Cậy & Bảo Mật
                     </Typography>
                     <Typography variant="body1" sx={{ opacity: 0.95 }}>
-                      Dữ liệu của bạn được bảo vệ với bảo mật cấp doanh nghiệp. Tập trung vào việc học, để chúng tôi xử lý phần còn lại.
+                      Dữ liệu của bạn được bảo vệ với bảo mật cấp doanh nghiệp.
+                      Tập trung vào việc học, để chúng tôi xử lý phần còn lại.
                     </Typography>
                   </Box>
                 </Paper>
@@ -850,7 +891,7 @@ const HomePage = () => {
               variant="contained"
               size="large"
               endIcon={<ArrowForward />}
-              onClick={() => navigate('/courses')}
+              onClick={() => navigate("/courses")}
               sx={{
                 backgroundColor: "white",
                 color: "primary.main",
@@ -865,233 +906,245 @@ const HomePage = () => {
       </Box>
 
       {/* Footer */}
-<Box
-  component="footer"
-  sx={{
-    backgroundColor: "#ffffff",
-    color: "#1a237e",
-    py: 6,
-    borderTop: "1px solid #e0e0e0",
-  }}
->
-  <Container maxWidth="lg">
-    <Grid container spacing={4}>
-      {/* Cột thông tin ATPS */}
-      <Grid item xs={12} md={4}>
-        <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-          <School
+      <Box
+        component="footer"
+        sx={{
+          backgroundColor: "#ffffff",
+          color: "#1a237e",
+          py: 6,
+          borderTop: "1px solid #e0e0e0",
+        }}
+      >
+        <Container maxWidth="lg">
+          <Grid container spacing={4}>
+            {/* Cột thông tin ATPS */}
+            <Grid item xs={12} md={4}>
+              <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
+                <School
+                  sx={{
+                    fontSize: 36,
+                    mr: 2,
+                    color: "#1a237e",
+                  }}
+                />
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    color: "#1a237e",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  ATPS
+                </Typography>
+              </Box>
+              <Typography
+                variant="body1"
+                sx={{ mb: 3, color: "#546e7a", lineHeight: 1.6 }}
+              >
+                Nền Tảng Ôn Luyện IELTS Toàn Diện Cho Mọi Trình Độ
+              </Typography>
+
+              {/* Mạng xã hội */}
+              <Box sx={{ display: "flex", gap: 1 }}>
+                {["Facebook", "Instagram", "YouTube"].map((social) => (
+                  <IconButton
+                    key={social}
+                    sx={{
+                      color: "#546e7a",
+                      "&:hover": {
+                        backgroundColor: "#f5f5f5",
+                        color: "#1a237e",
+                      },
+                    }}
+                  >
+                    {social === "Facebook" && <Facebook />}
+                    {social === "Instagram" && <Instagram />}
+                    {social === "YouTube" && <YouTube />}
+                  </IconButton>
+                ))}
+              </Box>
+            </Grid>
+
+            {/* Cột Sản phẩm */}
+            <Grid item xs={6} md={2}>
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  color: "#1a237e",
+                  mb: 2,
+                }}
+              >
+                Sản Phẩm
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                {["Tính năng", "Bảng giá", "Khóa học", "Tài nguyên"].map(
+                  (item) => (
+                    <Typography
+                      key={item}
+                      variant="body2"
+                      sx={{
+                        color: "#546e7a",
+                        cursor: "pointer",
+                        "&:hover": {
+                          color: "#1a237e",
+                          fontWeight: 500,
+                        },
+                      }}
+                    >
+                      {item}
+                    </Typography>
+                  )
+                )}
+              </Box>
+            </Grid>
+
+            {/* Cột Công ty */}
+            <Grid item xs={6} md={2}>
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  color: "#1a237e",
+                  mb: 2,
+                }}
+              >
+                Công Ty
+              </Typography>
+              <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+                {["Về chúng tôi", "Blog", "Tuyển dụng", "Liên hệ"].map(
+                  (item) => (
+                    <Typography
+                      key={item}
+                      variant="body2"
+                      sx={{
+                        color: "#546e7a",
+                        cursor: "pointer",
+                        "&:hover": {
+                          color: "#1a237e",
+                          fontWeight: 500,
+                        },
+                      }}
+                    >
+                      {item}
+                    </Typography>
+                  )
+                )}
+              </Box>
+            </Grid>
+
+            {/* Cột Đăng ký nhận tin */}
+            <Grid item xs={12} md={4}>
+              <Typography
+                variant="subtitle1"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  color: "#1a237e",
+                  mb: 2,
+                }}
+              >
+                Cập Nhật Tin Tức
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{ color: "#546e7a", mb: 2, lineHeight: 1.6 }}
+              >
+                Đăng ký nhận bản tin để cập nhật thông tin mới nhất và tài liệu
+                ôn thi.
+              </Typography>
+
+              <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
+                <TextField
+                  placeholder="Email của bạn"
+                  variant="outlined"
+                  size="small"
+                  fullWidth
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      "& fieldset": {
+                        borderColor: "#b0bec5",
+                      },
+                      "&:hover fieldset": {
+                        borderColor: "#1a237e",
+                      },
+                      "&.Mui-focused fieldset": {
+                        borderColor: "#1a237e",
+                      },
+                    },
+                  }}
+                />
+                <Button
+                  variant="contained"
+                  sx={{
+                    backgroundColor: "#1a237e",
+                    color: "white",
+                    fontWeight: 600,
+                    px: 4,
+                    minWidth: "100px",
+                    whiteSpace: "nowrap",
+                    "&:hover": {
+                      backgroundColor: "#283593",
+                    },
+                  }}
+                >
+                  Đăng Ký
+                </Button>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Phần bản quyền */}
+          <Box
             sx={{
-              fontSize: 36,
-              mr: 2,
-              color: "#1a237e",
-            }}
-          />
-          <Typography
-            variant="h5"
-            sx={{
-              fontWeight: 700,
-              color: "#1a237e",
-              letterSpacing: "0.5px",
+              borderTop: "1px solid #e0e0e0",
+              mt: 4,
+              pt: 3,
+              textAlign: "center",
+              display: "flex",
+              flexDirection: { xs: "column", md: "row" },
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 2,
             }}
           >
-            ATPS
-          </Typography>
-        </Box>
-        <Typography variant="body1" sx={{ mb: 3, color: "#546e7a", lineHeight: 1.6 }}>
-          Nền Tảng Ôn Luyện IELTS Toàn Diện Cho Mọi Trình Độ
-        </Typography>
-        
-        {/* Mạng xã hội */}
-        <Box sx={{ display: "flex", gap: 1 }}>
-          {["Facebook", "Instagram", "YouTube"].map((social) => (
-            <IconButton
-              key={social}
-              sx={{
-                color: "#546e7a",
-                "&:hover": {
-                  backgroundColor: "#f5f5f5",
-                  color: "#1a237e",
-                },
-              }}
-            >
-              {social === "Facebook" && <Facebook />}
-              {social === "Instagram" && <Instagram />}
-              {social === "YouTube" && <YouTube />}
-            </IconButton>
-          ))}
-        </Box>
-      </Grid>
-
-      {/* Cột Sản phẩm */}
-      <Grid item xs={6} md={2}>
-        <Typography 
-          variant="subtitle1" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 600,
-            color: "#1a237e",
-            mb: 2,
-          }}
-        >
-          Sản Phẩm
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {["Tính năng", "Bảng giá", "Khóa học", "Tài nguyên"].map((item) => (
-            <Typography
-              key={item}
-              variant="body2"
-              sx={{
-                color: "#546e7a",
-                cursor: "pointer",
-                "&:hover": { 
-                  color: "#1a237e",
-                  fontWeight: 500,
-                },
-              }}
-            >
-              {item}
+            <Typography variant="body2" sx={{ color: "#546e7a" }}>
+              © 2025 <strong style={{ color: "#1a237e" }}>ATPS</strong>. Bảo lưu
+              mọi quyền.
             </Typography>
-          ))}
-        </Box>
-      </Grid>
 
-      {/* Cột Công ty */}
-      <Grid item xs={6} md={2}>
-        <Typography 
-          variant="subtitle1" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 600,
-            color: "#1a237e",
-            mb: 2,
-          }}
-        >
-          Công Ty
-        </Typography>
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
-          {["Về chúng tôi", "Blog", "Tuyển dụng", "Liên hệ"].map((item) => (
-            <Typography
-              key={item}
-              variant="body2"
-              sx={{
-                color: "#546e7a",
-                cursor: "pointer",
-                "&:hover": { 
-                  color: "#1a237e",
-                  fontWeight: 500,
-                },
-              }}
-            >
-              {item}
-            </Typography>
-          ))}
-        </Box>
-      </Grid>
-
-      {/* Cột Đăng ký nhận tin */}
-      <Grid item xs={12} md={4}>
-        <Typography 
-          variant="subtitle1" 
-          gutterBottom 
-          sx={{ 
-            fontWeight: 600,
-            color: "#1a237e",
-            mb: 2,
-          }}
-        >
-          Cập Nhật Tin Tức
-        </Typography>
-        <Typography variant="body2" sx={{ color: "#546e7a", mb: 2, lineHeight: 1.6 }}>
-          Đăng ký nhận bản tin để cập nhật thông tin mới nhất và tài liệu ôn thi.
-        </Typography>
-        
-        <Box sx={{ display: "flex", gap: 1, mb: 2 }}>
-          <TextField
-            placeholder="Email của bạn"
-            variant="outlined"
-            size="small"
-            fullWidth
-            sx={{
-              "& .MuiOutlinedInput-root": {
-                "& fieldset": {
-                  borderColor: "#b0bec5",
-                },
-                "&:hover fieldset": {
-                  borderColor: "#1a237e",
-                },
-                "&.Mui-focused fieldset": {
-                  borderColor: "#1a237e",
-                },
-              },
-            }}
-          />
- <Button
-  variant="contained"
-  sx={{
-    backgroundColor: "#1a237e",
-    color: "white",
-    fontWeight: 600,
-    px: 4, 
-    minWidth: "100px",
-    whiteSpace: "nowrap", 
-    "&:hover": {
-      backgroundColor: "#283593",
-    },
-  }}
->
-  Đăng Ký
-</Button>
-        </Box>
-      </Grid>
-    </Grid>
-
-    {/* Phần bản quyền */}
-    <Box
-      sx={{
-        borderTop: "1px solid #e0e0e0",
-        mt: 4,
-        pt: 3,
-        textAlign: "center",
-        display: "flex",
-        flexDirection: { xs: "column", md: "row" },
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 2,
-      }}
-    >
-      <Typography variant="body2" sx={{ color: "#546e7a" }}>
-        © 2025 <strong style={{ color: "#1a237e" }}>ATPS</strong>. Bảo lưu mọi quyền.
-      </Typography>
-      
-      <Box sx={{ display: "flex", gap: 3 }}>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: "#546e7a",
-            cursor: "pointer",
-            "&:hover": { 
-              color: "#1a237e",
-            },
-          }}
-        >
-          Điều khoản sử dụng
-        </Typography>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: "#546e7a",
-            cursor: "pointer",
-            "&:hover": { 
-              color: "#1a237e",
-            },
-          }}
-        >
-          Chính sách bảo mật
-        </Typography>
+            <Box sx={{ display: "flex", gap: 3 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#546e7a",
+                  cursor: "pointer",
+                  "&:hover": {
+                    color: "#1a237e",
+                  },
+                }}
+              >
+                Điều khoản sử dụng
+              </Typography>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "#546e7a",
+                  cursor: "pointer",
+                  "&:hover": {
+                    color: "#1a237e",
+                  },
+                }}
+              >
+                Chính sách bảo mật
+              </Typography>
+            </Box>
+          </Box>
+        </Container>
       </Box>
-    </Box>
-  </Container>
-</Box>
     </Box>
   );
 };

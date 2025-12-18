@@ -1,9 +1,10 @@
 /**
- * Class Status Constants - Database Version 5 (Updated)
+ * Class Status Constants - Database Version 7 (dbver7)
  *
  * Trạng thái Quản trị (Admin):
  * - DRAFT: Nháp (admin tạo lớp)
- * - APPROVED: Đã duyệt (tạo nháp rồi approve)
+ * - PENDING: Chờ duyệt (lớp đã tạo, chờ admin duyệt)
+ * - APPROVED: Đã duyệt (admin đã duyệt lớp)
  *
  * Trạng thái Công khai (Public & Học viên):
  * - ACTIVE: Đang tuyển sinh (tự động chuyển từ APPROVED khi đủ điều kiện)
@@ -13,12 +14,13 @@
  * - CLOSE: Đã kết thúc
  * - CANCEL: Đã hủy
  *
- * Lưu ý: Đã loại bỏ WAITING và PENDING vì admin đã chọn course từ bước 1
+ * Theo schema dbver7: enum('DRAFT','PENDING','APPROVED','ACTIVE','ONGOING','CLOSE','CANCEL')
  */
 
 export const CLASS_STATUS = {
   // Trạng thái Quản trị
   DRAFT: "DRAFT",
+  PENDING: "PENDING",
   APPROVED: "APPROVED",
 
   // Trạng thái Công khai
@@ -42,6 +44,7 @@ export const CLASS_STATUS = {
  */
 export const CLASS_STATUS_LABELS = {
   [CLASS_STATUS.DRAFT]: "Nháp",
+  [CLASS_STATUS.PENDING]: "Chờ duyệt",
   [CLASS_STATUS.APPROVED]: "Đã duyệt",
   [CLASS_STATUS.ACTIVE]: "Đang tuyển sinh",
   [CLASS_STATUS.ONGOING]: "Đang diễn ra",
@@ -57,6 +60,11 @@ export const CLASS_STATUS_COLORS = {
     color: "#f59e0b",
     bgColor: "#fffbeb",
     label: "Nháp",
+  },
+  [CLASS_STATUS.PENDING]: {
+    color: "#f97316",
+    bgColor: "#fff7ed",
+    label: "Chờ duyệt",
   },
   [CLASS_STATUS.APPROVED]: {
     color: "#10b981",
@@ -120,10 +128,9 @@ export const normalizeStatus = (status) => {
     CANCEL: CLASS_STATUS.CANCEL,
     CANCELLED: CLASS_STATUS.CANCEL,
     ON_GOING: CLASS_STATUS.ONGOING, // Backward compatibility
-    // Hỗ trợ backward compatibility cho WAITING và PENDING (chuyển về DRAFT hoặc APPROVED)
+    // Hỗ trợ backward compatibility cho WAITING (chuyển về DRAFT)
     WAITING: CLASS_STATUS.DRAFT,
-    PENDING: CLASS_STATUS.DRAFT,
-    PENDING_APPROVAL: CLASS_STATUS.DRAFT,
+    PENDING_APPROVAL: CLASS_STATUS.PENDING,
   };
 
   // Kiểm tra trong aliasMap trước
@@ -134,6 +141,7 @@ export const normalizeStatus = (status) => {
   // Nếu là một trong các status chính, trả về trực tiếp
   const validStatuses = [
     CLASS_STATUS.DRAFT,
+    CLASS_STATUS.PENDING,
     CLASS_STATUS.APPROVED,
     CLASS_STATUS.ACTIVE,
     CLASS_STATUS.ONGOING,
@@ -154,7 +162,11 @@ export const normalizeStatus = (status) => {
  */
 export const isAdminStatus = (status) => {
   const normalized = normalizeStatus(status);
-  return [CLASS_STATUS.DRAFT, CLASS_STATUS.APPROVED].includes(normalized);
+  return [
+    CLASS_STATUS.DRAFT,
+    CLASS_STATUS.PENDING,
+    CLASS_STATUS.APPROVED,
+  ].includes(normalized);
 };
 
 export const isPublicStatus = (status) => {
@@ -181,7 +193,12 @@ export const canTransitionTo = (currentStatus, targetStatus) => {
 
   // Flow chuyển đổi hợp lệ
   const validTransitions = {
-    [CLASS_STATUS.DRAFT]: [CLASS_STATUS.APPROVED, CLASS_STATUS.CANCEL],
+    [CLASS_STATUS.DRAFT]: [
+      CLASS_STATUS.PENDING,
+      CLASS_STATUS.APPROVED,
+      CLASS_STATUS.CANCEL,
+    ],
+    [CLASS_STATUS.PENDING]: [CLASS_STATUS.APPROVED, CLASS_STATUS.CANCEL],
     [CLASS_STATUS.APPROVED]: [CLASS_STATUS.ACTIVE, CLASS_STATUS.CANCEL],
     [CLASS_STATUS.ACTIVE]: [CLASS_STATUS.ONGOING, CLASS_STATUS.CANCEL],
     [CLASS_STATUS.ONGOING]: [CLASS_STATUS.CLOSE, CLASS_STATUS.CANCEL],

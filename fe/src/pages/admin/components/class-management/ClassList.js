@@ -36,9 +36,13 @@ const ClassList = ({
   instructors = [], // Thêm instructors để lấy thông tin giảng viên
   onEdit,
   onManageStudents,
-  onApprove, // Handler để duyệt class (DRAFT -> APPROVED)
+  onApprove, // Handler để duyệt class (DRAFT -> APPROVED) - cho admin
+  onReject, // Handler để từ chối class (PENDING -> DRAFT) - cho admin
   onPublish,
   onChangeStatus, // Handler để chuyển trạng thái class
+  onSubmitForApproval, // Handler để gửi duyệt class (DRAFT -> PENDING) - cho staff
+  onCancelApproval, // Handler để hủy yêu cầu duyệt (PENDING -> DRAFT) - cho staff
+  userRole, // "admin" hoặc "staff"
 }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -46,6 +50,13 @@ const ClassList = ({
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [classToCancel, setClassToCancel] = useState(null);
+
+  const STAFF_EDITABLE_STATUSES = [CLASS_STATUS.DRAFT];
+  const ADMIN_EDITABLE_STATUSES = [
+    CLASS_STATUS.DRAFT,
+    CLASS_STATUS.APPROVED,
+    CLASS_STATUS.ACTIVE,
+  ];
 
   const handleMenuOpen = (event, classItem) => {
     setAnchorEl(event.currentTarget);
@@ -56,26 +67,36 @@ const ClassList = ({
     setAnchorEl(null);
     setSelectedClass(null);
   };
-
   const handleEdit = () => {
     if (selectedClass) {
-      const classId = selectedClass.ClassID || selectedClass.id;
+      const classId = selectedClass.ClassID;
       const status = normalizeStatus(
         selectedClass.Status || selectedClass.status
       );
-      // Chỉ cho phép chỉnh sửa khi status là DRAFT, còn lại chỉ xem
-      if (status === CLASS_STATUS.DRAFT) {
+      const isEditableForStaff = STAFF_EDITABLE_STATUSES.includes(status);
+      const isEditableForAdmin = ADMIN_EDITABLE_STATUSES.includes(status);
+      const isEditable =
+        userRole === "staff" ? isEditableForStaff : isEditableForAdmin;
+
+      const basePath = userRole === "staff" ? "/staff" : "/admin";
+
+      // Với admin: khi chỉnh sửa lớp đã duyệt / đang tuyển sinh,
+      // Step 1 (Giảng viên, Khóa/Môn) sẽ bị disable (không cho đổi)
+      const shouldLockBasicInfo =
+        userRole === "admin" &&
+        (status === CLASS_STATUS.APPROVED || status === CLASS_STATUS.ACTIVE);
+
+      if (isEditable) {
         // Cho phép chỉnh sửa - gọi onEdit hoặc navigate
-        if (onEdit) {
-          onEdit(selectedClass);
-        } else {
-          navigate(`/admin/classes/edit/${classId}`, {
-            state: { classData: selectedClass },
-          });
-        }
+        navigate(`${basePath}/classes/edit/${classId}`, {
+          state: {
+            classData: selectedClass,
+            lockBasicInfo: shouldLockBasicInfo,
+          },
+        });
       } else {
         // Chỉ xem - navigate với readonly
-        navigate(`/admin/classes/edit/${classId}`, {
+        navigate(`${basePath}/classes/edit/${classId}`, {
           state: { readonly: true, classData: selectedClass },
         });
       }
@@ -98,7 +119,7 @@ const ClassList = ({
   const handleConfirmCancel = async () => {
     if (!classToCancel) return;
 
-    const classId = classToCancel.ClassID || classToCancel.id;
+    const classId = classToCancel.ClassID;
     if (!classId) {
       alert("Không tìm thấy ID lớp học");
       return;
@@ -157,17 +178,17 @@ const ClassList = ({
     switch (normalized) {
       case CLASS_STATUS.DRAFT:
         return "status-draft";
-      case CLASS_STATUS.PENDING_APPROVAL:
+      case CLASS_STATUS.PENDING:
         return "status-pending";
       case CLASS_STATUS.APPROVED:
         return "status-approved";
-      case CLASS_STATUS.OPEN:
+      case CLASS_STATUS.ACTIVE:
         return "status-open";
       case CLASS_STATUS.ONGOING:
         return "status-ongoing";
-      case CLASS_STATUS.CLOSED:
+      case CLASS_STATUS.CLOSE:
         return "status-closed";
-      case CLASS_STATUS.CANCELLED:
+      case CLASS_STATUS.CANCEL:
         return "status-cancelled";
       default:
         return "status-inactive";
@@ -213,21 +234,18 @@ const ClassList = ({
       ) : (
         <div className="class-grid">
           {classes.map((classItem) => {
-            const classId = classItem.ClassID || classItem.id;
-            const className = classItem.Name || classItem.title;
-            const classStatus = classItem.Status || classItem.status;
+            const classId = classItem.ClassID;
+            const className = classItem.Name;
+            const classStatus = classItem.Status;
 
             // Lấy Fee: từ class trước, nếu không có thì miễn phí
             const classFee = classItem.Fee || 0;
-            const courseId = classItem.CourseID || classItem.courseId;
-            const course = courses.find(
-              (c) => (c.CourseID || c.id) === courseId
-            );
+            const courseId = classItem.CourseID;
+            const course = courses.find((c) => c.CourseID === courseId);
             const displayFee = classFee || null;
 
             // Lấy thông tin giảng viên
-            const instructorId =
-              classItem.InstructorID || classItem.instructorId;
+            const instructorId = classItem.InstructorID;
             let instructor = classItem.Instructor;
 
             // Nếu không có Instructor object, tìm từ instructors list
@@ -239,7 +257,7 @@ const ClassList = ({
             ) {
               // Thử tìm với cả string và number (tránh type mismatch)
               instructor = instructors.find((inst) => {
-                const instId = inst.InstructorID || inst.id;
+                const instId = inst.InstructorID;
                 // So sánh với nhiều cách để tránh type mismatch
                 return (
                   instId === instructorId ||
@@ -399,7 +417,7 @@ const ClassList = ({
                             ? classItem.enrolledStudents.length
                             : classItem.enrolledCount || 0;
 
-                          const maxLearners =classItem.Maxstudent;
+                          const maxLearners = classItem.Maxstudent;
 
                           // Hiển thị
                           if (
@@ -559,7 +577,37 @@ const ClassList = ({
 
                 <div className="class-actions">
                   {/* Workflow Actions based on status */}
+                  {/* Staff: Gửi duyệt (DRAFT -> PENDING) */}
                   {normalizeStatus(classStatus) === CLASS_STATUS.DRAFT &&
+                    userRole === "staff" &&
+                    onSubmitForApproval && (
+                      <button
+                        className="btn btn-warning btn-sm"
+                        onClick={() => onSubmitForApproval(classId)}
+                        title="Gửi lớp học để duyệt"
+                      >
+                        <Send sx={{ fontSize: 14, mr: 0.5 }} />
+                        Gửi duyệt
+                      </button>
+                    )}
+
+                  {/* Staff: Hủy yêu cầu duyệt (PENDING -> DRAFT) */}
+                  {normalizeStatus(classStatus) === CLASS_STATUS.PENDING &&
+                    userRole === "staff" &&
+                    onCancelApproval && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => onCancelApproval(classId)}
+                        title="Hủy yêu cầu duyệt"
+                      >
+                        <ArrowBack sx={{ fontSize: 14, mr: 0.5 }} />
+                        Hủy
+                      </button>
+                    )}
+
+                  {/* Admin: Duyệt lớp PENDING (PENDING -> APPROVED) */}
+                  {normalizeStatus(classStatus) === CLASS_STATUS.PENDING &&
+                    userRole === "admin" &&
                     onApprove && (
                       <button
                         className="btn btn-success btn-sm"
@@ -571,12 +619,34 @@ const ClassList = ({
                       </button>
                     )}
 
-                  {(normalizeStatus(classStatus) === CLASS_STATUS.APPROVED ||
-                    normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE) &&
+                  {/* Admin: Từ chối lớp PENDING (PENDING -> DRAFT) */}
+                  {normalizeStatus(classStatus) === CLASS_STATUS.PENDING &&
+                    userRole === "admin" &&
+                    onReject && (
+                      <button
+                        className="btn btn-danger btn-sm"
+                        onClick={() => onReject(classId, classItem)}
+                        title="Từ chối lớp học"
+                      >
+                        <Cancel sx={{ fontSize: 14, mr: 0.5 }} />
+                        Từ chối
+                      </button>
+                    )}
+
+                  {/* Chỉ admin được chuyển lớp đã duyệt / đang tuyển sinh về DRAFT để chỉnh sửa */}
+                  {userRole === "admin" &&
+                    (normalizeStatus(classStatus) === CLASS_STATUS.APPROVED ||
+                      normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE) &&
                     onChangeStatus && (
                       <button
                         className="btn btn-secondary btn-sm"
-                        onClick={() => onChangeStatus(classId, "DRAFT")}
+                        onClick={() => {
+                          console.log(
+                            "[ClassList][AdminEdit] Click Chỉnh sửa → onChangeStatus('DRAFT')",
+                            { classId, status: normalizeStatus(classStatus) }
+                          );
+                          onChangeStatus(classId, "DRAFT");
+                        }}
                         title="Chuyển sang trạng thái Nháp"
                       >
                         <ArrowBack sx={{ fontSize: 14, mr: 0.5 }} />
@@ -596,10 +666,14 @@ const ClassList = ({
                       </button>
                     )}
 
-                  {(normalizeStatus(classStatus) === CLASS_STATUS.ONGOING ||
-                    normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
-                    normalizeStatus(classStatus) === CLASS_STATUS.APPROVED) &&
-                    !(normalizeStatus(classStatus) === CLASS_STATUS.CANCEL) && (
+                  {/* Chỉ admin được hủy lớp ở trạng thái đã duyệt / đang tuyển sinh */}
+                  {userRole === "admin" &&
+                    (normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
+                      normalizeStatus(classStatus) === CLASS_STATUS.APPROVED) &&
+                    !(
+                      normalizeStatus(classStatus) === CLASS_STATUS.ONGOING ||
+                      normalizeStatus(classStatus) === CLASS_STATUS.CANCEL
+                    ) && (
                       <button
                         className="btn btn-danger btn-sm"
                         onClick={() => handleCancelClass(classItem)}
@@ -611,17 +685,50 @@ const ClassList = ({
                       </button>
                     )}
 
-                  {/* Lịch button - always visible */}
-                  <button
-                    className="btn btn-info btn-sm"
-                    onClick={() =>
-                      navigate(`/admin/classes/${classId}/schedule`)
-                    }
-                    title="Quản lý lịch học"
-                  >
-                    <CalendarToday sx={{ fontSize: 14, mr: 0.5 }} />
-                    Lịch
-                  </button>
+                  {/* Lịch button */}
+                  {/* Với staff: chỉ hiển thị cho DRAFT (có thể chỉnh sửa) */}
+                  {/* Với admin: luôn hiển thị, nhưng readonly cho các status đã duyệt */}
+                  {((userRole === "staff" &&
+                    normalizeStatus(classStatus) === CLASS_STATUS.DRAFT) ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.PENDING ||
+                    userRole === "admin" ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.APPROVED ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.ON_GOING ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.CLOSE ||
+                    normalizeStatus(classStatus) === CLASS_STATUS.CANCEL) && (
+                    <button
+                      className="btn btn-info btn-sm"
+                      onClick={() => {
+                        // Với các status đã duyệt, chỉ xem (readonly)
+                        const isReadonly =
+                          normalizeStatus(classStatus) ===
+                            CLASS_STATUS.APPROVED ||
+                          normalizeStatus(classStatus) ===
+                            CLASS_STATUS.ACTIVE ||
+                          normalizeStatus(classStatus) ===
+                            CLASS_STATUS.ON_GOING ||
+                          normalizeStatus(classStatus) === CLASS_STATUS.CLOSE ||
+                          normalizeStatus(classStatus) === CLASS_STATUS.CANCEL;
+                        navigate(
+                          userRole === "staff"
+                            ? `/staff/classes/${classId}/schedule`
+                            : `/admin/classes/${classId}/schedule`,
+                          {
+                            state: { readonly: isReadonly },
+                          }
+                        );
+                      }}
+                      title={
+                        normalizeStatus(classStatus) === CLASS_STATUS.DRAFT
+                          ? "Quản lý lịch học"
+                          : "Xem lịch học"
+                      }
+                    >
+                      <CalendarToday sx={{ fontSize: 14, mr: 0.5 }} />
+                      Lịch
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -642,23 +749,35 @@ const ClassList = ({
           },
         }}
       >
-        {selectedClass && [
-          /* Chỉ hiển thị "Chỉnh sửa" khi status là DRAFT */
-          normalizeStatus(selectedClass.Status || selectedClass.status) ===
-          CLASS_STATUS.DRAFT ? (
-            <MenuItem key="edit" onClick={handleEdit}>
-              <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Chỉnh sửa
+        {selectedClass && (
+          <div>
+            {(() => {
+              const status = normalizeStatus(
+                selectedClass.Status || selectedClass.status
+              );
+              const isEditableForStaff =
+                STAFF_EDITABLE_STATUSES.includes(status);
+              const isEditableForAdmin =
+                ADMIN_EDITABLE_STATUSES.includes(status);
+              const canEdit =
+                userRole === "staff" ? isEditableForStaff : isEditableForAdmin;
+
+              return canEdit ? (
+                <MenuItem key="edit" onClick={handleEdit}>
+                  <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Chỉnh sửa
+                </MenuItem>
+              ) : (
+                <MenuItem key="view" onClick={handleEdit}>
+                  <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Xem
+                </MenuItem>
+              );
+            })()}
+
+            <MenuItem key="manage-students" onClick={handleManageStudents}>
+              <People sx={{ fontSize: 18, mr: 1.5 }} /> Quản lý học viên
             </MenuItem>
-          ) : (
-            /* Hiển thị "Xem" cho các status khác */
-            <MenuItem key="view" onClick={handleEdit}>
-              <Edit sx={{ fontSize: 18, mr: 1.5 }} /> Xem
-            </MenuItem>
-          ),
-          <MenuItem key="manage-students" onClick={handleManageStudents}>
-            <People sx={{ fontSize: 18, mr: 1.5 }} /> Quản lý học viên
-          </MenuItem>,
-        ]}
+          </div>
+        )}
       </Menu>
 
       {/* Cancel Class Dialog */}
