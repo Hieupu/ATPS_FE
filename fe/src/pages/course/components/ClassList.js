@@ -518,43 +518,79 @@ const shouldShowEnrollButton = !isNotLearner;
           )}
 
           {/* Tóm tắt giá */}
-          {(!scheduleConflict || scheduleConflict.length === 0) && (
-            <Box
-              sx={{
-                mb: 3,
-                p: 2.5,
-                bgcolor: "#fafafa",
-                borderRadius: 2,
-                border: "1px solid #f0f0f0",
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{ color: "#666", mb: 0.5, fontSize: "0.85rem" }}
-              >
-                Học phí
-              </Typography>
-              <Typography
-                variant="h5"
-                sx={{ fontWeight: 700, color: "#667eea", mb: 0.5 }}
-              >
-                {formatPrice(classItem.Fee)}
-              </Typography>
-              {promoInfo && (
-                <Chip
-                  label={`Giảm ${promoInfo.discountPercent}%`}
-                  size="small"
-                  sx={{
-                    bgcolor: "#dcfce7",
-                    color: "#166534",
-                    fontWeight: 600,
-                    fontSize: "0.75rem",
-                    height: 24,
-                  }}
-                />
-              )}
-            </Box>
+{(!scheduleConflict || scheduleConflict.length === 0) && (
+  <Box
+    sx={{
+      mb: 3,
+      p: 2.5,
+      bgcolor: "#fafafa",
+      borderRadius: 2,
+      border: "1px solid #f0f0f0",
+    }}
+  >
+    <Typography
+      variant="body2"
+      sx={{ color: "#666", mb: 0.5, fontSize: "0.85rem" }}
+    >
+      Học phí
+    </Typography>
+    
+    {/* HIỂN THỊ GIÁ SAU KHI GIẢM */}
+    {promoInfo ? (
+      <>
+        <Box sx={{ display: "flex", alignItems: "baseline", gap: 1, mb: 0.5 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              fontWeight: 600,
+              color: "#999",
+              textDecoration: "line-through",
+              fontSize: "0.9rem",
+            }}
+          >
+            {formatPrice(classItem.Fee)}
+          </Typography>
+          <Chip
+            label={`Giảm ${promoInfo.discountPercent}%`}
+            size="small"
+            sx={{
+              bgcolor: "#dcfce7",
+              color: "#166534",
+              fontWeight: 600,
+              fontSize: "0.75rem",
+              height: 24,
+            }}
+          />
+        </Box>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 700, color: "#667eea" }}
+        >
+          {formatPrice(
+            classItem.Fee * (1 - promoInfo.discountPercent / 100)
           )}
+        </Typography>
+        <Typography
+          variant="caption"
+          sx={{ color: "#059669", fontWeight: 600, display: "block", mt: 0.5 }}
+        >
+          Tiết kiệm: {formatPrice(
+            classItem.Fee * (promoInfo.discountPercent / 100)
+          )}
+        </Typography>
+      </>
+    ) : (
+      <>
+        <Typography
+          variant="h5"
+          sx={{ fontWeight: 700, color: "#667eea", mb: 0.5 }}
+        >
+          {formatPrice(classItem.Fee)}
+        </Typography>
+      </>
+    )}
+  </Box>
+)}
 
           {/* Mã giảm giá */}
           {(!scheduleConflict || scheduleConflict.length === 0) && (
