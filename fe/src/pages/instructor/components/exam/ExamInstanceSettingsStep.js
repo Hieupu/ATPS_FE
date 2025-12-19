@@ -13,6 +13,8 @@ import {
   CircularProgress,
   Alert,
 } from "@mui/material";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 import {
   getInstructorCoursesApi,
@@ -170,7 +172,7 @@ const ExamInstanceSettingsStep = ({
     if (!isValid) return;
 
     if (!courseId) {
-      alert("Vui lòng chọn khóa học");
+      toast.warning("Vui lòng chọn khóa học");
       return;
     }
     const classIds = instanceType === "Exam"
@@ -182,11 +184,11 @@ const ExamInstanceSettingsStep = ({
       : [];
 
     if (classIds.length === 0 && unitIds.length === 0) {
-      alert("Vui lòng chọn Lớp (Exam) hoặc Unit (Assignment)");
+      toast.warning("Vui lòng chọn Lớp (Exam) hoặc Unit (Assignment)");
       return;
     }
 
-    const attemptValue = Math.max(1, Number(maxAttempts) || 1);
+    const attemptValue = maxAttempts === "" ? 999999 : Math.max(1, Number(maxAttempts) || 1);
 
     try {
       setIsSubmitting(true);
@@ -214,7 +216,7 @@ const ExamInstanceSettingsStep = ({
         }
 
         await updateExamInstanceApi(examId, instanceId, payload);
-        alert("Cập nhật bài tập thành công!");
+        toast.success("Cập nhật bài tập thành công!");
       }
    
       else {
@@ -236,12 +238,12 @@ const ExamInstanceSettingsStep = ({
           sections,
           instance: payload,
         });
-        alert("Tạo bài tập thành công!");
+        toast.success("Tạo bài tập thành công!");
       }
 
       onDone?.();
     } catch (err) {
-      alert(
+      toast.error(
         err?.response?.data?.message || err?.message || "Lỗi khi lưu dữ liệu!"
       );
     } finally {
@@ -250,185 +252,212 @@ const ExamInstanceSettingsStep = ({
     }
   };
   
-  const isUnlimitedTime = instanceType === "Assignment" && !startTime && !endTime;
-  
   return (
-    <Box>
-      <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
-        Gắn bài & Cài đặt
-      </Typography>
+    <>
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
+      <Box>
+        <Typography variant="h6" fontWeight={600} sx={{ mb: 2 }}>
+          Gắn bài & Cài đặt
+        </Typography>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <TextField
-          select
-          fullWidth
-          label="Loại bài"
-          value={instanceType}
-          onChange={(e) => {
-            setInstanceType(e.target.value);
-            setSelectedUnits([]);
-            setSelectedClasses([]);
-            setTimeErrors({ startTime: "", endTime: "" });
-          }}
-          sx={{ mb: 3 }}
-        >
-          <MenuItem value="Assignment">Assignment</MenuItem>
-          <MenuItem value="Exam">Exam</MenuItem>
-        </TextField>
-
-        <TextField
-          select
-          fullWidth
-          label="Khóa học"
-          value={courseId}
-          onChange={(e) => setCourseId(e.target.value)}
-          sx={{ mb: 3 }}
-        >
-          {courses.map((c) => (
-            <MenuItem key={c.value} value={c.value}>
-              {c.label}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        {instanceType === "Assignment" && !loading && (
-          <Autocomplete
-            multiple
-            options={units}
-            getOptionLabel={(u) => u.UnitName}
-            value={units.filter((u) => selectedUnits.includes(u.UnitID))}
-            onChange={(e, val) => {
-              const newUnitIds = val.map((u) => u.UnitID);
-              setSelectedUnits(newUnitIds);
+        <Paper sx={{ p: 3, mb: 3 }}>
+          <TextField
+            select
+            fullWidth
+            label="Loại bài"
+            value={instanceType}
+            onChange={(e) => {
+              setInstanceType(e.target.value);
+              setSelectedUnits([]);
+              setSelectedClasses([]);
+              setTimeErrors({ startTime: "", endTime: "" });
             }}
-            renderInput={(params) => (
-              <TextField {...params} label="Chọn Units" />
-            )}
-          />
-        )}
+            sx={{ mb: 3 }}
+          >
+            <MenuItem value="Assignment">Assignment</MenuItem>
+            <MenuItem value="Exam">Exam</MenuItem>
+          </TextField>
 
-        {instanceType === "Exam" && !loading && (
-          <Autocomplete
-            multiple
-            options={classes}
-            getOptionLabel={(c) => c.ClassName}
-            value={classes.filter((c) => selectedClasses.includes(c.ClassID))}
-            onChange={(e, val) => {
-              const newClassIds = val.map((c) => c.ClassID);
-              setSelectedClasses(newClassIds);
-            }}
-            renderInput={(params) => (
-              <TextField {...params} label="Chọn Lớp" />
-            )}
-          />
-        )}
+          <TextField
+            select
+            fullWidth
+            label="Khóa học"
+            value={courseId}
+            onChange={(e) => setCourseId(e.target.value)}
+            sx={{ mb: 3 }}
+          >
+            {courses.map((c) => (
+              <MenuItem key={c.value} value={c.value}>
+                {c.label}
+              </MenuItem>
+            ))}
+          </TextField>
 
-        {loading && (
-          <Box textAlign="center" mt={2}>
-            <CircularProgress size={24} />
-          </Box>
-        )}
-      </Paper>
-
-      <Paper sx={{ p: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={6}>
-            <TextField
-              fullWidth
-              type="datetime-local"
-              label={instanceType === "Exam" ? "Ngày bắt đầu *" : "Start time (tùy chọn)"}
-              InputLabelProps={{ shrink: true }}
-              value={startTime}
-              onChange={(e) => {
-                setStartTime(e.target.value);
-                if (timeErrors.startTime) {
-                  setTimeErrors({ ...timeErrors, startTime: "" });
-                }
+          {instanceType === "Assignment" && !loading && (
+            <Autocomplete
+              multiple
+              options={units}
+              getOptionLabel={(u) => u.UnitName}
+              value={units.filter((u) => selectedUnits.includes(u.UnitID))}
+              onChange={(e, val) => {
+                const newUnitIds = val.map((u) => u.UnitID);
+                setSelectedUnits(newUnitIds);
               }}
-              inputProps={{
-                min: new Date().toISOString().slice(0, 16)
-              }}
-              error={!!timeErrors.startTime}
-              helperText={timeErrors.startTime}
+              renderInput={(params) => (
+                <TextField {...params} label="Chọn Units" />
+              )}
             />
-          </Grid>
-
-          <Grid item xs={6}>
-            <TextField
-              fullWidth
-              type="datetime-local"
-              label={instanceType === "Exam" ? "Ngày kết thúc *" : "Ngày kết thúc *"}
-              InputLabelProps={{ shrink: true }}
-              value={endTime}
-              onChange={(e) => {
-                setEndTime(e.target.value);
-                if (timeErrors.endTime) {
-                  setTimeErrors({ ...timeErrors, endTime: "" });
-                }
-              }}
-              error={!!timeErrors.endTime}
-              helperText={timeErrors.endTime}
-            />
-          </Grid>
-          
-          {instanceType === "Assignment" && (
-            <Grid item xs={12}>
-              <Alert severity="info">
-                <strong>Assignment:</strong> Có thể bỏ trống cả 2 trường thời gian để tạo bài tập vô thời hạn
-              </Alert>
-            </Grid>
           )}
-          
-          <Grid item xs={12}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isRandomQuestion}
-                  onChange={(e) =>
-                    setIsRandomQuestion(e.target.checked)
-                  }
-                />
-              }
-              label="Xáo trộn câu hỏi"
-            />
 
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={isRandomAnswer}
-                  onChange={(e) =>
-                    setIsRandomAnswer(e.target.checked)
-                  }
-                />
-              }
-              label="Xáo trộn đáp án"
+          {instanceType === "Exam" && !loading && (
+            <Autocomplete
+              multiple
+              options={classes}
+              getOptionLabel={(c) => c.ClassName}
+              value={classes.filter((c) => selectedClasses.includes(c.ClassID))}
+              onChange={(e, val) => {
+                const newClassIds = val.map((c) => c.ClassID);
+                setSelectedClasses(newClassIds);
+              }}
+              renderInput={(params) => (
+                <TextField {...params} label="Chọn Lớp" />
+              )}
             />
-          </Grid>
+          )}
 
-          <Grid item xs={6}>
-            <TextField
-              fullWidth
-              type="number"
-              label="Số lần làm bài"
-              value={maxAttempts}
-              onChange={(e) => setMaxAttempts(e.target.value)}
-              inputProps={{ min: 1 }}
-            />
+          {loading && (
+            <Box textAlign="center" mt={2}>
+              <CircularProgress size={24} />
+            </Box>
+          )}
+        </Paper>
+
+        <Paper sx={{ p: 3 }}>
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                type="datetime-local"
+                label={instanceType === "Exam" ? "Ngày bắt đầu *" : "Start time (tùy chọn)"}
+                InputLabelProps={{ shrink: true }}
+                value={startTime}
+                onChange={(e) => {
+                  setStartTime(e.target.value);
+                  if (timeErrors.startTime) {
+                    setTimeErrors({ ...timeErrors, startTime: "" });
+                  }
+                }}
+                inputProps={{
+                  min: new Date().toISOString().slice(0, 16)
+                }}
+                error={!!timeErrors.startTime}
+                helperText={timeErrors.startTime}
+              />
+            </Grid>
+
+            <Grid item xs={6}>
+              <TextField
+                fullWidth
+                type="datetime-local"
+                label={instanceType === "Exam" ? "Ngày kết thúc *" : "Ngày kết thúc *"}
+                InputLabelProps={{ shrink: true }}
+                value={endTime}
+                onChange={(e) => {
+                  setEndTime(e.target.value);
+                  if (timeErrors.endTime) {
+                    setTimeErrors({ ...timeErrors, endTime: "" });
+                  }
+                }}
+                error={!!timeErrors.endTime}
+                helperText={timeErrors.endTime}
+              />
+            </Grid>
+            
+            {instanceType === "Assignment" && (
+              <Grid item xs={12}>
+                <Alert severity="info">
+                  <strong>Assignment:</strong> Có thể bỏ trống cả 2 trường thời gian để tạo bài tập vô thời hạn
+                </Alert>
+              </Grid>
+            )}
+            
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                type="number"
+                label="Số lần làm bài"
+                value={maxAttempts === "" ? "" : maxAttempts}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "") {
+                    setMaxAttempts("");
+                  } else {
+                    const num = parseInt(val);
+                    if (num <= 0) {
+                      setMaxAttempts(1);
+                    } else {
+                      setMaxAttempts(num);
+                    }
+                  }
+                }}
+                inputProps={{ min: 1 }}
+                placeholder="Nhập số lần hoặc để trống = vô hạn"
+              />
+            </Grid>
+
+            <Grid item xs={12} sm={6}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, height: '100%' }}>
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isRandomQuestion}
+                      onChange={(e) =>
+                        setIsRandomQuestion(e.target.checked)
+                      }
+                    />
+                  }
+                  label="Xáo trộn câu hỏi"
+                />
+
+                <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isRandomAnswer}
+                      onChange={(e) =>
+                        setIsRandomAnswer(e.target.checked)
+                      }
+                    />
+                  }
+                  label="Xáo trộn đáp án"
+                />
+              </Box>
+            </Grid>
           </Grid>
-        </Grid>
-      </Paper>
-      
-      <Box mt={3} textAlign="right">
-        <Button
-          variant="contained"
-          size="large"
-          onClick={handleSave}
-          disabled={loading || isSubmitting}
-        >
-          {loading || isSubmitting ? "Đang xử lý..." : "Hoàn tất"}
-        </Button>
+        </Paper>
+        
+        <Box mt={3} textAlign="right">
+          <Button
+            variant="contained"
+            size="large"
+            onClick={handleSave}
+            disabled={loading || isSubmitting}
+          >
+            {loading || isSubmitting ? "Đang xử lý..." : "Hoàn tất"}
+          </Button>
+        </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 
