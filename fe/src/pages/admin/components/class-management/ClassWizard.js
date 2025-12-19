@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { toast } from "react-toastify";
 import dayjs from "dayjs";
 import {
   dayOfWeekToDay,
@@ -263,15 +264,6 @@ const ClassWizard = ({
     formData.scheduleDetail.OpendatePlan ||
     formData.schedule.OpendatePlan ||
     "";
-
-  // const hasZeroAvailableSlots =
-  //   !slotAvailabilityStatus.checking &&
-  //   slotAvailabilityStatus.availableSlots === 0 &&
-  //   (formData.scheduleDetail.DaysOfWeek?.length || 0) > 0; // Không dùng
-
-  // Memo hóa tập tất cả TimeslotID đã chọn (dùng chung cho nhiều chỗ)
-  // Phải định nghĩa trước khi sử dụng trong hasInsufficientSlots
-  // ✅ Dùng utility function để tránh lặp lại logic
   const allSelectedTimeslotIdsMemo = useMemo(
     () =>
       calculateAllSelectedTimeslotIds(
@@ -429,7 +421,6 @@ const ClassWizard = ({
             continue;
           }
 
-          // ✅ TÁCH RÕ 2 TRƯỜNG HỢP: TimeslotID số hoặc string "HH:mm-HH:mm"
           let selectedStartTime = "";
           let selectedEndTime = "";
           let selectedTimeslotDay = null;
@@ -505,7 +496,6 @@ const ClassWizard = ({
             continue;
           }
 
-          // ✅ Gọi API getTimeslotLockReasons
           if (!instructorId) {
             continue;
           }
@@ -555,16 +545,13 @@ const ClassWizard = ({
         availableDaysPerTimeslot.push(availableDaysForThisSlot);
       }
 
-      // ✅ Lấy GIAO của tất cả các mảng
       let availableDays = [];
 
       if (availableDaysPerTimeslot.length === 0) {
         availableDays = [];
       } else if (availableDaysPerTimeslot.length === 1) {
-        // Chỉ có 1 timeslot → lấy luôn
         availableDays = availableDaysPerTimeslot[0];
       } else {
-        // Có nhiều timeslot → lấy giao
         availableDays = availableDaysPerTimeslot.reduce(
           (intersection, currentArray) => {
             return intersection.filter((day) => currentArray.includes(day));
@@ -599,7 +586,7 @@ const ClassWizard = ({
     instructorType,
     parttimeAvailableSlotKeySet,
     alternativeStartDateSearch.showResults,
-    reloadAvailableDays, // ✅ Trigger reload khi chọn/bỏ chọn timeslot
+    reloadAvailableDays,
   ]);
 
   const scheduleStartDate =
@@ -607,6 +594,8 @@ const ClassWizard = ({
     formData.schedule.OpendatePlan ||
     "";
   const isEditMode = Boolean(classId);
+  // Tự động khóa Giảng viên và Khóa/Môn khi đang chỉnh sửa lớp học
+  const effectiveLockBasicInfo = lockBasicInfo || isEditMode;
   const classDisplayName =
     (formData.Name && formData.Name.trim()) ||
     classData?.Name?.trim() ||
@@ -1416,11 +1405,6 @@ const ClassWizard = ({
     }));
   }, [formData.scheduleDetail.EnddatePlan]);
 
-  // Generate preview sessions from schedule detail
-  // Logic "Nhảy cóc & Tịnh tiến": Xử lý lịch bận cục bộ ( 'Holiday')
-  // - Normal: Buổi học bình thường
-  // - Skipped: Ngày trùng lịch bận cục bộ
-  // - Extended: Buổi dôi ra ở cuối danh sách do thêm lại ca học
   const generatePreviewSessions = async (
     startDate,
     endDate,
@@ -1457,10 +1441,7 @@ const ClassWizard = ({
     }
 
     const sessions = [];
-    let skipCount = 0; // Đếm số buổi bị bỏ qua do HOLIDAY/OTHER (không push vào sessions)
-
-    // Parse startDate và endDate đúng cách để tránh timezone issues
-    // ✅ Dùng utility functions để tránh lặp lại logic
+    let skipCount = 0;
     let start = parseDateString(startDate);
     let end = calculatedEndDate
       ? parseEndDateString(calculatedEndDate)
@@ -1474,8 +1455,6 @@ const ClassWizard = ({
 
     let sessionNumber = 1;
 
-    // Tính tổng số ca mỗi tuần
-    // ✅ Dùng utility function để tránh lặp lại logic
     const sessionsPerWeek = calculateSessionsPerWeek(
       daysOfWeek,
       timeslotsByDay
@@ -1549,15 +1528,9 @@ const ClassWizard = ({
             originalTimeslot.EndTime || originalTimeslot.endTime || ""
           );
 
-          // QUAN TRỌNG: Dùng TimeslotID gốc (từ timeslot được chọn ban đầu)
-          // để đảm bảo DRAFT class có cùng set TimeslotID cho tất cả các ngày
-          // Backend sẽ xử lý việc map timeslot với ngày khi tạo sessions thực tế
-          // Chỉ check xem timeslot có hợp lệ cho ngày này không (để cảnh báo nếu cần)
           const originalTimeslotId =
             originalTimeslot.TimeslotID || originalTimeslot.id;
 
-          // Tìm timeslot cho ngày này có cùng StartTime-EndTime (để check conflict)
-          // Dùng utility function để tránh lặp lại logic
           const dayTimeslot = findTimeslotForDay({
             timeslots,
             selectedStartTime,
@@ -1566,8 +1539,6 @@ const ClassWizard = ({
             normalizeTimeString,
           });
 
-          // Dùng TimeslotID gốc, nhưng dùng dayTimeslot (nếu tìm thấy) để lấy thông tin StartTime/EndTime
-          // Nếu không tìm thấy dayTimeslot, dùng originalTimeslot
           const timeslotToUse = dayTimeslot || originalTimeslot;
           validTimeslotsForDay.push({
             timeslotID: originalTimeslotId, // Dùng TimeslotID gốc
@@ -1584,21 +1555,13 @@ const ClassWizard = ({
           return startTimeA.localeCompare(startTimeB);
         });
 
-        // Tạo session cho mỗi ca học hợp lệ trong ngày này
-        // Logic cũ: Hỗ trợ multiple timeslots cho mỗi ngày (không dùng cho DRAFT)
-        // Logic mới: Với DRAFT chỉ có một timeslot duy nhất, nhưng logic này vẫn hỗ trợ multiple timeslots
-        //   cho trường hợp edit lịch không phải DRAFT (cho phép chọn timeslot linh hoạt)
         for (let i = 0; i < validTimeslotsForDay.length; i++) {
-          // Kiểm tra xem đã đủ số buổi chưa (chỉ tạo khi chưa đủ)
           if (sessionsCreated >= maxSessions) {
             break; // Dừng vòng lặp for
           }
 
           const { timeslotID, timeslot } = validTimeslotsForDay[i];
 
-          // Kiểm tra lịch bận cục bộ:
-          // - HOLIDAY: khóa toàn bộ ngày (mọi timeslot trong ngày đó đều được coi là bận)
-          // - OTHER: chỉ khóa đúng timeslot đó
           const isBusy = instructorBusySchedule.some((busy) => {
             const status = (busy.Status || busy.status || "").toUpperCase();
             const sameDate = busy.Date === currentDateStr;
@@ -1650,9 +1613,6 @@ const ClassWizard = ({
       currentDate.setDate(currentDate.getDate() + 1);
     }
 
-    // Hàm riêng: Tạo các buổi Extended theo logic "Tự động Tịnh tiến"
-    // Hệ thống sẽ lấy ngày đúng lịch tiếp theo sau khi khóa học dự kiến kết thúc để làm buổi bù
-    // Tịnh tiến theo toàn bộ lịch học (tất cả ca trong ngày), không phải từng ca riêng lẻ
     const createExtendedSessions = (
       skippedCount,
       normalSessions,
@@ -1803,26 +1763,6 @@ const ClassWizard = ({
     const skippedPercentage =
       totalSessions > 0 ? (skippedSessionsCount / totalSessions) * 100 : 0;
 
-    // Nếu quá 50% buổi bị SKIP, hiển thị modal cảnh báo - Không dùng cho logic mới
-    // if (skippedPercentage > 50) {
-    //   setSkipWarningModal({
-    //     open: true,
-    //     skippedCount: skippedSessionsCount,
-    //     totalCount: totalSessions,
-    //     percentage: parseFloat(skippedPercentage.toFixed(2)),
-    //   });
-    // } else {
-    //   setSkipWarningModal({
-    //     open: false,
-    //     skippedCount: 0,
-    //     totalCount: 0,
-    //     percentage: 0,
-    //   });
-    // }
-
-    // Auto-update sessions trong formData (chỉ lấy Normal / Extended, bỏ qua Skipped)
-    // Title: "Session for class {classDisplayName}"
-    // Logic mới: Preserve ZoomUUID từ originalSessions khi edit mode
     const originalSessionsMap = new Map();
     if (isEditMode && originalSessions.length > 0) {
       originalSessions.forEach((origSession) => {
@@ -1874,7 +1814,6 @@ const ClassWizard = ({
     setFormData((prev) => ({ ...prev, sessions: sessionData }));
   };
 
-  // ✅ Hàm tính ngày kết thúc: endDatePlan = startDatePlan + (Numofsession / số ca/tuần, tối thiểu 2)
   const calculateEndDate = (
     startDate,
     numOfSessions,
@@ -1885,8 +1824,6 @@ const ClassWizard = ({
       return "";
     }
 
-    // Parse startDate đúng cách để tránh timezone issues
-    // ✅ Dùng utility function để tránh lặp lại logic
     const start = parseDateString(startDate);
     if (!start) {
       return "";
@@ -1898,7 +1835,6 @@ const ClassWizard = ({
       return "";
     }
 
-    // ✅ Tính số ca/tuần từ TimeslotsByDay và DaysOfWeek
     let sessionsPerWeek = 0;
     if (
       timeslotsByDay &&
@@ -1908,24 +1844,17 @@ const ClassWizard = ({
       sessionsPerWeek = calculateSessionsPerWeek(daysOfWeek, timeslotsByDay);
     }
 
-    // ✅ Số ca/tuần tối thiểu là 2
     sessionsPerWeek = Math.max(sessionsPerWeek, 1);
 
-    // ✅ Tính số tuần: số tuần = Numofsession / số ca/tuần
     const weeksNeeded = totalSessions / sessionsPerWeek;
 
-    // ✅ Tính endDate = startDate + số tuần
     const endDate = new Date(start);
     endDate.setDate(endDate.getDate() + weeksNeeded * 7);
     endDate.setHours(23, 59, 59, 999); // Đảm bảo 23:59:59 để không mất buổi cuối
 
-    // ✅ Dùng utility function để tránh lặp lại logic
     return formatDateToString(endDate);
   };
 
-  // Logic cũ: Lọc timeslots theo Day cho từng ngày trong tuần (không dùng cho logic mới)
-  // Logic mới: Chọn timeslot trước → không cần lọc timeslots theo ngày nữa
-  // Vẫn giữ lại vì được dùng trong grid (logic cũ) cho edit mode không phải DRAFT
   const timeslotsByDayOfWeek = useMemo(() => {
     if (!timeslots || timeslots.length === 0) return {};
 
@@ -1943,35 +1872,6 @@ const ClassWizard = ({
           return timeslotDay === dayFormat;
         });
 
-        // Lọc theo search term nếu có - Không dùng cho logic mới
-        // if (timeslotSearchTerm) {
-        //   const searchLower = timeslotSearchTerm.toLowerCase();
-        //   dayTimeslots = dayTimeslots.filter((timeslot) => {
-        //     const startTime = (
-        //       timeslot.StartTime ||
-        //       timeslot.startTime ||
-        //       ""
-        //     ).toLowerCase();
-        //     const endTime = (
-        //       timeslot.EndTime ||
-        //       timeslot.endTime ||
-        //       ""
-        //     ).toLowerCase();
-        //     const day = (timeslot.Day || timeslot.day || "").toLowerCase();
-        //     const description = (
-        //       timeslot.Description ||
-        //       timeslot.description ||
-        //       ""
-        //     ).toLowerCase();
-        //     return (
-        //       startTime.includes(searchLower) ||
-        //       endTime.includes(searchLower) ||
-        //       day.includes(searchLower) ||
-        //       description.includes(searchLower)
-        //     );
-        //   });
-        // }
-
         result[dayOfWeek] = dayTimeslots;
       });
     }
@@ -1979,9 +1879,6 @@ const ClassWizard = ({
     return result;
   }, [timeslots, formData.scheduleDetail.DaysOfWeek]); // Bỏ timeslotSearchTerm - không dùng cho logic mới
 
-  // Logic cũ: Tính toán các time range rows (không dùng cho logic mới)
-  // Logic mới: Chọn timeslot trước → không cần tính time range rows nữa
-  // Vẫn giữ lại vì được dùng trong grid (logic cũ) cho edit mode không phải DRAFT
   const timeRangeRows = useMemo(() => {
     if (
       !formData.scheduleDetail.DaysOfWeek ||
@@ -2038,7 +1935,7 @@ const ClassWizard = ({
   useEffect(() => {
     if (
       currentStep === 3 &&
-      !alternativeStartDateSearch.showResults && // Không tính toán khi ở chế độ tìm kiếm
+      !alternativeStartDateSearch.showResults &&
       formData.scheduleDetail.OpendatePlan &&
       formData.schedule.Numofsession &&
       formData.scheduleDetail.TimeslotsByDay &&
@@ -3756,7 +3653,7 @@ const ClassWizard = ({
               setFormData={setFormData}
               errors={errors}
               readonly={readonly}
-              lockBasicInfo={lockBasicInfo}
+              lockBasicInfo={effectiveLockBasicInfo}
               instructors={instructors}
               filteredInstructors={filteredInstructors}
               instructorSearchTerm={instructorSearchTerm}
@@ -4292,7 +4189,7 @@ const ClassWizard = ({
                     // Gọi handleSubmit để lưu thay đổi (async, sẽ đợi trong handleSubmit)
                     await handleSubmit();
                   } catch (error) {
-                    alert("Có lỗi khi lưu thay đổi. Vui lòng thử lại.");
+                    toast.error("Có lỗi khi lưu thay đổi. Vui lòng thử lại.");
                   }
                 }}
                 style={{
@@ -4594,7 +4491,9 @@ const ClassWizard = ({
                       open: false,
                     });
                   } catch (error) {
-                    alert("Có lỗi khi xóa các buổi học. Vui lòng thử lại.");
+                    toast.error(
+                      "Có lỗi khi xóa các buổi học. Vui lòng thử lại."
+                    );
                   }
                 }}
                 style={{

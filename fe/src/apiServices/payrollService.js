@@ -3,12 +3,16 @@ import apiClient from "./apiClient";
 export const getInstructorPayrollApi = async (
   startDate,
   endDate,
-  instructorId = null
+  instructorId = null,
+  page = 1,
+  limit = 10
 ) => {
   try {
     const params = {
       startDate,
       endDate,
+      page,
+      limit,
     };
     if (instructorId) {
       params.instructorId = instructorId;
@@ -17,9 +21,7 @@ export const getInstructorPayrollApi = async (
     return response.data;
   } catch (error) {
     console.error(error);
-    throw (
-      error.response?.data
-    );
+    throw error.response?.data;
   }
 };
 

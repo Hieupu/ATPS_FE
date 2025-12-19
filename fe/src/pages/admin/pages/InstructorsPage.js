@@ -63,6 +63,7 @@ import classService from "../../../apiServices/classService";
 import accountService from "../../../apiServices/accountService";
 import certificateService from "../../../apiServices/certificateService";
 import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 import {
   validateEmail,
   validatePassword,
@@ -121,6 +122,23 @@ const AdminInstructorsPage = () => {
   const [newErrors, setNewErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
+
   useEffect(() => {
     loadInstructors();
   }, []);
@@ -143,7 +161,7 @@ const AdminInstructorsPage = () => {
       setInstructors(mappedInstructors);
     } catch (error) {
       setInstructors([]);
-      alert("Không thể tải danh sách giảng viên từ database!");
+      showToast("error", "Không thể tải danh sách giảng viên từ database!");
     } finally {
       setLoading(false);
     }
@@ -323,18 +341,19 @@ const AdminInstructorsPage = () => {
               selectedInstructor.AccID,
               accountData
             );
-            alert("Cập nhật giảng viên và tài khoản thành công!");
+            showToast("success", "Cập nhật giảng viên và tài khoản thành công!");
           } catch (accountError) {
             const errorMessage =
               accountError.response?.data?.message ||
               accountError.message ||
               "Lỗi không xác định";
-            alert(
+            showToast(
+              "warn",
               `Cập nhật giảng viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}`
             );
           }
         } else {
-          alert("Cập nhật giảng viên thành công!");
+          showToast("success", "Cập nhật giảng viên thành công!");
         }
       } else {
         const instructorData = {
@@ -356,14 +375,14 @@ const AdminInstructorsPage = () => {
         };
 
         await instructorService.createInstructor(instructorData);
-        alert("Tạo giảng viên mới thành công!");
+        showToast("success", "Tạo giảng viên mới thành công!");
       }
 
       closeInstructorModal();
       await loadInstructors();
     } catch (error) {
       console.error("Save error:", error);
-      alert(error?.message || "Không thể lưu dữ liệu");
+      showToast("error", error?.message || "Không thể lưu dữ liệu");
     } finally {
       setSaving(false);
     }
@@ -405,7 +424,8 @@ const AdminInstructorsPage = () => {
       setShowClassesDialog(true);
     } catch (error) {
       setInstructorClasses([]);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể tải danh sách lớp học từ database!"
@@ -436,14 +456,16 @@ const AdminInstructorsPage = () => {
         await accountService.updateAccount(instructor.AccID, {
           Status: newStatus,
         });
-        alert(
+        showToast(
+          "success",
           `${getStatusButtonLabel(instructor.Status || "active")} thành công!`
         );
         await loadInstructors();
       }
     } catch (error) {
       console.error("Toggle instructor status error:", error);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể đổi trạng thái"
@@ -471,7 +493,8 @@ const AdminInstructorsPage = () => {
       const failedCount = results.filter((r) => !r.success).length;
 
       if (failedCount > 0) {
-        alert(
+        showToast(
+          "warn",
           `Đã hủy ${successCount} lớp, ${failedCount} lớp thất bại. Vui lòng kiểm tra lại.`
         );
       }
@@ -492,7 +515,8 @@ const AdminInstructorsPage = () => {
       await accountService.updateAccount(statusChangeInstructor.AccID, {
         Status: newStatus,
       });
-      alert(
+      showToast(
+        "success",
         `${getStatusButtonLabel(statusChangeInstructor.Status || "active")} thành công!`
       );
       await loadInstructors();
@@ -534,7 +558,8 @@ const AdminInstructorsPage = () => {
       setShowCoursesDialog(true);
     } catch (error) {
       setInstructorCourses([]);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể tải danh sách khóa học từ database!"
@@ -1111,7 +1136,7 @@ const AdminInstructorsPage = () => {
                 `/admin/instructor-certificates?instructorId=${instructorId}`
               );
             } else {
-              alert("Không tìm thấy thông tin giảng viên");
+              showToast("error", "Không tìm thấy thông tin giảng viên");
             }
             setAnchorEl(null);
           }}
@@ -1127,7 +1152,7 @@ const AdminInstructorsPage = () => {
                 `/admin/session-change-requests?instructorId=${instructorId}`
               );
             } else {
-              alert("Không tìm thấy thông tin giảng viên");
+              showToast("error", "Không tìm thấy thông tin giảng viên");
             }
             setAnchorEl(null);
           }}

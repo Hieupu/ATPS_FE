@@ -18,12 +18,7 @@ import {
 import EventIcon from "@mui/icons-material/Event";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ReplayIcon from "@mui/icons-material/Replay";
-/**
- * Step 3 Edit: Chỉ đổi lịch các buổi bị ảnh hưởng khi lùi ngày bắt đầu
- * - Chỉ hiển thị các buổi cần đổi (Date < OpendatePlan mới)
- * - Không cho phép thêm/xóa buổi
- * - Không cho Next nếu còn buổi chưa đổi
- */
+
 const ClassWizardStep3Edit = ({
   formData,
   setFormData,
@@ -31,7 +26,7 @@ const ClassWizardStep3Edit = ({
   timeslots,
   originalSessions,
   requiredSessions,
-  onValidationChange, // Callback để báo cho ClassWizard biết còn buổi cần đổi không
+  onValidationChange, 
 }) => {
   const timeslotMap = useMemo(() => {
     const map = {};
@@ -143,9 +138,6 @@ const ClassWizardStep3Edit = ({
       const sessionDate = dayjs(session.Date);
       const isBefore = sessionDate.isBefore(startDate, "day");
 
-      // Coi session là original nếu:
-      // 1. Có flag isOriginal === true, HOẶC
-      // 2. Có SessionID (từ DB) và không phải là session mới (isNew !== true)
       const isOriginalSession =
         session.isOriginal === true ||
         ((session.SessionID || session.id) != null && session.isNew !== true);

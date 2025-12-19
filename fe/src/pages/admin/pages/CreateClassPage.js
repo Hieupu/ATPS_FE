@@ -137,15 +137,14 @@ const CreateClassPage = () => {
       let changeType = "NONE";
 
       if (isEdit && classData) {
-        // Detect metadata changes
+  
         metadataChanges = detectMetadataChanges(submitData, classData);
 
-        // Detect schedule changes
+
         const newSessions = submitData.sessions || [];
         const oldSessions = classData.sessions || [];
         scheduleChanges = detectScheduleChanges(newSessions, oldSessions);
 
-        // Determine change type
         changeType = determineChangeType(metadataChanges, scheduleChanges);
 
         console.log("[CreateClassPage] Change detection:", {
@@ -189,9 +188,6 @@ const CreateClassPage = () => {
         Maxstudent: submitData.Maxstudent,
         Status: submitData.Status || "DRAFT",
         CourseID: submitData.CourseID || null,
-
-        // Backward compatibility fields (deprecated - giữ lại để tương thích với API cũ)
-        // TODO: Remove sau khi backend không còn sử dụng
         StartDate: submitData.StartDate || submitData.OpendatePlan,
         ExpectedSessions:
           submitData.ExpectedSessions || submitData.Numofsession,
@@ -202,8 +198,6 @@ const CreateClassPage = () => {
       let classIdToUse = classId;
 
       if (isEdit) {
-        // Update existing class (metadata không ảnh hưởng sessions)
-        // Lưu ý: OpendatePlan, Numofsession, InstructorID sẽ được xử lý trong updateClassSchedule
         const metadataOnlyPayload = buildMetadataPayload(metadataChanges);
         if (Object.keys(metadataOnlyPayload).length > 0) {
           resultClass = await classService.updateClass(

@@ -9,7 +9,6 @@ import {
   addMonths,
   subMonths,
   isSameDay,
-  addDays,
   startOfWeek,
   endOfWeek,
 } from "date-fns";
@@ -21,7 +20,6 @@ import {
   Card,
   CardContent,
   CircularProgress,
-  Paper,
   IconButton,
   FormControl,
   InputLabel,
@@ -34,18 +32,14 @@ import {
   Divider,
   Alert,
 } from "@mui/material";
-import {
-  ArrowBack,
-  ArrowForward,
-  Add,
-  CalendarToday,
-} from "@mui/icons-material";
+import { ArrowBack, ArrowForward } from "@mui/icons-material";
 import classService from "../../../apiServices/classService";
 import { useAuth } from "../../../contexts/AuthContext";
 import { dayOfWeekToDay, getDayFromDate } from "../../../utils/validate";
 import SessionSuggestionModal from "../components/class-management/SessionSuggestionModal";
 import ClassSessionScheduleModal from "../components/class-management/ClassSessionScheduleModal";
 import dayjs from "dayjs";
+import { toast } from "react-toastify";
 import "./style.css";
 
 const SchedulePage = () => {
@@ -92,6 +86,23 @@ const SchedulePage = () => {
 
   // Multiple sessions input for selected date - sử dụng TimeslotID
   const [sessions, setSessions] = useState([{ TimeslotID: "" }]);
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -180,7 +191,7 @@ const SchedulePage = () => {
       }
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
-      alert(" Không thể tải thông tin lớp học!");
+      showToast("error", "Không thể tải thông tin lớp học!");
     } finally {
       setLoading(false);
     }
@@ -294,33 +305,32 @@ const SchedulePage = () => {
 
     if (!instructorId) {
       console.warn("InstructorID not found in course object:", courseObj);
-    } else {
-      console.log(
-        "Found InstructorID:",
-        instructorId,
-        "from course:",
-        courseObj
-      );
     }
 
     return instructorId ? parseInt(instructorId) : null;
   };
 
+  // Title chuẩn cho session (đồng bộ với Wizard): "Session for class {tên lớp}"
+  const getStandardSessionTitle = () => {
+    const className = course?.Name || course?.title || "";
+    return className ? `Session for class ${className}` : "Session for class";
+  };
+
   const handleAddSessions = async () => {
     if (!selectedDate) {
-      alert(" Vui lòng chọn ngày!");
+      showToast("warn", "Vui lòng chọn ngày!");
       return;
     }
 
     // Kiểm tra course đã được load chưa
     if (!course) {
-      alert(" Đang tải thông tin lớp học. Vui lòng đợi...");
+      showToast("info", "Đang tải thông tin lớp học. Vui lòng đợi...");
       return;
     }
 
     // Check ngày đã qua
     if (isDatePast(selectedDate)) {
-      alert(" Không thể thêm lịch cho ngày đã qua!");
+      showToast("error", "Không thể thêm lịch cho ngày đã qua!");
       return;
     }
 
@@ -336,7 +346,7 @@ const SchedulePage = () => {
     });
 
     if (basicErrors.length > 0) {
-      alert(" Lỗi:\n" + basicErrors.join("\n"));
+      showToast("error", `Lỗi:\n${basicErrors.join("\n")}`);
       return;
     }
 
@@ -347,12 +357,12 @@ const SchedulePage = () => {
       .map((session) => ({
         TimeslotID: session.TimeslotID,
         Date: dateStr,
-        Title: `Session ${format(selectedDate, "dd/MM/yyyy")}`,
+        Title: getStandardSessionTitle(),
         Description: "",
       }));
 
     if (sessionsToCreate.length === 0) {
-      alert(" Không có lịch nào được thêm!");
+      showToast("warn", "Không có lịch nào được thêm!");
       return;
     }
 
@@ -362,8 +372,9 @@ const SchedulePage = () => {
     const totalAfterAdd = currentSessionsCount + sessionsToCreate.length;
 
     if (numofsession > 0 && currentSessionsCount >= numofsession) {
-      alert(
-        ` Lớp học đã đủ số buổi dự kiến!\n\n` +
+      showToast(
+        "warn",
+        `Lớp học đã đủ số buổi dự kiến!\n\n` +
           `Số buổi dự kiến: ${numofsession}\n` +
           `Số buổi hiện tại: ${currentSessionsCount}\n\n` +
           `Không thể thêm buổi học nữa.`
@@ -372,8 +383,9 @@ const SchedulePage = () => {
     }
 
     if (numofsession > 0 && totalAfterAdd > numofsession) {
-      alert(
-        ` Số buổi học vượt quá số buổi dự kiến!\n\n` +
+      showToast(
+        "warn",
+        `Số buổi học vượt quá số buổi dự kiến!\n\n` +
           `Số buổi dự kiến: ${numofsession}\n` +
           `Số buổi hiện tại: ${currentSessionsCount}\n` +
           `Số buổi sẽ thêm: ${sessionsToCreate.length}\n` +
@@ -387,7 +399,7 @@ const SchedulePage = () => {
 
     // Kiểm tra ClassID
     if (!courseId || isNaN(parseInt(courseId))) {
-      alert(" Lỗi: Không có thông tin lớp học. Vui lòng thử lại!");
+      showToast("error", "Lỗi: Không có thông tin lớp học. Vui lòng thử lại!");
       return;
     }
 
@@ -395,8 +407,9 @@ const SchedulePage = () => {
     const instructorId = getInstructorIdFromCourse(course);
     if (!instructorId) {
       console.error("Course object:", course);
-      alert(
-        " Lỗi: Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại thông tin lớp học!\n\nLớp học cần có InstructorID để tạo session."
+      showToast(
+        "error",
+        "Lỗi: Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại thông tin lớp học!\n\nLớp học cần có InstructorID để tạo session."
       );
       return;
     }
@@ -673,23 +686,25 @@ const SchedulePage = () => {
 
         // Hiển thị thông báo - CHỈ báo thành công nếu có sessions thật sự được tạo
         if (created.length > 0) {
-          alert(
-            ` Kết quả: ${created.length} lịch học thành công, ${conflicts.length} lịch học bị trùng/lỗi.\n\nVui lòng xem chi tiết trong modal.`
+          showToast(
+            "warn",
+            `Kết quả: ${created.length} lịch học thành công, ${conflicts.length} lịch học bị trùng/lỗi.\n\nVui lòng xem chi tiết trong modal.`
           );
         } else {
           // TẤT CẢ đều bị conflict - KHÔNG có gì được tạo
-          alert(
-            ` Không có lịch học nào được tạo!\n\n Tất cả ${conflicts.length} lịch học đều bị trùng hoặc lỗi.\n\nVui lòng xem chi tiết trong modal.`
+          showToast(
+            "error",
+            `Không có lịch học nào được tạo!\n\nTất cả ${conflicts.length} lịch học đều bị trùng hoặc lỗi.\n\nVui lòng xem chi tiết trong modal.`
           );
         }
       } else if (created.length > 0) {
         // Không có conflict, tất cả thành công
         console.log(" Tất cả sessions thành công, không có conflicts");
-        alert(` Đã thêm ${created.length} lịch học thành công!`);
+        showToast("success", `Đã thêm ${created.length} lịch học thành công!`);
       } else {
         // Không có gì được tạo (trường hợp hiếm)
         console.log(" Không có sessions nào được tạo");
-        alert(` Không có lịch học nào được tạo.`);
+        showToast("warn", "Không có lịch học nào được tạo.");
       }
 
       // Reload schedules
@@ -702,7 +717,7 @@ const SchedulePage = () => {
       console.error("Lỗi khi tạo sessions:", error);
       const errorMessage =
         error?.message || "Không thể thêm lịch học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
+      showToast("error", `Lỗi: ${errorMessage}`);
     }
   };
 
@@ -712,7 +727,7 @@ const SchedulePage = () => {
 
   const handleRemoveSessionRow = (index) => {
     if (sessions.length === 1) {
-      alert(" Phải có ít nhất một ca!");
+      showToast("warn", "Phải có ít nhất một ca!");
       return;
     }
     setSessions(sessions.filter((_, idx) => idx !== index));
@@ -725,12 +740,9 @@ const SchedulePage = () => {
     setSessions(updated);
   };
 
-  const getTimeslotMeta = (timeslotId) =>
-    timeslots.find((t) => (t.TimeslotID || t.id) === timeslotId);
-
   const handleAutoMakeup = async () => {
     if (!course || !courseId) {
-      alert(" Đang tải thông tin lớp học. Vui lòng đợi...");
+      showToast("info", "Đang tải thông tin lớp học. Vui lòng đợi...");
       return;
     }
 
@@ -739,8 +751,9 @@ const SchedulePage = () => {
     const missingSessions = numofsession - currentSessionsCount;
 
     if (missingSessions <= 0) {
-      alert(
-        ` Lớp học đã đủ số buổi dự kiến!\n\n` +
+      showToast(
+        "info",
+        `Lớp học đã đủ số buổi dự kiến!\n\n` +
           `Số buổi dự kiến: ${numofsession}\n` +
           `Số buổi hiện tại: ${currentSessionsCount}\n\n` +
           `Không cần bù thêm buổi học.`
@@ -749,8 +762,9 @@ const SchedulePage = () => {
     }
 
     if (numofsession === 0) {
-      alert(
-        " Lớp học chưa có số buổi dự kiến. Vui lòng cập nhật thông tin lớp học trước."
+      showToast(
+        "warn",
+        "Lớp học chưa có số buổi dự kiến. Vui lòng cập nhật thông tin lớp học trước."
       );
       return;
     }
@@ -758,7 +772,10 @@ const SchedulePage = () => {
     // Lấy InstructorID từ course
     const instructorId = getInstructorIdFromCourse(course);
     if (!instructorId) {
-      alert(" Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!");
+      showToast(
+        "error",
+        "Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!"
+      );
       return;
     }
 
@@ -768,7 +785,7 @@ const SchedulePage = () => {
     schedules.forEach((schedule) => {
       const timeslotId = schedule.timeslotId;
       if (timeslotId && !timeslotMap.has(timeslotId)) {
-        const timeslotMeta = getTimeslotMeta(timeslotId);
+        const timeslotMeta = getTimeslotById(timeslotId);
         if (timeslotMeta) {
           timeslotMap.set(timeslotId, {
             TimeslotID: timeslotId,
@@ -782,8 +799,9 @@ const SchedulePage = () => {
     });
 
     if (classTimeslots.length === 0) {
-      alert(
-        " Lớp học chưa có ca học nào. Vui lòng thêm ca học trước khi sử dụng tính năng bù tự động."
+      showToast(
+        "warn",
+        "Lớp học chưa có ca học nào. Vui lòng thêm ca học trước khi sử dụng tính năng bù tự động."
       );
       return;
     }
@@ -835,7 +853,7 @@ const SchedulePage = () => {
                 timeslotId: timeslot.TimeslotID,
                 startTime: timeslot.StartTime || null,
                 endTime: timeslot.EndTime || null,
-                title: `Buổi ${currentSessionsCount + i + 1} (bù)`,
+                title: getStandardSessionTitle(),
                 description: `Buổi học bù tự động`,
               };
               rollingStart = dayjs(candidate.date).add(1, "day");
@@ -871,8 +889,9 @@ const SchedulePage = () => {
       });
     } catch (error) {
       console.error("[handleAutoMakeup] Lỗi:", error);
-      alert(
-        ` Lỗi khi tìm buổi học bù: ${
+      showToast(
+        "error",
+        `Lỗi khi tìm buổi học bù: ${
           error?.message || "Không thể tạo gợi ý buổi học bù."
         }`
       );
@@ -896,8 +915,9 @@ const SchedulePage = () => {
     const totalAfterAdd = currentSessionsCount + suggestionsToAdd;
 
     if (numofsession > 0 && totalAfterAdd > numofsession) {
-      alert(
-        ` Số buổi học vượt quá số buổi dự kiến!\n\n` +
+      showToast(
+        "warn",
+        `Số buổi học vượt quá số buổi dự kiến!\n\n` +
           `Số buổi dự kiến: ${numofsession}\n` +
           `Số buổi hiện tại: ${currentSessionsCount}\n` +
           `Số buổi sẽ thêm: ${suggestionsToAdd}\n` +
@@ -912,9 +932,7 @@ const SchedulePage = () => {
       .map((item) => {
         const { suggestion, conflict } = item;
         return {
-          Title:
-            suggestion.title ||
-            `${conflict.conflictInfo?.sessionTitle || "Buổi học"} (bù)`,
+          Title: suggestion.title || getStandardSessionTitle(),
           Description: suggestion.description || `Buổi bù tự động`,
           Date: suggestion.date,
           TimeslotID: suggestion.timeslotId,
@@ -930,7 +948,10 @@ const SchedulePage = () => {
     try {
       const instructorId = getInstructorIdFromCourse(course);
       if (!instructorId) {
-        alert(" Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!");
+        showToast(
+          "error",
+          "Lớp học chưa có giảng viên được gán. Vui lòng kiểm tra lại!"
+        );
         return;
       }
 
@@ -979,18 +1000,25 @@ const SchedulePage = () => {
 
       if (created.length > 0) {
         await loadData();
-        alert(` Đã thêm ${created.length} buổi học bù thành công!`);
+        showToast(
+          "success",
+          `Đã thêm ${created.length} buổi học bù thành công!`
+        );
       }
 
       if (conflicts.length > 0) {
-        alert(` Có ${conflicts.length} buổi học bù bị trùng hoặc lỗi.`);
+        showToast(
+          "warn",
+          `Có ${conflicts.length} buổi học bù bị trùng hoặc lỗi.`
+        );
       }
 
       setSuggestionModal({ ...suggestionModal, open: false });
     } catch (error) {
       console.error("[handleApplySuggestions] Lỗi:", error);
-      alert(
-        ` Lỗi khi thêm buổi học bù: ${
+      showToast(
+        "error",
+        `Lỗi khi thêm buổi học bù: ${
           error?.message || "Không thể thêm buổi học bù."
         }`
       );
@@ -1002,7 +1030,7 @@ const SchedulePage = () => {
   const handleOpenRescheduleModal = (schedule) => {
     // Check xem buổi học đã qua chưa
     if (isDatePast(schedule.date)) {
-      alert(" Không thể đổi lịch học đã qua hoặc đang diễn ra!");
+      showToast("warn", "Không thể đổi lịch học đã qua hoặc đang diễn ra!");
       return;
     }
 
@@ -1015,12 +1043,15 @@ const SchedulePage = () => {
   // newSlot: { Date: "YYYY-MM-DD", TimeslotID: number|string }
   const handleRescheduleSession = async (newSlot) => {
     if (!newSlot || !newSlot.Date || !newSlot.TimeslotID) {
-      alert(" Vui lòng chọn ngày và ca học mới!");
+      showToast("warn", "Vui lòng chọn ngày và ca học mới!");
       return;
     }
 
     if (!rescheduleModal.session) {
-      alert(" Lỗi: Không tìm thấy thông tin session. Vui lòng thử lại!");
+      showToast(
+        "error",
+        "Lỗi: Không tìm thấy thông tin session. Vui lòng thử lại!"
+      );
       return;
     }
 
@@ -1029,7 +1060,10 @@ const SchedulePage = () => {
       rescheduleModal.session.id ||
       rescheduleModal.session.SessionID;
     if (!sessionId) {
-      alert(" Lỗi: Không tìm thấy ID của session. Vui lòng thử lại!");
+      showToast(
+        "error",
+        "Lỗi: Không tìm thấy ID của session. Vui lòng thử lại!"
+      );
       return;
     }
 
@@ -1045,7 +1079,8 @@ const SchedulePage = () => {
           newTimeslotId
         )) || {};
       if (learnerCheck?.conflicts?.length > 0 || learnerCheck?.hasConflicts) {
-        alert(
+        showToast(
+          "warn",
           learnerCheck?.message ||
             "Học viên của lớp có buổi trùng lịch với ca học mới. Vui lòng chọn lịch khác."
         );
@@ -1067,14 +1102,14 @@ const SchedulePage = () => {
         session: null,
       });
 
-      alert(" Đã đổi lịch học thành công!");
+      showToast("success", "Đã đổi lịch học thành công!");
     } catch (error) {
       console.error("Lỗi khi đổi lịch session:", error);
       const errorMessage =
         error?.message ||
         error?.response?.data?.message ||
         "Không thể đổi lịch học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
+      showToast("error", `Lỗi: ${errorMessage}`);
       setRescheduleModal((prev) => ({ ...prev, loading: false }));
     }
   };
@@ -1174,17 +1209,6 @@ const SchedulePage = () => {
     "SATURDAY",
     "SUNDAY",
   ];
-  const dayFilterOptions = [
-    { value: "", label: "Theo ngày đã chọn" },
-    { value: "MONDAY", label: "Thứ 2" },
-    { value: "TUESDAY", label: "Thứ 3" },
-    { value: "WEDNESDAY", label: "Thứ 4" },
-    { value: "THURSDAY", label: "Thứ 5" },
-    { value: "FRIDAY", label: "Thứ 6" },
-    { value: "SATURDAY", label: "Thứ 7" },
-    { value: "SUNDAY", label: "Chủ nhật" },
-  ];
-
   return (
     <Box sx={{ p: 1, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       {/* Header */}
@@ -1333,9 +1357,7 @@ const SchedulePage = () => {
           {/* Danh sách lịch đã có */}
           {getSchedulesForDate(selectedDate).length > 0 && (
             <div className="existing-schedules">
-              <h4>
-                📋 Lịch đã lên ({getSchedulesForDate(selectedDate).length})
-              </h4>
+              <h4>Lịch đã lên ({getSchedulesForDate(selectedDate).length})</h4>
               <div className="schedule-list">
                 {getSchedulesForDate(selectedDate).map((sch) => {
                   const isPast = isDatePast(sch.date);
@@ -1345,7 +1367,7 @@ const SchedulePage = () => {
                       className={`schedule-item-card ${isPast ? "past" : ""}`}
                     >
                       <div className="schedule-time-display">
-                        🕐 {sch.startTime.substring(0, 5)} -{" "}
+                        {sch.startTime.substring(0, 5)} -{" "}
                         {sch.endTime.substring(0, 5)}
                         {isPast && (
                           <span className="past-label"> (Đã qua)</span>

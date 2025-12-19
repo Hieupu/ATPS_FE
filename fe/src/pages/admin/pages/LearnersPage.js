@@ -43,6 +43,7 @@ import {
   EmojiEvents,
   TrendingUp,
   Edit,
+  Visibility,
   MoreVert,
   Lock,
   LockOpen,
@@ -51,6 +52,7 @@ import "./style.css";
 import learnerService from "../../../apiServices/learnerService";
 import accountService from "../../../apiServices/accountService";
 import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 import {
   validateEmail,
   validatePassword,
@@ -86,6 +88,23 @@ const LearnersPage = () => {
   const [showClassesDialog, setShowClassesDialog] = useState(false);
   const [learnerClasses, setLearnerClasses] = useState([]);
   const [loadingClasses, setLoadingClasses] = useState(false);
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
   const [formData, setFormData] = useState({
@@ -129,7 +148,7 @@ const LearnersPage = () => {
       setLearners(mappedLearners);
     } catch (error) {
       setLearners([]);
-      alert("Không thể tải danh sách học viên từ database!");
+      showToast("error", "Không thể tải danh sách học viên từ database!");
     } finally {
       setLoading(false);
     }
@@ -137,8 +156,7 @@ const LearnersPage = () => {
 
   const openLearnerModal = (learner) => {
     setSelectedLearner(learner);
-    // Lấy Gender từ learner object (đã được map từ account trong loadLearners)
-    // Gender đã được map trực tiếp vào learner object trong loadLearners()
+
     const learnerGender =
       learner?.Gender || learner?.account?.Gender || "other";
     setFormData({
@@ -203,12 +221,6 @@ const LearnersPage = () => {
         enrollments = data.data;
       }
 
-      // Map dữ liệu từ enrollments để hiển thị thông tin lớp học
-      // Backend enrollmentRepository.findByLearnerId trả về:
-      // - e.* (tất cả trường từ enrollment)
-      // - ClassName, ClassID, ClassStatus, OpendatePlan, Numofsession
-      // - InstructorName
-      // - CourseTitle, CourseDescription, etc.
       const mappedClasses = enrollments.map((enrollment) => {
         return {
           ClassID: enrollment.ClassID || "N/A",
@@ -233,7 +245,8 @@ const LearnersPage = () => {
       setLearnerClasses(mappedClasses);
     } catch (error) {
       setLearnerClasses([]);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể tải danh sách lớp học từ database!"
@@ -289,7 +302,7 @@ const LearnersPage = () => {
     try {
       setSaving(true);
       if (!selectedLearner) {
-        alert("Không tìm thấy thông tin học viên!");
+        showToast("error", "Không tìm thấy thông tin học viên!");
         return;
       }
 
@@ -344,25 +357,26 @@ const LearnersPage = () => {
             selectedLearner.AccID,
             accountData
           );
-          alert("Cập nhật học viên và tài khoản thành công!");
+          showToast("success", "Cập nhật học viên và tài khoản thành công!");
         } catch (accountError) {
           const errorMessage =
             accountError.response?.data?.message ||
             accountError.message ||
             "Lỗi không xác định";
-          alert(
+          showToast(
+            "warn",
             `Cập nhật học viên thành công, nhưng có lỗi khi cập nhật thông tin tài khoản:\n${errorMessage}`
           );
         }
       } else {
-        alert("Cập nhật học viên thành công!");
+        showToast("success", "Cập nhật học viên thành công!");
       }
 
       closeLearnerModal();
       await loadLearners();
     } catch (error) {
       console.error("Save error:", error);
-      alert(error?.message || "Không thể lưu dữ liệu");
+      showToast("error", error?.message || "Không thể lưu dữ liệu");
     } finally {
       setSaving(false);
     }
@@ -800,8 +814,8 @@ const LearnersPage = () => {
             setAnchorEl(null);
           }}
         >
-          <Edit sx={{ fontSize: 18, mr: 1.5 }} />
-          Chỉnh sửa
+          <Visibility sx={{ fontSize: 18, mr: 1.5 }} />
+          Xem
         </MenuItem>
         <MenuItem
           onClick={() => {
@@ -930,7 +944,7 @@ const LearnersPage = () => {
         open={showLearnerForm}
         onClose={closeLearnerModal}
         onSubmit={handleSubmitLearner}
-        title="Chỉnh sửa học viên"
+        title="Xem học viên"
         formData={formData}
         setFormData={setFormData}
         errors={newErrors}
@@ -939,6 +953,7 @@ const LearnersPage = () => {
         isEditing={true}
         showInstructorFields={false}
         showLearnerStatus={true}
+        readOnly={true}
       />
     </Box>
   );

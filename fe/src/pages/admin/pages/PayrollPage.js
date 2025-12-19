@@ -41,6 +41,16 @@ const PayrollPage = () => {
   const [startDate, setStartDate] = useState(dayjs().subtract(3, "month"));
   const [endDate, setEndDate] = useState(dayjs());
   const [selectedInstructor, setSelectedInstructor] = useState(null);
+  const [grandTotals, setGrandTotals] = useState({
+    baseSalary: 0,
+    expectedTeachingSalary: 0,
+    totalSalaryActual: 0,
+    totalSessionsActual: 0,
+    totalHoursActual: 0,
+    totalSalaryPlanned: 0,
+    totalSessionsPlanned: 0,
+    totalHoursPlanned: 0,
+  });
 
   const fetchInstructors = async () => {
     try {
@@ -67,7 +77,18 @@ const PayrollPage = () => {
         instructorId
       );
       const data = response?.data || [];
+      const grandTotalsData = response?.grandTotals || {
+        baseSalary: 0,
+        expectedTeachingSalary: 0,
+        totalSalaryActual: 0,
+        totalSessionsActual: 0,
+        totalHoursActual: 0,
+        totalSalaryPlanned: 0,
+        totalSessionsPlanned: 0,
+        totalHoursPlanned: 0,
+      };
       setPayrollData(data);
+      setGrandTotals(grandTotalsData);
     } catch (err) {
       setError(
         err?.message ||
@@ -99,35 +120,6 @@ const PayrollPage = () => {
     fetchPayroll();
   };
 
-  const totals = useMemo(() => {
-    return payrollData.reduce(
-      (acc, row) => ({
-        baseSalary: acc.baseSalary + (row.BaseSalary || 0),
-        expectedTeachingSalary:
-          acc.expectedTeachingSalary + (row.ExpectedTeachingSalary || 0),
-        totalSalaryActual: acc.totalSalaryActual + (row.TotalSalaryActual || 0),
-        totalSessionsActual:
-          acc.totalSessionsActual + (row.TotalSessionsActual || 0),
-        totalHoursActual: acc.totalHoursActual + (row.TotalHoursActual || 0),
-        totalSalaryPlanned:
-          acc.totalSalaryPlanned + (row.TotalSalaryPlanned || 0),
-        totalSessionsPlanned:
-          acc.totalSessionsPlanned + (row.TotalSessionsPlanned || 0),
-        totalHoursPlanned: acc.totalHoursPlanned + (row.TotalHoursPlanned || 0),
-      }),
-      {
-        baseSalary: 0,
-        expectedTeachingSalary: 0,
-        totalSalaryActual: 0,
-        totalSessionsActual: 0,
-        totalHoursActual: 0,
-        totalSalaryPlanned: 0,
-        totalSessionsPlanned: 0,
-        totalHoursPlanned: 0,
-      }
-    );
-  }, [payrollData]);
-
   return (
     <Box sx={{ p: 2, backgroundColor: "#f8fafc", minHeight: "100vh" }}>
       <Box sx={{ mb: 4 }}>
@@ -135,7 +127,7 @@ const PayrollPage = () => {
           Báo cáo lương giảng viên
         </Typography>
         <Typography variant="body2" sx={{ color: "#64748b" }}>
-          Xem báo cáo lương giảng viên theo khoảng thời gian
+          Xem báo cáo lương giảng viên theo khoảng thời gian (Mỗi buổi = 2 giờ)
         </Typography>
       </Box>
 
@@ -298,8 +290,24 @@ const PayrollPage = () => {
             </Typography>
           </Box>
         ) : (
-          <TableContainer>
-            <Table>
+          <TableContainer
+            sx={{
+              maxHeight: "calc(100vh - 400px)",
+              position: "relative",
+            }}
+          >
+            <Table stickyHeader sx={{ tableLayout: "fixed" }}>
+              <colgroup>
+                <col style={{ width: "15%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "12%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "10%" }} />
+                <col style={{ width: "9%" }} />
+                <col style={{ width: "9%" }} />
+              </colgroup>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#f8fafc" }}>
                   <TableCell sx={{ fontWeight: 700 }}>Giảng viên</TableCell>
@@ -307,7 +315,7 @@ const PayrollPage = () => {
                     Lương cơ bản (theo giờ)
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    Lương giảng dạy dự kiến
+                    Lương giảng dạy dự kiến (theo buổi)
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
                     Tổng lương thực tế
@@ -316,10 +324,16 @@ const PayrollPage = () => {
                     Tổng buổi dạy thực tế
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Tổng giờ dạy thực tế
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
                     Tổng lương dự kiến
                   </TableCell>
                   <TableCell align="right" sx={{ fontWeight: 700 }}>
                     Tổng buổi dạy dự kiến
+                  </TableCell>
+                  <TableCell align="right" sx={{ fontWeight: 700 }}>
+                    Tổng giờ dạy dự kiến
                   </TableCell>
                 </TableRow>
               </TableHead>
@@ -344,37 +358,107 @@ const PayrollPage = () => {
                       {row.TotalSessionsActual}
                     </TableCell>
                     <TableCell align="right">
+                      {row.TotalHoursActual || row.TotalSessionsActual * 2} giờ
+                    </TableCell>
+                    <TableCell align="right">
                       {formatCurrency(row.TotalSalaryPlanned)}
                     </TableCell>
                     <TableCell align="right">
                       {row.TotalSessionsPlanned}
                     </TableCell>
+                    <TableCell align="right">
+                      {row.TotalHoursPlanned || row.TotalSessionsPlanned * 2}{" "}
+                      giờ
+                    </TableCell>
                   </TableRow>
                 ))}
-                {/* Total Row */}
-                <TableRow sx={{ backgroundColor: "#f8fafc", fontWeight: 700 }}>
-                  <TableCell sx={{ fontWeight: 700 }}>TỔNG CỘNG</TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {formatCurrency(totals.baseSalary)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {formatCurrency(totals.expectedTeachingSalary)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {formatCurrency(totals.totalSalaryActual)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {totals.totalSessionsActual}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {formatCurrency(totals.totalSalaryPlanned)}
-                  </TableCell>
-                  <TableCell align="right" sx={{ fontWeight: 700 }}>
-                    {totals.totalSessionsPlanned}
-                  </TableCell>
-                </TableRow>
               </TableBody>
             </Table>
+            {/* Sticky Footer - Grand Totals */}
+            <Box
+              sx={{
+                position: "sticky",
+                bottom: 0,
+                backgroundColor: "#f8fafc",
+                borderTop: "2px solid #e2e8f0",
+                zIndex: 10,
+              }}
+            >
+              <Table sx={{ tableLayout: "fixed" }}>
+                <colgroup>
+                  <col style={{ width: "15%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "12%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "10%" }} />
+                  <col style={{ width: "9%" }} />
+                  <col style={{ width: "9%" }} />
+                </colgroup>
+                <TableBody>
+                  <TableRow
+                    sx={{ backgroundColor: "#f8fafc", fontWeight: 700 }}
+                  >
+                    <TableCell sx={{ fontWeight: 700, fontSize: "0.95rem" }}>
+                      TỔNG CỘNG (Toàn bộ)
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {formatCurrency(grandTotals.baseSalary)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {formatCurrency(grandTotals.expectedTeachingSalary)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {formatCurrency(grandTotals.totalSalaryActual)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {grandTotals.totalSessionsActual}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {grandTotals.totalHoursActual ||
+                        grandTotals.totalSessionsActual * 2}{" "}
+                      giờ
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {formatCurrency(grandTotals.totalSalaryPlanned)}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {grandTotals.totalSessionsPlanned}
+                    </TableCell>
+                    <TableCell
+                      align="right"
+                      sx={{ fontWeight: 700, fontSize: "0.95rem" }}
+                    >
+                      {grandTotals.totalHoursPlanned ||
+                        grandTotals.totalSessionsPlanned * 2}{" "}
+                      giờ
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </Box>
           </TableContainer>
         )}
       </Card>

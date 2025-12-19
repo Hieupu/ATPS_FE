@@ -23,9 +23,6 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import DeleteIcon from "@mui/icons-material/Delete";
 
-// --- CẤU HÌNH DỊCH & MÀU SẮC ---
-
-// 1. Dịch trạng thái sang tiếng Việt
 const STATUS_LABELS = {
   DRAFT: "Bản nháp",
   IN_REVIEW: "Chờ duyệt",
@@ -34,7 +31,6 @@ const STATUS_LABELS = {
   DELETED: "Đã xóa",
 };
 
-// 2. Cấu hình màu sắc cho trạng thái
 const STATUS_COLORS = {
   PUBLISHED: "success.main",
   IN_REVIEW: "warning.main",
@@ -43,7 +39,6 @@ const STATUS_COLORS = {
   DELETED: "error.main",
 };
 
-// 3. Dịch cấp độ sang tiếng Việt
 const LEVEL_LABELS = {
   BEGINNER: "Cơ bản",
   INTERMEDIATE: "Trung cấp",
@@ -153,17 +148,14 @@ export default function CoursesCardList({
                     </Box>
                   )}
 
-                  {/* CHIP TRẠNG THÁI (Đã sửa hiển thị tiếng Việt) */}
                   {Status && (
                     <Chip
                       size="small"
-                      // Lấy text tiếng Việt từ STATUS_LABELS, nếu không có thì hiện nguyên gốc
                       label={STATUS_LABELS[Status] || Status}
                       sx={{
                         position: "absolute",
                         top: 8,
                         left: 8,
-                        // Lấy màu từ STATUS_COLORS
                         backgroundColor: STATUS_COLORS[Status] || "grey.700",
                         color: "#fff",
                       }}
@@ -186,258 +178,318 @@ export default function CoursesCardList({
                   </IconButton>
                 </Box>
 
-                <CardContent sx={{ flexGrow: 1 }}>
-                  {/* Title + Level + Code */}
-                  <Stack
-                    direction="row"
-                    justifyContent="space-between"
-                    alignItems="flex-start"
-                    spacing={1}
-                  >
-                    <Box sx={{ pr: 1, maxWidth: "70%" }}>
+                <CardContent
+                  sx={{
+                    flexGrow: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    p: 2,
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Stack
+                      direction="row"
+                      justifyContent="space-between"
+                      alignItems="flex-start"
+                      spacing={1}
+                    >
+                      <Box sx={{ pr: 1, maxWidth: "70%" }}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight={600}
+                          sx={{
+                            display: "-webkit-box",
+                            WebkitLineClamp: 2,
+                            WebkitBoxOrient: "vertical",
+                            overflow: "hidden",
+                          }}
+                          title={Title}
+                        >
+                          {Title}
+                        </Typography>
+
+                        {Code && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            noWrap
+                            title={Code}
+                          >
+                            Mã khóa học: {Code}
+                          </Typography>
+                        )}
+                      </Box>
+
+                      {/* CHIP CẤP ĐỘ (Đã sửa hiển thị tiếng Việt) */}
+                      {Level && (
+                        <Chip
+                          size="small"
+                          // Lấy text tiếng Việt từ LEVEL_LABELS
+                          label={LEVEL_LABELS[Level] || Level}
+                          color="primary"
+                          variant="outlined"
+                        />
+                      )}
+                    </Stack>
+
+                    {/* Description */}
+                    {Description && (
                       <Typography
-                        variant="subtitle1"
-                        fontWeight={600}
+                        variant="body2"
                         sx={{
+                          mt: 1,
+                          color: "text.secondary",
                           display: "-webkit-box",
                           WebkitLineClamp: 2,
                           WebkitBoxOrient: "vertical",
                           overflow: "hidden",
                         }}
-                        title={Title}
+                        title={Description}
                       >
-                        {Title}
+                        {Description}
                       </Typography>
-
-                      {Code && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          noWrap
-                          title={Code}
-                        >
-                          Mã khóa học: {Code}
-                        </Typography>
-                      )}
-                    </Box>
-
-                    {/* CHIP CẤP ĐỘ (Đã sửa hiển thị tiếng Việt) */}
-                    {Level && (
-                      <Chip
-                        size="small"
-                        // Lấy text tiếng Việt từ LEVEL_LABELS
-                        label={LEVEL_LABELS[Level] || Level}
-                        color="primary"
-                        variant="outlined"
-                      />
                     )}
-                  </Stack>
 
-                  {/* Description */}
-                  {Description && (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        mt: 1,
-                        color: "text.secondary",
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                      title={Description}
-                    >
-                      {Description}
-                    </Typography>
-                  )}
-
-                  {(Duration || Duration === 0) && (
-                    <Typography
-                      variant="caption"
-                      sx={{ mt: 0.75, display: "block" }}
-                      color="text.secondary"
-                    >
-                      ⏱ Thời lượng: {Duration} giờ
-                    </Typography>
-                  )}
-
-                  <Stack
-                    direction="row"
-                    spacing={2}
-                    sx={{ mt: 1 }}
-                    alignItems="center"
-                  >
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <MenuBookIcon fontSize="small" />
-                      <Typography variant="caption">{units} unit</Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <MenuOpenIcon fontSize="small" />
-                      <Typography variant="caption">
-                        {lessons} lesson
+                    {(Duration || Duration === 0) && (
+                      <Typography
+                        variant="caption"
+                        sx={{ mt: 0.75, display: "block" }}
+                        color="text.secondary"
+                      >
+                        ⏱ Thời lượng: {Duration} giờ
                       </Typography>
-                    </Stack>
-                    <Stack direction="row" spacing={0.5} alignItems="center">
-                      <DescriptionIcon fontSize="small" />
-                      <Typography variant="caption">
-                        {missingMaterials} material
-                      </Typography>
-                    </Stack>
-                  </Stack>
+                    )}
 
-                  {(Objectives || Requirements) && (
-                    <Box sx={{ mt: 1 }}>
-                      {Objectives && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                          title={Objectives}
-                        >
-                          🎯 <b>Mục tiêu:</b> {Objectives}
-                        </Typography>
-                      )}
-                      {Requirements && (
-                        <Typography
-                          variant="caption"
-                          color="text.secondary"
-                          sx={{
-                            mt: 0.25,
-                            display: "-webkit-box",
-                            WebkitLineClamp: 1,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                          title={Requirements}
-                        >
-                          📌 <b>Yêu cầu:</b> {Requirements}
-                        </Typography>
-                      )}
-                    </Box>
-                  )}
-
-                  {missingMaterials > 0 && (
                     <Stack
                       direction="row"
-                      spacing={0.5}
+                      spacing={2}
+                      sx={{ mt: 1 }}
                       alignItems="center"
-                      sx={{ mt: 0.75 }}
                     >
-                      <WarningAmberIcon fontSize="inherit" color="warning" />
-                      <Typography variant="caption" color="warning.main">
-                        Còn {missingMaterials} lesson chưa có tài liệu.
-                      </Typography>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <MenuBookIcon fontSize="small" />
+                        <Typography variant="caption">{units} unit</Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <MenuOpenIcon fontSize="small" />
+                        <Typography variant="caption">
+                          {lessons} lesson
+                        </Typography>
+                      </Stack>
+                      <Stack direction="row" spacing={0.5} alignItems="center">
+                        <DescriptionIcon fontSize="small" />
+                        <Typography variant="caption">
+                          {missingMaterials} material
+                        </Typography>
+                      </Stack>
                     </Stack>
-                  )}
 
-                  {/* Action Buttons for IN_REVIEW Courses */}
-                  {getStatus && getStatus(course) === "IN_REVIEW" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() =>
-                          onApprove && onApprove(course, "APPROVE")
-                        }
-                        sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          backgroundColor: "#10b981",
-                          "&:hover": {
-                            backgroundColor: "#059669",
-                          },
-                        }}
-                      >
-                        Duyệt
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => onReject && onReject(course, "REJECT")}
-                        sx={{
-                          textTransform: "none",
-                          borderColor: "#ef4444",
-                          color: "#ef4444",
-                          "&:hover": {
-                            borderColor: "#dc2626",
-                            backgroundColor: "#fef2f2",
-                          },
-                        }}
-                      >
-                        Từ chối
-                      </Button>
-                    </Box>
-                  )}
+                    {(Objectives || Requirements) && (
+                      <Box sx={{ mt: 1 }}>
+                        {Objectives && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              display: "-webkit-box",
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                            title={Objectives}
+                          >
+                            🎯 <b>Mục tiêu:</b> {Objectives}
+                          </Typography>
+                        )}
+                        {Requirements && (
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{
+                              mt: 0.25,
+                              display: "-webkit-box",
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: "vertical",
+                              overflow: "hidden",
+                            }}
+                            title={Requirements}
+                          >
+                            📌 <b>Yêu cầu:</b> {Requirements}
+                          </Typography>
+                        )}
+                      </Box>
+                    )}
 
-                  {/* Action Buttons for APPROVED Courses */}
-                  {getStatus && getStatus(course) === "APPROVED" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => onPublish && onPublish(course)}
-                        sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          backgroundColor: "#667eea",
-                          "&:hover": {
-                            backgroundColor: "#5568d3",
-                          },
-                        }}
+                    {missingMaterials > 0 && (
+                      <Stack
+                        direction="row"
+                        spacing={0.5}
+                        alignItems="center"
+                        sx={{ mt: 0.75 }}
                       >
-                        Công khai
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => onRevert && onRevert(course)}
-                        sx={{
-                          textTransform: "none",
-                          borderColor: "#f59e0b",
-                          color: "#f59e0b",
-                          "&:hover": {
-                            borderColor: "#d97706",
-                            backgroundColor: "#fef3c7",
-                          },
-                        }}
-                      >
-                        Về nháp
-                      </Button>
-                    </Box>
-                  )}
+                        <WarningAmberIcon fontSize="inherit" color="warning" />
+                        <Typography variant="caption" color="warning.main">
+                          Còn {missingMaterials} lesson chưa có tài liệu.
+                        </Typography>
+                      </Stack>
+                    )}
+                  </Box>
 
-                  {/* Action Buttons for PUBLISHED Courses */}
-                  {getStatus && getStatus(course) === "PUBLISHED" && (
-                    <Box sx={{ display: "flex", gap: 1, mt: 2 }}>
-                      <Button
-                        variant="outlined"
-                        size="small"
-                        startIcon={<CheckCircleIcon />}
-                        onClick={() => onUnpublish && onUnpublish(course)}
+                  {/* Action Buttons Section - marginTop: auto để đẩy xuống dưới cùng */}
+                  <Box
+                    sx={{ mt: "auto", pt: 2, borderTop: "1px solid #e2e8f0" }}
+                  >
+                    {/* Action Buttons for IN_REVIEW Courses */}
+                    {getStatus && getStatus(course) === "IN_REVIEW" && (
+                      <Box
                         sx={{
-                          flex: 1,
-                          textTransform: "none",
-                          borderColor: "#06b6d4",
-                          color: "#06b6d4",
-                          "&:hover": {
-                            borderColor: "#0891b2",
-                            backgroundColor: "#cffafe",
-                          },
+                          display: "flex",
+                          gap: 1,
                         }}
                       >
-                        Hủy công khai
-                      </Button>
-                    </Box>
-                  )}
+                        <Button
+                          variant="contained"
+                          size="small"
+                          fullWidth
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() =>
+                            onApprove && onApprove(course, "APPROVE")
+                          }
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            backgroundColor: "#10b981",
+                            borderRadius: 2,
+                            py: 1,
+                            "&:hover": {
+                              backgroundColor: "#059669",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 8px rgba(16, 185, 129, 0.3)",
+                            },
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Duyệt
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          startIcon={<DeleteIcon />}
+                          onClick={() => onReject && onReject(course, "REJECT")}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderColor: "#ef4444",
+                            color: "#ef4444",
+                            borderRadius: 2,
+                            py: 1,
+                            "&:hover": {
+                              borderColor: "#dc2626",
+                              backgroundColor: "#fef2f2",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 8px rgba(239, 68, 68, 0.2)",
+                            },
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Từ chối
+                        </Button>
+                      </Box>
+                    )}
+
+                    {/* Action Buttons for APPROVED Courses */}
+                    {getStatus && getStatus(course) === "APPROVED" && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                        }}
+                      >
+                        <Button
+                          variant="contained"
+                          size="small"
+                          fullWidth
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() => onPublish && onPublish(course)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            backgroundColor: "#667eea",
+                            borderRadius: 2,
+                            py: 1,
+                            "&:hover": {
+                              backgroundColor: "#5568d3",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 8px rgba(102, 126, 234, 0.3)",
+                            },
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Công khai
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          startIcon={<DeleteIcon />}
+                          onClick={() => onRevert && onRevert(course)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderColor: "#f59e0b",
+                            color: "#f59e0b",
+                            borderRadius: 2,
+                            py: 1,
+                            "&:hover": {
+                              borderColor: "#d97706",
+                              backgroundColor: "#fef3c7",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 8px rgba(245, 158, 11, 0.2)",
+                            },
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Về nháp
+                        </Button>
+                      </Box>
+                    )}
+
+                    {/* Action Buttons for PUBLISHED Courses */}
+                    {getStatus && getStatus(course) === "PUBLISHED" && (
+                      <Box
+                        sx={{
+                          display: "flex",
+                          gap: 1,
+                        }}
+                      >
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          fullWidth
+                          startIcon={<CheckCircleIcon />}
+                          onClick={() => onUnpublish && onUnpublish(course)}
+                          sx={{
+                            textTransform: "none",
+                            fontWeight: 600,
+                            borderColor: "#06b6d4",
+                            color: "#06b6d4",
+                            borderRadius: 2,
+                            py: 1,
+                            "&:hover": {
+                              borderColor: "#0891b2",
+                              backgroundColor: "#cffafe",
+                              transform: "translateY(-1px)",
+                              boxShadow: "0 4px 8px rgba(6, 182, 212, 0.2)",
+                            },
+                            transition: "all 0.2s ease",
+                          }}
+                        >
+                          Hủy công khai
+                        </Button>
+                      </Box>
+                    )}
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>

@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 const ClassWizardStep1 = ({
   formData,
   setFormData,
@@ -119,6 +120,7 @@ const ClassWizardStep1 = ({
                 <div
                   key={instructor.InstructorID || instructor.id}
                   onClick={() => {
+                    if (readonly || lockBasicInfo) return;
                     // Đảm bảo lấy đúng InstructorID, không phải AccID
                     const value = instructor.InstructorID;
                     const fallbackValue = instructor.id;
@@ -129,14 +131,14 @@ const ClassWizardStep1 = ({
                         : null);
 
                     if (!finalValue) {
-                      alert(
+                      toast.error(
                         "Lỗi: Không tìm thấy InstructorID. Vui lòng thử lại."
                       );
                       return;
                     }
 
                     if (instructor.AccID && finalValue === instructor.AccID) {
-                      alert(
+                      toast.error(
                         "Lỗi: Đã chọn nhầm AccID thay vì InstructorID. Vui lòng thử lại."
                       );
                       return;
@@ -293,6 +295,7 @@ const ClassWizardStep1 = ({
                     <div
                       key={course.CourseID || course.id}
                       onClick={() => {
+                        if (readonly || lockBasicInfo) return;
                         const value = course.CourseID || course.id;
                         setFormData({ ...formData, CourseID: value });
                         setSelectedCourse(course);
@@ -337,15 +340,14 @@ const ClassWizardStep1 = ({
 
       <div className="form-group">
         <label htmlFor="Fee">
-          Học phí (VND)
-          <span className="optional">(Tùy chọn)</span>
+          Học phí (VND) <span className="required">*</span>
         </label>
         <input
           type="number"
           id="Fee"
           value={formData.Fee}
           onChange={(e) => setFormData({ ...formData, Fee: e.target.value })}
-          placeholder="Nhập học phí (để trống nếu miễn phí)"
+          placeholder="Nhập học phí" 
           min="0"
           className={errors.Fee ? "error" : ""}
           disabled={readonly}

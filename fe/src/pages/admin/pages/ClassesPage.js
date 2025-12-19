@@ -43,6 +43,7 @@ import {
 } from "@mui/icons-material";
 import classService from "../../../apiServices/classService";
 import enrollmentService from "../../../apiServices/enrollmentService";
+import { toast } from "react-toastify";
 import {
   ClassList,
   ClassForm,
@@ -80,6 +81,41 @@ const ClassesPage = () => {
   const [rejectReason, setRejectReason] = useState("");
   const [classToReject, setClassToReject] = useState(null);
 
+  // Dialog xác nhận hành động (thay thế window.confirm)
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    confirmColor: "primary",
+    onConfirm: null,
+  });
+
+  const openConfirmDialog = ({
+    title,
+    message,
+    confirmText = "Xác nhận",
+    confirmColor = "primary",
+    onConfirm,
+  }) => {
+    setConfirmDialog({
+      open: true,
+      title: title || "Xác nhận",
+      message: message || "",
+      confirmText,
+      confirmColor,
+      onConfirm: typeof onConfirm === "function" ? onConfirm : null,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog((prev) => ({
+      ...prev,
+      open: false,
+      onConfirm: null,
+    }));
+  };
+
   // Filter and search
   const [searchInput, setSearchInput] = useState(""); // Input value for class name search
   const [searchTerm, setSearchTerm] = useState(""); // Actual search term
@@ -96,6 +132,23 @@ const ClassesPage = () => {
   const [startDateFilter, setStartDateFilter] = useState("");
   const [endDateFilter, setEndDateFilter] = useState("");
   const [openingSoonDays, setOpeningSoonDays] = useState(5); // Số ngày cho "Sắp tới hạn mở lớp" (mặc định 5 ngày)
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
 
   // Pagination
   const [page, setPage] = useState(1);
@@ -257,7 +310,7 @@ const ClassesPage = () => {
     } catch (error) {
       console.error("Lỗi khi tải dữ liệu:", error);
       console.error("Error details:", error.response?.data || error.message);
-      alert(" Không thể tải dữ liệu. Vui lòng thử lại!");
+      showToast("error", "Không thể tải dữ liệu. Vui lòng thử lại!");
 
       // Set empty arrays để tránh crash
       setClasses([]);
@@ -320,18 +373,18 @@ const ClassesPage = () => {
       if (selectedClass) {
         // Update existing class
         await classService.updateClass(selectedClass.ClassID, apiData);
-        alert(" Cập nhật lớp học thành công!");
+        showToast("success", "Cập nhật lớp học thành công!");
       } else {
         // Create new class
         await classService.createClass(apiData);
-        alert(" Thêm lớp học mới thành công!");
+        showToast("success", "Thêm lớp học mới thành công!");
       }
       setShowClassForm(false);
       setSelectedClass(null);
       await loadData();
     } catch (error) {
       console.error("Lỗi khi lưu lớp học:", error);
-      alert(" Không thể lưu lớp học. Vui lòng thử lại!");
+      showToast("error", "Không thể lưu lớp học. Vui lòng thử lại!");
     }
   };
 
@@ -400,11 +453,13 @@ const ClassesPage = () => {
 
             // Hiển thị thông báo về conflicts
             if (created.length > 0) {
-              alert(
+              showToast(
+                "warn",
                 ` Lớp học đã được tạo!\n\n Đã tạo ${created.length} buổi học thành công.\n\n Có ${conflicts.length} buổi học bị trùng lịch.\n\nVui lòng vào trang lịch học để xem chi tiết và xử lý các buổi học bị trùng.`
               );
             } else {
-              alert(
+              showToast(
+                "error",
                 ` Lớp học đã được tạo!\n\n Tất cả ${conflicts.length} buổi học đều bị trùng lịch.\n\nVui lòng vào trang lịch học để xem chi tiết và tạo lại lịch học.`
               );
             }
@@ -432,12 +487,14 @@ const ClassesPage = () => {
             errorData?.hasConflict
           ) {
             // Có conflict - hiển thị thông báo
-            alert(
+            showToast(
+              "warn",
               ` Lớp học đã được tạo!\n\n Có lỗi khi tạo lịch học do trùng ca: ${errorMessage}\n\nVui lòng vào trang lịch học để xem chi tiết và tạo lại lịch học.`
             );
           } else {
             // Lỗi khác
-            alert(
+            showToast(
+              "error",
               ` Lớp học đã được tạo nhưng có lỗi khi tạo lịch học: ${errorMessage}\n\nVui lòng tạo lịch học thủ công sau.`
             );
           }
@@ -448,7 +505,8 @@ const ClassesPage = () => {
         }
       }
 
-      alert(
+      showToast(
+        "success",
         ` Tạo lớp học mới thành công! Trạng thái: DRAFT\n\nĐã tạo ${
           sessions?.length || 0
         } buổi học.`
@@ -461,62 +519,65 @@ const ClassesPage = () => {
         error?.message ||
         error?.response?.data?.message ||
         "Không thể tạo lớp học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
+      showToast("error", `Lỗi: ${errorMessage}`);
     }
   };
 
   const handleReviewClass = async (classId, action) => {
+    // Legacy handler: chuyển sang dùng Dialog/toast thay vì prompt/confirm/alert
     if (action === "REJECT") {
-      const feedback = window.prompt("Nhập lý do từ chối:");
-      if (!feedback) {
-        alert("Vui lòng nhập lý do từ chối!");
-        return;
-      }
-      try {
-        await classService.reviewClass(classId, action, feedback);
-        alert(" Đã từ chối lớp học!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi từ chối lớp:", error);
-        alert(" Không thể từ chối lớp học. Vui lòng thử lại!");
-      }
-    } else {
-      const confirmed = window.confirm(
-        " Bạn có chắc muốn chấp thuận lớp học này?"
-      );
-      if (confirmed) {
+      const target = classes.find((c) => c.ClassID === classId) || null;
+      setClassToReject({ classId, classItem: target });
+      setRejectReason("");
+      setRejectDialogOpen(true);
+      return;
+    }
+
+    openConfirmDialog({
+      title: "Chấp thuận lớp học",
+      message: "Bạn có chắc muốn chấp thuận lớp học này?",
+      confirmText: "Chấp thuận",
+      confirmColor: "success",
+      onConfirm: async () => {
         try {
           await classService.reviewClass(classId, action);
-          alert(" Đã chấp thuận lớp học!");
+          showToast("success", "Đã chấp thuận lớp học!");
           await loadData();
         } catch (error) {
           console.error("Lỗi khi chấp thuận lớp:", error);
-          alert(" Không thể chấp thuận lớp học. Vui lòng thử lại!");
+          showToast("error", "Không thể chấp thuận lớp học. Vui lòng thử lại!");
+        } finally {
+          closeConfirmDialog();
         }
-      }
-    }
+      },
+    });
   };
 
   const handleApproveClass = async (classId) => {
     // Admin duyệt lớp PENDING (do staff gửi duyệt)
-    const confirmed = window.confirm(
-      "✅ Bạn có chắc muốn duyệt lớp học này? Lớp sẽ chuyển sang trạng thái 'Đã duyệt'."
-    );
-    if (confirmed) {
-      try {
-        // Dùng reviewClass với action="APPROVE" để duyệt lớp PENDING
-        await classService.reviewClass(classId, "APPROVE");
-        alert(" ✅ Đã duyệt lớp học thành công!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi duyệt lớp:", error);
-        const errorMessage =
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể duyệt lớp học. Vui lòng thử lại!";
-        alert(` ❌ Lỗi: ${errorMessage}`);
-      }
-    }
+    openConfirmDialog({
+      title: "Duyệt lớp học",
+      message:
+        "Bạn có chắc muốn duyệt lớp học này? Lớp sẽ chuyển sang trạng thái 'Đã duyệt'.",
+      confirmText: "Duyệt",
+      confirmColor: "success",
+      onConfirm: async () => {
+        try {
+          await classService.reviewClass(classId, "APPROVE");
+          showToast("success", "Đã duyệt lớp học thành công!");
+          await loadData();
+        } catch (error) {
+          console.error("Lỗi khi duyệt lớp:", error);
+          const errorMessage =
+            error?.response?.data?.message ||
+            error?.message ||
+            "Không thể duyệt lớp học. Vui lòng thử lại!";
+          showToast("error", `Lỗi: ${errorMessage}`);
+        } finally {
+          closeConfirmDialog();
+        }
+      },
+    });
   };
 
   const handleRejectClass = (classId, classItem) => {
@@ -527,13 +588,13 @@ const ClassesPage = () => {
   const handleConfirmReject = async () => {
     if (!classToReject) return;
     if (!rejectReason || rejectReason.trim() === "") {
-      alert("Vui lòng nhập lý do từ chối!");
+      showToast("warn", "Vui lòng nhập lý do từ chối!");
       return;
     }
 
     try {
       await classService.rejectClass(classToReject.classId, rejectReason);
-      alert(" Đã từ chối lớp học thành công!");
+      showToast("success", "Đã từ chối lớp học thành công!");
       setRejectDialogOpen(false);
       setRejectReason("");
       setClassToReject(null);
@@ -544,7 +605,7 @@ const ClassesPage = () => {
         error?.response?.data?.message ||
         error?.message ||
         "Không thể từ chối lớp học. Vui lòng thử lại!";
-      alert(` Lỗi: ${errorMessage}`);
+      showToast("error", `Lỗi: ${errorMessage}`);
     }
   };
 
@@ -583,27 +644,35 @@ const ClassesPage = () => {
     let successMessage = "";
 
     if (newStatus === "CANCEL") {
-      confirmMessage = "⚠️ Bạn có chắc muốn hủy lớp học này?";
+      confirmMessage = "Bạn có chắc muốn hủy lớp học này?";
       successMessage = "Đã hủy lớp học thành công!";
     }
 
-    const confirmed = window.confirm(confirmMessage);
-    if (confirmed) {
-      try {
-        await classService.updateClass(classId, { Status: newStatus });
-        alert(` ${successMessage}`);
-        await loadData();
-      } catch (error) {
-        console.error(`Lỗi khi chuyển trạng thái lớp:`, error);
-        const errorMessage =
-          error?.message || error?.response?.data?.message || "";
-        alert(
-          `Không thể chuyển trạng thái lớp học. ${
-            errorMessage ? `Chi tiết: ${errorMessage}` : "Vui lòng thử lại!"
-          }`
-        );
-      }
-    }
+    openConfirmDialog({
+      title: "Xác nhận",
+      message: confirmMessage,
+      confirmText: "Xác nhận",
+      confirmColor: "error",
+      onConfirm: async () => {
+        try {
+          await classService.updateClass(classId, { Status: newStatus });
+          showToast("success", successMessage);
+          await loadData();
+        } catch (error) {
+          console.error(`Lỗi khi chuyển trạng thái lớp:`, error);
+          const errorMessage =
+            error?.message || error?.response?.data?.message || "";
+          showToast(
+            "error",
+            `Không thể chuyển trạng thái lớp học. ${
+              errorMessage ? `Chi tiết: ${errorMessage}` : "Vui lòng thử lại!"
+            }`
+          );
+        } finally {
+          closeConfirmDialog();
+        }
+      },
+    });
   };
 
   const handleConfirmRevertToDraft = async () => {
@@ -612,7 +681,7 @@ const ClassesPage = () => {
 
     const trimmedReason = revertReason.trim();
     if (!trimmedReason) {
-      alert("Vui lòng nhập lý do khi chuyển lớp về trạng thái Nháp.");
+      showToast("warn", "Vui lòng nhập lý do khi chuyển lớp về trạng thái Nháp.");
       return;
     }
 
@@ -622,7 +691,10 @@ const ClassesPage = () => {
         reason: trimmedReason,
       });
       await classService.revertClassToDraft(classId, trimmedReason);
-      alert("Đã chuyển lớp về trạng thái 'Nháp' và gửi thông báo cho staff.");
+      showToast(
+        "success",
+        "Đã chuyển lớp về trạng thái 'Nháp' và gửi thông báo cho staff."
+      );
       setRevertDialogOpen(false);
       setRevertReason("");
       setClassToRevert(null);
@@ -631,7 +703,8 @@ const ClassesPage = () => {
       console.error("Lỗi khi chuyển lớp về DRAFT:", error);
       const errorMessage =
         error?.message || error?.response?.data?.message || "";
-      alert(
+      showToast(
+        "error",
         `Không thể chuyển lớp về trạng thái 'Nháp'. ${
           errorMessage ? `Chi tiết: ${errorMessage}` : "Vui lòng thử lại!"
         }`
@@ -646,19 +719,25 @@ const ClassesPage = () => {
   };
 
   const handlePublishClass = async (classId) => {
-    const confirmed = window.confirm(
-      "🚀 Bạn có chắc muốn xuất bản lớp học này? Học viên có thể đăng ký sau khi xuất bản."
-    );
-    if (confirmed) {
-      try {
-        await classService.publishClass(classId);
-        alert(" Đã xuất bản lớp học thành công!");
-        await loadData();
-      } catch (error) {
-        console.error("Lỗi khi xuất bản lớp:", error);
-        alert(" Không thể xuất bản lớp học. Vui lòng thử lại!");
-      }
-    }
+    openConfirmDialog({
+      title: "Xuất bản lớp học",
+      message:
+        "Bạn có chắc muốn xuất bản lớp học này? Học viên có thể đăng ký sau khi xuất bản.",
+      confirmText: "Xuất bản",
+      confirmColor: "success",
+      onConfirm: async () => {
+        try {
+          await classService.publishClass(classId);
+          showToast("success", "Đã xuất bản lớp học thành công!");
+          await loadData();
+        } catch (error) {
+          console.error("Lỗi khi xuất bản lớp:", error);
+          showToast("error", "Không thể xuất bản lớp học. Vui lòng thử lại!");
+        } finally {
+          closeConfirmDialog();
+        }
+      },
+    });
   };
 
   const handleUpdateStudents = async (updatedEnrolledIds) => {
@@ -672,13 +751,13 @@ const ClassesPage = () => {
         enrolledStudents: updatedEnrolledIds,
       });
 
-      alert(" Cập nhật danh sách học viên thành công!");
+      showToast("success", "Cập nhật danh sách học viên thành công!");
       setShowStudentSelector(false);
       setSelectedClass(null);
       await loadData();
     } catch (error) {
       console.error("Lỗi khi cập nhật học viên:", error);
-      alert(" Không thể cập nhật học viên. Vui lòng thử lại!");
+      showToast("error", "Không thể cập nhật học viên. Vui lòng thử lại!");
     }
   };
 
@@ -1597,7 +1676,10 @@ const ClassesPage = () => {
                 "[ClassesPage] Missing learnerId/fromClassId/targetClassId when changing class",
                 { learnerId, fromClassId, targetClassId }
               );
-              alert("Thiếu thông tin để đổi lớp. Vui lòng thử lại sau.");
+              showToast(
+                "error",
+                "Thiếu thông tin để đổi lớp. Vui lòng thử lại sau."
+              );
               return;
             }
 
@@ -1615,7 +1697,8 @@ const ClassesPage = () => {
                 toClassId: targetClassId,
               });
 
-              alert(
+              showToast(
+                "success",
                 `Đã đổi lớp cho học viên ${
                   learnerInfo.learner?.FullName ||
                   learnerInfo.learner?.fullName ||
@@ -1633,12 +1716,48 @@ const ClassesPage = () => {
                 error?.error ||
                 "Không thể đổi lớp cho học viên";
               console.error("[ClassesPage] Change class error:", error);
-              alert(message);
+              showToast("error", message);
             }
           }}
           userRole="admin" // Admin có quyền đổi lớp
         />
       )}
+
+      {/* Dialog xác nhận hành động (thay thế window.confirm) */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={closeConfirmDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          {confirmDialog.title || "Xác nhận"}
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ whiteSpace: "pre-line" }}>
+            {confirmDialog.message || ""}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={closeConfirmDialog} color="inherit">
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            color={confirmDialog.confirmColor || "primary"}
+            onClick={async () => {
+              if (typeof confirmDialog.onConfirm === "function") {
+                await confirmDialog.onConfirm();
+              } else {
+                closeConfirmDialog();
+              }
+            }}
+            sx={{ textTransform: "none" }}
+          >
+            {confirmDialog.confirmText || "Xác nhận"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Dialog: Admin chuyển lớp APPROVED/ACTIVE về DRAFT với lý do */}
       <Dialog

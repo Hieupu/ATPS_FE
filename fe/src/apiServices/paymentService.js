@@ -54,3 +54,13 @@ export const getAdminPaymentHistoryApi = async (params = {}) => {
   const response = await apiClient.get("/payment/admin/history", { params });
   return response.data;
 };
+
+export const checkPayOSConfigurationApi = async () => {
+  try {
+    const response = await apiClient.get("/payment/check-payos-config");
+    return response.data;
+  } catch (error) {
+    console.error("Check PayOS configuration error:", error);
+    return { configured: false };
+  }
+};

@@ -370,7 +370,7 @@ export function HeaderAdmin() {
               }}
             >
               <Dashboard sx={{ mr: 1, color: "#475569" }} />
-              Dashboard
+              Trang chủ
             </MenuItem>
 
             <MenuItem
