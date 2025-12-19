@@ -33,17 +33,17 @@ import "./ClassList.css";
 
 const ClassList = ({
   classes,
-  courses = [], // Thêm courses để lấy Fee từ course
-  instructors = [], // Thêm instructors để lấy thông tin giảng viên
+  courses = [],
+  instructors = [], 
   onEdit,
   onManageStudents,
-  onApprove, // Handler để duyệt class (DRAFT -> APPROVED) - cho admin
-  onReject, // Handler để từ chối class (PENDING -> DRAFT) - cho admin
+  onApprove, 
+  onReject, 
   onPublish,
-  onChangeStatus, // Handler để chuyển trạng thái class
-  onSubmitForApproval, // Handler để gửi duyệt class (DRAFT -> PENDING) - cho staff
-  onCancelApproval, // Handler để hủy yêu cầu duyệt (PENDING -> DRAFT) - cho staff
-  userRole, // "admin" hoặc "staff"
+  onChangeStatus,
+  onSubmitForApproval,
+  onCancelApproval, 
+  userRole, 
 }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
@@ -207,15 +207,14 @@ const ClassList = ({
       return statusInfo.label;
     }
 
-    // Fallback cho các status cũ (backward compatibility)
     const statusMap = {
       DRAFT: "Nháp",
-      PENDING_APPROVAL: "Chờ duyệt",
+      PENDING: "Chờ duyệt",
       APPROVED: "Đã duyệt",
       PUBLISHED: "Đã xuất bản",
       OPEN: "Đang tuyển sinh",
       ONGOING: "Đang diễn ra",
-      ON_GOING: "Đang diễn ra", // Backward compatibility
+      ON_GOING: "Đang diễn ra", 
       CLOSED: "Đã kết thúc",
       CANCELLED: "Đã hủy",
       "Đang hoạt động": "Đang hoạt động",
@@ -239,7 +238,6 @@ const ClassList = ({
             const className = classItem.Name;
             const classStatus = classItem.Status;
 
-            // Lấy Fee: từ class trước, nếu không có thì miễn phí
             const classFee = classItem.Fee || 0;
             const courseId = classItem.CourseID;
             const course = courses.find((c) => c.CourseID === courseId);
@@ -249,17 +247,14 @@ const ClassList = ({
             const instructorId = classItem.InstructorID;
             let instructor = classItem.Instructor;
 
-            // Nếu không có Instructor object, tìm từ instructors list
             if (
               !instructor &&
               instructorId &&
               instructors &&
               instructors.length > 0
             ) {
-              // Thử tìm với cả string và number (tránh type mismatch)
               instructor = instructors.find((inst) => {
                 const instId = inst.InstructorID;
-                // So sánh với nhiều cách để tránh type mismatch
                 return (
                   instId === instructorId ||
                   instId === parseInt(instructorId) ||
@@ -270,15 +265,12 @@ const ClassList = ({
               });
             }
 
-            // Fallback nếu vẫn không tìm thấy
             if (!instructor) {
-              // Thử lấy từ các trường khác có thể có
               if (classItem.instructorName) {
                 instructor = {
                   FullName: classItem.instructorName,
                 };
               } else if (instructorId) {
-                // Có InstructorID nhưng không tìm thấy instructor
                 console.warn(
                   `Class ${classId} (${className}) has InstructorID ${instructorId} but instructor not found.`,
                   `Available instructors: ${instructors?.length || 0}`,
@@ -364,8 +356,6 @@ const ClassList = ({
                             classItem.ExpectedSessions ||
                             classItem.expectedSessions ||
                             0;
-                          // Lấy số buổi đã tạo (sessions đã có)
-                          // Sessions được load trong ClassesPage và gán vào classItem.Sessions
                           const createdSessions = Array.isArray(
                             classItem.Sessions
                           )
@@ -577,8 +567,7 @@ const ClassList = ({
                 </div>
 
                 <div className="class-actions">
-                  {/* Workflow Actions based on status */}
-                  {/* Staff: Gửi duyệt (DRAFT -> PENDING) */}
+ 
                   {normalizeStatus(classStatus) === CLASS_STATUS.DRAFT &&
                     userRole === "staff" &&
                     onSubmitForApproval && (
@@ -592,7 +581,6 @@ const ClassList = ({
                       </button>
                     )}
 
-                  {/* Staff: Hủy yêu cầu duyệt (PENDING -> DRAFT) */}
                   {normalizeStatus(classStatus) === CLASS_STATUS.PENDING &&
                     userRole === "staff" &&
                     onCancelApproval && (
@@ -663,11 +651,10 @@ const ClassList = ({
                         title="Xuất bản"
                       >
                         <Publish sx={{ fontSize: 14, mr: 0.5 }} />
-                        Xuất bản
+                        Công khai
                       </button>
                     )}
 
-                  {/* Chỉ admin được hủy lớp ở trạng thái đã duyệt / đang tuyển sinh */}
                   {userRole === "admin" &&
                     (normalizeStatus(classStatus) === CLASS_STATUS.ACTIVE ||
                       normalizeStatus(classStatus) === CLASS_STATUS.APPROVED) &&
