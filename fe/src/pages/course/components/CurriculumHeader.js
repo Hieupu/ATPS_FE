@@ -40,31 +40,27 @@ const CurriculumHeader = ({
           Tổng quan khóa học
         </Typography>
 
-        <Stack
-          direction="row"
-          alignItems="center"
-          spacing={1}
-          sx={{
-            color: "#373a3c",
-            fontSize: "0.875rem",
-            flexWrap: "wrap",
-            rowGap: 1,
-          }}
-        >
-          <MetaItem
-            icon={<SchoolIcon fontSize="small" />}
-            text={`${totalUnits} chương`}
-          />
-          <Separator />
-          <MetaItem text={`${totalLessons} bài học`} />
-          <Separator />
-          <MetaItem text={`${totalAssignments} bài tập`} />
-          <Separator />
-          <MetaItem
-            icon={<AccessTimeIcon fontSize="small" />}
-            text={`${Math.round(Duration || totalDuration / 60)} giờ nội dung`}
-          />
-        </Stack>
+   <Stack
+  direction="row"
+  alignItems="center"
+  spacing={1}
+  sx={{
+    color: "#373a3c",
+    fontSize: "0.875rem",
+    flexWrap: "wrap",
+    rowGap: 1,
+  }}
+>
+  <MetaItem
+    icon={<SchoolIcon fontSize="small" />}
+    text={`${totalUnits} chương`}
+  />
+  <Separator />
+  <MetaItem text={`${totalLessons} bài học`} />
+  <Separator />
+  <MetaItem text={`${totalAssignments} bài tập`} />
+</Stack>
+
       </Box>
     </Box>
   );
