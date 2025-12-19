@@ -648,10 +648,10 @@ const ClassList = ({
                       <button
                         className="btn btn-purple btn-sm"
                         onClick={() => onPublish(classId)}
-                        title="Xuất bản"
+                        title="Tuyển sinh"
                       >
                         <Publish sx={{ fontSize: 14, mr: 0.5 }} />
-                        Công khai
+                        Mở tuyển sinh
                       </button>
                     )}
 

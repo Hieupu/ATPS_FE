@@ -360,7 +360,7 @@ export default function CoursesPage() {
       confirmMessage = `Bạn có chắc muốn hủy công khai khóa học "${course.Title || course.title}"?`;
       confirmColor = "warning";
     } else if (newStatus === "DRAFT") {
-      confirmTitle = "Về nháp";
+      confirmTitle = "Chỉnh sửa";
       confirmMessage = `Bạn có chắc muốn chuyển khóa học "${course.Title || course.title}" về trạng thái "Nháp"?`;
       confirmColor = "warning";
     }
