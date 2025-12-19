@@ -50,8 +50,12 @@ const ClassCard = ({ classItem, onEnroll }) => {
   const [scheduleConflict, setScheduleConflict] = useState(null);
   const [checkingConflict, setCheckingConflict] = useState(false);
 
+
   const { user, isLearner } = useAuth();
   const navigate = useNavigate();
+
+    const isNotLearner = user && ["admin", "staff", "instructor"].includes(user.role);
+const shouldShowEnrollButton = !isNotLearner;
 
   const checkEnrollmentStatus = async () => {
     if (!user || !isLearner) return false;
@@ -396,6 +400,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
             )}
           </Box>
 
+       {shouldShowEnrollButton && (
           <Button
             fullWidth
             variant="contained"
@@ -434,6 +439,7 @@ const ClassCard = ({ classItem, onEnroll }) => {
               ? "Vào học ngay"
               : "Đăng ký ngay"}
           </Button>
+          )}
         </CardContent>
       </Card>
 

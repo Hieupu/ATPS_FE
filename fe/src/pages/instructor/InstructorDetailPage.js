@@ -82,6 +82,9 @@ const InstructorDetailPage = () => {
   const [bookingDialogOpen, setBookingDialogOpen] = useState(false);
   const [learnerId, setLearnerId] = useState(null);
 
+  const isNotLearner = user && ["admin", "staff", "instructor"].includes(user.role);
+const shouldShowEnrollButton = !isNotLearner;
+
   const fetchInstructor = useCallback(async () => {
     try {
       setLoading(true);
@@ -358,6 +361,7 @@ const InstructorDetailPage = () => {
               </Box>
 
               <Box sx={{ mt: 3 }}>
+                {shouldShowEnrollButton && (
                 <Button
                   variant="contained"
                   size="large"
@@ -388,6 +392,7 @@ const InstructorDetailPage = () => {
                 >
                   Đặt lịch học 1-1
                 </Button>
+                )}
               </Box>
             </Grid>
           </Grid>
