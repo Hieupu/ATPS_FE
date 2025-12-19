@@ -46,10 +46,8 @@ import "react-toastify/dist/ReactToastify.css";
 import {
   getExamsApi,
   getExamDetailApi,
-  deleteExamApi,
   archiveExamApi,
   unarchiveExamApi,
-  getArchivedExamsApi,
   getExamInstancesApi,
   openExamInstanceNowApi,
   closeExamInstanceNowApi,
@@ -72,8 +70,14 @@ const ExamPage = () => {
   const [anchorEl, setAnchorEl] = useState(null);
   const [menuItem, setMenuItem] = useState(null);
 
-  const STATUS_TABS = [
+  const [openOpenNowDialog, setOpenOpenNowDialog] = useState(false);
+  const [examToOpenNow, setExamToOpenNow] = useState(null);
+  const [openCloseNowDialog, setOpenCloseNowDialog] = useState(false);
+  const [examToCloseNow, setExamToCloseNow] = useState(null);
+  const [openUnarchiveDialog, setOpenUnarchiveDialog] = useState(false);
+  const [examToUnarchive, setExamToUnarchive] = useState(null);
 
+  const STATUS_TABS = [
     { value: "Scheduled", label: "Đã lên lịch", color: "#ff9800" },
     { value: "Open", label: "Đang mở", color: "#2196f3" },
     { value: "Closed", label: "Đã đóng", color: "#4caf50" },
@@ -121,49 +125,26 @@ const ExamPage = () => {
     }
   }, [location]);
 
-
   const loadAllExamsAndInstances = async () => {
     setLoading(true);
     try {
       const regularExams = await getExamsApi();
-      const items = [];
-      const processedExamIds = new Set();
-
-      for (const exam of regularExams) {
-        if (processedExamIds.has(exam.ExamID)) continue;
-
+      const instancePromises = regularExams.map(async (exam) => {
         try {
           const instances = await getExamInstancesApi(exam.ExamID);
-          if (instances && instances.length > 0) {
-            instances.forEach((inst) => {
-              items.push({
-                ...inst,
-                examTitle: exam.Title,
-                examType: exam.Type,
-                examStatus: exam.Status,
-                ExamID: exam.ExamID,
-                isTemplate: false,
-                isArchived: exam.Status === "Archived",
-              });
-            });
-          } else {
-            if (exam.Status === "Draft") {
-              items.push({
-                ExamID: exam.ExamID,
-                examTitle: exam.Title,
-                examType: exam.Type,
-                examStatus: exam.Status,
-                Status: "Draft",
-                isTemplate: true,
-                isArchived: false,
-              });
-            }
-          }
 
-          processedExamIds.add(exam.ExamID);
-        } catch (err) {
-          if (exam.Status === "Draft") {
-            items.push({
+          if (instances && instances.length > 0) {
+            return instances.map((inst) => ({
+              ...inst,
+              examTitle: exam.Title,
+              examType: exam.Type,
+              examStatus: exam.Status,
+              ExamID: exam.ExamID,
+              isTemplate: false,
+              isArchived: exam.Status === "Archived",
+            }));
+          } else if (exam.Status === "Draft") {
+            return [{
               ExamID: exam.ExamID,
               examTitle: exam.Title,
               examType: exam.Type,
@@ -171,37 +152,69 @@ const ExamPage = () => {
               Status: "Draft",
               isTemplate: true,
               isArchived: false,
-            });
+            }];
           }
+          return [];
+        } catch (err) {
+          if (exam.Status === "Draft") {
+            return [{
+              ExamID: exam.ExamID,
+              examTitle: exam.Title,
+              examType: exam.Type,
+              examStatus: exam.Status,
+              Status: "Draft",
+              isTemplate: true,
+              isArchived: false,
+            }];
+          }
+          return [];
         }
-      }
+      });
+
+      const results = await Promise.all(instancePromises);
+      const items = results.flat();
+
       setAllItems(items);
     } catch (error) {
-      toast.error("Không thể tải danh sách bài thi");
+      toast.error("Không thể tải danh sách bài tập");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleOpenNow = async (examId, instanceId) => {
-    if (!window.confirm("Mở bài thi ngay lập tức? Học viên sẽ có thể làm bài ngay.")) return;
+  const handleOpenNow = (examId, instanceId) => {
+    setExamToOpenNow({ examId, instanceId });
+    setOpenOpenNowDialog(true);
+  };
+
+  const confirmOpenNow = async () => {
     try {
-      await openExamInstanceNowApi(examId, instanceId);
-      toast.success("Đã mở bài thi thành công!");
+      await openExamInstanceNowApi(examToOpenNow.examId, examToOpenNow.instanceId);
+      toast.success("Đã mở bài tập thành công!");
       loadAllExamsAndInstances();
     } catch (err) {
-      toast.error(err.message || "Lỗi khi mở bài thi");
+      toast.error(err.message || "Lỗi khi mở bài tập");
+    } finally {
+      setOpenOpenNowDialog(false);
+      setExamToOpenNow(null);
     }
   };
 
-  const handleCloseNow = async (examId, instanceId) => {
-    if (!window.confirm("Đóng bài thi ngay lập tức? Học viên sẽ không thể tiếp tục.")) return;
+  const handleCloseNow = (examId, instanceId) => {
+    setExamToCloseNow({ examId, instanceId });
+    setOpenCloseNowDialog(true);
+  };
+
+  const confirmCloseNow = async () => {
     try {
-      await closeExamInstanceNowApi(examId, instanceId);
-      toast.success("Đã đóng bài thi thành công!");
+      await closeExamInstanceNowApi(examToCloseNow.examId, examToCloseNow.instanceId);
+      toast.success("Đã đóng bài tập thành công!");
       loadAllExamsAndInstances();
     } catch (err) {
-      toast.error(err.message || "Lỗi khi đóng bài thi");
+      toast.error(err.message || "Lỗi khi đóng bài tập");
+    } finally {
+      setOpenCloseNowDialog(false);
+      setExamToCloseNow(null);
     }
   };
 
@@ -215,8 +228,26 @@ const ExamPage = () => {
     }
   };
 
-  const handleEdit = (exam) => {
-    navigate(`/instructor/exams/edit/${exam.ExamID}`);
+  const handleEdit = async (exam) => {
+    if (exam.isArchived) {
+      setExamToUnarchive(exam);
+      setOpenUnarchiveDialog(true);
+    } else {
+      navigate(`/instructor/exams/edit/${exam.ExamID}`);
+    }
+  };
+
+  const confirmUnarchiveAndEdit = async () => {
+    try {
+      await unarchiveExamApi(examToUnarchive.ExamID);
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setOpenUnarchiveDialog(false);
+      setExamToUnarchive(null);
+      navigate(`/instructor/exams/edit/${examToUnarchive.ExamID}`);
+    } catch (err) {
+      setOpenUnarchiveDialog(false);
+      setExamToUnarchive(null);
+    }
   };
 
   const handleArchive = (exam) => {
@@ -227,7 +258,7 @@ const ExamPage = () => {
   const confirmArchiveExam = async () => {
     try {
       await archiveExamApi(examToArchive.ExamID);
-      toast.success("Đã lưu trữ bài thi thành công!");
+      toast.success("Đã lưu trữ bài thành công!");
       loadAllExamsAndInstances();
     } catch {
       toast.error("Lưu trữ thất bại");
@@ -240,10 +271,8 @@ const ExamPage = () => {
   const handleUnarchive = async (exam) => {
     try {
       await unarchiveExamApi(exam.ExamID);
-      toast.success("Đã khôi phục bài thi");
       loadAllExamsAndInstances();
     } catch {
-      toast.error("Khôi phục thất bại");
     }
   };
 
@@ -314,7 +343,7 @@ const ExamPage = () => {
 
     if (item.UnitId) {
       return {
-        type: "Unit",
+        type: "Chương học",
         name: item.UnitName || `Unit #${item.UnitId}`
       };
     }
@@ -328,10 +357,10 @@ const ExamPage = () => {
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Box>
             <Typography variant="h4" fontWeight="700">
-              Quản lý Bài thi & Bài tập
+              Quản lý Bài tập
             </Typography>
             <Typography color="text.secondary">
-              Tạo và quản lý các bài thi, bài tập cho học viên
+              Tạo và quản lý các bài kiểm tra, bài tập cho học viên
             </Typography>
           </Box>
           <Button
@@ -340,7 +369,7 @@ const ExamPage = () => {
             onClick={() => navigate("/instructor/exams/create")}
             sx={{ borderRadius: 2, px: 3 }}
           >
-            Tạo bài thi mới
+            Tạo bài mới
           </Button>
         </Stack>
       </Box>
@@ -389,16 +418,6 @@ const ExamPage = () => {
             clickable
           />
         </Stack>
-
-        {!loading && currentItems.length > 0 && (
-          <Chip
-            icon={<SortIcon />}
-            label={sortOrder === "desc" ? "Mới nhất" : "Cũ nhất"}
-            onClick={() => setSortOrder(sortOrder === "desc" ? "asc" : "desc")}
-            clickable
-            sx={{ cursor: "pointer" }}
-          />
-        )}
       </Box>
       {loading ? (
         <Box textAlign="center" mt={10}>
@@ -408,8 +427,8 @@ const ExamPage = () => {
         <Paper sx={{ p: 5, textAlign: "center" }}>
           <Typography variant="h6" color="text.secondary">
             {currentStatus === "Draft"
-              ? "Chưa có bài thi nháp nào"
-              : `Không có bài thi nào ở trạng thái ${STATUS_TABS.find(t => t.value === currentStatus)?.label.toLowerCase()}`}
+              ? "Chưa có bài nháp nào"
+              : `Không có bài nào ở trạng thái ${STATUS_TABS.find(t => t.value === currentStatus)?.label.toLowerCase()}`}
           </Typography>
         </Paper>
       ) : (
@@ -417,7 +436,8 @@ const ExamPage = () => {
           {currentItems.map((item) => {
             const isTemplate = item.isTemplate;
             const status = getActualStatus(item);
-            const { displayText } = formatDateTime(item.StartTime, item.EndTime); const assignedInfo = getAssignedInfo(item);
+            const { displayText } = formatDateTime(item.StartTime, item.EndTime);
+            const assignedInfo = getAssignedInfo(item);
 
             return (
               <Grid item xs={12} md={6} lg={4} key={isTemplate ? `${item.ExamID}-template` : `${item.InstanceId}-instance`}>
@@ -442,17 +462,19 @@ const ExamPage = () => {
                   }}
                 >
                   <CardContent sx={{ flexGrow: 1, pb: 1, position: 'relative' }}>
-                    <IconButton
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        zIndex: 1
-                      }}
-                      onClick={(e) => handleMenuOpen(e, item)}
-                    >
-                      <MoreVertIcon />
-                    </IconButton>
+                    {status !== "Open" && (
+                      <IconButton
+                        sx={{
+                          position: 'absolute',
+                          top: 8,
+                          right: 8,
+                          zIndex: 1
+                        }}
+                        onClick={(e) => handleMenuOpen(e, item)}
+                      >
+                        <MoreVertIcon />
+                      </IconButton>
+                    )}
 
                     <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
                       <Chip
@@ -566,8 +588,7 @@ const ExamPage = () => {
           horizontal: 'right',
         }}
       >
-
-        {menuItem && (menuItem.isTemplate || menuItem.Status === "Scheduled") && (
+        {menuItem && (menuItem.isTemplate || menuItem.Status === "Scheduled" || menuItem.isArchived) && (
           <MenuItem onClick={() => handleMenuAction('edit')}>
             <ListItemIcon>
               <EditIcon fontSize="small" />
@@ -575,7 +596,8 @@ const ExamPage = () => {
             <ListItemText>Chỉnh sửa</ListItemText>
           </MenuItem>
         )}
-        {menuItem && (menuItem.isTemplate || menuItem.Status === "Scheduled" || menuItem.Status === "Closed") && (
+
+        {menuItem && !menuItem.isArchived && (menuItem.isTemplate || menuItem.Status === "Scheduled" || menuItem.Status === "Closed") && (
           <MenuItem onClick={() => handleMenuAction('archive')}>
             <ListItemIcon>
               <ArchiveIcon fontSize="small" color="warning" />
@@ -583,19 +605,51 @@ const ExamPage = () => {
             <ListItemText>Lưu trữ</ListItemText>
           </MenuItem>
         )}
-        {menuItem && menuItem.isArchived && (
-          <MenuItem onClick={() => handleMenuAction('unarchive')}>
-            <ListItemIcon>
-              <UnarchiveIcon fontSize="small" color="success" />
-            </ListItemIcon>
-            <ListItemText>Khôi phục</ListItemText>
-          </MenuItem>
-        )}
       </Menu>
+
+      <Dialog open={openOpenNowDialog} onClose={() => setOpenOpenNowDialog(false)}>
+        <DialogTitle>Xác nhận mở bài</DialogTitle>
+        <DialogContent>
+          Mở bài ngay lập tức? Học viên sẽ có thể làm bài ngay.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenOpenNowDialog(false)}>Hủy</Button>
+          <Button onClick={confirmOpenNow} color="primary" variant="contained">
+            Mở ngay
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openCloseNowDialog} onClose={() => setOpenCloseNowDialog(false)}>
+        <DialogTitle>Xác nhận đóng bài</DialogTitle>
+        <DialogContent>
+          Đóng bài ngay lập tức? Học viên sẽ không thể tiếp tục.
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenCloseNowDialog(false)}>Hủy</Button>
+          <Button onClick={confirmCloseNow} color="error" variant="contained">
+            Đóng ngay
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openUnarchiveDialog} onClose={() => setOpenUnarchiveDialog(false)}>
+        <DialogTitle>Xác nhận chỉnh sửa</DialogTitle>
+        <DialogContent>
+          Bài tập đang ở trạng thái lưu trữ. Bạn có muốn chỉnh sửa không?
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenUnarchiveDialog(false)}>Hủy</Button>
+          <Button onClick={confirmUnarchiveAndEdit} color="primary" variant="contained">
+           Chỉnh sửa
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <Dialog open={openArchiveConfirm} onClose={() => setOpenArchiveConfirm(false)}>
         <DialogTitle>Xác nhận lưu trữ</DialogTitle>
         <DialogContent>
-          Bạn có chắc muốn lưu trữ bài thi này? Bạn có thể khôi phục sau trong tab "Đã lưu trữ".
+          Bạn có chắc muốn lưu trữ bài tập này? 
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenArchiveConfirm(false)}>Hủy</Button>
@@ -613,7 +667,7 @@ const ExamPage = () => {
         />
       )}
 
-      <ToastContainer position="bottom-right" />
+      <ToastContainer position="top-right" />
     </Box>
   );
 };

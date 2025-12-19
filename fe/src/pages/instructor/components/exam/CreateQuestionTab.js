@@ -27,7 +27,6 @@ const QUESTION_TYPES = [
   { value: "multiple_choice", label: "Multiple Choice" },
   { value: "true_false", label: "True/False" },
   { value: "fill_in_blank", label: "Fill in the Blank" },
-  { value: "matching", label: "Matching" },
   { value: "essay", label: "Essay" },
   { value: "speaking", label: "Speaking" },
 ];

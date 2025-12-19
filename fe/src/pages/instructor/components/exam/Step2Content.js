@@ -779,8 +779,6 @@ const Step2Content = ({ examId, sections, setSections }) => {
 
 
     const handleDeleteQuestion = (sectionId, questionIndex) => {
-        if (!window.confirm("Bạn có chắc chắn muốn xóa câu hỏi này?")) return;
-
         setSections((prev) =>
             prev.map((s) => {
                 if (s.id === sectionId) {
