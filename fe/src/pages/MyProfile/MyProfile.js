@@ -48,16 +48,16 @@ const MyProfile = () => {
     }
   };
 
- const handleEditToggle = () => {
-  setIsEditing(!isEditing);
-  if (isEditing) {
-    // Reset lại formData khi hủy, bao gồm cả Phone từ account
-    setFormData({
-      ...profile,
-      Phone: profile.account?.Phone || "",
-    });
-  }
-};
+  const handleEditToggle = () => {
+    setIsEditing(!isEditing);
+    if (isEditing) {
+      // Reset lại formData khi hủy, bao gồm cả Phone từ account
+      setFormData({
+        ...profile,
+        Phone: profile.account?.Phone || "",
+      });
+    }
+  };
   const handlePasswordToggle = () => {
     setIsChangingPassword(!isChangingPassword);
     setPasswordData({
@@ -70,25 +70,18 @@ const MyProfile = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    if (name === "FullName" && value) {
-      const generatedUsername = value
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-z0-9]/g, "")
-        .replace(/\s+/g, "");
+    setFormData((prev) => {
+      const next = {
+        ...prev,
+        [name]: value,
+      };
 
-      setFormData({
-        ...formData,
-        [name]: value,
-        Username: generatedUsername,
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value,
-      });
-    }
+      if (name === "FullName") {
+        next.Username = value;
+      }
+
+      return next;
+    });
   };
 
   const handlePasswordChange = (e) => {
