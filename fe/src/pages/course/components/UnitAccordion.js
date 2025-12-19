@@ -102,7 +102,7 @@ const formatDuration = (minutes) => {
   if (isNaN(mins) || mins <= 0) return null;
 
   if (mins < 60) {
-    return `${mins} phút`;
+    return `${mins} giờ`;
   }
 
   const hours = Math.floor(mins / 60);
@@ -112,7 +112,7 @@ const formatDuration = (minutes) => {
     return `${hours} giờ`;
   }
 
-  return `${hours} giờ ${remainingMins} phút`;
+  return `${hours} giờ ${remainingMins} giờ`;
 };
 
 const UnitHeader = ({ unit, assignmentCount }) => {
