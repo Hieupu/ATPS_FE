@@ -17,6 +17,7 @@ import {
   TextField,
   InputAdornment,
   Autocomplete,
+  Pagination,
 } from "@mui/material";
 import dayjs from "dayjs";
 import { Search } from "@mui/icons-material";
@@ -51,6 +52,11 @@ const PayrollPage = () => {
     totalSessionsPlanned: 0,
     totalHoursPlanned: 0,
   });
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(20);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
 
   const fetchInstructors = async () => {
     try {
@@ -74,7 +80,9 @@ const PayrollPage = () => {
       const response = await getInstructorPayrollApi(
         startDateStr,
         endDateStr,
-        instructorId
+        instructorId,
+        page,
+        limit
       );
       const data = response?.data || [];
       const grandTotalsData = response?.grandTotals || {
@@ -87,8 +95,17 @@ const PayrollPage = () => {
         totalSessionsPlanned: 0,
         totalHoursPlanned: 0,
       };
+      const paginationData = response?.pagination || {
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0,
+      };
+
       setPayrollData(data);
       setGrandTotals(grandTotalsData);
+      setTotalPages(paginationData.totalPages);
+      setTotal(paginationData.total);
     } catch (err) {
       setError(
         err?.message ||
@@ -107,7 +124,7 @@ const PayrollPage = () => {
 
   useEffect(() => {
     fetchPayroll();
-  }, []);
+  }, [page, selectedInstructor]);
 
   const handleQuickFilter = (months) => {
     const newEndDate = dayjs();
@@ -117,7 +134,17 @@ const PayrollPage = () => {
   };
 
   const handleApplyFilter = () => {
-    fetchPayroll();
+    if (page === 1) {
+      // Nếu đang ở trang 1, gọi trực tiếp
+      fetchPayroll();
+    } else {
+      // Nếu không, reset về trang 1 (useEffect sẽ tự động fetch)
+      setPage(1);
+    }
+  };
+
+  const handlePageChange = (event, value) => {
+    setPage(value);
   };
 
   return (
@@ -219,6 +246,7 @@ const PayrollPage = () => {
               value={selectedInstructor}
               onChange={(event, newValue) => {
                 setSelectedInstructor(newValue);
+                setPage(1); // Reset về trang 1 khi chọn giảng viên khác
               }}
               size="small"
               sx={{
@@ -254,7 +282,10 @@ const PayrollPage = () => {
               <Button
                 variant="outlined"
                 size="small"
-                onClick={() => setSelectedInstructor(null)}
+                onClick={() => {
+                  setSelectedInstructor(null);
+                  setPage(1); // Reset về trang 1 khi xóa lọc
+                }}
                 sx={{ textTransform: "none" }}
               >
                 Xóa lọc
@@ -292,7 +323,7 @@ const PayrollPage = () => {
         ) : (
           <TableContainer
             sx={{
-              maxHeight: "calc(100vh - 400px)",
+              maxHeight: "calc(100vh - 280px)",
               position: "relative",
             }}
           >
@@ -460,6 +491,37 @@ const PayrollPage = () => {
               </Table>
             </Box>
           </TableContainer>
+        )}
+
+        {/* Pagination Controls */}
+        {!loading && payrollData.length > 0 && (
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              p: 3,
+              borderTop: "1px solid #e2e8f0",
+            }}
+          >
+            <Typography variant="body2" sx={{ color: "#64748b" }}>
+              Hiển thị {(page - 1) * limit + 1} -{" "}
+              {Math.min(page * limit, total)} trong tổng số {total} giảng viên
+            </Typography>
+            <Pagination
+              count={totalPages}
+              page={page}
+              onChange={handlePageChange}
+              color="primary"
+              showFirstButton
+              showLastButton
+              sx={{
+                "& .MuiPaginationItem-root": {
+                  borderRadius: 2,
+                },
+              }}
+            />
+          </Box>
         )}
       </Card>
     </Box>

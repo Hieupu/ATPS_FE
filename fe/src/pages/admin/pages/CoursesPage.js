@@ -76,6 +76,132 @@ export default function CoursesPage() {
   );
   const [page, setPage] = useState(1);
   const pageSize = 6;
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [courseToReject, setCourseToReject] = useState(null);
+
+  // State cho Hoàn tác duyệt
+  const [revertDialogOpen, setRevertDialogOpen] = useState(false);
+  const [revertReason, setRevertReason] = useState("");
+  const [courseToRevert, setCourseToRevert] = useState(null);
+
+  // Mở dialog từ chối
+  const handleOpenRejectDialog = (course) => {
+    setCourseToReject(course);
+    setRejectReason("");
+    setRejectDialogOpen(true);
+  };
+
+  // Đóng dialog từ chối
+  const handleCloseRejectDialog = () => {
+    setRejectDialogOpen(false);
+    setCourseToReject(null);
+    setRejectReason("");
+  };
+
+  // Mở dialog hoàn tác duyệt
+  const handleOpenRevertDialog = (course) => {
+    setCourseToRevert(course);
+    setRevertReason("");
+    setRevertDialogOpen(true);
+  };
+
+  // Đóng dialog hoàn tác duyệt
+  const handleCloseRevertDialog = () => {
+    setRevertDialogOpen(false);
+    setCourseToRevert(null);
+    setRevertReason("");
+  };
+
+  // Xác nhận từ chối (Gọi API)
+  const handleConfirmReject = async () => {
+    const trimmedReason = rejectReason.trim();
+    if (!trimmedReason) {
+      setSnackbar({
+        open: true,
+        message: "Vui lòng nhập lý do từ chối",
+        severity: "warning",
+      });
+      return;
+    }
+
+    if (!courseToReject) {
+      handleCloseRejectDialog();
+      return;
+    }
+
+    try {
+      await updateCourseStatus(
+        courseToReject.CourseID || courseToReject.courseId,
+        "DRAFT", // Trạng thái trả về
+        "reject", // Action
+        trimmedReason // Lý do từ chối
+      );
+
+      setSnackbar({
+        open: true,
+        message: "Đã từ chối khóa học thành công",
+        severity: "success",
+      });
+
+      loadCourses();
+      handleCloseRejectDialog();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể cập nhật trạng thái",
+        severity: "error",
+      });
+    }
+  };
+
+  // Xác nhận hoàn tác duyệt (Gọi API)
+  const handleConfirmRevert = async () => {
+    const trimmedReason = revertReason.trim();
+    if (!trimmedReason) {
+      setSnackbar({
+        open: true,
+        message: "Vui lòng nhập lý do hoàn tác duyệt",
+        severity: "warning",
+      });
+      return;
+    }
+
+    if (!courseToRevert) {
+      handleCloseRevertDialog();
+      return;
+    }
+
+    try {
+      await updateCourseStatus(
+        courseToRevert.CourseID || courseToRevert.courseId,
+        "DRAFT", // Trạng thái trả về
+        "revert", // Action
+        trimmedReason // Lý do hoàn tác
+      );
+
+      setSnackbar({
+        open: true,
+        message: "Đã hoàn tác duyệt khóa học thành công",
+        severity: "success",
+      });
+
+      loadCourses();
+      handleCloseRevertDialog();
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message:
+          error?.response?.data?.message ||
+          error?.message ||
+          "Không thể hoàn tác duyệt",
+        severity: "error",
+      });
+    }
+  };
 
   useEffect(() => {
     loadCourses();
@@ -111,11 +237,9 @@ export default function CoursesPage() {
   const loadCourses = async () => {
     try {
       setLoading(true);
-      // Admin chỉ lấy IN_REVIEW, APPROVED, PUBLISHED
       const data = await getCoursesForAdmin();
       const coursesData = Array.isArray(data) ? data : [];
 
-      // Filter thêm ở frontend để đảm bảo (backend đã filter nhưng double-check)
       const allowedStatuses = ["IN_REVIEW", "APPROVED", "PUBLISHED"];
       const filtered = coursesData.filter((c) => {
         const status = (c.Status || c.status || "").toUpperCase();
@@ -203,10 +327,6 @@ export default function CoursesPage() {
       });
     }
 
-    // Apply tab filter
-    // Tab 0: Tất cả (đã filter IN_REVIEW, APPROVED, PUBLISHED ở loadCourses)
-    // Tab 1: Đã duyệt (APPROVED, PUBLISHED)
-    // Tab 2: Chờ duyệt (IN_REVIEW)
     switch (tabValue) {
       case 0:
         return filtered; // Tất cả (đã filter ở loadCourses)
@@ -230,7 +350,6 @@ export default function CoursesPage() {
       // Admin sử dụng trực tiếp dữ liệu từ danh sách courses đã có
       // Dữ liệu này đã được lấy từ getCoursesForAdmin() nên đầy đủ thông tin
       setPreviewCourse(course);
-      
     } catch (error) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -283,7 +402,9 @@ export default function CoursesPage() {
     if (action === "APPROVE") {
       openConfirmDialog({
         title: "Duyệt khóa học",
-        message: `Bạn có chắc muốn duyệt khóa học "${course.Title || course.title}"?`,
+        message: `Bạn có chắc muốn duyệt khóa học "${
+          course.Title || course.title
+        }"?`,
         confirmText: "Duyệt",
         confirmColor: "success",
         onConfirm: async () => {
@@ -291,7 +412,7 @@ export default function CoursesPage() {
             await updateCourseStatus(
               course.CourseID || course.courseId,
               "APPROVED",
-              "approve"
+              "approve" // Action để gửi notification
             );
             setSnackbar({
               open: true,
@@ -302,46 +423,14 @@ export default function CoursesPage() {
           } catch (error) {
             setSnackbar({
               open: true,
-              message:
-                error?.response?.data?.message ||
-                error?.message ||
-                "Không thể cập nhật trạng thái",
+              message: error?.message || "Lỗi khi duyệt",
               severity: "error",
             });
           }
         },
       });
     } else if (action === "REJECT") {
-      openConfirmDialog({
-        title: "Từ chối khóa học",
-        message: `Bạn có chắc muốn từ chối khóa học "${course.Title || course.title}"? Khóa học sẽ chuyển về trạng thái "Nháp".`,
-        confirmText: "Từ chối",
-        confirmColor: "error",
-        onConfirm: async () => {
-          try {
-            await updateCourseStatus(
-              course.CourseID || course.courseId,
-              "DRAFT",
-              "reject"
-            );
-            setSnackbar({
-              open: true,
-              message: "Từ chối khóa học thành công",
-              severity: "success",
-            });
-            loadCourses();
-          } catch (error) {
-            setSnackbar({
-              open: true,
-              message:
-                error?.response?.data?.message ||
-                error?.message ||
-                "Không thể cập nhật trạng thái",
-              severity: "error",
-            });
-          }
-        },
-      });
+      handleOpenRejectDialog(course);
     }
   };
 
@@ -353,15 +442,21 @@ export default function CoursesPage() {
 
     if (newStatus === "PUBLISHED") {
       confirmTitle = "Công khai khóa học";
-      confirmMessage = `Bạn có chắc muốn công khai khóa học "${course.Title || course.title}"?`;
+      confirmMessage = `Bạn có chắc muốn công khai khóa học "${
+        course.Title || course.title
+      }"?`;
       confirmColor = "primary";
     } else if (newStatus === "APPROVED" && currentStatus === "PUBLISHED") {
       confirmTitle = "Hủy công khai khóa học";
-      confirmMessage = `Bạn có chắc muốn hủy công khai khóa học "${course.Title || course.title}"?`;
+      confirmMessage = `Bạn có chắc muốn hủy công khai khóa học "${
+        course.Title || course.title
+      }"?`;
       confirmColor = "warning";
     } else if (newStatus === "DRAFT") {
-      confirmTitle = "Về nháp";
-      confirmMessage = `Bạn có chắc muốn chuyển khóa học "${course.Title || course.title}" về trạng thái "Nháp"?`;
+      confirmTitle = "Chuyển khóa học về nháp";
+      confirmMessage = `Bạn có chắc muốn chuyển khóa học "${
+        course.Title || course.title
+      }" về trạng thái "Nháp"?`;
       confirmColor = "warning";
     }
 
@@ -649,7 +744,7 @@ export default function CoursesPage() {
             onUnpublish={(course) =>
               handleStatusChange(course, "APPROVED", "unpublish")
             }
-            onRevert={(course) => handleStatusChange(course, "DRAFT", "revert")}
+            onRevert={(course) => handleOpenRevertDialog(course)}
             getStatus={getStatus}
           />
           {filteredCourses.length > pageSize && (
@@ -813,6 +908,135 @@ export default function CoursesPage() {
             sx={{ textTransform: "none" }}
           >
             {confirmDialog.confirmText}
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {/* Reject Reason Dialog */}
+      <Dialog
+        open={rejectDialogOpen}
+        onClose={handleCloseRejectDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 },
+        }}
+      >
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
+          Từ chối khóa học
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {courseToReject && (
+            <Box>
+              <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
+                Bạn đang từ chối khóa học:{" "}
+                <strong>{courseToReject.Title || courseToReject.title}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
+                Vui lòng nhập lý do từ chối (sẽ gửi thông báo cho giảng viên):
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Ví dụ: Nội dung bài 3 chưa rõ ràng, video bị lỗi âm thanh..."
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            onClick={handleCloseRejectDialog}
+            sx={{
+              textTransform: "none",
+              color: "#64748b",
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmReject}
+            variant="contained"
+            color="error"
+            sx={{
+              textTransform: "none",
+            }}
+            disabled={!rejectReason || rejectReason.trim() === ""}
+          >
+            Xác nhận từ chối
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Revert Dialog - Hoàn tác duyệt */}
+      <Dialog
+        open={revertDialogOpen}
+        onClose={handleCloseRevertDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3 },
+        }}
+      >
+        <DialogTitle
+          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
+        >
+          Hoàn tác duyệt khóa học
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {courseToRevert && (
+            <Box>
+              <Typography variant="body2" sx={{ mb: 2, color: "#64748b" }}>
+                Bạn đang hoàn tác duyệt khóa học:{" "}
+                <strong>{courseToRevert.Title || courseToRevert.title}</strong>
+              </Typography>
+              <Typography variant="body2" sx={{ mb: 1, color: "#64748b" }}>
+                Vui lòng nhập lý do hoàn tác (sẽ gửi thông báo cho giảng viên):
+              </Typography>
+              <TextField
+                fullWidth
+                multiline
+                rows={4}
+                value={revertReason}
+                onChange={(e) => setRevertReason(e.target.value)}
+                placeholder="Ví dụ: Phát hiện vi phạm quy định, cần chỉnh sửa lại nội dung..."
+                sx={{
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 2,
+                  },
+                }}
+              />
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            onClick={handleCloseRevertDialog}
+            sx={{
+              textTransform: "none",
+              color: "#64748b",
+            }}
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmRevert}
+            variant="contained"
+            color="warning"
+            sx={{
+              textTransform: "none",
+            }}
+            disabled={!revertReason || revertReason.trim() === ""}
+          >
+            Xác nhận hoàn tác
           </Button>
         </DialogActions>
       </Dialog>

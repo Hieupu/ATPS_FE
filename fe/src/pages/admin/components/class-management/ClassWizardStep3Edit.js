@@ -26,7 +26,7 @@ const ClassWizardStep3Edit = ({
   timeslots,
   originalSessions,
   requiredSessions,
-  onValidationChange, 
+  onValidationChange,
 }) => {
   const timeslotMap = useMemo(() => {
     const map = {};
@@ -38,24 +38,6 @@ const ClassWizardStep3Edit = ({
     });
     return map;
   }, [timeslots]);
-
-  // DEBUG: Log dữ liệu đầu vào
-  useEffect(() => {
-    console.log("[Step3Edit] ========== DEBUG DATA ==========");
-    console.log("[Step3Edit] originalSessions:", originalSessions);
-    console.log(
-      "[Step3Edit] originalSessions length:",
-      originalSessions?.length || 0
-    );
-    console.log("[Step3Edit] formData.sessions:", formData.sessions);
-    console.log(
-      "[Step3Edit] formData.sessions length:",
-      formData.sessions?.length || 0
-    );
-    console.log("[Step3Edit] formData.schedule:", formData.schedule);
-    console.log("[Step3Edit] OpendatePlan:", formData.schedule?.OpendatePlan);
-    console.log("[Step3Edit] ==================================");
-  }, [originalSessions, formData.sessions, formData.schedule]);
 
   // Khởi tạo sessions từ originalSessions và đảm bảo có flag isOriginal
   useEffect(() => {
@@ -106,9 +88,6 @@ const ClassWizardStep3Edit = ({
         sessions: mappedSessions,
       }));
     } else if (needsUpdate) {
-      // Cập nhật lại các session thiếu isOriginal
-      console.log("[Step3Edit] Cập nhật isOriginal cho các sessions");
-      console.log("[Step3Edit] Updated sessions:", updatedSessions);
       setFormData((prev) => ({
         ...prev,
         sessions: updatedSessions,
@@ -120,19 +99,12 @@ const ClassWizardStep3Edit = ({
   const newStartDate = formData.schedule?.OpendatePlan;
 
   const needsReschedule = useMemo(() => {
-    console.log("[Step3Edit] needsReschedule - newStartDate:", newStartDate);
     if (!newStartDate) {
-      console.log("[Step3Edit] Không có newStartDate, return false function");
       return () => false;
     }
     const startDate = dayjs(newStartDate);
-    console.log(
-      "[Step3Edit] startDate parsed:",
-      startDate.format("YYYY-MM-DD")
-    );
     return (session) => {
       if (!session.Date) {
-        console.log("[Step3Edit] Session không có Date:", session);
         return false;
       }
       const sessionDate = dayjs(session.Date);
@@ -143,18 +115,6 @@ const ClassWizardStep3Edit = ({
         ((session.SessionID || session.id) != null && session.isNew !== true);
 
       const result = isOriginalSession && !session.isDisabled && isBefore;
-      console.log("[Step3Edit] Check session:", {
-        SessionID: session.SessionID || session.id,
-        Date: session.Date,
-        sessionDate: sessionDate.format("YYYY-MM-DD"),
-        startDate: startDate.format("YYYY-MM-DD"),
-        isOriginal: session.isOriginal,
-        isOriginalSession,
-        isNew: session.isNew,
-        isDisabled: session.isDisabled,
-        isBefore,
-        needsReschedule: result,
-      });
       return result;
     };
   }, [newStartDate]);
@@ -162,10 +122,7 @@ const ClassWizardStep3Edit = ({
   // Lọc các buổi cần đổi
   const sessionsNeedingChange = useMemo(() => {
     const sessions = Array.isArray(formData.sessions) ? formData.sessions : [];
-    console.log("[Step3Edit] Filtering sessions, total:", sessions.length);
     const filtered = sessions.filter(needsReschedule);
-    console.log("[Step3Edit] sessionsNeedingChange:", filtered);
-    console.log("[Step3Edit] sessionsNeedingChange count:", filtered.length);
     return filtered;
   }, [formData.sessions, needsReschedule]);
 
@@ -252,15 +209,6 @@ const ClassWizardStep3Edit = ({
         isRescheduled: true,
         isDisabled: false,
         originalSessionID: originalSessionID, // Lưu SessionID của buổi cũ để backend xóa
-      });
-
-      // Logging để debug
-      console.log(`[handleModalConfirm] Đổi lịch buổi học:`, {
-        originalSessionID: originalSessionID,
-        originalDate: originalSession.Date,
-        originalTimeslotID: originalSession.TimeslotID,
-        newDate: Date,
-        newTimeslotID: TimeslotID,
       });
 
       return { ...prev, sessions: updated };

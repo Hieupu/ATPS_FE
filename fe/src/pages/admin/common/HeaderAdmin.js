@@ -145,7 +145,7 @@ export function HeaderAdmin() {
             }}
             onClick={() => navigate("/admin/dashboard")}
           >
-            Dashboard
+            Trang chủ
           </Button>
 
           <Button

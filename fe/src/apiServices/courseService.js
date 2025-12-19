@@ -141,12 +141,27 @@ export const getCoursesForAdmin = async () => {
 };
 
 // Update course status
-export const updateCourseStatus = async (courseId, status, action = null) => {
+export const updateCourseStatus = async (
+  courseId,
+  status,
+  action = null,
+  reason = null
+) => {
   try {
-    const response = await apiClient.put(`/courses/${courseId}/status`, {
+    const payload = {
       Status: status,
       action: action,
-    });
+    };
+
+    // Thêm lý do từ chối nếu có
+    if (reason) {
+      payload.reason = reason;
+    }
+
+    const response = await apiClient.put(
+      `/courses/${courseId}/status`,
+      payload
+    );
     return response.data?.data || response.data;
   } catch (error) {
     console.error("Update course status error:", error);

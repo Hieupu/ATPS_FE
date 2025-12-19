@@ -58,13 +58,14 @@
   align-items: center;
   gap: 20px;
   padding: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #707070 0%, #717171 100%);
   border-radius: 8px;
   color: white;
   margin-bottom: 20px;
 }
 
 .stat-item {
+  color: #333;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -76,12 +77,14 @@
 }
 
 .stat-label {
+  color: #333;
   font-size: 12px;
   opacity: 0.9;
   margin-top: 4px;
 }
 
 .stat-divider {
+  color: #333;
   font-size: 24px;
   opacity: 0.5;
 }
@@ -318,6 +321,7 @@
   }
 
   .stat-value {
+    color: #333;
     font-size: 24px;
   }
 

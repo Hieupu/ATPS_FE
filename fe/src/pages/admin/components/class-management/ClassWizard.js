@@ -49,8 +49,6 @@ import {
   countSelectionSlots,
 } from "./ClassWizard.constants";
 
-// Utility functions và constants đã được tách ra ClassWizard.constants.js
-
 const ClassWizard = ({
   classData,
   onSubmit,
@@ -69,9 +67,11 @@ const ClassWizard = ({
     // Step 1: Basic Info
     Name: "",
     InstructorID: null,
-    CourseID: null, // Thêm CourseID
+    CourseID: null,
     Fee: "",
     Maxstudent: "", // Đổi từ MaxLearners
+    ZoomID: "", // Thêm ZoomID
+    Zoompass: "", // Thêm ZoomPassword
     // Step 2: Schedule Info
     schedule: {
       OpendatePlan: "", // Đổi từ StartDate
@@ -328,8 +328,6 @@ const ClassWizard = ({
     lockedTimeslotId,
   ]);
 
-  // Logic mới: Tính toán các ngày hợp lệ dựa trên tất cả các ca đã chọn
-  // KHÔNG tính toán khi đang ở chế độ tìm kiếm ca mong muốn
   useEffect(() => {
     if (alternativeStartDateSearch.showResults) {
       return;
@@ -361,7 +359,7 @@ const ClassWizard = ({
       const timeslotsByDay = formData.scheduleDetail.TimeslotsByDay || {};
       const daysOfWeek = formData.scheduleDetail.DaysOfWeek || [];
 
-      // ✅ Dùng calculateEndDate để tính: endDatePlan = startDatePlan + (Numofsession / số ca/tuần, tối thiểu 2)
+      //Dùng calculateEndDate để tính: endDatePlan = startDatePlan + (Numofsession / số ca/tuần, tối thiểu 2)
       if (numOfSessions > 0 && startDate) {
         endDate = calculateEndDate(
           startDate,
@@ -375,7 +373,7 @@ const ClassWizard = ({
       }
     }
 
-    // ✅ Đảm bảo endDate có 23:59:59 để không mất buổi cuối
+    // Đảm bảo endDate có 23:59:59 để không mất buổi cuối
     // parseEndDateString đã set 23:59:59, nhưng cần format lại thành string
     if (endDate) {
       const endDateObj = parseEndDateString(endDate);
@@ -1190,8 +1188,10 @@ const ClassWizard = ({
         Name: classData.Name || classData.title || "",
         InstructorID: classData.InstructorID || classData.instructorId || null,
         Fee: classData.Fee || classData.tuitionFee || "",
-        CourseID: classData.CourseID || classData.courseId || null, // Thêm CourseID
+        CourseID: classData.CourseID || classData.courseId || null, 
         Maxstudent: classData.Maxstudent || "",
+        ZoomID: classData.ZoomID || classData.zoomId || "", 
+        Zoompass: classData.Zoompass || classData.Zoompass || "", 
         schedule: {
           OpendatePlan:
             classData.OpendatePlan ||
@@ -3113,7 +3113,8 @@ const ClassWizard = ({
         formData.Fee && parseFloat(formData.Fee) > 0
           ? parseFloat(formData.Fee)
           : 0,
-      // Trường mới (dbver5) - Đảm bảo không null/undefined
+      ZoomID: formData.ZoomID || null, // Thêm ZoomID
+      ZoomPassword: formData.ZoomPassword || null, // Thêm ZoomPassword
       OpendatePlan: formData.schedule.OpendatePlan,
       Numofsession: parseInt(formData.schedule.Numofsession),
       Maxstudent: parseInt(formData.Maxstudent),
@@ -3571,7 +3572,6 @@ const ClassWizard = ({
       scheduleDetail: {
         ...prev.scheduleDetail,
         OpendatePlan: newStartDate,
-        // Giữ nguyên DaysOfWeek và TimeslotsByDay khi áp dụng gợi ý
       },
     }));
 

@@ -5,11 +5,7 @@ const learnerService = {
   getAllLearners: async () => {
     try {
       const response = await apiClient.get("/learners");
-      console.log("Learners API raw response:", response.data);
-      // Backend trả về: {success: true, message: "...", data: [...]}
-      // Status, Email, Phone nên được JOIN từ account table
       const learnersList = response.data?.data || response.data || [];
-      console.log("Learners list sample:", learnersList[0]);
       return learnersList;
     } catch (error) {
       console.error("Get learners error:", error);

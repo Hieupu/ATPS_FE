@@ -1773,10 +1773,6 @@ const ClassesPage = () => {
             (ClassID: {classToRevert?.ClassID}) về trạng thái{" "}
             <strong>Nháp</strong>.
           </Typography>
-          <Typography variant="body2" sx={{ mb: 2, color: "#ef4444" }}>
-            Lưu ý: Chỉ có thể chuyển về Nháp khi lớp{" "}
-            <strong>chưa có học viên</strong>.
-          </Typography>
           <TextField
             label="Lý do"
             placeholder="Nhập lý do chi tiết để thông báo cho nhân viên phụ trách lớp..."

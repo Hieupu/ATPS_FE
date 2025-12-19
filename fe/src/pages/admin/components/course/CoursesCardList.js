@@ -450,7 +450,7 @@ export default function CoursesCardList({
                             transition: "all 0.2s ease",
                           }}
                         >
-                          Về nháp
+                          Hoàn tác duyệt
                         </Button>
                       </Box>
                     )}

@@ -360,10 +360,7 @@ const createReportsPage = (defaultView = "all") => {
         )}
 
         {showLearners && (
-          <SectionBlock
-            title="Học viên"
-            subtitle="Dữ liệu từ bảng learner và enrollment"
-          >
+          <SectionBlock title="Học viên">
             <Grid container spacing={2}>
               <StatCard
                 icon={<People />}
@@ -375,20 +372,16 @@ const createReportsPage = (defaultView = "all") => {
                 label="Học viên mới"
                 value={formatNumber(learners.newThisMonth)}
               />
-              <StatCard
-                icon={<TrendingUp />}
-                label="Tăng trưởng"
-                value={formatPercent(learners.change)}
-              />
+
               <StatCard
                 icon={<CheckCircle />}
-                label="Đăng ký tháng"
+                label="Đăng ký tháng này"
                 value={formatNumber(enrollments.thisMonth)}
               />
               <StatCard
-                icon={<EmojiEvents />}
-                label="Đăng ký đã duyệt"
-                value={formatNumber(enrollments.approved)}
+                icon={<Schedule />}
+                label="Đăng ký tháng trước"
+                value={formatNumber(enrollments.lastMonth)}
               />
             </Grid>
             <Grid container spacing={2} sx={{ mt: 1 }}>
@@ -422,19 +415,63 @@ const createReportsPage = (defaultView = "all") => {
               <Grid item xs={12} md={6}>
                 <Card sx={{ height: 320 }}>
                   <CardContent>
+                    <Typography fontWeight={600} mb={2}>
+                      Xu hướng học viên mới
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <RechartsBarChart
+                        data={[
+                          {
+                            name: "Tháng trước",
+                            value: learners.newLastMonth || 0,
+                          },
+                          {
+                            name: "Tháng này",
+                            value: learners.newThisMonth || 0,
+                          },
+                        ]}
+                      >
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar
+                          dataKey="value"
+                          fill="#10b981"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12}>
+                <Card>
+                  <CardContent>
                     <Typography fontWeight={600} mb={1.5}>
                       Tổng đăng ký theo khoảng chọn
                     </Typography>
-                    <Typography variant="h3" fontWeight={700} color="primary">
-                      {formatNumber(rangeStats?.enrollments)}
-                    </Typography>
-                    <Typography color="text.secondary">
-                      Tính từ {startDate.format("DD/MM")} đến{" "}
-                      {endDate.format("DD/MM")}
-                    </Typography>
-                    <Button sx={{ mt: 2 }} variant="outlined">
-                      Xuất danh sách đăng ký
-                    </Button>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Box>
+                        <Typography
+                          variant="h3"
+                          fontWeight={700}
+                          color="primary"
+                        >
+                          {formatNumber(rangeStats?.enrollments)}
+                        </Typography>
+                        <Typography color="text.secondary">
+                          Tính từ {startDate.format("DD/MM")} đến{" "}
+                          {endDate.format("DD/MM")}
+                        </Typography>
+                      </Box>
+                      <Button variant="outlined">Xuất danh sách đăng ký</Button>
+                    </Box>
                   </CardContent>
                 </Card>
               </Grid>
@@ -443,12 +480,13 @@ const createReportsPage = (defaultView = "all") => {
         )}
 
         {showClasses && (
-          <SectionBlock title="Lớp học" subtitle="Nguồn từ class và course">
+          <SectionBlock title="Lớp học & Khóa học">
             <Grid container spacing={2}>
               <StatCard
                 icon={<ClassIcon />}
                 label="Tổng lớp"
                 value={formatNumber(classes.total)}
+                chip={`+${classes.change || 0}% so với tháng trước`}
               />
               <StatCard
                 icon={<School />}
@@ -460,22 +498,79 @@ const createReportsPage = (defaultView = "all") => {
                 label="Tỷ lệ hoàn thành"
                 value={formatPercent(stats?.completionRate)}
               />
+              <StatCard
+                icon={<DateRange />}
+                label="Lớp mới khoảng chọn"
+                value={formatNumber(rangeStats?.classes)}
+              />
+            </Grid>
+            <Grid container spacing={2} sx={{ mt: 1 }}>
+              <Grid item xs={12} md={8}>
+                <Card sx={{ height: 320 }}>
+                  <CardContent>
+                    <Typography fontWeight={600} mb={2}>
+                      Lớp học mới theo tháng (
+                      {classes.year || new Date().getFullYear()})
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <RechartsBarChart data={classes.newByMonth || []}>
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar
+                          dataKey="value"
+                          fill="#667eea"
+                          radius={[6, 6, 0, 0]}
+                        />
+                      </RechartsBarChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <Card sx={{ height: 320 }}>
+                  <CardContent>
+                    <Typography fontWeight={600} mb={2}>
+                      Khóa học theo trạng thái
+                    </Typography>
+                    <ResponsiveContainer width="100%" height={240}>
+                      <PieChart>
+                        <Pie
+                          dataKey="value"
+                          data={Object.entries(courses.byStatus || {}).map(
+                            ([name, value]) => ({ name, value })
+                          )}
+                          outerRadius={90}
+                        >
+                          {Object.keys(courses.byStatus || {}).map(
+                            (entry, idx) => (
+                              <Cell
+                                key={entry}
+                                fill={
+                                  buildPieColors[idx % buildPieColors.length]
+                                }
+                              />
+                            )
+                          )}
+                        </Pie>
+                        <Legend />
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
           </SectionBlock>
         )}
 
         {showStaff && (
-          <SectionBlock title="Nhân sự" subtitle="instructor + staff + account">
+          <SectionBlock title="Nhân sự">
             <Grid container spacing={2}>
               <StatCard
                 icon={<Person />}
                 label="Giảng viên"
                 value={formatNumber(instructors.total)}
-              />
-              <StatCard
-                icon={<Schedule />}
-                label="Giờ dạy"
-                value={formatNumber(instructors.hours)}
               />
               <StatCard
                 icon={<Group />}
@@ -487,7 +582,62 @@ const createReportsPage = (defaultView = "all") => {
                 label="Quản trị"
                 value={formatNumber(admins.total)}
               />
+              <StatCard
+                icon={<Schedule />}
+                label="Tỷ lệ điểm danh (30 ngày)"
+                value={formatPercent(instructors.attendanceRate)}
+              />
             </Grid>
+            {instructors.topEarners && instructors.topEarners.length > 0 && (
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                <Grid item xs={12}>
+                  <Card>
+                    <CardContent>
+                      <Typography fontWeight={600} mb={2}>
+                        Top 5 giảng viên có lương thực tế cao nhất
+                      </Typography>
+                      <ResponsiveContainer width="100%" height={300}>
+                        <RechartsBarChart
+                          data={instructors.topEarners.map((instructor) => ({
+                            name: instructor.name,
+                            income: instructor.income,
+                            classes: instructor.activeClasses,
+                          }))}
+                          layout="vertical"
+                        >
+                          <XAxis
+                            type="number"
+                            tickFormatter={(v) => formatCurrency(v)}
+                          />
+                          <YAxis type="category" dataKey="name" width={150} />
+                          <Tooltip
+                            formatter={(value, name) => {
+                              if (name === "income")
+                                return formatCurrency(value);
+                              return value;
+                            }}
+                            labelFormatter={(label) => `Giảng viên: ${label}`}
+                          />
+                          <Legend />
+                          <Bar
+                            dataKey="income"
+                            fill="#f97316"
+                            name="Lương thực tế"
+                            radius={[0, 6, 6, 0]}
+                          />
+                          <Bar
+                            dataKey="classes"
+                            fill="#6366f1"
+                            name="Lớp đang dạy"
+                            radius={[0, 6, 6, 0]}
+                          />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+            )}
           </SectionBlock>
         )}
       </Box>

@@ -288,7 +288,7 @@ const StudentSelector = ({
       setClassOptions(nonConflictClasses);
 
       if (nonConflictClasses.length === 0) {
-        setErrorClasses("Không có lớp nào phù hợp (trùng lịch với học viên).");
+        setErrorClasses("Không tìm thấy lớp phù hợp");
       }
     } catch (error) {
       const errorMessage =
