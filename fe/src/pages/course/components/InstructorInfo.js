@@ -46,15 +46,27 @@ const StatCard = ({ icon, label, value }) => (
 );
 
 const InstructorInfo = ({ instructor }) => {
+  console.log("instructor", instructor);
+  
+  // Tính toán stats từ dữ liệu thực tế
   const instructorStats = {
-    totalStudents: '10,000+',
-    totalCourses: '15',
-    rating: 4.8,
-    reviews: '2,500',
-    experience: '8 năm'
+    totalStudents: instructor.TotalStudents ? `${instructor.TotalStudents}+` : '0',
+    totalCourses: instructor.TotalCourses || 0,
+    rating: instructor.ReviewCount > 0 ? 4.8 : 0, // Có thể tính từ reviews nếu có
+    reviews: instructor.ReviewCount || 0,
+    experience: '5 năm' // Có thể lấy từ InstructorCV hoặc tính toán
   };
 
-  const skills = ['JavaScript', 'React', 'Node.js', 'Python', 'Machine Learning', 'Database Design'];
+  // Tạo skills từ chuyên môn và công việc
+  const getSkills = () => {
+    const baseSkills = ['Listening', 'Reading', 'Speaking', 'Writing'];
+    if (instructor.InstructorMajor) {
+      return [...baseSkills, instructor.InstructorMajor, 'IELTS Academic', 'IELTS General'];
+    }
+    return baseSkills;
+  };
+
+  const skills = getSkills();
 
   return (
     <Box>
@@ -91,9 +103,13 @@ const InstructorInfo = ({ instructor }) => {
               </Typography>
 
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 2 }}>
-                <Rating value={instructorStats.rating} precision={0.1} readOnly />
+                <Rating 
+                  value={instructorStats.rating} 
+                  precision={0.1} 
+                  readOnly 
+                />
                 <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                  {instructorStats.rating} ({instructorStats.reviews} đánh giá)
+                  {instructorStats.rating > 0 ? `${instructorStats.rating} (${instructorStats.reviews} đánh giá)` : 'Chưa có đánh giá'}
                 </Typography>
               </Box>
 
@@ -116,9 +132,27 @@ const InstructorInfo = ({ instructor }) => {
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+                  <LocationOn sx={{ mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body2">
+                    Địa chỉ: <strong>{instructor.InstructorAddress}</strong>
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
                   <Groups sx={{ mr: 1, color: 'text.secondary' }} />
                   <Typography variant="body2">
                     Học viên: <strong>{instructorStats.totalStudents}</strong>
+                  </Typography>
+                </Box>
+
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Work sx={{ mr: 1, color: 'text.secondary' }} />
+                  <Typography variant="body2">
+                    Loại: <strong>
+                      {instructor.InstructorType === 'fulltime' ? 'Toàn thời gian' : 
+                       instructor.InstructorType === 'parttime' ? 'Bán thời gian' : 
+                       instructor.InstructorType}
+                    </strong>
                   </Typography>
                 </Box>
               </Box>
@@ -148,7 +182,7 @@ const InstructorInfo = ({ instructor }) => {
               <StatCard
                 icon={<Star fontSize="large" />}
                 label="Đánh giá"
-                value={instructorStats.rating}
+                value={instructorStats.rating > 0 ? instructorStats.rating : 'N/A'}
               />
             </Grid>
             <Grid item xs={6} sm={3}>
@@ -167,11 +201,14 @@ const InstructorInfo = ({ instructor }) => {
                 Giới thiệu
               </Typography>
               <Typography variant="body1" paragraph>
-                {instructor.InstructorBio || `Giảng viên ${instructor.InstructorName} với hơn ${instructorStats.experience} kinh nghiệm trong lĩnh vực ${instructor.InstructorMajor}. Với phương pháp giảng dạy nhiệt tình và dễ hiểu, thầy/cô đã giúp hàng ngàn học viên đạt được mục tiêu học tập.`}
+                {instructor.InstructorCV || 
+                 `Giảng viên ${instructor.InstructorName} với hơn ${instructorStats.experience} kinh nghiệm trong lĩnh vực ${instructor.InstructorMajor}. Với phương pháp giảng dạy nhiệt tình và dễ hiểu, thầy/cô đã giúp hàng ngàn học viên đạt được mục tiêu học tập.`}
               </Typography>
-              <Typography variant="body1">
-                Luôn cập nhật những xu hướng công nghệ mới nhất và áp dụng vào giảng dạy, mang đến cho học viên những kiến thức thực tế và hữu ích nhất.
-              </Typography>
+              {instructor.InstructorCV && (
+                <Typography variant="body1">
+                  Luôn cập nhật những xu hướng công nghệ mới nhất và áp dụng vào giảng dạy, mang đến cho học viên những kiến thức thực tế và hữu ích nhất.
+                </Typography>
+              )}
             </CardContent>
           </Card>
 
@@ -203,16 +240,16 @@ const InstructorInfo = ({ instructor }) => {
               </Typography>
               <Box component="ul" sx={{ pl: 2 }}>
                 <Typography component="li" variant="body1" paragraph>
-                  <strong>Học qua thực hành:</strong> Tập trung vào các dự án thực tế
+                  <strong>Học qua thực hành:</strong> Tập trung vào các bài tập và đề thi thực tế
                 </Typography>
                 <Typography component="li" variant="body1" paragraph>
-                  <strong>Hỗ trợ 1-1:</strong> Giải đáp thắc mắc 24/7
+                  <strong>Hỗ trợ 1-1:</strong> Giải đáp thắc mắc chi tiết cho từng học viên
                 </Typography>
                 <Typography component="li" variant="body1" paragraph>
-                  <strong>Cập nhật công nghệ:</strong> Luôn sử dụng phiên bản và công nghệ mới nhất
+                  <strong>Cập nhật xu hướng:</strong> Luôn theo sát các thay đổi trong đề thi IELTS
                 </Typography>
                 <Typography component="li" variant="body1">
-                  <strong>Lộ trình rõ ràng:</strong> Học viên biết được mình đang ở đâu và cần học gì tiếp theo
+                  <strong>Lộ trình rõ ràng:</strong> Xây dựng lộ trình học tập phù hợp với từng trình độ học viên
                 </Typography>
               </Box>
             </CardContent>

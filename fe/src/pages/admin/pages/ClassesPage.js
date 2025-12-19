@@ -720,19 +720,19 @@ const ClassesPage = () => {
 
   const handlePublishClass = async (classId) => {
     openConfirmDialog({
-      title: "Xuất bản lớp học",
+      title: "Tuyển sinh lớp học",
       message:
-        "Bạn có chắc muốn xuất bản lớp học này? Học viên có thể đăng ký sau khi xuất bản.",
-      confirmText: "Xuất bản",
+        "Bạn có chắc muốn mở tuyển sinh cho lớp học này?",
+      confirmText: "Tuyển sinh",
       confirmColor: "success",
       onConfirm: async () => {
         try {
           await classService.publishClass(classId);
-          showToast("success", "Đã xuất bản lớp học thành công!");
+          showToast("success", "Đã mở tuyển sinh lớp học thành công!");
           await loadData();
         } catch (error) {
-          console.error("Lỗi khi xuất bản lớp:", error);
-          showToast("error", "Không thể xuất bản lớp học. Vui lòng thử lại!");
+          console.error("Lỗi khi mở tuyển sinh lớp:", error);
+          showToast("error", "Không thể mở tuyển sinh lớp học. Vui lòng thử lại!");
         } finally {
           closeConfirmDialog();
         }
