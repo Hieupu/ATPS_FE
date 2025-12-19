@@ -230,10 +230,6 @@ export default function StaffPromotionsPage() {
       newErrors.StartDate = "Ngày bắt đầu không được để trống";
     }
 
-    if (!formData.EndDate) {
-      newErrors.EndDate = "Ngày kết thúc không được để trống";
-    }
-
     if (
       formData.StartDate &&
       formData.EndDate &&

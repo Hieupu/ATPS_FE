@@ -154,7 +154,7 @@ const InstructorStatusChangeModal = ({
                                 : classItem.Status === "APPROVED"
                                 ? "Đã duyệt"
                                 : classItem.Status === "PUBLISHED"
-                                ? "Đã xuất bản"
+                                ? "Đang tuyển sinh"
                                 : classItem.Status
                             }
                             size="small"

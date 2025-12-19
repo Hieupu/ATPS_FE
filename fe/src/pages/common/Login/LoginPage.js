@@ -80,7 +80,11 @@ const LoginPage = () => {
           navigate("/instructor");
         } else if (data.user.role === "admin") {
           navigate("/admin");
-        } else {
+        }
+         else if (data.user.role === "staff") {
+          navigate("/staff");
+         } 
+        else {
           navigate("/");
         }
       }, 500);

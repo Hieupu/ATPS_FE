@@ -102,7 +102,7 @@ const formatDuration = (minutes) => {
   if (isNaN(mins) || mins <= 0) return null;
 
   if (mins < 60) {
-    return `${mins} phút`;
+    return `${mins} giờ`;
   }
 
   const hours = Math.floor(mins / 60);
@@ -112,7 +112,7 @@ const formatDuration = (minutes) => {
     return `${hours} giờ`;
   }
 
-  return `${hours} giờ ${remainingMins} phút`;
+  return `${hours} giờ ${remainingMins} giờ`;
 };
 
 const UnitHeader = ({ unit, assignmentCount }) => {
@@ -173,14 +173,14 @@ const UnitHeader = ({ unit, assignmentCount }) => {
           {videoCount > 0 && (
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <PlayCircleOutline sx={iconStyle} />
-              <Typography sx={metaTextStyle}>{videoCount} video</Typography>
+              <Typography sx={metaTextStyle}>{videoCount} Video</Typography>
             </Box>
           )}
 
           {docCount > 0 && (
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <MenuBookOutlined sx={iconStyle} />
-              <Typography sx={metaTextStyle}>{docCount} tài liệu</Typography>
+              <Typography sx={metaTextStyle}>{docCount} Tài liệu</Typography>
             </Box>
           )}
 
@@ -188,7 +188,7 @@ const UnitHeader = ({ unit, assignmentCount }) => {
             <Box sx={{ display: "flex", alignItems: "center" }}>
               <AssignmentOutlined sx={iconStyle} />
               <Typography sx={metaTextStyle}>
-                {assignmentCount} bài tập
+                {assignmentCount} Bài tập
               </Typography>
             </Box>
           )}

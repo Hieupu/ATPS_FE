@@ -36,11 +36,6 @@ const CancelClassDialog = ({
               <strong>Tên lớp:</strong>{" "}
               {classInfo.Name}
             </Typography>
-            {classInfo.ClassID && (
-              <Typography variant="body2" color="text.secondary" gutterBottom>
-                <strong>Mã lớp:</strong> {classInfo.ClassID}
-              </Typography>
-            )}
             <Typography
               variant="body2"
               color="text.secondary"

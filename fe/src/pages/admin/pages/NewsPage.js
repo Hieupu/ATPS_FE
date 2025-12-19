@@ -326,7 +326,7 @@ export default function NewsPage() {
   const getStatusLabel = (status) => {
     switch (status?.toLowerCase()) {
       case "published":
-        return "Đã xuất bản";
+        return "Đang tuyển sinh";
       case "pending":
         return "Chờ duyệt";
       case "rejected":
@@ -524,7 +524,7 @@ export default function NewsPage() {
           }}
         >
           <Tab label={`Tất cả (${allCount})`} />
-          <Tab label={`Đã xuất bản (${publishedCount})`} />
+          <Tab label={`Đang tuyển sinh (${publishedCount})`} />
           <Tab label={`Chờ duyệt (${pendingCount})`} />
           <Tab label={`Đã từ chối (${rejectedCount})`} />
         </Tabs>

@@ -27,7 +27,7 @@ const STATUS_LABELS = {
   DRAFT: "Bản nháp",
   IN_REVIEW: "Chờ duyệt",
   APPROVED: "Đã duyệt",
-  PUBLISHED: "Đã xuất bản",
+  PUBLISHED: "Đang tuyển sinh",
   DELETED: "Đã xóa",
 };
 

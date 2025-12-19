@@ -1225,7 +1225,7 @@ const AdminInstructorsPage = () => {
                               : classItem.Status === "APPROVED"
                               ? "Đã duyệt"
                               : classItem.Status === "PUBLISHED"
-                              ? "Đã xuất bản"
+                              ? "Đang tuyển sinh"
                               : classItem.Status
                           }
                           size="small"
@@ -1368,7 +1368,7 @@ const AdminInstructorsPage = () => {
                         <Chip
                           label={
                             course.Status === "PUBLISHED"
-                              ? "Đã xuất bản"
+                              ? "Đang tuyển sinh"
                               : course.Status === "APPROVED"
                               ? "Đã duyệt"
                               : course.Status === "IN_REVIEW"
