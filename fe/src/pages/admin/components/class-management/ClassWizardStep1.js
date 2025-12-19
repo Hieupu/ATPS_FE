@@ -347,7 +347,7 @@ const ClassWizardStep1 = ({
           id="Fee"
           value={formData.Fee}
           onChange={(e) => setFormData({ ...formData, Fee: e.target.value })}
-          placeholder="Nhập học phí (để trống nếu miễn phí)"
+          placeholder="Nhập học phí" 
           min="0"
           className={errors.Fee ? "error" : ""}
           disabled={readonly}
