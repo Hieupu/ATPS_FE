@@ -357,6 +357,18 @@ export default function CurriculumSection({
   const handleOpenEditLesson = (unitId, lesson) => {
     setLessonDialogMode("edit");
     setLessonDialogUnitId(unitId);
+
+    let previewUrl = "";
+    let fileName = "";
+
+    if (lesson.file && lesson.file instanceof File) {
+      previewUrl = URL.createObjectURL(lesson.file);
+      fileName = lesson.file.name;
+    } else {
+      previewUrl = lesson.FileURL || lesson.fileUrl || lesson.url || "";
+      fileName = previewUrl ? previewUrl.split("/").pop() : "";
+    }
+
     setLessonDialogInitial({
       LessonID: lesson.LessonID,
       Title: lesson.Title || "",
@@ -365,8 +377,8 @@ export default function CurriculumSection({
       Status: lesson.Status || "VISIBLE",
       OrderIndex: lesson.OrderIndex || 1,
       file: null,
-      existingFileName: lesson.FileURL ? lesson.FileURL.split("/").pop() : "",
-      existingFileUrl: lesson.FileURL || "",
+      existingFileName: fileName,
+      existingFileUrl: previewUrl,
     });
     setLessonDialogOpen(true);
   };
