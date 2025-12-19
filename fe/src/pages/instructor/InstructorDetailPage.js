@@ -591,7 +591,7 @@ const shouldShowEnrollButton = !isNotLearner;
         Chưa có khóa học nào
       </Typography>
       <Typography variant="body2" color="text.secondary">
-        Giảng viên này chưa có khóa học nào đã xuất bản. Vui lòng quay lại sau.
+        Giảng viên này chưa có khóa học nào đã mở tuyển sinh. Vui lòng quay lại sau.
       </Typography>
     </Box>
   )}

@@ -737,7 +737,7 @@ export default function CoursesPage() {
                               : classItem.Status === "APPROVED"
                               ? "Đã duyệt"
                               : classItem.Status === "PUBLISHED"
-                              ? "Đã xuất bản"
+                              ? "Đang tuyển sinh"
                               : classItem.Status || "N/A"
                           }
                           size="small"

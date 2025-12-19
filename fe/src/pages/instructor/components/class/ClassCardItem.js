@@ -26,7 +26,7 @@ const STATUS_CONFIG = {
     bg: "#d1fae5",
   },
   ACTIVE: {
-    label: "Lớp đã mở",
+    label: "Đang tuyển sinh",
     color: "#f59e0b",
     bg: "#fef3c7",
   },
