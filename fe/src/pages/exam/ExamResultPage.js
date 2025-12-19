@@ -42,6 +42,52 @@ const ExamResultPage = () => {
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState(null);
+  const [scoreDetails, setScoreDetails] = useState(null);
+
+  const calculateAccuracy = (reviewData) => {
+
+    if (reviewData && reviewData.summary) {
+      const { totalEarnedPoints, totalMaxPoints } = reviewData.summary; 
+      if (totalMaxPoints > 0) {
+        const percentage = ((totalEarnedPoints / totalMaxPoints) * 100).toFixed(2);
+        
+        const result = {
+          earnedPoints: totalEarnedPoints,
+          totalPoints: totalMaxPoints,
+          percentage
+        };
+        return result;
+      }
+    }
+    
+    if (!reviewData || !reviewData.questions || reviewData.questions.length === 0) {
+      return null;
+    }
+
+    let totalPoints = 0;
+    let earnedPoints = 0;
+
+    reviewData.questions.forEach((question, index) => {
+      const questionPoints = question.point || question.weight || 1;
+      const isCorrect = question.isCorrect || question.correct;
+      
+      totalPoints += questionPoints;
+      if (isCorrect) {
+        earnedPoints += questionPoints;
+      }
+    });
+
+    if (totalPoints === 0) return null;
+    
+    const percentage = ((earnedPoints / totalPoints) * 100).toFixed(2);
+    
+    const result = {
+      earnedPoints,
+      totalPoints,
+      percentage
+    };
+    return result;
+  };
 
   const loadResult = async () => {
     try {
@@ -53,6 +99,16 @@ const ExamResultPage = () => {
       try {
         const review = await getExamReviewApi(instanceId);
         setReviewData(review);
+        
+        const calculatedScore = calculateAccuracy(review);
+        if (calculatedScore) {
+          setScoreDetails(calculatedScore);
+          setResult(prev => ({
+            ...prev,
+            score: calculatedScore.percentage,
+            originalScore: data.score 
+          }));
+        }
       } catch (reviewErr) {
         console.warn('Could not load review data:', reviewErr);
       }
@@ -134,32 +190,55 @@ const ExamResultPage = () => {
                 )}
 
                 <Grid container spacing={2} sx={{ mb: 3 }}>
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={6}>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Điểm số
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, mt: 0.5 }}>
+                      {scoreDetails ? (
+                        <>
+                          <Typography variant="h4" fontWeight={700} color="primary">
+                            {scoreDetails.earnedPoints}
+                          </Typography>
+                          <Typography variant="h5" color="text.secondary">
+                            / {scoreDetails.totalPoints}
+                          </Typography>
+                        </>
+                      ) : (
+                        <Typography variant="h4" fontWeight={700}>
+                          —
+                        </Typography>
+                      )}
+                    </Box>
+                  
+                  </Grid>
+
+                  <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Độ chính xác
                     </Typography>
-                    <Typography variant="h5" fontWeight={700}>
+                    <Typography variant="h4" fontWeight={700} color="success.main" sx={{ mt: 0.5 }}>
                       {result.score ? `${result.score}%` : '—'}
                     </Typography>
                     <LinearProgress
                       variant="determinate"
                       value={result.score ? parseFloat(result.score) : 0}
-                      sx={{ mt: 1 }}
+                      sx={{ mt: 1, height: 8, borderRadius: 1 }}
                     />
                   </Grid>
 
                   {result.durationSec && (
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                       <Typography variant="subtitle2" color="text.secondary">
                         Thời gian làm bài
                       </Typography>
-                      <Typography variant="h5">
+                      <Typography variant="h5" sx={{ mt: 0.5 }}>
                         {formatDurationText(result.durationSec)}
                       </Typography>
                     </Grid>
                   )}
 
-                  <Grid item xs={12} sm={4}>
+                  <Grid item xs={12} sm={6}>
                     <Typography variant="subtitle2" color="text.secondary">
                       Trạng thái
                     </Typography>
@@ -171,54 +250,11 @@ const ExamResultPage = () => {
                   </Grid>
                 </Grid>
 
-                {reviewData && reviewData.summary && (
-                  <>
-                    <Divider sx={{ my: 2 }} />
-
-                    <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 2 }}>
-                      Thống kê chi tiết
-                    </Typography>
-
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                      <Grid item xs={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#f5f5f5', borderRadius: 1 }}>
-                          <Typography variant="h4" fontWeight={700} color="primary">
-                            {reviewData.summary.totalQuestions}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Tổng số câu
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      <Grid item xs={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#e8f5e9', borderRadius: 1 }}>
-                          <Typography variant="h4" fontWeight={700} color="success.main">
-                            {reviewData.summary.correctAnswers}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Câu đúng
-                          </Typography>
-                        </Box>
-                      </Grid>
-
-                      <Grid item xs={4}>
-                        <Box sx={{ textAlign: 'center', p: 2, bgcolor: '#ffebee', borderRadius: 1 }}>
-                          <Typography variant="h4" fontWeight={700} color="error.main">
-                            {reviewData.summary.totalQuestions - reviewData.summary.correctAnswers}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Câu sai
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                  </>
-                )}
+                <Divider sx={{ my: 2 }} />
 
                 {result.submissionDate && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-                    Thời gian nộp bài: {new Date(result.submissionDate).toLocaleString('vi-VN')}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                    <strong>Thời gian nộp bài:</strong> {new Date(result.submissionDate).toLocaleString('vi-VN')}
                   </Typography>
                 )}
 

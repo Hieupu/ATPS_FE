@@ -217,65 +217,7 @@ const ExamsPage = () => {
                           size="small"
                         />
                       </Box>
-
-                      {attemptStatus && (
-                        <Box sx={{ mt: 1 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                            <Typography variant="body2" fontWeight={600}>
-                              Số lần làm bài:
-                            </Typography>
-                            <Chip
-                              label={`${attemptStatus.used}/${attemptStatus.total}`}
-                              color={
-                                !attemptStatus.hasRemaining
-                                  ? 'error'
-                                  : attemptStatus.isLastAttempt
-                                  ? 'warning'
-                                  : 'primary'
-                              }
-                              size="small"
-                            />
-
-                            {attemptStatus.isLastAttempt && attemptStatus.hasRemaining && (
-                              <Chip
-                                icon={<Warning />}
-                                label="Lượt cuối"
-                                color="warning"
-                                size="small"
-                                variant="outlined"
-                              />
-                            )}
-
-                            {!attemptStatus.hasRemaining && (
-                              <Chip
-                                label="Hết lượt"
-                                color="error"
-                                size="small"
-                                variant="outlined"
-                              />
-                            )}
-                          </Box>
-
-                          <LinearProgress
-                            variant="determinate"
-                            value={attemptStatus.percentage}
-                            sx={{
-                              height: 6,
-                              borderRadius: 1,
-                              bgcolor: 'grey.200',
-                              '& .MuiLinearProgress-bar': {
-                                bgcolor: !attemptStatus.hasRemaining
-                                  ? 'error.main'
-                                  : attemptStatus.isLastAttempt
-                                  ? 'warning.main'
-                                  : 'primary.main',
-                              },
-                            }}
-                          />
-                        </Box>
-                      )}
                     </Box>
-
                     <Box
                       sx={{
                         display: 'flex',
@@ -315,11 +257,7 @@ const ExamsPage = () => {
                         </Button>
                       )}
 
-                      {isOpen && !hasRemaining && (
-                        <Alert severity="error" sx={{ p: 1 }}>
-                          Đã hết lượt làm bài
-                        </Alert>
-                      )}
+             
 
                       {(isOpen || inst.status === 'Closed') && hasSubmitted && (
                         <Button

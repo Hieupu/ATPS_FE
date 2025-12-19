@@ -117,8 +117,6 @@ const ExamReviewPage = () => {
       setError(null);
 
       const data = await getExamReviewApi(instanceId);
-      console.log('Review data:', data);
-
       setReviewData(data);
       setSections(data.sections || []);
       if (data.sections && data.sections.length > 0) {
@@ -207,13 +205,23 @@ const ExamReviewPage = () => {
     }
   };
 
- 
-  const calculatePercentage = () => {
-    if (!reviewData?.summary) return 0;
+  const calculateScoreData = () => {
+    if (!reviewData?.summary) return null;
+    
     const { totalEarnedPoints, totalMaxPoints } = reviewData.summary;
-    if (totalMaxPoints === 0) return 0;
-    return Math.round((totalEarnedPoints / totalMaxPoints) * 100);
+    
+    if (totalMaxPoints === 0) return null;
+    
+    const percentage = ((totalEarnedPoints / totalMaxPoints) * 100).toFixed(2);
+    
+    return {
+      earnedPoints: totalEarnedPoints,
+      totalPoints: totalMaxPoints,
+      percentage
+    };
   };
+
+  const scoreData = calculateScoreData();
 
   return (
     <>
@@ -261,12 +269,24 @@ const ExamReviewPage = () => {
             })}
           </Box>
           <Box sx={{ display: 'flex', gap: 1.5, alignItems: 'center' }}>
-            {reviewData && reviewData.summary && (
-              <Chip
-                label={`Điểm: ${calculatePercentage()}%`}
-                color="primary"
-                variant="outlined"
-              />
+            {scoreData && (
+              <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                <Chip
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                      Điểm:
+                      <Typography variant="body2" fontWeight={600}>
+                        {scoreData.earnedPoints}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        / {scoreData.totalPoints}
+                      </Typography>
+                    </Box>
+                  }
+                  color="primary"
+                  variant="outlined"
+                />
+              </Box>
             )}
 
             <Button
