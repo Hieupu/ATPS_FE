@@ -18,8 +18,6 @@ import {
   Notifications,
   Person,
   Logout,
-  Dashboard,
-  Settings,
   School,
   BusinessCenter,
 } from "@mui/icons-material";

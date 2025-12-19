@@ -316,15 +316,33 @@ export function SidebarAdmin() {
 
   return (
     <div className="admin-sidebar">
-      {/* LOGO */}
-      <div className="sidebar-header">
-        <div className="sidebar-header-icon">
-          <GridViewIcon sx={{ fontSize: 24 }} />
+     <NavLink to="/" className="sidebar-header-link">
+        <div className="sidebar-header">
+          <div className="sidebar-header-icon">
+            <img
+              src="/logo192.png"
+              alt="ATPS Logo"
+              style={{
+                width: "45px",
+                height: "45px",
+                objectFit: "cover",
+                borderRadius: "8px",
+                border: "1px solid #eee",
+              }}
+            />
+          </div>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: "16px",
+              fontWeight: "bold",
+              marginLeft: "8px",
+            }}
+          >
+            Trang Quản Trị Viên
+          </h3>
         </div>
-        <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "bold" }}>
-          ATPS Admin
-        </h3>
-      </div>
+      </NavLink>
 
       {/* NAV LIST */}
       <div className="sidebar-nav">
