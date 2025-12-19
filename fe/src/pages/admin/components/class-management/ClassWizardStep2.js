@@ -1,9 +1,7 @@
 import React from "react";
 import dayjs from "dayjs";
 
-/**
- * ClassWizardStep2 - Component cho Step 2: Lịch học
- */
+
 const ClassWizardStep2 = ({
   formData,
   setFormData,
@@ -14,11 +12,7 @@ const ClassWizardStep2 = ({
   isEditMode,
   impactedSessionMessages,
 }) => {
-  // Debug log: kiểm tra đã nhận được Tổng số buổi học hay chưa
-  console.log(
-    "[ClassWizardStep2] Numofsession (from formData.schedule):",
-    formData?.schedule?.Numofsession
-  );
+
 
   return (
     <div className="wizard-step-content">

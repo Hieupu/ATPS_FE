@@ -38,9 +38,7 @@ import {
 import {
   Add,
   Edit,
-  Delete,
   Visibility,
-  Send,
   MoreVert,
   Email,
   CheckCircle,
@@ -48,134 +46,6 @@ import {
 } from "@mui/icons-material";
 import emailTemplateService from "../../../apiServices/emailTemplateService";
 import "./style.css";
-
-// Template mẫu cho từng loại sự kiện
-const EVENT_TEMPLATES = {
-  ACCOUNT_STATUS_CHANGED: {
-    subject: "Thông báo thay đổi trạng thái tài khoản",
-    body: `Kính chào {{userName}},
-
-Chúng tôi xin thông báo rằng trạng thái tài khoản của bạn đã được thay đổi.
-
-Trạng thái cũ: {{oldStatus}}
-Trạng thái mới: {{newStatus}}
-
-Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "oldStatus", "newStatus"],
-  },
-  CLASS_CANCELLED_TO_LEARNER: {
-    subject: "Thông báo hủy lớp học: {{className}}",
-    body: `Kính chào {{userName}},
-
-Chúng tôi rất tiếc phải thông báo rằng lớp học "{{className}}" ({{classCode}}) đã bị hủy.
-
-Lý do: {{reason}}
-
-Chúng tôi sẽ liên hệ với bạn để xử lý việc hoàn tiền hoặc chuyển sang lớp học khác.
-
-Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "className", "classCode", "reason"],
-  },
-  CLASS_CANCELLED_TO_INSTRUCTOR: {
-    subject: "Thông báo hủy lớp học: {{className}}",
-    body: `Kính chào {{userName}},
-
-Chúng tôi xin thông báo rằng lớp học "{{className}}" ({{classCode}}) mà bạn đang giảng dạy đã bị hủy.
-
-Lý do: {{reason}}
-
-Lịch giảng dạy của bạn sẽ được cập nhật. Nếu bạn có bất kỳ thắc mắc nào, vui lòng liên hệ với chúng tôi.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "className", "classCode", "reason"],
-  },
-  REFUND_CREATED: {
-    subject: "Yêu cầu hoàn tiền đã được tạo: {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Yêu cầu hoàn tiền của bạn đã được tạo thành công.
-
-Mã yêu cầu: {{refundCode}}
-Lớp học: {{className}}
-Số tiền: {{refundAmount}}
-Lý do: {{reason}}
-
-Yêu cầu của bạn đang được xem xét. Chúng tôi sẽ thông báo kết quả trong thời gian sớm nhất.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: [
-      "userName",
-      "className",
-      "refundCode",
-      "refundAmount",
-      "reason",
-    ],
-  },
-  REFUND_APPROVED: {
-    subject: "Hoàn tiền đã hoàn tất: {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Yêu cầu hoàn tiền của bạn đã được xử lý hoàn tất.
-
-Mã yêu cầu: {{refundCode}}
-Lớp học: {{className}}
-Số tiền: {{refundAmount}}
-Ngày hoàn tất: {{completedDate}}
-
-Số tiền đã được hoàn lại vào tài khoản của bạn. Vui lòng kiểm tra lại.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: [
-      "userName",
-      "refundCode",
-      "refundAmount",
-      "className",
-      "completedDate",
-    ],
-  },
-  REFUND_REJECTED: {
-    subject: "Yêu cầu hoàn tiền đã bị từ chối: {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Rất tiếc, yêu cầu hoàn tiền của bạn đã bị từ chối.
-
-Mã yêu cầu: {{refundCode}}
-Lý do từ chối: {{rejectionReason}}
-
-Nếu bạn có bất kỳ thắc mắc nào về quyết định này, vui lòng liên hệ với chúng tôi.
-
-Trân trọng,
-Đội ngũ hỗ trợ`,
-    variables: ["userName", "refundCode", "rejectionReason"],
-  },
-
-  REFUND_ACCOUNT_INFO_REQUEST: {
-    subject:
-      "Vui lòng cung cấp thông tin tài khoản để hoàn tiền {{refundCode}}",
-    body: `Kính chào {{userName}},
-
-Yêu cầu hoàn tiền {{refundCode}} đã được duyệt. Vui lòng cung cấp thông tin chuyển khoản để chúng tôi thực hiện hoàn tiền:
-- Tên ngân hàng:
-- Số tài khoản:
-- Chủ tài khoản:
-- Nội dung nhận tiền (nếu có):
-
-Số tiền hoàn: {{refundAmount}}
-Lớp học: {{className}}
-
-Nếu bạn đã cung cấp trước đó, vui lòng bỏ qua email này. Cảm ơn bạn!`,
-    variables: ["userName", "refundCode", "refundAmount", "className"],
-  },
-};
 
 const EVENT_TYPES = [
   { value: "ACCOUNT_STATUS_CHANGED", label: "Thay đổi trạng thái tài khoản" },
@@ -188,13 +58,15 @@ const EVENT_TYPES = [
     label: "Hủy lớp học - Gửi tới giảng viên",
   },
   { value: "REFUND_CREATED", label: "Tạo yêu cầu hoàn tiền" },
-  { value: "REFUND_APPROVED", label: "Duyệt yêu cầu hoàn tiền" },
+  {
+    value: "REFUND_APPROVED",
+    label: "Duyệt yêu cầu hoàn tiền (đã kết thúc chuyển khoản)",
+  },
   { value: "REFUND_REJECTED", label: "Từ chối yêu cầu hoàn tiền" },
-  { value: "REFUND_COMPLETED", label: "Hoàn tiền hoàn tất" },
   {
     value: "REFUND_ACCOUNT_INFO_REQUEST",
     label: "Yêu cầu thông tin chuyển khoản",
-  }
+  },
 ];
 
 const PAGE_SIZE = 10;
@@ -217,10 +89,7 @@ export default function EmailTemplatePage() {
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [testDialogOpen, setTestDialogOpen] = useState(false);
   const [previewData, setPreviewData] = useState(null);
-  const [testEmail, setTestEmail] = useState("");
-  const [testVariables, setTestVariables] = useState({});
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -239,7 +108,6 @@ export default function EmailTemplatePage() {
   const [formErrors, setFormErrors] = useState({});
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
   const [availableVariables, setAvailableVariables] = useState([]);
   const [loadingVariables, setLoadingVariables] = useState(false);
 
@@ -329,60 +197,32 @@ export default function EmailTemplatePage() {
         eventType
       );
       const varsArray = Array.isArray(variables) ? variables : [];
-      // Fallback: nếu không có biến từ DB, dùng template mẫu (nếu có)
-      if (varsArray.length === 0 && EVENT_TEMPLATES[eventType]) {
-        setAvailableVariables(EVENT_TEMPLATES[eventType].variables || []);
-      } else {
-        setAvailableVariables(varsArray);
-      }
+      setAvailableVariables(varsArray);
 
-      // Nếu có template mẫu và đang tạo mới, tự động điền (luôn cập nhật khi chọn lại EventType)
-      if (!isEditing && EVENT_TEMPLATES[eventType]) {
-        const template = EVENT_TEMPLATES[eventType];
+      // Nếu đang tạo mới, cập nhật TemplateCode và TemplateName theo EventType
+      if (!isEditing) {
         setFormData((prev) => ({
           ...prev,
           EventType: eventType,
-          Subject: template.subject, // Luôn cập nhật theo template mới
-          Body: template.body, // Luôn cập nhật theo template mới
-          Variables:
-            varsArray.length > 0 ? varsArray : template.variables || varsArray,
-          TemplateCode: eventType, // Luôn cập nhật theo EventType
+          Variables: varsArray,
+          TemplateCode: eventType,
           TemplateName:
-            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
-        }));
-      } else if (!isEditing) {
-        // Nếu không có template mẫu nhưng có biến từ DB, chỉ cập nhật Variables
-        setFormData((prev) => ({
-          ...prev,
-          EventType: eventType,
-          Variables: varsArray.length > 0 ? varsArray : [],
-          TemplateCode: eventType, // Luôn cập nhật theo EventType
-          TemplateName:
-            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType, // Luôn cập nhật theo EventType
+            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType,
         }));
       }
     } catch (error) {
       console.error("Error loading available variables:", error);
-      // Fallback về template mẫu nếu có
-      if (EVENT_TEMPLATES[eventType]) {
-        setAvailableVariables(EVENT_TEMPLATES[eventType].variables);
-        // Nếu đang tạo mới, vẫn cập nhật form data với template mẫu
-        if (!isEditing) {
-          const template = EVENT_TEMPLATES[eventType];
-          setFormData((prev) => ({
-            ...prev,
-            EventType: eventType,
-            Subject: template.subject,
-            Body: template.body,
-            Variables: template.variables,
-            TemplateCode: eventType,
-            TemplateName:
-              EVENT_TYPES.find((e) => e.value === eventType)?.label ||
-              eventType,
-          }));
-        }
-      } else {
-        setAvailableVariables([]);
+      setAvailableVariables([]);
+      // Nếu đang tạo mới, vẫn cập nhật TemplateCode và TemplateName
+      if (!isEditing) {
+        setFormData((prev) => ({
+          ...prev,
+          EventType: eventType,
+          Variables: [],
+          TemplateCode: eventType,
+          TemplateName:
+            EVENT_TYPES.find((e) => e.value === eventType)?.label || eventType,
+        }));
       }
     } finally {
       setLoadingVariables(false);
@@ -504,48 +344,14 @@ export default function EmailTemplatePage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!selectedTemplate) return;
-
-    if (
-      !window.confirm(
-        `Bạn có chắc chắn muốn xóa mẫu email "${selectedTemplate.TemplateName}"?`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      await emailTemplateService.deleteTemplate(selectedTemplate.TemplateID);
-      setSnackbar({
-        open: true,
-        message: "Xóa mẫu email thành công",
-        severity: "success",
-      });
-      loadTemplates();
-    } catch (error) {
-      console.error("Error deleting template:", error);
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể xóa mẫu email",
-        severity: "error",
-      });
-    } finally {
-      handleMenuClose();
-    }
-  };
-
   const handlePreview = async () => {
     if (!selectedTemplate) return;
 
     try {
-      // Lấy preview với variables mặc định
+      // Lấy preview với variables mặc định (rỗng)
       const preview = await emailTemplateService.previewTemplate(
         selectedTemplate.TemplateID,
-        testVariables
+        {}
       );
       setPreviewData(preview);
       setPreviewDialogOpen(true);
@@ -561,45 +367,6 @@ export default function EmailTemplatePage() {
       });
     } finally {
       handleMenuClose();
-    }
-  };
-
-  const handleTestSend = () => {
-    if (!selectedTemplate) return;
-    setTestEmail("");
-    setTestVariables({});
-    setTestDialogOpen(true);
-    handleMenuClose();
-  };
-
-  const handleSendTestEmail = async () => {
-    if (!testEmail || !selectedTemplate) return;
-
-    try {
-      setSendingTest(true);
-      await emailTemplateService.testSendEmail(
-        selectedTemplate.TemplateID,
-        testEmail,
-        testVariables
-      );
-      setSnackbar({
-        open: true,
-        message: "Gửi email test thành công",
-        severity: "success",
-      });
-      setTestDialogOpen(false);
-    } catch (error) {
-      console.error("Error sending test email:", error);
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể gửi email test",
-        severity: "error",
-      });
-    } finally {
-      setSendingTest(false);
     }
   };
 
@@ -983,15 +750,6 @@ export default function EmailTemplatePage() {
           <Visibility sx={{ fontSize: 18, mr: 1.5 }} />
           Xem trước
         </MenuItem>
-        <MenuItem onClick={handleTestSend}>
-          <Send sx={{ fontSize: 18, mr: 1.5 }} />
-          Gửi test
-        </MenuItem>
-        <Divider />
-        <MenuItem onClick={handleDelete} sx={{ color: "#ef4444" }}>
-          <Delete sx={{ fontSize: 18, mr: 1.5 }} />
-          Xóa
-        </MenuItem>
       </Menu>
 
       {/* Create/Edit Dialog */}
@@ -1301,76 +1059,6 @@ export default function EmailTemplatePage() {
             sx={{ textTransform: "none" }}
           >
             Đóng
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Test Send Dialog */}
-      <Dialog
-        open={testDialogOpen}
-        onClose={() => setTestDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-          },
-        }}
-      >
-        <DialogTitle
-          sx={{ fontWeight: 700, pb: 2, borderBottom: "2px solid #e2e8f0" }}
-        >
-          Gửi email test
-        </DialogTitle>
-        <DialogContent sx={{ mt: 2 }}>
-          <Stack spacing={2}>
-            <TextField
-              label="Email nhận test *"
-              type="email"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-              placeholder="example@email.com"
-              fullWidth
-            />
-            <Box>
-              <Typography variant="body2" sx={{ mb: 1, fontWeight: 600 }}>
-                Biến test (tùy chọn):
-              </Typography>
-              <TextField
-                placeholder='JSON format: {"userName": "Nguyễn Văn A", "className": "JavaScript Fundamentals"}'
-                value={JSON.stringify(testVariables, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const vars = JSON.parse(e.target.value || "{}");
-                    setTestVariables(vars);
-                  } catch (err) {
-                    // Invalid JSON, ignore
-                  }
-                }}
-                multiline
-                minRows={4}
-                fullWidth
-                size="small"
-                helperText="Nhập JSON object với các biến để test"
-              />
-            </Box>
-          </Stack>
-        </DialogContent>
-        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
-          <Button
-            onClick={() => setTestDialogOpen(false)}
-            sx={{ textTransform: "none" }}
-          >
-            Hủy
-          </Button>
-          <Button
-            variant="contained"
-            onClick={handleSendTestEmail}
-            disabled={!testEmail || sendingTest}
-            startIcon={sendingTest ? <CircularProgress size={16} /> : <Send />}
-            sx={{ textTransform: "none" }}
-          >
-            {sendingTest ? "Đang gửi..." : "Gửi email test"}
           </Button>
         </DialogActions>
       </Dialog>

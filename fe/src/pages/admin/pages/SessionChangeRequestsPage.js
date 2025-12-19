@@ -30,6 +30,7 @@ import {
 import { SwapHoriz } from "@mui/icons-material";
 import sessionChangeRequestService from "../../../apiServices/sessionChangeRequestService";
 import instructorService from "../../../apiServices/instructorServicead";
+import { toast } from "react-toastify";
 
 const SessionChangeRequestsPage = () => {
   const navigate = useNavigate();
@@ -52,6 +53,23 @@ const SessionChangeRequestsPage = () => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [processing, setProcessing] = useState(false);
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
 
@@ -82,7 +100,7 @@ const SessionChangeRequestsPage = () => {
     } catch (error) {
       console.error("Error loading requests:", error);
       setRequests([]);
-      alert("Không thể tải danh sách yêu cầu đổi lịch!");
+      showToast("error", "Không thể tải danh sách yêu cầu đổi lịch!");
     } finally {
       setLoading(false);
     }
@@ -130,12 +148,13 @@ const SessionChangeRequestsPage = () => {
       await sessionChangeRequestService.approveRequest(
         selectedRequest.RequestID
       );
-      alert("Duyệt yêu cầu đổi lịch thành công!");
+      showToast("success", "Duyệt yêu cầu đổi lịch thành công!");
       setApproveDialogOpen(false);
       await loadRequests();
     } catch (error) {
       console.error("Error approving request:", error);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể duyệt yêu cầu!"
@@ -147,7 +166,7 @@ const SessionChangeRequestsPage = () => {
 
   const handleReject = async () => {
     if (!selectedRequest || !rejectReason.trim()) {
-      alert("Vui lòng nhập lý do từ chối!");
+      showToast("warn", "Vui lòng nhập lý do từ chối!");
       return;
     }
 
@@ -157,13 +176,14 @@ const SessionChangeRequestsPage = () => {
         selectedRequest.RequestID,
         rejectReason
       );
-      alert("Từ chối yêu cầu đổi lịch thành công!");
+      showToast("success", "Từ chối yêu cầu đổi lịch thành công!");
       setRejectDialogOpen(false);
       setRejectReason("");
       await loadRequests();
     } catch (error) {
       console.error("Error rejecting request:", error);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể từ chối yêu cầu!"

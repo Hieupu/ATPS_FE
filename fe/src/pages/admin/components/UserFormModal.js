@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import uploadService from "../../../apiServices/uploadService";
+import { toast } from "react-toastify";
 import {
   validateEmail,
   validatePassword,
@@ -40,6 +41,7 @@ const UserFormModal = ({
   setErrors,
   saving = false,
   isEditing = false,
+  readOnly = false,
   // Props cho instructor-specific fields
   showInstructorFields = false,
   instructorService = null,
@@ -49,7 +51,25 @@ const UserFormModal = ({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
+
   const handleFieldChange = (field, value) => {
+    if (readOnly) return;
     setFormData((prev) => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -61,6 +81,7 @@ const UserFormModal = ({
   };
 
   const handleAvatarUpload = async (event) => {
+    if (readOnly) return;
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -77,16 +98,17 @@ const UserFormModal = ({
         ProfilePicture: result.url || result.data?.url,
       }));
       document.body.removeChild(loadingMsg);
-      alert("Tải ảnh thành công!");
+      showToast("success", "Tải ảnh thành công!");
     } catch (error) {
       if (document.body.contains(loadingMsg)) {
         document.body.removeChild(loadingMsg);
       }
-      alert(error?.message || "Không thể tải ảnh");
+      showToast("error", error?.message || "Không thể tải ảnh");
     }
   };
 
   const handleCVUpload = async (event) => {
+    if (readOnly) return;
     if (!instructorService) return;
     const file = event.target.files?.[0];
     if (!file) return;
@@ -110,12 +132,12 @@ const UserFormModal = ({
         });
       }
       document.body.removeChild(loadingMsg);
-      alert("Tải CV thành công!");
+      showToast("success", "Tải CV thành công!");
     } catch (error) {
       if (document.body.contains(loadingMsg)) {
         document.body.removeChild(loadingMsg);
       }
-      alert(error?.message || "Không thể tải CV");
+      showToast("error", error?.message || "Không thể tải CV");
     }
   };
 
@@ -149,6 +171,7 @@ const UserFormModal = ({
             required
             error={!!errors.FullName}
             helperText={errors.FullName}
+            disabled={readOnly}
           />
 
           {/* Email and Phone */}
@@ -161,6 +184,7 @@ const UserFormModal = ({
               required
               error={!!errors.Email}
               helperText={errors.Email}
+              disabled={readOnly}
             />
             <TextField
               label="Điện thoại"
@@ -169,6 +193,7 @@ const UserFormModal = ({
               fullWidth
               error={!!errors.Phone}
               helperText={errors.Phone}
+              disabled={readOnly}
             />
           </Stack>
 
@@ -235,7 +260,7 @@ const UserFormModal = ({
               />
             </>
           )}
-          {isEditing && (
+          {isEditing && !readOnly && (
             <>
               <TextField
                 label="Đặt lại mật khẩu (tùy chọn)"
@@ -309,6 +334,7 @@ const UserFormModal = ({
                   onChange={(e) => handleFieldChange("Type", e.target.value)}
                   fullWidth
                   required
+                  disabled={readOnly}
                 >
                   <MenuItem value="parttime">Part-time</MenuItem>
                   <MenuItem value="fulltime">Full-time</MenuItem>
@@ -319,6 +345,7 @@ const UserFormModal = ({
                   value={formData.Gender || "other"}
                   onChange={(e) => handleFieldChange("Gender", e.target.value)}
                   fullWidth
+                  disabled={readOnly}
                 >
                   {genderOptions.map((option) => (
                     <MenuItem key={option.value} value={option.value}>
@@ -338,6 +365,7 @@ const UserFormModal = ({
                   error={!!errors.Major}
                   helperText={errors.Major}
                   placeholder="Ví dụ: Full Stack Development"
+                  disabled={readOnly}
                 />
                 <TextField
                   label="Nghề nghiệp"
@@ -345,6 +373,7 @@ const UserFormModal = ({
                   onChange={(e) => handleFieldChange("Job", e.target.value)}
                   fullWidth
                   placeholder="Ví dụ: Giảng viên, Developer"
+                  disabled={readOnly}
                 />
               </Stack>
 
@@ -366,6 +395,7 @@ const UserFormModal = ({
                   errors.InstructorFee ||
                   "Phí giảng dạy phải từ 1,000 VND trở lên"
                 }
+                disabled={readOnly}
               />
             </>
           )}
@@ -378,6 +408,7 @@ const UserFormModal = ({
               value={formData.Gender || "other"}
               onChange={(e) => handleFieldChange("Gender", e.target.value)}
               fullWidth
+              disabled={readOnly}
             >
               {genderOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>
@@ -395,6 +426,7 @@ const UserFormModal = ({
               onChange={(e) => handleFieldChange("Job", e.target.value)}
               fullWidth
               placeholder="Ví dụ: Sinh viên, Developer"
+              disabled={readOnly}
             />
           )}
 
@@ -405,6 +437,7 @@ const UserFormModal = ({
               value={formData.Address || ""}
               onChange={(e) => handleFieldChange("Address", e.target.value)}
               fullWidth
+              disabled={readOnly}
             />
             <TextField
               label="Ngày sinh"
@@ -413,6 +446,7 @@ const UserFormModal = ({
               onChange={(e) => handleFieldChange("DateOfBirth", e.target.value)}
               InputLabelProps={{ shrink: true }}
               fullWidth
+              disabled={readOnly}
             />
           </Stack>
 
@@ -448,6 +482,7 @@ const UserFormModal = ({
               component="label"
               htmlFor="user-avatar-input"
               size="small"
+              disabled={readOnly}
             >
               Chọn ảnh
             </Button>
@@ -490,6 +525,7 @@ const UserFormModal = ({
                 sx={{
                   borderColor: errors.CV ? "#d32f2f" : undefined,
                 }}
+                disabled={readOnly}
               >
                 Chọn CV
               </Button>
@@ -507,11 +543,13 @@ const UserFormModal = ({
       </DialogContent>
       <DialogActions sx={{ px: 3, py: 2 }}>
         <Button onClick={handleClose} disabled={saving}>
-          Hủy
+          {readOnly ? "Đóng" : "Hủy"}
         </Button>
-        <Button variant="contained" onClick={onSubmit} disabled={saving}>
-          {saving ? "Đang lưu..." : isEditing ? "Cập nhật" : "Tạo mới"}
-        </Button>
+        {!readOnly && (
+          <Button variant="contained" onClick={onSubmit} disabled={saving}>
+            {saving ? "Đang lưu..." : isEditing ? "Cập nhật" : "Tạo mới"}
+          </Button>
+        )}
       </DialogActions>
     </Dialog>
   );

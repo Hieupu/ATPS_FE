@@ -43,6 +43,7 @@ import dayjs from "dayjs";
 import classService from "../../../apiServices/classService";
 import instructorService from "../../../apiServices/instructorServicead";
 import { getDayFromDate } from "../../../utils/validate";
+import { toast } from "react-toastify";
 
 const STATUS_OPTIONS = [
   { value: "OTHER", label: "Đã lên lịch" },
@@ -86,6 +87,28 @@ const InstructorLeavePage = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncTarget] = useState("all");
 
+  const [deleteConfirm, setDeleteConfirm] = useState({
+    open: false,
+    date: null,
+  });
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
+
   useEffect(() => {
     loadTimeslots();
   }, []);
@@ -127,7 +150,7 @@ const InstructorLeavePage = () => {
       setPage(result?.pagination?.page || pageToLoad);
     } catch (error) {
       console.error("Failed to fetch instructor leaves", error);
-      alert(error?.message || "Không thể tải danh sách lịch nghỉ");
+      showToast("error", error?.message || "Không thể tải danh sách lịch nghỉ");
     } finally {
       setLoading(false);
     }
@@ -155,22 +178,28 @@ const InstructorLeavePage = () => {
     setPage(1);
   };
 
-  const handleDelete = async (date) => {
-    if (
-      !window.confirm(
-        `Bạn chắc chắn muốn xóa lịch nghỉ của ngày ${dayjs(date).format(
-          "DD/MM/YYYY"
-        )} cho tất cả giảng viên?`
-      )
-    )
+  const handleDelete = (date) => {
+    setDeleteConfirm({ open: true, date });
+  };
+
+  const handleConfirmDelete = async () => {
+    const date = deleteConfirm.date;
+    if (!date) {
+      setDeleteConfirm({ open: false, date: null });
       return;
+    }
     try {
       const result = await classService.deleteLeavesByDate(date, "HOLIDAY");
-      alert(result?.message || `Đã xóa ${result?.deleted || 0} lịch nghỉ`);
+      showToast(
+        "success",
+        result?.message || `Đã xóa ${result?.deleted || 0} lịch nghỉ`
+      );
       fetchLeaves(page);
     } catch (error) {
       console.error("Delete leaves failed", error);
-      alert(error?.message || "Không thể xóa lịch nghỉ");
+      showToast("error", error?.message || "Không thể xóa lịch nghỉ");
+    } finally {
+      setDeleteConfirm({ open: false, date: null });
     }
   };
 
@@ -270,11 +299,15 @@ const InstructorLeavePage = () => {
           );
         }
       }
-      alert(`Đã đồng bộ ${totalAdded} ngày nghỉ cho tất cả giảng viên`);
+      showToast(
+        "success",
+        `Đã đồng bộ ${totalAdded} ngày nghỉ cho tất cả giảng viên`
+      );
       fetchLeaves(page);
     } catch (error) {
       console.error("Error syncing holiday:", error);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể đồng bộ lịch nghỉ"
@@ -288,7 +321,7 @@ const InstructorLeavePage = () => {
   const handleDialogSubmit = async () => {
     // Luôn áp dụng cho tất cả giảng viên với Status = HOLIDAY
     if (!dialogForm.startDate) {
-      alert("Vui lòng chọn ngày nghỉ bắt đầu");
+      showToast("warn", "Vui lòng chọn ngày nghỉ bắt đầu");
       return;
     }
 
@@ -300,7 +333,7 @@ const InstructorLeavePage = () => {
         : startDate;
 
       if (endDate.isBefore(startDate)) {
-        alert("Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
+        showToast("warn", "Ngày kết thúc phải sau hoặc bằng ngày bắt đầu");
         setDialogLoading(false);
         return;
       }
@@ -331,9 +364,13 @@ const InstructorLeavePage = () => {
       }
 
       if (errorCount > 0) {
-        alert(`Đã thêm ${successCount} ngày nghỉ. Có ${errorCount} ngày lỗi.`);
+        showToast(
+          "warn",
+          `Đã thêm ${successCount} ngày nghỉ. Có ${errorCount} ngày lỗi.`
+        );
       } else {
-        alert(
+        showToast(
+          "success",
           `Đã thêm ${successCount} ngày nghỉ cho tất cả giảng viên thành công`
         );
       }
@@ -342,7 +379,10 @@ const InstructorLeavePage = () => {
       fetchLeaves(page);
     } catch (error) {
       console.error("Add holiday for all instructors failed", error);
-      alert(error?.message || "Không thể thêm lịch nghỉ cho tất cả giảng viên");
+      showToast(
+        "error",
+        error?.message || "Không thể thêm lịch nghỉ cho tất cả giảng viên"
+      );
     } finally {
       setDialogLoading(false);
     }
@@ -898,6 +938,40 @@ const InstructorLeavePage = () => {
             disabled={syncLoading}
           >
             {syncLoading ? "Đang cập nhật..." : "Cập nhật"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog xác nhận xóa lịch nghỉ (thay thế window.confirm) */}
+      <Dialog
+        open={deleteConfirm.open}
+        onClose={() => setDeleteConfirm({ open: false, date: null })}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>Xác nhận xóa lịch nghỉ</DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ whiteSpace: "pre-line" }}>
+            {`Bạn chắc chắn muốn xóa lịch nghỉ của ngày ${
+              deleteConfirm.date
+                ? dayjs(deleteConfirm.date).format("DD/MM/YYYY")
+                : ""
+            } cho tất cả giảng viên?`}
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={() => setDeleteConfirm({ open: false, date: null })}
+            color="inherit"
+          >
+            Hủy
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmDelete}
+          >
+            Xóa
           </Button>
         </DialogActions>
       </Dialog>

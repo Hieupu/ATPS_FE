@@ -41,6 +41,7 @@ import {
   MoreVert,
 } from "@mui/icons-material";
 import newsService from "../../../apiServices/newsService";
+import { toast } from "react-toastify";
 import { cloudinaryUpload } from "../../../utils/cloudinaryUpload";
 import "./style.css";
 
@@ -67,6 +68,22 @@ const buildImageUrl = (path) => {
 };
 
 export default function NewsPage() {
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
   const [tabValue, setTabValue] = useState(0);
   const [selectedNews, setSelectedNews] = useState(null);
   const [openDialog, setOpenDialog] = useState(false);
@@ -829,7 +846,7 @@ export default function NewsPage() {
             onClick={async () => {
               const trimmed = rejectReason.trim();
               if (!trimmed) {
-                alert("Vui lòng nhập lý do từ chối.");
+                showToast("warn", "Vui lòng nhập lý do từ chối.");
                 return;
               }
               if (!selectedNewsToReject) {

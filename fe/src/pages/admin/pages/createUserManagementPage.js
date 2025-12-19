@@ -30,6 +30,7 @@ import {
 import uploadService from "../../../apiServices/uploadService";
 import accountService from "../../../apiServices/accountService";
 import { useAuth } from "../../../contexts/AuthContext";
+import { toast } from "react-toastify";
 import {
   validateEmail,
   validatePassword,
@@ -78,6 +79,23 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
     const [pageSize] = useState(10);
     const [newErrors, setNewErrors] = useState({});
 
+    const showToast = (severity, message) => {
+      const content = (
+        <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+      );
+      switch (severity) {
+        case "success":
+          return toast.success(content);
+        case "error":
+          return toast.error(content);
+        case "warn":
+          return toast.warn(content);
+        case "info":
+        default:
+          return toast.info(content);
+      }
+    };
+
     // Helper function để check xem có phải đang edit chính mình không
     const checkIsEditingSelf = (item) => {
       if (!item || !user) return false;
@@ -102,7 +120,8 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
         setItems(data || []);
       } catch (error) {
         console.error(`Fetch ${entityLabelPlural} failed:`, error);
-        alert(
+        showToast(
+          "error",
           error?.message ||
             `Không thể tải danh sách ${entityLabelPlural.toLowerCase()}`
         );
@@ -304,7 +323,7 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
             }
           }
 
-          alert(`Đã cập nhật ${entityLabel.toLowerCase()}!`);
+          showToast("success", `Đã cập nhật ${entityLabel.toLowerCase()}!`);
         } else {
           const createPayload = {
             ...payload,
@@ -315,14 +334,14 @@ const createUserManagementPage = ({ entityLabel, entityLabelPlural, api }) => {
           };
 
           await api.create(createPayload);
-          alert(`Đã tạo ${entityLabel.toLowerCase()} mới!`);
+          showToast("success", `Đã tạo ${entityLabel.toLowerCase()} mới!`);
         }
 
         closeModal();
         loadItems();
       } catch (error) {
         console.error("Save error:", error);
-        alert(error?.message || "Không thể lưu dữ liệu");
+        showToast("error", error?.message || "Không thể lưu dữ liệu");
       } finally {
         setSaving(false);
       }

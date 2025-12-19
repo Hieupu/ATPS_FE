@@ -25,9 +25,16 @@ export const validateStep1 = (formData) => {
     errors.CourseID = "Vui lòng chọn khóa/môn học";
   }
 
-  // Fee is optional, but if provided must be valid
-  if (formData.Fee && parseFloat(formData.Fee) < 0) {
-    errors.Fee = "Học phí không thể nhỏ hơn 0";
+  // Fee is required and must be greater than 5000
+  if (!formData.Fee || !formData.Fee.toString().trim()) {
+    errors.Fee = "Vui lòng nhập học phí";
+  } else {
+    const feeValue = parseFloat(formData.Fee);
+    if (isNaN(feeValue) || feeValue <= 0) {
+      errors.Fee = "Học phí phải là số lớn hơn 0";
+    } else if (feeValue <= 5000) {
+      errors.Fee = "Học phí phải lớn hơn 5,000 VND";
+    }
   }
 
   // Maxstudent is required

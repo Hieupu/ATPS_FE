@@ -28,6 +28,7 @@ import {
 } from "../../../../constants/classStatus";
 import CancelClassDialog from "./CancelClassDialog";
 import classService from "../../../../apiServices/classService";
+import { toast } from "react-toastify";
 import "./ClassList.css";
 
 const ClassList = ({
@@ -121,7 +122,7 @@ const ClassList = ({
 
     const classId = classToCancel.ClassID;
     if (!classId) {
-      alert("Không tìm thấy ID lớp học");
+      toast.error("Không tìm thấy ID lớp học");
       return;
     }
 
@@ -136,7 +137,7 @@ const ClassList = ({
         result?.message ||
         `Hủy lớp thành công. Đã xóa ${deletedSessions} buổi học và tạo ${refundRequests} yêu cầu hoàn tiền.`;
 
-      alert(message);
+      toast.success(message);
 
       // Gọi onChangeStatus để refresh danh sách nếu có
       if (onChangeStatus) {
@@ -154,7 +155,7 @@ const ClassList = ({
         error?.message ||
         error?.response?.data?.message ||
         "Có lỗi xảy ra khi hủy lớp học";
-      alert(`Lỗi: ${errorMessage}`);
+      toast.error(`Lỗi: ${errorMessage}`);
     } finally {
       setCancelLoading(false);
     }

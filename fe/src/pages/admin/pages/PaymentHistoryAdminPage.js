@@ -20,7 +20,10 @@ import {
   Pagination,
 } from "@mui/material";
 import { Search, ReceiptLong, CloudOff } from "@mui/icons-material";
-import { getAdminPaymentHistoryApi } from "../../../apiServices/paymentService";
+import {
+  getAdminPaymentHistoryApi,
+  checkPayOSConfigurationApi,
+} from "../../../apiServices/paymentService";
 
 const PAGE_SIZE = 10;
 
@@ -36,14 +39,7 @@ const PaymentHistoryAdminPage = () => {
   const [searchInput, setSearchInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-
-  const payosConfigured = useMemo(() => {
-    return Boolean(
-      process.env.REACT_APP_PAYOS_CLIENT_ID ||
-        process.env.REACT_APP_PAYOS_CLIENT_KEY ||
-        process.env.REACT_APP_PAYOS_CHECKSUM_KEY
-    );
-  }, []);
+  const [payosConfigured, setPayosConfigured] = useState(false);
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -73,6 +69,19 @@ const PaymentHistoryAdminPage = () => {
   useEffect(() => {
     fetchPayments();
   }, [fetchPayments]);
+
+  useEffect(() => {
+    const checkPayOSConfig = async () => {
+      try {
+        const result = await checkPayOSConfigurationApi();
+        setPayosConfigured(result?.configured || false);
+      } catch (error) {
+        console.error("Error checking PayOS configuration:", error);
+        setPayosConfigured(false);
+      }
+    };
+    checkPayOSConfig();
+  }, []);
 
   const filteredPayments = useMemo(() => payments, [payments]);
 

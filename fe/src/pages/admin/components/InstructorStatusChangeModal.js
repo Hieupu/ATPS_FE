@@ -20,6 +20,7 @@ import {
   Alert,
 } from "@mui/material";
 import { Warning, Class as ClassIcon } from "@mui/icons-material";
+import { toast } from "react-toastify";
 
 const InstructorStatusChangeModal = ({
   open,
@@ -32,6 +33,23 @@ const InstructorStatusChangeModal = ({
   const [step, setStep] = useState(1); // 1: Show classes, 2: Warning
   const [loading, setLoading] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
 
   const handleContinue = () => {
     setStep(2);
@@ -49,7 +67,7 @@ const InstructorStatusChangeModal = ({
   const handleConfirm = async () => {
     try {
       setCancelling(true);
-      
+
       // Cancel all classes
       if (onCancelClasses && classes.length > 0) {
         await onCancelClasses(classes.map((c) => c.ClassID));
@@ -65,7 +83,7 @@ const InstructorStatusChangeModal = ({
       onClose();
     } catch (error) {
       console.error("Error in handleConfirm:", error);
-      alert(error?.message || "Có lỗi xảy ra khi xử lý");
+      showToast("error", error?.message || "Có lỗi xảy ra khi xử lý");
     } finally {
       setCancelling(false);
     }
@@ -115,7 +133,9 @@ const InstructorStatusChangeModal = ({
                       <TableCell sx={{ fontWeight: 700 }}>Trạng thái</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>Học phí</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>Số buổi</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>Ngày bắt đầu</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>
+                        Ngày bắt đầu
+                      </TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -162,11 +182,15 @@ const InstructorStatusChangeModal = ({
                             : "Miễn phí"}
                         </TableCell>
                         <TableCell>
-                          {classItem.Numofsession || classItem.ExpectedSessions || 0}{" "}
+                          {classItem.Numofsession ||
+                            classItem.ExpectedSessions ||
+                            0}{" "}
                           buổi
                         </TableCell>
                         <TableCell>
-                          {classItem.OpendatePlan || classItem.StartDate || "N/A"}
+                          {classItem.OpendatePlan ||
+                            classItem.StartDate ||
+                            "N/A"}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -177,11 +201,7 @@ const InstructorStatusChangeModal = ({
           </Box>
         ) : (
           <Box>
-            <Alert
-              severity="warning"
-              icon={<Warning />}
-              sx={{ mb: 3 }}
-            >
+            <Alert severity="warning" icon={<Warning />} sx={{ mb: 3 }}>
               <Typography variant="h6" sx={{ fontWeight: 600, mb: 1 }}>
                 Cảnh báo quan trọng!
               </Typography>
@@ -226,9 +246,7 @@ const InstructorStatusChangeModal = ({
               Quay lại
             </Button>
             <Box sx={{ flex: 1 }} />
-            {cancelling && (
-              <CircularProgress size={24} sx={{ mr: 2 }} />
-            )}
+            {cancelling && <CircularProgress size={24} sx={{ mr: 2 }} />}
             <Button onClick={handleCancel} disabled={cancelling}>
               Hủy
             </Button>
@@ -248,4 +266,3 @@ const InstructorStatusChangeModal = ({
 };
 
 export default InstructorStatusChangeModal;
-

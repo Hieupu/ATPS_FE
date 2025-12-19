@@ -59,6 +59,14 @@ export default function CoursesPage() {
     message: "",
     severity: "success",
   });
+  const [confirmDialog, setConfirmDialog] = useState({
+    open: false,
+    title: "",
+    message: "",
+    confirmText: "Xác nhận",
+    confirmColor: "primary",
+    onConfirm: null,
+  });
   const [instructors, setInstructors] = useState([]);
   const [instructorInput, setInstructorInput] = useState(
     urlInstructorId || "all"
@@ -222,6 +230,7 @@ export default function CoursesPage() {
       // Admin sử dụng trực tiếp dữ liệu từ danh sách courses đã có
       // Dữ liệu này đã được lấy từ getCoursesForAdmin() nên đầy đủ thông tin
       setPreviewCourse(course);
+      
     } catch (error) {
       const errorMessage =
         error?.response?.data?.message ||
@@ -235,93 +244,175 @@ export default function CoursesPage() {
     }
   };
 
+  const openConfirmDialog = ({
+    title,
+    message,
+    confirmText = "Xác nhận",
+    confirmColor = "primary",
+    onConfirm,
+  }) => {
+    setConfirmDialog({
+      open: true,
+      title,
+      message,
+      confirmText,
+      confirmColor,
+      onConfirm,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialog({
+      open: false,
+      title: "",
+      message: "",
+      confirmText: "Xác nhận",
+      confirmColor: "primary",
+      onConfirm: null,
+    });
+  };
+
+  const handleConfirmDialogConfirm = () => {
+    if (confirmDialog.onConfirm) {
+      confirmDialog.onConfirm();
+    }
+    closeConfirmDialog();
+  };
+
   const handleApprove = async (course, action) => {
-    try {
-      const currentStatus = getStatus(course);
-      let newStatus;
-      let actionType;
-
-      if (action === "APPROVE") {
-        // IN_REVIEW → APPROVED
-        newStatus = "APPROVED";
-        actionType = "approve";
-      } else if (action === "REJECT") {
-        // IN_REVIEW → DRAFT
-        newStatus = "DRAFT";
-        actionType = "reject";
-      } else {
-        throw new Error("Action không hợp lệ");
-      }
-
-      await updateCourseStatus(
-        course.CourseID || course.courseId,
-        newStatus,
-        actionType
-      );
-      setSnackbar({
-        open: true,
-        message:
-          action === "APPROVE"
-            ? "Duyệt khóa học thành công"
-            : "Từ chối khóa học thành công",
-        severity: "success",
+    if (action === "APPROVE") {
+      openConfirmDialog({
+        title: "Duyệt khóa học",
+        message: `Bạn có chắc muốn duyệt khóa học "${course.Title || course.title}"?`,
+        confirmText: "Duyệt",
+        confirmColor: "success",
+        onConfirm: async () => {
+          try {
+            await updateCourseStatus(
+              course.CourseID || course.courseId,
+              "APPROVED",
+              "approve"
+            );
+            setSnackbar({
+              open: true,
+              message: "Duyệt khóa học thành công",
+              severity: "success",
+            });
+            loadCourses();
+          } catch (error) {
+            setSnackbar({
+              open: true,
+              message:
+                error?.response?.data?.message ||
+                error?.message ||
+                "Không thể cập nhật trạng thái",
+              severity: "error",
+            });
+          }
+        },
       });
-      loadCourses();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể cập nhật trạng thái",
-        severity: "error",
+    } else if (action === "REJECT") {
+      openConfirmDialog({
+        title: "Từ chối khóa học",
+        message: `Bạn có chắc muốn từ chối khóa học "${course.Title || course.title}"? Khóa học sẽ chuyển về trạng thái "Nháp".`,
+        confirmText: "Từ chối",
+        confirmColor: "error",
+        onConfirm: async () => {
+          try {
+            await updateCourseStatus(
+              course.CourseID || course.courseId,
+              "DRAFT",
+              "reject"
+            );
+            setSnackbar({
+              open: true,
+              message: "Từ chối khóa học thành công",
+              severity: "success",
+            });
+            loadCourses();
+          } catch (error) {
+            setSnackbar({
+              open: true,
+              message:
+                error?.response?.data?.message ||
+                error?.message ||
+                "Không thể cập nhật trạng thái",
+              severity: "error",
+            });
+          }
+        },
       });
     }
   };
 
   const handleStatusChange = async (course, newStatus, action = null) => {
-    try {
-      const currentStatus = getStatus(course);
+    const currentStatus = getStatus(course);
+    let confirmTitle = "";
+    let confirmMessage = "";
+    let confirmColor = "primary";
 
-      // Nếu chuyển từ PUBLISHED, kiểm tra lớp học đang sử dụng
-      if (currentStatus === "PUBLISHED" && newStatus !== "PUBLISHED") {
-        const checkResult = await checkCourseInUse(
-          course.CourseID || course.courseId
-        );
-        if (checkResult.inUse) {
-          const classNames = checkResult.classes
-            .map((c) => c.Name || `ClassID: ${c.ClassID}`)
-            .join(", ");
+    if (newStatus === "PUBLISHED") {
+      confirmTitle = "Công khai khóa học";
+      confirmMessage = `Bạn có chắc muốn công khai khóa học "${course.Title || course.title}"?`;
+      confirmColor = "primary";
+    } else if (newStatus === "APPROVED" && currentStatus === "PUBLISHED") {
+      confirmTitle = "Hủy công khai khóa học";
+      confirmMessage = `Bạn có chắc muốn hủy công khai khóa học "${course.Title || course.title}"?`;
+      confirmColor = "warning";
+    } else if (newStatus === "DRAFT") {
+      confirmTitle = "Về nháp";
+      confirmMessage = `Bạn có chắc muốn chuyển khóa học "${course.Title || course.title}" về trạng thái "Nháp"?`;
+      confirmColor = "warning";
+    }
+
+    openConfirmDialog({
+      title: confirmTitle,
+      message: confirmMessage,
+      confirmText: "Xác nhận",
+      confirmColor,
+      onConfirm: async () => {
+        try {
+          // Nếu chuyển từ PUBLISHED, kiểm tra lớp học đang sử dụng
+          if (currentStatus === "PUBLISHED" && newStatus !== "PUBLISHED") {
+            const checkResult = await checkCourseInUse(
+              course.CourseID || course.courseId
+            );
+            if (checkResult.inUse) {
+              const classNames = checkResult.classes
+                .map((c) => c.Name || `ClassID: ${c.ClassID}`)
+                .join(", ");
+              setSnackbar({
+                open: true,
+                message: `Không thể chuyển trạng thái. Khóa học đang được sử dụng bởi ${checkResult.classes.length} lớp học: ${classNames}`,
+                severity: "error",
+              });
+              return;
+            }
+          }
+
+          await updateCourseStatus(
+            course.CourseID || course.courseId,
+            newStatus,
+            action
+          );
           setSnackbar({
             open: true,
-            message: `Không thể chuyển trạng thái. Khóa học đang được sử dụng bởi ${checkResult.classes.length} lớp học: ${classNames}`,
+            message: "Cập nhật trạng thái thành công",
+            severity: "success",
+          });
+          loadCourses();
+        } catch (error) {
+          setSnackbar({
+            open: true,
+            message:
+              error?.response?.data?.message ||
+              error?.message ||
+              "Không thể cập nhật trạng thái",
             severity: "error",
           });
-          return;
         }
-      }
-
-      await updateCourseStatus(
-        course.CourseID || course.courseId,
-        newStatus,
-        action
-      );
-      setSnackbar({
-        open: true,
-        message: "Cập nhật trạng thái thành công",
-        severity: "success",
-      });
-      loadCourses();
-    } catch (error) {
-      setSnackbar({
-        open: true,
-        message:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Không thể cập nhật trạng thái",
-        severity: "error",
-      });
-    }
+      },
+    });
   };
 
   const handleViewClasses = async (course) => {
@@ -685,6 +776,43 @@ export default function CoursesPage() {
             }}
           >
             Đóng
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Confirm Dialog */}
+      <Dialog
+        open={confirmDialog.open}
+        onClose={closeConfirmDialog}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700, pb: 2 }}>
+          {confirmDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1">{confirmDialog.message}</Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, borderTop: "1px solid #e2e8f0" }}>
+          <Button
+            onClick={closeConfirmDialog}
+            sx={{ textTransform: "none" }}
+            color="inherit"
+          >
+            Hủy
+          </Button>
+          <Button
+            onClick={handleConfirmDialogConfirm}
+            variant="contained"
+            color={confirmDialog.confirmColor}
+            sx={{ textTransform: "none" }}
+          >
+            {confirmDialog.confirmText}
           </Button>
         </DialogActions>
       </Dialog>

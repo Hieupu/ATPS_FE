@@ -41,6 +41,7 @@ import {
 } from "@mui/icons-material";
 import certificateService from "../../../apiServices/certificateService";
 import instructorService from "../../../apiServices/instructorServicead";
+import { toast } from "react-toastify";
 
 const InstructorCertificatesPage = () => {
   const navigate = useNavigate();
@@ -63,6 +64,23 @@ const InstructorCertificatesPage = () => {
   const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
   const [newStatus, setNewStatus] = useState("");
   const [updating, setUpdating] = useState(false);
+
+  const showToast = (severity, message) => {
+    const content = (
+      <div style={{ whiteSpace: "pre-line" }}>{String(message || "")}</div>
+    );
+    switch (severity) {
+      case "success":
+        return toast.success(content);
+      case "error":
+        return toast.error(content);
+      case "warn":
+        return toast.warn(content);
+      case "info":
+      default:
+        return toast.info(content);
+    }
+  };
   const [instructorInfo, setInstructorInfo] = useState(null);
   const [page, setPage] = useState(1);
   const [pageSize] = useState(10);
@@ -119,7 +137,7 @@ const InstructorCertificatesPage = () => {
       console.error("Error loading certificates:", error);
       setCertificates([]);
       setPagination({ total: 0, totalPages: 0 });
-      alert("Không thể tải danh sách chứng chỉ!");
+      showToast("error", "Không thể tải danh sách chứng chỉ!");
     } finally {
       setLoading(false);
     }
@@ -153,7 +171,7 @@ const InstructorCertificatesPage = () => {
       console.error("Error loading certificates:", error);
       setCertificates([]);
       setPagination({ total: 0, totalPages: 0 });
-      alert("Không thể tải danh sách chứng chỉ!");
+      showToast("error", "Không thể tải danh sách chứng chỉ!");
     } finally {
       setLoading(false);
     }
@@ -270,7 +288,7 @@ const InstructorCertificatesPage = () => {
         selectedCertificate.CertificateID,
         newStatus
       );
-      alert("Cập nhật trạng thái chứng chỉ thành công!");
+      showToast("success", "Cập nhật trạng thái chứng chỉ thành công!");
       setUpdateDialogOpen(false);
 
       // Reload current page based on current URL instructorId
@@ -286,7 +304,8 @@ const InstructorCertificatesPage = () => {
       }
     } catch (error) {
       console.error("Error updating certificate status:", error);
-      alert(
+      showToast(
+        "error",
         error?.response?.data?.message ||
           error?.message ||
           "Không thể cập nhật trạng thái chứng chỉ!"

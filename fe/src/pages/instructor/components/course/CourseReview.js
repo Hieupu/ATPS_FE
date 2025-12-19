@@ -36,6 +36,7 @@ const getLessonDuration = (lesson) => {
 };
 
 export default function CourseReview({ course, onClose }) {
+
   const [expandedUnits, setExpandedUnits] = useState([]);
 
   if (!course) return null;
