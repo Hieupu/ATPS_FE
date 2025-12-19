@@ -268,7 +268,7 @@ const CourseDetailPage = () => {
                   fontSize: "1.125rem",
                 }}
               >
-                {course.Description}
+                {course.Objectives}
               </Typography>
 
               <Grid container spacing={3} sx={{ mb: 4 }}>
