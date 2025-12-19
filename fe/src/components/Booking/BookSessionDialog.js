@@ -353,144 +353,180 @@ const BookSessionDialog = ({
     }
   };
 
-  // ⭐️ THÊM: Function check future slots availability (copy từ ScheduleGrid)
-  const checkAllSelectedSlotsFutureAvailability = async () => {
-    try {
-      if (!allTimeslots || allTimeslots.length === 0) {
-        throw new Error("Không có dữ liệu lịch học tương lai");
-      }
+// ⭐️ SỬA LẠI: Function check future slots availability
+const checkAllSelectedSlotsFutureAvailability = async () => {
+  try {
+    console.log("🔍 Bắt đầu kiểm tra lịch tương lai...");
+    console.log("selectedSlots:", selectedSlots);
+    console.log("allTimeslots count:", allTimeslots?.length);
+    console.log("requiredNumberOfSessions:", requiredNumberOfSessions);
+    
+    if (!allTimeslots || allTimeslots.length === 0) {
+      console.warn("Không có dữ liệu lịch học tương lai");
+      return true; // Không có data thì cho phép booking
+    }
 
-      const normalizeDate = (date) => {
-        if (!date) return "";
-        
-        let normalizedDate;
-        if (typeof date === "string") {
-          if (date.includes('T')) {
-            const dateObj = new Date(date);
-            const year = dateObj.getUTCFullYear();
-            const month = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getUTCDate()).padStart(2, '0');
-            normalizedDate = `${year}-${month}-${day}`;
-          } else {
-            normalizedDate = date;
-          }
-        } else if (date instanceof Date) {
-          const year = date.getUTCFullYear();
-          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-          const day = String(date.getUTCDate()).padStart(2, '0');
-          normalizedDate = `${year}-${month}-${day}`;
-        } else {
-          normalizedDate = String(date);
-        }
-        
-        return normalizedDate;
-      };
-
-      const getDayOfWeekFromDate = (dateStr) => {
-        const date = new Date(dateStr + "T00:00:00");
-        const dayOfWeek = date.getDay();
-        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
-        return dayOfWeek === 0 ? "Sunday" : days[dayOfWeek - 1];
-      };
-
-      const getSlotInfo = (slot) => {
-        if (!slot) return null;
-        
-        return {
-          TimeslotID: slot.TimeslotID,
-          Day: slot.Day,
-          StartTime: slot.StartTime?.substring(0, 5) || "",
-          EndTime: slot.EndTime?.substring(0, 5) || "",
-          Date: normalizeDate(slot.Date),
-          DayOfWeek: getDayOfWeekFromDate(normalizeDate(slot.Date))
-        };
-      };
-
-      const calculateDateForSlotInWeek = (slotDetail, targetWeekDate) => {
-        const originalDate = new Date(slotDetail.Date + "T00:00:00");
-        const targetDate = new Date(targetWeekDate);
-        
-        const originalDayOfWeek = originalDate.getDay();
-        const targetDayOfWeek = targetDate.getDay();
-        const dayDifference = originalDayOfWeek - targetDayOfWeek;
-        targetDate.setDate(targetDate.getDate() + dayDifference);
-        
-        return targetDate;
-      };
-
-      const slotDetails = selectedSlots.map(slotItem => {
-        const slotInSchedule = weeklySchedule.find(s => 
-          s.TimeslotID === slotItem.TimeslotID && 
-          normalizeDate(s.Date) === slotItem.Date
-        );
-        return slotInSchedule ? getSlotInfo(slotInSchedule) : null;
-      }).filter(Boolean);
-
-      if (slotDetails.length === 0) return true;
-      if (requiredNumberOfSessions <= 1) return true;
-
-      // Lấy ngày của slot đầu tiên được chọn
-      const firstSlotDate = new Date(normalizeDate(selectedSlots[0].Date) + "T00:00:00");
+    const normalizeDate = (date) => {
+      if (!date) return "";
       
-      const futureSlots = allTimeslots.filter(slot => {
-        const slotDate = new Date(slot.Date + "T00:00:00");
-        return slotDate > firstSlotDate;
-      });
-      
-      const sessionsPerWeek = selectedSlots.length;
-      
-      let weeksNeededForNewSelection;
-      if (requiredNumberOfSessions <= sessionsPerWeek) {
-        weeksNeededForNewSelection = 1;
-      } else {
-        weeksNeededForNewSelection = Math.ceil(requiredNumberOfSessions / sessionsPerWeek);
+      // Nếu là string, chỉ lấy phần date
+      if (typeof date === "string") {
+        return date.split("T")[0];
       }
       
-      const futureWeeksNeeded = weeksNeededForNewSelection - 1;
-
-      if (futureWeeksNeeded <= 0) return true;
-
-      let availableFutureWeeks = 0;
-      const maxWeeksToCheck = Math.min(12, futureWeeksNeeded * 2);
-      
-      for (let weekOffset = 1; weekOffset <= maxWeeksToCheck; weekOffset++) {
-        const targetWeekDate = new Date(firstSlotDate);
-        targetWeekDate.setDate(firstSlotDate.getDate() + (weekOffset * 7));
-        
-        const allSlotsAvailableInThisWeek = slotDetails.every(slotDetail => {
-          const slotDateInTargetWeek = calculateDateForSlotInWeek(slotDetail, targetWeekDate);
-          const targetDateStr = normalizeDate(slotDateInTargetWeek);
-          
-          const foundSlot = futureSlots.find(futureSlot => {
-            const futureSlotDay = getDayOfWeekFromDate(futureSlot.Date);
-            
-            return (
-              futureSlot.TimeslotID === slotDetail.TimeslotID &&
-              (futureSlot.Status === "AVAILABLE" || futureSlot.Status === "available") &&
-              futureSlotDay === slotDetail.DayOfWeek &&
-              futureSlot.StartTime?.substring(0, 5) === slotDetail.StartTime &&
-              normalizeDate(futureSlot.Date) === targetDateStr
-            );
-          });
-          
-          return !!foundSlot;
-        });
-        
-        if (allSlotsAvailableInThisWeek) {
-          availableFutureWeeks++;
-          
-          if (availableFutureWeeks >= futureWeeksNeeded) {
-            return true;
-          }
-        }
+      // Nếu là Date object
+      if (date instanceof Date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
       }
       
-      return false;
-    } catch (error) {
-      console.error("Error checking future slots:", error);
+      return String(date);
+    };
+
+    // Lấy thông tin chi tiết của các slot đã chọn
+    const slotDetails = selectedSlots.map(slotItem => {
+      const slotInSchedule = weeklySchedule.find(s => 
+        s.TimeslotID === slotItem.TimeslotID && 
+        normalizeDate(s.Date) === slotItem.Date
+      );
+      
+      if (!slotInSchedule) return null;
+      
+      // Tạo date object để lấy thứ trong tuần
+      const date = new Date(slotItem.Date + "T00:00:00");
+      const dayOfWeek = date.getDay(); // 0 = Chủ nhật, 1 = Thứ 2, ...
+      
+      return {
+        TimeslotID: slotItem.TimeslotID,
+        Date: slotItem.Date,
+        Day: dayOfWeek === 0 ? 7 : dayOfWeek, // Chuyển sang 1-7 (Thứ 2 = 1, ..., Chủ nhật = 7)
+        StartTime: slotInSchedule.StartTime?.substring(0, 5) || "",
+        EndTime: slotInSchedule.EndTime?.substring(0, 5) || "",
+        rawData: slotInSchedule // Lưu cả data gốc để debug
+      };
+    }).filter(Boolean);
+
+    console.log("slotDetails:", slotDetails);
+
+    if (slotDetails.length === 0) {
+      console.log("Không có slot details");
+      return true;
+    }
+
+    // TÍNH TOÁN: Cần bao nhiêu buổi trong tương lai
+    const slotsAlreadySelected = slotDetails.length;
+    const slotsNeededInFuture = requiredNumberOfSessions - slotsAlreadySelected;
+    
+    console.log(`Đã chọn: ${slotsAlreadySelected}, Cần thêm: ${slotsNeededInFuture} buổi`);
+
+    if (slotsNeededInFuture <= 0) {
+      console.log("Đã chọn đủ số buổi, không cần check tương lai");
+      return true;
+    }
+
+    // Xác định pattern của các slot đã chọn
+    // Giả sử các slot đã chọn tạo thành một pattern (ví dụ: Thứ 2, 9:00)
+    const slotPatterns = slotDetails.map(slot => ({
+      TimeslotID: slot.TimeslotID,
+      Day: slot.Day, // Thứ trong tuần (1-7)
+      StartTime: slot.StartTime,
+      EndTime: slot.EndTime
+    }));
+
+    console.log("slotPatterns:", slotPatterns);
+
+    // Lấy ngày của slot đầu tiên đã chọn
+    const firstSelectedDate = new Date(slotDetails[0].Date + "T00:00:00");
+    console.log("Ngày đầu tiên đã chọn:", firstSelectedDate.toISOString().split('T')[0]);
+
+    // Tìm các slot tương lai (sau ngày đầu tiên đã chọn)
+    const futureTimeslots = allTimeslots.filter(slot => {
+      const slotDate = new Date(slot.Date + "T00:00:00");
+      return slotDate > firstSelectedDate && 
+             (slot.Status === "AVAILABLE" || slot.Status === "available");
+    });
+
+    console.log(`Có ${futureTimeslots.length} slot trống trong tương lai`);
+
+    if (futureTimeslots.length === 0) {
+      console.log("Không có slot nào trống trong tương lai");
       return false;
     }
-  };
+
+    // Nhóm các slot tương lai theo tuần
+    const weeksMap = new Map();
+    
+    futureTimeslots.forEach(slot => {
+      const slotDate = new Date(slot.Date + "T00:00:00");
+      // Tính số tuần so với ngày đầu tiên
+      const diffTime = slotDate - firstSelectedDate;
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      const weekNumber = Math.floor(diffDays / 7);
+      
+      if (weekNumber >= 1) { // Chỉ xét các tuần sau tuần đầu tiên
+        if (!weeksMap.has(weekNumber)) {
+          weeksMap.set(weekNumber, []);
+        }
+        
+        // Lấy thứ trong tuần (1-7)
+        const dayOfWeek = slotDate.getDay();
+        const day = dayOfWeek === 0 ? 7 : dayOfWeek;
+        
+        weeksMap.get(weekNumber).push({
+          ...slot,
+          Day: day,
+          StartTime: slot.StartTime?.substring(0, 5) || "",
+          EndTime: slot.EndTime?.substring(0, 5) || ""
+        });
+      }
+    });
+
+    console.log("Số tuần có slot trống:", weeksMap.size);
+
+    // Kiểm tra từng pattern slot
+    const successfulWeeks = [];
+    
+    // Duyệt qua các tuần theo thứ tự
+    const sortedWeeks = Array.from(weeksMap.keys()).sort((a, b) => a - b);
+    
+    for (const weekNumber of sortedWeeks) {
+      const weekSlots = weeksMap.get(weekNumber);
+      console.log(`\nTuần ${weekNumber}: có ${weekSlots.length} slot`);
+      
+      // Kiểm tra xem tất cả patterns có tồn tại trong tuần này không
+      const allPatternsMatch = slotPatterns.every(pattern => {
+        const foundSlot = weekSlots.find(slot => 
+          slot.TimeslotID === pattern.TimeslotID &&
+          slot.Day === pattern.Day &&
+          slot.StartTime === pattern.StartTime
+        );
+        
+        console.log(`Pattern ${pattern.TimeslotID} - Thứ ${pattern.Day} ${pattern.StartTime}: ${foundSlot ? 'CÓ' : 'KHÔNG'}`);
+        return !!foundSlot;
+      });
+      
+      if (allPatternsMatch) {
+        successfulWeeks.push(weekNumber);
+        console.log(`✅ Tuần ${weekNumber}: ĐỦ tất cả slots`);
+        
+        // Nếu đã đủ số tuần cần thiết
+        if (successfulWeeks.length >= slotsNeededInFuture) {
+          console.log(`🎉 ĐÃ TÌM ĐỦ ${slotsNeededInFuture} tuần trong tương lai`);
+          return true;
+        }
+      }
+    }
+    
+    console.log(`❌ Chỉ tìm được ${successfulWeeks.length} tuần, cần ${slotsNeededInFuture} tuần`);
+    return false;
+    
+  } catch (error) {
+    console.error("Error checking future slots:", error);
+    return true; // Nếu có lỗi, cho phép booking để không block user
+  }
+};
 
   // ⭐️ CHỈNH SỬA: Đăng ký - Thêm check future slots ở đây
   const handleBook = async () => {
