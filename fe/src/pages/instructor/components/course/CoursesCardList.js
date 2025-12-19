@@ -299,20 +299,6 @@ export default function CoursesCardList({
                       )}
                     </Box>
                   )}
-
-                  {missingMaterials > 0 && (
-                    <Stack
-                      direction="row"
-                      spacing={0.5}
-                      alignItems="center"
-                      sx={{ mt: 0.75 }}
-                    >
-                      <WarningAmberIcon fontSize="inherit" color="warning" />
-                      <Typography variant="caption" color="warning.main">
-                        Còn {missingMaterials} lesson chưa có tài liệu.
-                      </Typography>
-                    </Stack>
-                  )}
                 </CardContent>
               </Card>
             </Grid>
